@@ -7,9 +7,9 @@ classdef (Abstract) sourceCode
     methods (Static = true)
         %-----------------------------------------------------------------%
         function htmlContent = htmlCreation(reportTemplate, varargin)
-            [componentType, componentData, componentIntro, componentError, componentLineBreak] = report.sourceCode.TemplateParser(reportTemplate);
-            report.sourceCode.ComponentTypeCheck(componentType)
-            [txtClass, txtStyle, tableStyle] = report.sourceCode.Style(componentType);
+            [componentType, componentData, componentIntro, componentError, componentLineBreak] = reportLib.sourceCode.TemplateParser(reportTemplate);
+            reportLib.sourceCode.ComponentTypeCheck(componentType)
+            [txtClass, txtStyle, tableStyle] = reportLib.sourceCode.Style(componentType);
             
             htmlContent = '';
             switch componentType
@@ -36,9 +36,9 @@ classdef (Abstract) sourceCode
                         global ID_img
                         ID_img = ID_img+1;
 
-                        [imgExt, imgString] = report.sourceCode.img2base64(imgFullPath);
+                        [imgExt, imgString] = reportLib.sourceCode.img2base64(imgFullPath);
                         
-                        htmlContent = report.sourceCode.AuxiliarHTMLBlock(htmlContent, 'Introduction', componentIntro);                        
+                        htmlContent = reportLib.sourceCode.AuxiliarHTMLBlock(htmlContent, 'Introduction', componentIntro);                        
                         htmlContent = sprintf(['%s<figure id="image_%.0f">\n'                                                                             ...
                                                '\t<p class="Texto_Centralizado"><img src="data:image/%s;base64,%s" style="width:%s; height:%s;" /></p>\n' ...
                                                '\t<figcaption>\n'                                                                                         ...
@@ -46,10 +46,10 @@ classdef (Abstract) sourceCode
                                                '\t</figcaption>\n'                                                                                        ...
                                                '</figure>\n\n'], htmlContent, ID_img, imgExt, imgString, componentData.Settings.Width, componentData.Settings.Height, txtClass, ID_img, componentData.Caption);
         
-                        htmlContent = report.sourceCode.AuxiliarHTMLBlock(htmlContent, 'LineBreak', componentLineBreak);
+                        htmlContent = reportLib.sourceCode.AuxiliarHTMLBlock(htmlContent, 'LineBreak', componentLineBreak);
         
                     else
-                        htmlContent = report.sourceCode.AuxiliarHTMLBlock(htmlContent, 'Error', componentError);
+                        htmlContent = reportLib.sourceCode.AuxiliarHTMLBlock(htmlContent, 'Error', componentError);
                     end        
         
                 %---------------------------------------------------------%
@@ -64,7 +64,7 @@ classdef (Abstract) sourceCode
                         COLUMNS = width(Table);
                         
                         % INTRODUCTION
-                        htmlContent = report.sourceCode.AuxiliarHTMLBlock(htmlContent, 'Introduction', componentIntro);
+                        htmlContent = reportLib.sourceCode.AuxiliarHTMLBlock(htmlContent, 'Introduction', componentIntro);
 
                         % HEADER
                         htmlContent = sprintf(['%s<table class="%s" id="table_%.0f">\n'                 ...
@@ -105,7 +105,7 @@ classdef (Abstract) sourceCode
                             htmlContent = sprintf('%s\n\t\t<tr>', htmlContent);
 
                             for jj = 1:COLUMNS
-                                cellValue   = report.sourceCode.TableCellValue(Table{ii, jj}, componentData.Settings(jj), txtClass, 1);
+                                cellValue   = reportLib.sourceCode.TableCellValue(Table{ii, jj}, componentData.Settings(jj), txtClass, 1);
                                 htmlContent = sprintf('%s\n%s', htmlContent, sprintf(rowTemplate{jj}, cellValue));
                             end
                     
@@ -113,10 +113,10 @@ classdef (Abstract) sourceCode
                         end
                     
                         htmlContent = sprintf('%s\n\t</tbody>\n</table>\n\n', htmlContent);        
-                        htmlContent = report.sourceCode.AuxiliarHTMLBlock(htmlContent, 'LineBreak', componentLineBreak);
+                        htmlContent = reportLib.sourceCode.AuxiliarHTMLBlock(htmlContent, 'LineBreak', componentLineBreak);
         
                     else
-                        htmlContent = report.sourceCode.AuxiliarHTMLBlock(htmlContent, 'Error', componentError);
+                        htmlContent = reportLib.sourceCode.AuxiliarHTMLBlock(htmlContent, 'Error', componentError);
                     end
             end
         end
@@ -211,19 +211,19 @@ classdef (Abstract) sourceCode
                     end
             end
         
-            htmlContent = sprintf('%s%s', htmlContent, report.sourceCode.htmlCreation(struct('Type', htmlComponentType, 'Data', struct('Editable', 'false', 'Text', htmlComponentText, 'Variable', []))));
+            htmlContent = sprintf('%s%s', htmlContent, reportLib.sourceCode.htmlCreation(struct('Type', htmlComponentType, 'Data', struct('Editable', 'false', 'Text', htmlComponentText, 'Variable', []))));
         end
 
 
         %-----------------------------------------------------------------%
         function htmlLineBreak = LineBreak()
-            htmlLineBreak = report.sourceCode.htmlCreation(struct('Type', 'Paragraph', 'Data', struct('Editable', 'false', 'Text', '&nbsp;', 'Variable', [])));
+            htmlLineBreak = reportLib.sourceCode.htmlCreation(struct('Type', 'Paragraph', 'Data', struct('Editable', 'false', 'Text', '&nbsp;', 'Variable', [])));
         end
     
     
         %-----------------------------------------------------------------%
         function htmlSeparator = Separator()
-            htmlSeparator = report.sourceCode.htmlCreation(struct('Type', 'Footnote',  'Data', struct('Editable', 'false', 'Text', repmat('_', 1, 45), 'Variable', [])));
+            htmlSeparator = reportLib.sourceCode.htmlCreation(struct('Type', 'Footnote',  'Data', struct('Editable', 'false', 'Text', repmat('_', 1, 45), 'Variable', [])));
         end
 
 
@@ -282,7 +282,7 @@ classdef (Abstract) sourceCode
 
                     case 'cell'
                         for ii = 1:numel(cellValue)
-                            subCellValue = report.sourceCode.TableCellValue(cellValue{ii}, componentSettings, txtClass, recorrenceIndex+1);
+                            subCellValue = reportLib.sourceCode.TableCellValue(cellValue{ii}, componentSettings, txtClass, recorrenceIndex+1);
                             if ~isempty(subCellValue)
                                 if isempty(editedCellValue)
                                     editedCellValue = subCellValue;

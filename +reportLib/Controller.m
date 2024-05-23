@@ -1,6 +1,6 @@
 function htmlReport = Controller(reportInfo, dataOverview)
 
-    [reportInfo, dataOverview] = report.inputParser(reportInfo, dataOverview);
+    [reportInfo, dataOverview] = reportLib.inputParser(reportInfo, dataOverview);
     internalFcn_counterCreation()
     
     % HTML header (style)    
@@ -8,7 +8,7 @@ function htmlReport = Controller(reportInfo, dataOverview)
     if strcmp(reportInfo.Model.Version, 'preview')
         docTitle   = reportInfo.Model.Name;
         docType    = reportInfo.Model.DocumentType;
-        docStyle   = sprintf(fileread(fullfile(reportInfo.Path.libFolder, 'Template', 'html_DocumentStyle.txt')), docTitle, docType);
+        docStyle   = sprintf(fileread(fullfile(reportLib.Path, 'html', 'docStyle.txt')), docTitle, docType);
 
         htmlReport = sprintf('%s\n\n', docStyle);
     end
@@ -27,10 +27,10 @@ function htmlReport = Controller(reportInfo, dataOverview)
         if ~isempty(parentNode.Data.Variable)
             parentNode.Data.Text = internalFcn_FillWords(reportInfo, [], parentNode, 1);
         end
-        htmlReport = [htmlReport, report.sourceCode.htmlCreation(parentNode)];
+        htmlReport = [htmlReport, reportLib.sourceCode.htmlCreation(parentNode)];
 
         if tableStyleFlag
-            htmlReport = sprintf('%s%s\n\n', htmlReport, fileread(fullfile(reportInfo.Path.libFolder, 'Template', 'html_DocumentTableStyle.txt')));
+            htmlReport = sprintf('%s%s\n\n', htmlReport, fileread(fullfile(reportLib.Path, 'html', 'docTableStyle.txt')));
             tableStyleFlag = 0;
         end
 
@@ -46,7 +46,7 @@ function htmlReport = Controller(reportInfo, dataOverview)
             % Insere uma quebra de linha, caso exista recorrência no
             % item.
             if jj > 1
-                htmlReport = [htmlReport, report.sourceCode.LineBreak];
+                htmlReport = [htmlReport, reportLib.sourceCode.LineBreak];
             end
 
             for kk = 1:numel(parentNode.Data.Component)
@@ -78,13 +78,13 @@ function htmlReport = Controller(reportInfo, dataOverview)
                             error('Unexpected type "%s"', childType)
                     end
 
-                    htmlReport = [htmlReport, report.sourceCode.htmlCreation(childNode, vararginArgument)];
+                    htmlReport = [htmlReport, reportLib.sourceCode.htmlCreation(childNode, vararginArgument)];
 
                 catch ME
                     msgError = extractAfter(ME.message, 'Configuration file error message: ');
 
                     if ~isempty(msgError)
-                        htmlReport = report.sourceCode.AuxiliarHTMLBlock(htmlReport, 'Error', msgError);
+                        htmlReport = reportLib.sourceCode.AuxiliarHTMLBlock(htmlReport, 'Error', msgError);
                     end
                 end
             end
@@ -111,10 +111,10 @@ function htmlReport = Controller(reportInfo, dataOverview)
                 end
             end
             FootnoteFieldsText = strjoin(FootnoteFieldsText, ', ');
-            FootnoteText       = [FootnoteText, report.sourceCode.htmlCreation(struct('Type', 'Footnote', 'Data', struct('Editable', 'false', 'Text', FootnoteFieldsText, 'Variable', [])))];
+            FootnoteText       = [FootnoteText, reportLib.sourceCode.htmlCreation(struct('Type', 'Footnote', 'Data', struct('Editable', 'false', 'Text', FootnoteFieldsText, 'Variable', [])))];
         end
     end
-    htmlReport = [htmlReport, report.sourceCode.LineBreak, report.sourceCode.Separator, FootnoteText, report.sourceCode.LineBreak];
+    htmlReport = [htmlReport, reportLib.sourceCode.LineBreak, reportLib.sourceCode.Separator, FootnoteText, reportLib.sourceCode.LineBreak];
 
     % HTML trailer
     if strcmp(reportInfo.Model.Version, 'preview')

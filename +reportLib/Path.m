@@ -1,3 +1,3 @@
 function rootFolder = Path
-    rootFolder = fileparts(fileparts(mfilename('fullpath')));
+    rootFolder = fileparts(mfilename('fullpath'));
 end

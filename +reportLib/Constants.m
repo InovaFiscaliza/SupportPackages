@@ -10,10 +10,10 @@ classdef (Abstract) Constants
 
     methods (Static=true)
         %-----------------------------------------------------------------%
-        function reportLib = ReportLib()
-            reportLib = struct('name',    report.Constants.libName,    ...
-                               'release', report.Constants.libRelease, ...
-                               'version', report.Constants.libVersion);
+        function libVersion = ReportLib()
+            libVersion = struct('name',    reportLib.Constants.libName,    ...
+                                'release', reportLib.Constants.libRelease, ...
+                                'version', reportLib.Constants.libVersion);
         end
 
 
