@@ -2,40 +2,33 @@ classdef wordCloud < handle
 
     properties
         %-----------------------------------------------------------------%
-        parent
-        executionMode
-        
+        Algorithm        
         Chart
-        SourceTable
-        NumberOfWords
-        Color
+        Table
     end
 
     methods
         %-----------------------------------------------------------------%
-        function obj = wordCloud(parentPanel, executionMode, NWords)
-            obj.executionMode = executionMode;
-            obj.NumberOfWords = NWords;
+        function obj = wordCloud(parentPanel, executionMode)
+            obj.Algorithm = executionMode;
 
-            switch executionMode
-                case 'webApp'
+            switch obj.Algorithm
+                case 'D3.js'
                     htmlFile   = fullfile(Path(obj), 'wordCloud', 'sourceCode.html');
 
-                    obj.parent = uigridlayout(parentPanel, [1,1]);
-                    obj.Chart  = uihtml(obj.parent, 'HTMLSource', htmlFile);
+                    parentGrid = uigridlayout(parentPanel, [1,1]);
+                    obj.Chart  = uihtml(parentGrid, 'HTMLSource', htmlFile);
 
-                otherwise % 'built-in' | 'desktopApp'
+                case 'MATLAB built-in'
                     emptyTable = EmptyTable(obj);
 
-                    obj.parent = tiledlayout(parentPanel, 1, 1, 'Padding', 'tight');
-                    obj.Chart  = matlab.graphics.chart.WordCloudChart('Parent',          obj.parent,   ...
+                    parentGrid = tiledlayout(parentPanel, 1, 1, 'Padding', 'tight');
+                    obj.Chart  = matlab.graphics.chart.WordCloudChart('Parent',          parentGrid,   ...
                                                                       'Title',           '',           ...
                                                                       'SourceTable',     emptyTable,   ...
                                                                       'WordVariable',    'Word',       ...
                                                                       'SizeVariable',    'Count',      ...
-                                                                      'MaxDisplayWords', NWords,       ...
-                                                                      'Units',           'normalized', ...
-                                                                      'Position',        [0,0,1,1]);
+                                                                      'MaxDisplayWords', 25);
             end
         end
 
@@ -55,44 +48,26 @@ classdef wordCloud < handle
 
 
         %-----------------------------------------------------------------%
-        function set.SourceTable(obj, value)
-            SourceTableUpdate(obj, value)            
+        function set.Table(obj, value)
+            TableUpdate(obj, value)            
         end
 
 
         %-----------------------------------------------------------------%
-        function SourceTableUpdate(obj, sourceTable)
-            switch obj.executionMode
-                case 'webApp'
-                    if ~isempty(sourceTable)
-                        sendEventToHTMLSource(obj.Chart, 'drawWordCloud', struct('words', sourceTable.Word, 'weights', sourceTable.Count))
+        function TableUpdate(obj, Table)
+            switch obj.Algorithm
+                case 'D3.js'
+                    if ~isempty(Table)
+                        sendEventToHTMLSource(obj.Chart, 'drawWordCloud', struct('words', Table.Word, 'weights', Table.Count))
                     else
                         sendEventToHTMLSource(obj.Chart, 'eraseWordCloud')
                     end
 
-                otherwise
-                    if isempty(sourceTable)
-                        sourceTable = EmptyTable(obj);
+                case 'MATLAB built-in'
+                    if isempty(Table)
+                        Table = EmptyTable(obj);
                     end
-                    obj.Chart.SourceTable = sourceTable;
-            end
-        end
-
-
-        %-----------------------------------------------------------------%
-        function set.NumberOfWords(obj, value)
-            NumberOfWordsUpdate(obj, value)
-        end
-
-
-        %-----------------------------------------------------------------%
-        function NumberOfWordsUpdate(obj, nWords)
-            switch obj.executionMode
-                case 'webApp'
-                    % pendente
-
-                otherwise
-                    obj.Chart.MaxDisplayWords = nWords;
+                    obj.Chart.SourceTable = Table;
             end
         end
     end
