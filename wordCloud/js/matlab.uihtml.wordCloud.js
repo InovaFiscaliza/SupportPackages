@@ -20,7 +20,7 @@ function setup(htmlComponent) {
         erase();
     });
 
-    window.addEventListener("resize", () => drawCloud(words));
+    // window.addEventListener("resize", () => drawCloud(words));
 
     function createCanvas() {
         const canvas = document.createElement('canvas');

@@ -16,7 +16,7 @@ classdef wordCloud < handle
                 case 'D3.js'
                     htmlFile   = fullfile(Path(obj), 'wordCloud', 'sourceCode.html');
 
-                    parentGrid = uigridlayout(parentPanel, [1,1]);
+                    parentGrid = uigridlayout(parentPanel, [1,1], 'BackgroundColor', [1,1,1]);
                     obj.Chart  = uihtml(parentGrid, 'HTMLSource', htmlFile);
 
                 case 'MATLAB built-in'
