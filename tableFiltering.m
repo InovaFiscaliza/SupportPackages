@@ -24,8 +24,12 @@ classdef tableFiltering < handle
             fLogical(:,2) = strcmp(obj.Config.Operation, Operation);
             fLogical(:,3) = cellfun(@(x) isequal(x, Value), obj.Config.Value);
 
-            if any(all(fLogical, 2))
+            if (fHeight == 0) || ~any(all(fLogical, 2))
                 msgWarning = '';
+
+                if isnumeric(Value)
+                    Value = num2cell(Value);
+                end
                 obj.Config(end+1,:) = {Column, Operation, Value, true};
             else
                 msgWarning = 'The Column-Operation-Value set has already been inserted into the filter list.';
