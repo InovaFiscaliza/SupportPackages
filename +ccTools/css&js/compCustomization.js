@@ -19,7 +19,7 @@ function setup(htmlComponent) {
         let objHandle    = window.parent.document.querySelector(`div[data-tag="${objDataTag}"]`).children[0];
 
         objHandle.addEventListener("keydown", function(event) {
-            let keyEvents = ["ArrowUp", "ArrowDown", "Enter", "Escape"];
+            let keyEvents = ["ArrowUp", "ArrowDown", "Enter", "Escape", "Tab"];
         
             if (keyEvents.includes(event.key)) {
                 htmlComponent.sendEventToMATLAB(objDataName, event.key);
