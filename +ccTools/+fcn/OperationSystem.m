@@ -28,9 +28,9 @@ function varargout = OperationSystem(operationType)
 
         case 'executionExt'
             if ispc
-                executionExt = '.exe';
+                executionExt = 'exe';
             elseif ismac
-                executionExt = '.app';
+                executionExt = 'app';
             elseif isunix
                 executionExt = '';
             end

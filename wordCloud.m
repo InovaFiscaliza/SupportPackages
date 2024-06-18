@@ -14,7 +14,7 @@ classdef wordCloud < handle
 
             switch obj.Algorithm
                 case 'D3.js'
-                    htmlFile   = fullfile(Path(obj), 'wordCloud', 'sourceCode.html');
+                    htmlFile   = fullfile(Path(obj), 'wordCloud', 'Container.html');
 
                     parentGrid = uigridlayout(parentPanel, [1,1], 'BackgroundColor', [1,1,1]);
                     obj.Chart  = uihtml(parentGrid, 'HTMLSource', htmlFile);
