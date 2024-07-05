@@ -13,7 +13,7 @@ classdef fiscalizaLib < handle
         Fiscaliza
 
         % O método get_issue instancia e retorna um objeto do tipo Issue, 
-        % este que encapsula a funcionalidade principal de resgate de informações, 
+        % o qual encapsula a funcionalidade principal de resgate de informações, 
         % validação e formatação de informações e atualização de inspeção.
         Issue
 
@@ -22,10 +22,11 @@ classdef fiscalizaLib < handle
         IssueInfo
     end
 
+
     methods
         %-----------------------------------------------------------------%
         function obj = fiscalizaLib(userName, userPass, testFlag)
-            pyMod = py.importlib.import_module('main');
+            pyMod = py.importlib.import_module('fiscaliza.main');
             py.importlib.reload(pyMod);
 
             obj.Module    = pyMod;
@@ -34,97 +35,133 @@ classdef fiscalizaLib < handle
 
 
         %-----------------------------------------------------------------%
-        function detalhar_issue(obj, issueNumber)
-            obj.Issue = obj.Fiscaliza.get_issue(num2str(issueNumber));
+        function get_issue(obj, issueNumber)
+            if isnumeric(issueNumber)
+                issueNumber = num2str(issueNumber);
+            end
+
+            obj.Issue = obj.Fiscaliza.get_issue(issueNumber);
 
             issueType = char(obj.Issue.type);
             if ~strcmp(issueType, 'atividade_de_inspecao')
-                error('O relato da lib fiscaliza é restrita às <i>issues</i> do tipo "atividade_de_inspecao". A <i>issue</i> nº %d, contudo, é uma "%s".', issueNumber, issueType)
+                error('O relato da lib fiscaliza é restrito às <i>issues</i> do tipo "Atividade de inspeção". A <i>issue</i> nº %d, contudo, é uma "%s".', issueNumber, formatIssueType(obj, issueType))
             end
             
-            obj.IssueInfo = py2matRedmine(obj, issueNumber, py.getattr(obj.Issue, 'attrs'), 1);
+            obj.IssueInfo = py2matDataType(obj, issueNumber, py.getattr(obj.Issue, 'attrs'), 1);
         end
 
 
         %-----------------------------------------------------------------%
-        function relatar_inspecao(obj)
-            workersList = {app.WorkersTree.CheckedNodes(1).Text};
-            for ii = 2:numel(app.WorkersTree.CheckedNodes)
-                workersList = [workersList, app.WorkersTree.CheckedNodes(ii).Text];
-            end
-            workersList = py.list(workersList);
-            serviceList = py.list(app.FinalReport.Services');
-            
-            Cities = {};
-            for ii = 1:numel(app.City.Value)
-                Cities{ii} = sprintf('%s/%s', app.City.Value{ii}(end-1:end), app.City.Value{ii}(1:end-3));
-            end
-            Cities = py.list(Cities);
-            
-            tableJournal = py.list({jsonencode(app.FinalReport.tableJournal)});
-            
-            rawData = struct('Classe_da_Inspecao',            'Técnica',                       ...
-                             'Tipo_de_Inspecao',              'Uso do Espectro - Monitoração', ...
-                             'description',                   strjoin(app.issueDescription.Value), ...
-                             'Fiscal_Responsavel',            app.Responsable.Value,           ...
-                             'Fiscais',                       workersList,                     ...
-                             'Html',                          app.ReportFile.Value,            ...
-                             'Gerar_Relatorio',               int8(app.CheckBox.Value),        ...
-                             'Frequencia_Inicial',            app.Limit1.Value,                ...
-                             'Unidade_da_Frequencia_Inicial', 'MHz',                           ...
-                             'Frequencia_Final',              app.Limit2.Value,                ...
-                             'Unidade_da_Frequencia_Final',   'MHz',                           ...
-                             'start_date',                    datestr(app.DatePicker1.Value, 'yyyy-mm-dd'), ...
-                             'due_date',                      datestr(app.DatePicker2.Value, 'yyyy-mm-dd'), ...
-                             'UF_Municipio',                  Cities,                           ...
-                             'Servicos_da_Inspecao',          serviceList,                      ...
-                             'Qtd_Emissoes',                  int32(app.EmissionsCount1.Value), ...
-                             'Qtd_Licenciadas',               int32(app.EmissionsCount2.Value), ...
-                             'Qtd_Identificadas',             int32(app.EmissionsCount3.Value), ...
-                             'Horas_de_Preparacao',           int32(app.Hours1.Value),          ...
-                             'Horas_de_Deslocamento',         int32(app.Hours2.Value),          ...
-                             'Horas_de_Execucao',             int32(app.Hours3.Value),          ...
-                             'Horas_de_Conclusao',            int32(app.Hours4.Value),          ...
-                             'Latitude',                      round(app.Latitude.Value,  6),    ...
-                             'Longitude',                     round(app.Longitude.Value, 6),    ...
-                             'Uso_de_PF',                     'Não se aplica PF - uso apenas de formulários', ...
-                             'Acao_de_risco_a_vida_criada',   'Não',   ...
-                             'Impossibilidade_acesso_online', '0',     ...
-                             'Reservar_Instrumentos',         '0',     ...
-                             'Utilizou_algum_instrumento',    int8(0), ...
-                             'notes',                         tableJournal, ...
-                             'uploads',                       py.list({py.dict(pyargs('path',         replace(app.ReportFile.Value, 'html', 'json'), ...
-                                                                                      'filename',     'Info.json',                                   ...
-                                                                                      'description',  'Informações gerais acerca da fiscalização (sensor, período de observação, faixas monitoradas, emissões identificadas etc).', ...
-                                                                                      'content_type', '.json'))}));
-            
-            try
-                finalStatus   = app.issueDesiredStatus.Value;
-                replaceReport = false;
-                if app.CheckBox.Value && ~isempty(app.Hyperlink2.Text)
-                    replaceReport = true;
-                end
+        function update(obj, newData)
+            obj.Issue.update(py.dict(newData))
+        end
 
-                importLib(obj, 'update')
-                pyModule = obj.Module.update;
-                pyModule.relatar_inspecao(pyargs('dados',    py.dict(rawData),               ...
-                                                 'inspecao', num2str(app.IssueNumber.Value), ...
-                                                 'login',    app.Login,          ...
-                                                 'senha',    app.Password,       ...
-                                                 'teste',    app.Teste,          ...
-                                                 'parar_em', finalStatus,        ...
-                                                 'substituir_relatorio', replaceReport));
+
+        %-----------------------------------------------------------------%
+        function GUICreation(obj, hGrid)
+            editableFields       = struct(py.getattr(obj.Issue, 'editable_fields'));
+            editableFieldsNames  = fields(editableFields);
+            editableFieldsNumber = numel(editableFieldsNames);
+
+            set(hGrid, 'RowHeight',  repmat({22}, 1, 2*editableFieldsNumber), ...
+                       'Scrollable', 'on',                                    ...
+                       'UserData',   struct())
+
+            for ii = 1:editableFieldsNumber
+                compBaseName   = editableFieldsNames{ii};
+                compBaseClass  = class(editableFields.(compBaseName));
                 
-            catch ME
-                layoutFcn.modalWindow(app.UIFigure, 'ccTools.MessageBox', ME.message);
+                compLabelName  = [compBaseName '_Label'];
+                compLabelText  = char( editableFields.(compBaseName).name);
+                
+                compValue      = editableFields.(compBaseName).value;
+                compValueClass = class(compValue);
+
+                % Label component
+                hGrid.UserData.(compLabelName) = uilabel(hGrid, 'VerticalAlignment', 'bottom', 'Text', compLabelText);
+                hGrid.UserData.(compLabelName).Layout.Row = 2*ii-1;
+
+                % Value component
+                try
+                    switch compBaseClass
+                        case 'py.fiscaliza.datatypes.FieldWithOptions'
+                            % se for escolha múltipla, usar
+                            % uitreecheckbox... oi uilistbox...
+
+                            compValueOptions = cellfun(@(x) char(x), cell(editableFields.(compBaseName).options), 'UniformOutput', false);
+                            switch compValueClass
+                                case 'py.str'
+                                    compValue = char(compValue);
+
+                                case 'py.list'
+                                    compValue = cellfun(@(x) char(x), cell(compValue), 'UniformOutput', false);
+
+                                case {'py.int', 'py.long', 'py.float', 'double'}
+                                    compValue = num2str(double(compValue));
+                            end
+
+                            if editableFields.(compBaseName).multiple
+                                hGrid.RowHeight{2*ii} = 112;
+
+                                if numel(compValueOptions) > 50
+                                    hGrid.UserData.(compBaseName) = uilistbox(hGrid, "Multiselect", "on", "Items", compValueOptions, "Value", compValue, "FontSize", 11);
+
+                                else
+                                    hGrid.UserData.(compBaseName) = uitree(hGrid, 'checkbox', 'FontSize', 11);
+                                    for jj = 1:numel(compValueOptions)
+                                        childNode = uitreenode(hGrid.UserData.(compBaseName), 'Text', compValueOptions{jj});
+                                        if ismember(compValueOptions{jj}, compValue)
+                                            hGrid.UserData.(compBaseName).CheckedNodes = [hGrid.UserData.(compBaseName).CheckedNodes, childNode];
+                                        end
+                                    end
+                                end
+
+                            else
+                                compValueOptions = [{''}, compValueOptions];                                
+                                hGrid.UserData.(compBaseName) = uidropdown(hGrid, 'Items', compValueOptions, 'Value', compValue, 'BackgroundColor', [1,1,1], 'FontSize', 11);
+                            end
+    
+                        otherwise                                               % 'py.fiscaliza.datatypes.AtomicField' | 'py.fiscaliza.datatypes.SimpleField'
+                            switch compValueClass
+                                case {'py.int', 'py.long', 'py.float', 'double'}
+                                    hGrid.UserData.(compBaseName) = uieditfield(hGrid, 'numeric', 'Value', double(compValue), 'FontSize', 11);
+
+                                case 'py.list'
+                                    compValue = cellfun(@(x) char(x), cell(compValue), 'UniformOutput', false);
+                                    if isempty(compValue)
+                                        compValue = {''};
+                                    end
+                                    hGrid.UserData.(compBaseName) = uieditfield(hGrid, 'text', 'Value', compValue{1}, 'FontSize', 11);
+
+                                otherwise                                   % 'py.str'
+                                    hGrid.UserData.(compBaseName) = uieditfield(hGrid, 'text', 'Value', char(compValue), 'FontSize', 11);
+                            end                        
+                    end
+                    hGrid.UserData.(compBaseName).Layout.Row = 2*ii;
+                catch ME
+                    compBaseName
+                    ME.message
+                end
             end
+
         end
     end
         
         
-    methods (Access=private) 
+    methods (Access=private)
         %-----------------------------------------------------------------%
-        function issueStruct = py2matRedmine(obj, issueNumber, issueDict, recurrenceLevel)
+        function issueType = formatIssueType(obj, issueType)
+            d = dictionary(["solicitacao_de_inspecao", "acao_de_inspecao", "atividade_de_inspecao"], ...
+                           ["Solicitação de inspeção", "Ação de inspeção", "Atividade de inspeção"]);
+
+            if isKey(d, issueType)
+                issueType = d(issueType);
+            end
+        end
+
+
+        %-----------------------------------------------------------------%
+        function issueStruct = py2matDataType(obj, issueNumber, issueDict, recurrenceLevel)
             issueStruct = struct(issueDict);    
             if recurrenceLevel == 1
                 if isempty(issueStruct)
@@ -138,22 +175,38 @@ classdef fiscalizaLib < handle
                 FieldValue = issueStruct.(FieldName);
                 FieldClass = class(FieldValue);
 
+                % Notei que o "py.float" é convertido automaticamente para
+                % "double". Arriscaria dizer que isso pode acontecer com o
+                % "py.str", sendo convertido automaticamente para "char" ou
+                % "string". 
+
+                % Foram mapeados apenas os tipos de dados retornados pela
+                % lib fiscaliza. 
+                
+                % Há, contudo, tipos de dados ainda não mapeados aqui: 
+                % "py.bytes", "py.array.array", "py.numpy.ndarray, "py.memoryview", 
+                % "py.tuple", "py.pandas.DataFrame", "py.datetime.datetime" e 
+                % "py.datetime.timedelta".
+
                 switch FieldClass
-                    case 'py.int'
+                    case {'py.int', 'py.long', 'py.float'}
                         FieldValue = double(FieldValue);
+                    case 'py.bool'
+                        FieldValue = logical(FieldValue);
                     case 'py.str'
                         FieldValue = isJSONFormat(obj, char(FieldValue));
                     case 'py.list'
                         FieldValue = cellfun(@(x) char(x), cell(FieldValue), 'UniformOutput', false);
                     case 'py.dict'
-                        FieldValue = py2matRedmine(obj, -1, FieldValue, recurrenceLevel+1);
+                        FieldValue = py2matDataType(obj, -1, FieldValue, recurrenceLevel+1);
                     case 'py.NoneType'
-                        FieldValue = '';
+                        issueStruct = rmfield(issueStruct, FieldName);
+                        continue
                 end
 
                 if recurrenceLevel == 1
-                    if strcmp(FieldName, 'status') && ismember(FieldValue, ["Cancelada", "Relatada", "Conferida"])
-                        error('A inspeção nº %d não é passível de relato por já estar no estado "%s".', issueNumber, FieldValue)
+                    if strcmp(FieldName, 'status') && ~ismember(FieldValue, {'Rascunho', 'Aguardando Execução', 'Em andamento', 'Relatando'})
+                        error('A inspeção nº %d não é passível de relato por estar no estado "%s".', issueNumber, FieldValue)
                     end
                 end
 
