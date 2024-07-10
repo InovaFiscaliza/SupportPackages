@@ -50,7 +50,7 @@ function varargout = OperationSystem(operationType)
             elseif ismac
                 executionExt = 'app';
             elseif isunix
-                executionExt = '';
+                executionExt = 'sh';
             end
             varargout{1} = executionExt;
 
