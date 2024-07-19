@@ -1,7 +1,21 @@
 classdef fiscalizaLib < handle
 
-    % MENSAGENS DE ERRO EVIDENCIADAS:
+    % https://sistemas.anatel.gov.br/fiscaliza
+    % https://sistemasnet/fiscaliza
+    % https://sistemasnethm/fiscaliza
+
+    % % FISCALIZAHM FORA (sem VPN)
+    % 'Error using main>authenticate (line 67)
+    %  Python Error: ConnectionError: Não foi possível conectar ao servidor do Fiscaliza'
+    
+    % % FISCALIZAHM FORA (com VPN)
+    % 'Error using base>process_response (line 180)
+    %  Python Error: ServerError: Redmine returned internal error, check Redmine logs for details'
+    
+    % % LOGIN OU SENHA INCORRETA
     % 'Python Error: AuthError: Invalid authentication details'
+    
+    % % ISSUE QUE NÃO EXISTE
     % 'Python Error: ResourceNotFoundError: Requested resource doesn't exist'
     
     properties
@@ -58,86 +72,201 @@ classdef fiscalizaLib < handle
 
 
         %-----------------------------------------------------------------%
-        function GUICreation(obj, hGrid)
-            editableFields       = struct(py.getattr(obj.Issue, 'editable_fields'));
-            editableFieldsNames  = fields(editableFields);
+        function [status, compData] = GUI2Data(obj, hPanel, hGrid)
+            status   = false;
+            compData = struct;
+
+            editableFieldsNames  = fields(hGrid.UserData);
             editableFieldsNumber = numel(editableFieldsNames);
 
-            set(hGrid, 'RowHeight',  repmat({22}, 1, 2*editableFieldsNumber), ...
-                       'Scrollable', 'on',                                    ...
-                       'UserData',   struct())
-
             for ii = 1:editableFieldsNumber
+                compBaseName  = editableFieldsNames{ii};
+                compBaseClass = class(hGrid.UserData.(compBaseName));
+
+                switch compBaseClass
+                    case {'matlab.ui.control.EditField', 'matlab.ui.control.NumericEditField', 'matlab.ui.control.DropDown'}
+                        compValue = hGrid.UserData.(compBaseName).Value;
+
+                    case 'matlab.ui.container.CheckBoxTree'
+                        if ~isempty(hGrid.UserData.(compBaseName).CheckedNodes)
+                            compValue = {hGrid.UserData.(compBaseName).CheckedNodes.Text};
+                        else
+                            compValue = {};
+                        end
+
+                    otherwise
+                        continue
+                end
+                
+                compData.(compBaseName) = compValue;
+                if isfield(obj.IssueInfo, compBaseName) && ~isequal(compValue, obj.IssueInfo.(compBaseName))
+                    status = true;
+                end
+            end
+        end
+
+
+        %-----------------------------------------------------------------%
+        function Data2GUI(obj, hPanel, hGrid)
+            if ~isempty(hGrid.Children)
+                delete(hGrid.Children)
+                hGrid.RowHeight = {'1x'};
+            end
+
+            editableFields       = struct(py.getattr(obj.Issue, 'editable_fields'));
+            editableFieldsNames  = fields(editableFields);
+
+            % Inicialmente, os campos já renderizados em tela são preenchidos...
+            compHandles = findobj(hPanel, '-not', {'Type', 'uigridlayout', '-or', 'Type', 'uipanel'});
+            compFields  = {};
+
+            for ii = 1:numel(compHandles)
+                compHandle = compHandles(ii);
+
+                if ~isempty(compHandle.UserData)
+                    compFieldType  = compHandle.UserData.Type;                    
+                    compFieldName  = compHandle.UserData.Fields;
+                    if isfield(compHandle.UserData, 'Format')
+                        compFormat = compHandle.UserData.Format;
+                    end
+
+                    switch compFieldType
+                        case 'matlab.ui.control.Label'
+                            compFieldsValues = {};
+                            for jj = 1:numel(compFieldName)
+                                compFieldsValues{jj} = ComponentFieldValue(obj, editableFields, compFieldName{jj});
+                                if iscell(compFieldsValues{jj}) 
+                                    compFieldsValues{jj} = char(compFieldsValues{jj});
+                                end
+                            end
+                            compHandle.Text  = sprintf(compFormat, compFieldsValues{:});
+
+                        case 'matlab.ui.control.DatePicker'
+                            compFieldValue   = ComponentFieldValue(obj, editableFields, compFieldName{1});
+                            compHandle.Value = datetime(compFieldValue, 'InputFormat', 'yyyy-MM-dd');
+
+                        case 'matlab.ui.control.TextArea'
+                            compFieldValue   = ComponentFieldValue(obj, editableFields, compFieldName{1});
+                            compHandle.Value = compFieldValue;
+
+                        case 'matlab.ui.control.DropDown'
+                            compFieldValue   = ComponentFieldValue(obj, editableFields, compFieldName{1});
+                            compFieldOptions = unique([{''}, DataTypeMapping(obj, editableFields.(compFieldName{1}).options, 1)]);
+
+                            set(compHandle, 'Value', compFieldValue, 'Items', compFieldOptions)
+
+                        otherwise
+                            continue
+                    end
+
+                    compFields = [compFields, compFieldName];
+                end
+            end
+
+            % Renderiza os outros campos editáveis...
+            hGridRow = 0;
+            for ii = 1:numel(editableFieldsNames)
                 compBaseName   = editableFieldsNames{ii};
                 compBaseClass  = class(editableFields.(compBaseName));
-                
-                compLabelName  = [compBaseName '_Label'];
-                compLabelText  = char( editableFields.(compBaseName).name);
-                
-                compValue      = editableFields.(compBaseName).value;
-                compValueClass = class(compValue);
 
+                if ismember(compBaseName, compFields)
+                    continue
+                end
+                
                 % Label component
-                hGrid.UserData.(compLabelName) = uilabel(hGrid, 'VerticalAlignment', 'bottom', 'Text', compLabelText);
-                hGrid.UserData.(compLabelName).Layout.Row = 2*ii-1;
+                compLabelText  = char(editableFields.(compBaseName).name);
 
                 % Value component
                 try
+                    compValue  = DataTypeMapping(obj, editableFields.(compBaseName).value, 1);
+
+                    hGridRow = hGridRow + 1;
+                    hGrid.RowHeight{hGridRow} = 17;
+                    compLabelUI = uilabel(hGrid, 'VerticalAlignment', 'bottom', 'Text', compLabelText, 'FontSize', 11);
+                    compLabelUI.Layout.Row = hGridRow;
+
+                    % O campo "entidade_da_inspecao" está vindo como SimpleField, 
+                    % mas deveria ser FieldWithOptions, em que as options são 
+                    % todos os CNPJs das empresas outorgadas.
+
+                    % A própria lista de município sobrecarrega...
+
+                    % Como implementar?
+
                     switch compBaseClass
+                        case {'py.fiscaliza.datatypes.AtomicField', 'py.fiscaliza.datatypes.SimpleField'}
+                            if isnumeric(compValue)
+                                compFieldType = 'numeric';
+                            else
+                                compFieldType = 'text';
+                                if isequal(compValue, {''})
+                                    compValue = '';
+                                end
+                            end
+                            hGridRow = hGridRow + 1;
+                            hGrid.RowHeight{hGridRow} = 22;
+                            hGrid.UserData.(compBaseName) = uieditfield(hGrid, compFieldType, 'Value', compValue, 'FontSize', 11);
+                            hGrid.UserData.(compBaseName).Layout.Row = hGridRow;
+
                         case 'py.fiscaliza.datatypes.FieldWithOptions'
-                            % se for escolha múltipla, usar
-                            % uitreecheckbox... oi uilistbox...
+                            compValueOptions = DataTypeMapping(obj, editableFields.(compBaseName).options, 1);
+                            compValueOptionsElements = numel(compValueOptions);
 
-                            compValueOptions = cellfun(@(x) char(x), cell(editableFields.(compBaseName).options), 'UniformOutput', false);
-                            switch compValueClass
-                                case 'py.str'
-                                    compValue = char(compValue);
-
-                                case 'py.list'
-                                    compValue = cellfun(@(x) char(x), cell(compValue), 'UniformOutput', false);
-
-                                case {'py.int', 'py.long', 'py.float', 'double'}
-                                    compValue = num2str(double(compValue));
+                            if isnumeric(compValue)
+                                compValue = num2str(compValue);
                             end
 
+                            % se for escolha múltipla, usar
+                            % uitreecheckbox... ou uilistbox...
                             if editableFields.(compBaseName).multiple
-                                hGrid.RowHeight{2*ii} = 112;
+                                if ischar(compValue)
+                                    compValue = {compValue};
+                                end
 
-                                if numel(compValueOptions) > 50
-                                    hGrid.UserData.(compBaseName) = uilistbox(hGrid, "Multiselect", "on", "Items", compValueOptions, "Value", compValue, "FontSize", 11);
-
-                                else
+                                if compValueOptionsElements && compValueOptionsElements <= 200
+                                    hGridRow = hGridRow + 1;
+                                    hGrid.RowHeight{hGridRow} = 112;
                                     hGrid.UserData.(compBaseName) = uitree(hGrid, 'checkbox', 'FontSize', 11);
+                                    hGrid.UserData.(compBaseName).Layout.Row = hGridRow;
+
                                     for jj = 1:numel(compValueOptions)
                                         childNode = uitreenode(hGrid.UserData.(compBaseName), 'Text', compValueOptions{jj});
                                         if ismember(compValueOptions{jj}, compValue)
                                             hGrid.UserData.(compBaseName).CheckedNodes = [hGrid.UserData.(compBaseName).CheckedNodes, childNode];
                                         end
                                     end
+
+                                else
+                                    hGridRow = hGridRow + 1;
+                                    hGrid.RowHeight{hGridRow} = 22;
+                                    compEditFieldUI = uieditfield(hGrid, 'text', 'FontSize', 11);
+                                    compEditFieldUI.Layout.Row = hGridRow;
+
+                                    hGridRow = hGridRow + 1;
+                                    hGrid.RowHeight{hGridRow} = 112;
+                                    hGrid.UserData.(compBaseName) = uitree(hGrid, 'checkbox', 'FontSize', 11);
+                                    hGrid.UserData.(compBaseName).Layout.Row = hGridRow;
+
+                                    if isequal(compValue, {''})
+                                        compValue = {};
+                                    end
+
+                                    for jj = 1:numel(compValue)
+                                        childNode = uitreenode(hGrid.UserData.(compBaseName), 'Text', compValue{jj});
+                                        hGrid.UserData.(compBaseName).CheckedNodes = [hGrid.UserData.(compBaseName).CheckedNodes, childNode];
+                                    end
                                 end
 
                             else
-                                compValueOptions = [{''}, compValueOptions];                                
+                                compValueOptions = unique([{''}, compValueOptions]);
+
+                                hGridRow = hGridRow + 1;
+                                hGrid.RowHeight{hGridRow} = 22;
                                 hGrid.UserData.(compBaseName) = uidropdown(hGrid, 'Items', compValueOptions, 'Value', compValue, 'BackgroundColor', [1,1,1], 'FontSize', 11);
-                            end
-    
-                        otherwise                                               % 'py.fiscaliza.datatypes.AtomicField' | 'py.fiscaliza.datatypes.SimpleField'
-                            switch compValueClass
-                                case {'py.int', 'py.long', 'py.float', 'double'}
-                                    hGrid.UserData.(compBaseName) = uieditfield(hGrid, 'numeric', 'Value', double(compValue), 'FontSize', 11);
+                                hGrid.UserData.(compBaseName).Layout.Row = hGridRow;
+                            end                     
+                    end                    
 
-                                case 'py.list'
-                                    compValue = cellfun(@(x) char(x), cell(compValue), 'UniformOutput', false);
-                                    if isempty(compValue)
-                                        compValue = {''};
-                                    end
-                                    hGrid.UserData.(compBaseName) = uieditfield(hGrid, 'text', 'Value', compValue{1}, 'FontSize', 11);
-
-                                otherwise                                   % 'py.str'
-                                    hGrid.UserData.(compBaseName) = uieditfield(hGrid, 'text', 'Value', char(compValue), 'FontSize', 11);
-                            end                        
-                    end
-                    hGrid.UserData.(compBaseName).Layout.Row = 2*ii;
                 catch ME
                     compBaseName
                     ME.message
@@ -162,10 +291,10 @@ classdef fiscalizaLib < handle
 
         %-----------------------------------------------------------------%
         function issueStruct = py2matDataType(obj, issueNumber, issueDict, recurrenceLevel)
-            issueStruct = struct(issueDict);    
+            issueStruct = struct(issueDict);
             if recurrenceLevel == 1
                 if isempty(issueStruct)
-                    error('A lib fiscaliza retornou um dicionário vazio para a inspeção nº %d.', issueNumber)
+                    error('A lib fiscaliza retornou um dicionário vazio para a inspeção nº %s.', issueNumber)
                 end
             end
 
@@ -173,7 +302,6 @@ classdef fiscalizaLib < handle
             for ii = 1:numel(FieldNames)
                 FieldName  = FieldNames{ii};
                 FieldValue = issueStruct.(FieldName);
-                FieldClass = class(FieldValue);
 
                 % Notei que o "py.float" é convertido automaticamente para
                 % "double". Arriscaria dizer que isso pode acontecer com o
@@ -185,40 +313,69 @@ classdef fiscalizaLib < handle
                 
                 % Há, contudo, tipos de dados ainda não mapeados aqui: 
                 % "py.bytes", "py.array.array", "py.numpy.ndarray, "py.memoryview", 
-                % "py.tuple", "py.pandas.DataFrame", "py.datetime.datetime" e 
-                % "py.datetime.timedelta".
+                % "py.tuple", "py.pandas.DataFrame", "py.datetime.datetime", 
+                % "py.datetime.timedelta" etc.
 
-                switch FieldClass
-                    case {'py.int', 'py.long', 'py.float'}
-                        FieldValue = double(FieldValue);
-                    case 'py.bool'
-                        FieldValue = logical(FieldValue);
-                    case 'py.str'
-                        FieldValue = isJSONFormat(obj, char(FieldValue));
-                    case 'py.list'
-                        FieldValue = cellfun(@(x) char(x), cell(FieldValue), 'UniformOutput', false);
-                    case 'py.dict'
-                        FieldValue = py2matDataType(obj, -1, FieldValue, recurrenceLevel+1);
-                    case 'py.NoneType'
-                        issueStruct = rmfield(issueStruct, FieldName);
-                        continue
+                if isa(FieldValue, 'py.NoneType')
+                    issueStruct = rmfield(issueStruct, FieldName);
+                    continue
                 end
+                FieldValue = DataTypeMapping(obj, FieldValue, recurrenceLevel);
+                issueStruct.(FieldName) = FieldValue;
 
                 if recurrenceLevel == 1
                     if strcmp(FieldName, 'status') && ~ismember(FieldValue, {'Rascunho', 'Aguardando Execução', 'Em andamento', 'Relatando'})
-                        error('A inspeção nº %d não é passível de relato por estar no estado "%s".', issueNumber, FieldValue)
+                        error('A inspeção nº %s não é passível de relato por estar no estado "%s".', issueNumber, FieldValue)
                     end
-                end
-
-                issueStruct.(FieldName) = FieldValue;
+                end                
             end
+        end
+
+
+        %-----------------------------------------------------------------%
+        function compFieldValue = ComponentFieldValue(obj, editableFields, compFieldName)
+            if isfield(editableFields, compFieldName)
+                compFieldValue = DataTypeMapping(obj, editableFields.(compFieldName).value, 1);
+            else
+                compFieldValue = DataTypeMapping(obj, obj.IssueInfo.(compFieldName), 1);
+            end
+        end
+
+
+
+        %-----------------------------------------------------------------%
+        function matValue = DataTypeMapping(obj, pyValue, recurrenceLevel)
+            pyClass = class(pyValue);
+            
+                switch pyClass
+                    case {'py.int', 'py.long', 'py.float'}
+                        matValue = double(pyValue);
+                    case 'py.bool'
+                        matValue = logical(pyValue);
+                    case 'py.str'
+                        matValue = isJSONFormat(obj, char(pyValue));
+                    case 'py.list'
+                        matValue = sort(cellfun(@(x) char(x), cell(pyValue), 'UniformOutput', false));
+                        if isempty(matValue)
+                            matValue = {''};
+                        end
+                    case 'py.dict'
+                        matValue = py2matDataType(obj, -1, pyValue, recurrenceLevel+1);
+                    case 'py.NoneType'
+                        error('Not expected datatype.')
+                    otherwise
+                        matValue = pyValue;
+                end
         end
 
 
         %-----------------------------------------------------------------%
         function FieldValue = isJSONFormat(obj, FieldValue)
             try
-                FieldValue = jsondecode(replace(FieldValue, {'=>', ''''}, {':', '"'}));
+                tempValue = jsondecode(replace(FieldValue, {'=>', ''''}, {':', '"'}));
+                if isstruct(tempValue)
+                    FieldValue = tempValue;
+                end
             catch
             end
         end

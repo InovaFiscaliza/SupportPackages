@@ -58,9 +58,9 @@ classdef wordCloud < handle
             switch obj.Algorithm
                 case 'D3.js'
                     if ~isempty(Table)
-                        sendEventToHTMLSource(obj.Chart, 'drawWordCloud', struct('words', Table.Word, 'weights', Table.Count))
+                        sendEventToHTMLSource(obj.Chart, 'drawWordCloud', struct('words', Table.Word, 'weights', Table.Count));
                     else
-                        sendEventToHTMLSource(obj.Chart, 'eraseWordCloud')
+                        sendEventToHTMLSource(obj.Chart, 'eraseWordCloud');
                     end
 
                 case 'MATLAB built-in'

@@ -54,6 +54,130 @@ function setup(htmlComponent) {
         }
     });
 
+    htmlComponent.addEventListener("credentialDialog", function(event) {
+        try {    
+            var UUID = event.Data.UUID.toString();
+            var zIndex = 1000;
+
+            // Style
+            var s = document.createElement("style");
+            s.type = "text/css";
+            s.innerHTML = `
+                .ccToolsEditField {
+                    overflow: hidden;
+                    padding-left: 4px;
+                    font-size: 11px;
+                    border: 1px solid #7d7d7d;
+                }
+
+                .ccToolsEditField:focus {
+                    border-color: #268cdd;
+                    outline: none;
+                }
+            `;
+
+            // Background layer
+            var u = document.createElement("div");
+            u.style.cssText = "visibility: visible; position: absolute; left: 0%; top: 0%; width: 100%; height: 100%; background-color: rgba(255, 255, 255, 0.65); z-index: " + (zIndex + 3) + ";";
+
+            // Progress dialog
+            var w = document.createElement("div");
+            w.setAttribute("data-tag", UUID);
+            w.innerHTML = `
+                <div class="mwDialog mwAlertDialog mwModalDialog mw-theme-light mwModalDialogFg" style="width: 260px; height: 162px; visibility: visible; z-index: ${zIndex + 4}; color-scheme: light; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+                    <div class="mwDialogTitleBar">
+                        <span class="mwTitleNode"></span>
+                        <div class="mwControlNodeBar">
+                            <button class="mwCloseNode" data-tag="${UUID}_Close">
+                                <svg viewBox="0 0 12 12" class="mwCloseSVG">
+                                    <g>
+                                        <rect width="12" height="12" fill="none"></rect>
+                                        <path d="M9.09,1.5L6,4.59,2.91,1.5,1.5,2.91,4.59,6,1.5,9.08,2.91,10.5,6,7.41,9.09,10.5,10.5,9.08,7.41,6,10.5,2.91,9.09,1.5h0Z" fill="var(--mw-backgroundColor-iconFill, #616161)"></path>
+                                    </g>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mwDialogBody" style="height: 49px; padding: 13px 10px 10px 10px;">
+                        <div class="mwIconAndMessageWidget">
+                            <form style="display: grid; grid-template-columns: 60px auto; gap: 5px; font-size: 12px; align-items: center;">
+                                <label style="grid-column: 1;">Usuário:</label>
+                                <input type="text" class="ccToolsEditField" data-tag="${UUID}_Login" style="grid-column: 2; height: 18px;">                                
+                                <label style="grid-column: 1;">Senha:</label>
+                                <input type="password" class="ccToolsEditField" data-tag="${UUID}_Password" style="grid-column: 2; height: 18px;">
+                            </form>
+                        </div>
+                    </div>
+                    <div class="mwDialogButtonBar mwNoSplBtn">
+                        <div class="mwActionButtonBar">
+                            <button class="mwButton" data-tag="${UUID}_OK">OK</button>
+                        </div>
+                    </div>    
+                </div>
+            `;
+            
+            window.parent.document.head.appendChild(s);
+            window.parent.document.body.appendChild(u);
+            window.parent.document.body.appendChild(w);
+
+            // Callbacks
+            let btnClose   = window.parent.document.querySelector(`button[data-tag="${UUID}_Close"]`);
+            let loginField = window.parent.document.querySelector(`input[data-tag="${UUID}_Login"]`);
+            let passField  = window.parent.document.querySelector(`input[data-tag="${UUID}_Password"]`);
+            let btnOK      = window.parent.document.querySelector(`button[data-tag="${UUID}_OK"]`);            
+
+            btnClose.addEventListener("click", function() {
+                s.remove();
+                u.remove();
+                w.remove();
+            });
+
+            btnOK.addEventListener("click", function() {
+                loginField.value = loginField.value.trim();
+                passField.value  = passField.value.trim();
+
+                if (loginField.value == "") {
+                    loginField.focus();
+                    return;
+                } else if (passField.value == "") {
+                    passField.focus();
+                    return;
+                }
+
+                htmlComponent.sendEventToMATLAB("credentialDialog", {"login": loginField.value, "password": passField.value});
+
+                s.remove();
+                u.remove();
+                w.remove();
+            });
+
+            w.addEventListener("keydown", function(event) {
+                if (event.key == "Tab") {
+                    switch (window.parent.document.activeElement) {
+                        case btnClose:
+                            if (event.shiftKey) {
+                                btnOK.focus();
+                                event.preventDefault();
+                            }
+                            break;
+
+                        case btnOK:
+                            if (!event.shiftKey) {
+                                btnClose.focus();
+                                event.preventDefault();
+                            }
+                            break;
+                    }                    
+                }
+            });
+
+            loginField.focus();
+
+        } catch (ME) {
+            console.log(ME)
+        }
+    });
+
     htmlComponent.addEventListener("progressDialog", function(event) {
         try {
             var Type = event.Data.Type.toString();
