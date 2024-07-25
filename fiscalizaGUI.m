@@ -1,6 +1,6 @@
 classdef fiscalizaGUI < fiscalizaLib
 
-    % !! PENDÊNCAS EM 23/07/2024 !!
+    % !! PENDÊNCAS EM 24/07/2024 !!
 
     % ERIC
     % (1) function preBuiltGroup_REPORT(obj). "Gerar relatório".
@@ -9,18 +9,20 @@ classdef fiscalizaGUI < fiscalizaLib
     %     selecionado "Apreensão", "Lacração" ou "Interrupção" no campo
     %     "Procedimentos". Enviar campo "Gerar PLAI" igual a '1', além dos dois auxiliaries.
 
-    % (3) Preencher "Precisa reservar instrumentos?" como '0'
+    % (3) Preencher "Precisa reservar instrumentos?" como '0'. E "Utilizou
+    % algum instrumento" como 'Não'.
 
     % (4) Atualizar StackOrder para todos os tipos de inspeção. Organizar
     %     pasta com arquivos de suporte.
 
-    % RONALDO
-    % (1) Campo "Irregularidades": Mapeamento entre opções e o tipo de inspeção.
-    
-    % (2) Nome das chaves que devem compor a "requisição" para Gerar PLAI".
-    %     "Gerar PLAI", "Escolha o tipo de processo" e "Coordenação de Fiscalização"
+    % RONALDO    
+    % (1) Corrigir bugs identificados em 24/07/2024.
 
-    % (3) Avaliar erro retornado quando chamado o método update_fields.
+    % INSPEÇÕES DE TESTE
+    % (1) #124287 a 124290: "" no estado "Rascunho" (toda vazia)
+    % (2) #124300: "Monitoração" no estado "Relatando" (toda preenchida)
+    % (3) #124301: "Certificação" no estado "Relatando" (toda preenchida)
+
 
     properties
         BackgroundColor (1,3) {mustBeInRange(BackgroundColor, 0, 1)} = [1,1,1]
@@ -37,6 +39,7 @@ classdef fiscalizaGUI < fiscalizaLib
         fields2JS
         
         jsBackDoor
+        progressDialog
     end
 
 
@@ -59,14 +62,20 @@ classdef fiscalizaGUI < fiscalizaLib
             
             obj.hFigure = ancestor(hGrid, 'figure');
             obj.hGrid = hGrid;
+
             jsBackDoorInitialization(obj)
+            progressDialogInitialization(obj)
 
             % 123456 como valor padrão de "issueNumber" é apenas uma forma de 
             % torná-lo um argumento opcional. Na prática, contudo, este valor
             % não será utilizado.
             if nargin == 5
-                getIssue(obj, issueNumber)
-                Data2GUI(obj)
+                try
+                    getIssue(obj, issueNumber)
+                    Data2GUI(obj)
+                catch ME
+                    UIAlert(obj, ME.message, 'error')
+                end
             end
         end
 
@@ -121,7 +130,7 @@ classdef fiscalizaGUI < fiscalizaLib
             obj.fields2JS     = fields(struct(obj.Issue.conditional_fields));
 
             % Renderizando os elementos (após a reinicialização da GUI):
-            AxesInitialization(obj)
+            GridInitialization(obj, true)
             
             renderComponents(obj, 'TITLE');
             renderComponents(obj, 'GENERAL');
@@ -173,6 +182,24 @@ classdef fiscalizaGUI < fiscalizaLib
 
 
         %-----------------------------------------------------------------%
+        function GridInitialization(obj, placeHolderFlag)
+            if placeHolderFlag
+                hPlaceHolder = findobj(obj.hFigure, 'Type', 'uiimage', 'Tag', 'FiscalizaPlaceHolder');
+                if ~isempty(hPlaceHolder)
+                    set(hPlaceHolder, 'Parent', obj.hFigure, 'Visible', 0)
+                end
+            end
+
+            if ~isempty(obj.hGrid.Children)
+                delete(obj.hGrid.Children)
+            end
+            set(obj.hGrid, 'RowHeight', {'1x'}, 'ColumnWidth', {'1x'}, 'RowSpacing', 5, 'Scrollable', 'on', 'BackgroundColor', [1,1,1])
+
+            obj.hGridRow = 0;
+        end
+
+
+        %-----------------------------------------------------------------%
         function set.BackgroundColor(obj, value)
             obj.BackgroundColor = value;
             backGroundUpdate(obj, value)
@@ -205,7 +232,7 @@ classdef fiscalizaGUI < fiscalizaLib
             titleFields = {'ID', 'status', 'SUBJECT', 'AUTHOR', 'ATUALIZACAO'};
             titleValues = FieldInfo(obj, titleFields, 'cellstr');
             titleText   = sprintf(['<h2 style="display: inline-flex; font-size: 16px;">Inspeção nº %.0f <font style="display: inline-block; font-size: 10px; ' ...
-                                   'text-transform: uppercase; color: #0065ff;">%s</font></h2><p style="font-size: 12px;">%s<p style="font-size: 10px; '       ...
+                                   'text-transform: uppercase; color: #0065ff;">%s</font></h2><p style="font-size: 12px;">%s<p style="font-size: 10px; '     ...
                                    'color: gray; text-align: justify; padding: 0px 2px 0px 0px;">Criada por %s. %s.</p></p>'], titleValues{:});
 
             % Componentes:
@@ -222,7 +249,7 @@ classdef fiscalizaGUI < fiscalizaLib
                                        'Label',       'Aspectos gerais',                                  ...
                                        'Interpreter', 'none',                                             ...
                                        'Image',       fullfile(Path(obj), 'fiscalizaGUI', 'Link_18.png'), ...
-                                       'ImageTag',    'NO_FISCALIZA_ISSUE,NO_SEI_PROCESSO_FISCALIZACAO');
+                                       'ImageTag',    'NO_FISCALIZA_ISSUE,no_sei_processo_fiscalizacao');
 
             typeFields = {'TEMA', 'SUBTEMA'};
             typeValues = FieldInfo(obj, typeFields, 'cellstr');
@@ -232,11 +259,11 @@ classdef fiscalizaGUI < fiscalizaLib
             hContainer = Container(obj, containerSettings);
             hGridGroup = GridLayout(obj, hContainer, {22, 22, 17, 22, 17, '1x'}, {'1x', '1x'}, [10,10,10,5]);            
 
-            Label(obj, hGridGroup, typeText,          {'right', 'top'},    10, [.65,.65,.65], 'none', strjoin(typeFields,','), [1 2], [1 2])
-            Label(obj, hGridGroup, 'Tipo:',           {'left',  'bottom'}, 11, [0,0,0],       'none', '',                      1,      1)
-            Label(obj, hGridGroup, 'Data de início:', {'left',  'bottom'}, 11, [0,0,0],       'none', '',                      3,      1)
-            Label(obj, hGridGroup, 'Data limite:',    {'left',  'bottom'}, 11, [0,0,0],       'none', '',                      3,      2)
-            Label(obj, hGridGroup, 'Descrição:',      {'left',  'bottom'}, 11, [0,0,0],       'none', '',                      5,     [1 2])
+            Label(obj, hGridGroup, typeText,          {'right', 'top'},    10, [.5,.5,.5], 'none', strjoin(typeFields,','), [1 2], [1 2])
+            Label(obj, hGridGroup, 'Tipo:',           {'left',  'bottom'}, 11, [0,0,0],    'none', '',                      1,      1)
+            Label(obj, hGridGroup, 'Data de início:', {'left',  'bottom'}, 11, [0,0,0],    'none', '',                      3,      1)
+            Label(obj, hGridGroup, 'Data limite:',    {'left',  'bottom'}, 11, [0,0,0],    'none', '',                      3,      2)
+            Label(obj, hGridGroup, 'Descrição:',      {'left',  'bottom'}, 11, [0,0,0],    'none', '',                      5,     [1 2])
         
             DropDown(obj,   hGridGroup, 'tipo_de_inspecao', 2, [1 2])
             DatePicker(obj, hGridGroup, 'start_date',       4, 1)
@@ -248,22 +275,17 @@ classdef fiscalizaGUI < fiscalizaLib
         %-----------------------------------------------------------------%
         function preBuiltGroup_HOURS(obj)
             containerSettings = struct('Height',      {{28, 42}},                                                                                                                         ...
-                                       'Label',       {{'Estimativas de horas:'; '<font style="font-size: 10px; color: gray;">Preparação | Deslocamento | Execução | Conclusão</font>'}}, ...
+                                       'Label',       {{'Estimativas de horas:'; '<font style="font-size: 10px; color: #808080;">Preparação | Deslocamento | Execução | Conclusão</font>'}}, ...
                                        'Interpreter', 'html');
-            
-            fieldSettings     = struct('Type',        'numeric', ...
-                                       'Limits',      [0, inf],  ...
-                                       'Round',       'on',      ...
-                                       'Format',      '%.0f');
 
             % Componentes:
             hContainer = Container(obj, containerSettings);
             hGridGroup = GridLayout(obj, hContainer, {22}, {'1x', '1x', '1x', '1x'}, [10,10,10,10]);
 
-            EditField(obj, hGridGroup, 'horas_de_preparacao',   fieldSettings, 1, 1)
-            EditField(obj, hGridGroup, 'horas_de_deslocamento', fieldSettings, 1, 2)
-            EditField(obj, hGridGroup, 'horas_de_execucao',     fieldSettings, 1, 3)
-            EditField(obj, hGridGroup, 'horas_de_conclusao',    fieldSettings, 1, 4)
+            EditField(obj, hGridGroup, 'horas_de_preparacao',   [0, inf], 1, 1)
+            EditField(obj, hGridGroup, 'horas_de_deslocamento', [0, inf], 1, 2)
+            EditField(obj, hGridGroup, 'horas_de_execucao',     [0, inf], 1, 3)
+            EditField(obj, hGridGroup, 'horas_de_conclusao',    [0, inf], 1, 4)
         end
 
 
@@ -307,7 +329,7 @@ classdef fiscalizaGUI < fiscalizaLib
                     end
         
                 catch ME
-                    fieldName
+                    fprintf('%s - %s\n', fieldName, ME.message)
                 end
             end
         end
@@ -429,26 +451,43 @@ classdef fiscalizaGUI < fiscalizaLib
 
 
         %-----------------------------------------------------------------%
-        function EditField(obj, hGrid, fieldName, fieldSettings, Row, Column)
+        function EditField(obj, hGrid, fieldName, fieldLimits, Row, Column)
             fieldValue  = FieldInfo(obj, fieldName, 'normal');
 
-            switch fieldSettings.Type
-                case 'numeric'
-                    if isempty(fieldValue)
-                        fieldValue = 0;
-                    end
-                    hEditFields = uieditfield(hGrid, 'numeric', 'Limits',                fieldSettings.Limits, ...
-                                                                'RoundFractionalValues', fieldSettings.Round,  ...
-                                                                'ValueDisplayFormat',    fieldSettings.Format, ...
-                                                                'FontSize',              11,                   ...
-                                                                'Value',                 fieldValue,           ...
-                                                                'Tag',                   fieldName);
+            % Criada exceção para alguns campos, como "no_sei_processo_fiscalizacao", 
+            % para o qual a lib retorna como uma string uma estrutura.
+            % "{'numero': '53554.000003/2024-29', 'link_acesso': 'https://seihm.anatel.gov.br/sei/controlador.php?acao=procedimento_trabalhar&id_procedimento=1981673'}"
 
-                case 'text'
-                    hEditFields = uieditfield(hGrid, 'text',    'FontSize',              11,         ...
-                                                                'Value',                 fieldValue, ...
-                                                                'Tag',                   fieldName);
-            end            
+            if isstruct(fieldValue)
+                fieldsList = fields(fieldValue);
+                fieldValue = fieldValue.(fieldsList{1});
+            end
+
+            if isnumeric(fieldValue)
+                if isempty(fieldValue)
+                    fieldValue = 0;
+                end
+
+                if isinteger(fieldValue)
+                    fieldValue = double(fieldValue);
+                    fieldRound  = 'on';
+                    fieldFormat = '%.0f';
+                else
+                    fieldRound  = 'off';
+                    fieldFormat = '%.3f';
+                end
+
+                hEditFields = uieditfield(hGrid, 'numeric', 'Limits',                fieldLimits, ...
+                                                            'RoundFractionalValues', fieldRound,  ...
+                                                            'ValueDisplayFormat',    fieldFormat, ...
+                                                            'FontSize',              11,          ...
+                                                            'Value',                 fieldValue,  ...
+                                                            'Tag',                   fieldName);
+            else
+                hEditFields = uieditfield(hGrid, 'text',    'FontSize',              11,         ...
+                                                            'Value',                 fieldValue, ...
+                                                            'Tag',                   fieldName);
+            end
             hEditFields.Layout.Row = Row;
             hEditFields.Layout.Column = Column;
         end
@@ -478,13 +517,13 @@ classdef fiscalizaGUI < fiscalizaLib
 
 
         %-----------------------------------------------------------------%
-        function AxesInitialization(obj)
-            if ~isempty(obj.hGrid.Children)
-                delete(obj.hGrid.Children)
+        function progressDialogInitialization(obj)
+            hProgressDialog = ccTools.Object.findobj(obj.hFigure);
+            if ~isempty(hProgressDialog)
+                obj.progressDialog = hProgressDialog;
+            else
+                obj.progressDialog = ccTools.ProgressDialogV2(app.jsBackDoor);
             end
-            set(obj.hGrid, 'RowHeight', {'1x'}, 'ColumnWidth', {'1x'}, 'RowSpacing', 5, 'Scrollable', 'on', 'BackgroundColor', [1,1,1])
-
-            obj.hGridRow = 0;
         end
 
 
@@ -519,19 +558,11 @@ classdef fiscalizaGUI < fiscalizaLib
             obj.hGrid.RowHeight{obj.hGridRow} = 17;
             Label(obj, obj.hGrid, char(editableFields.(fieldName).name), {'left', 'bottom'}, 11, [0,0,0], 'none', '', obj.hGridRow, 1)
 
-            % Field
-            fieldValue = DataTypeMapping(obj, 'py2mat', editableFields.(fieldName).value);
-            if isnumeric(fieldValue)
-                fieldType = 'numeric';
-            else
-                fieldType = 'text';
-            end
-        
+            % EditField
             obj.hGridRow = obj.hGridRow + 1;
             obj.hGrid.RowHeight{obj.hGridRow} = 22;
-        
-            hField = uieditfield(obj.hGrid, fieldType, 'FontSize', 11, 'Value', fieldValue, 'Tag', fieldName);
-            hField.Layout.Row = obj.hGridRow;
+
+            EditField(obj, obj.hGrid, fieldName, [-inf inf], obj.hGridRow, 1)
         end
         
         
@@ -607,11 +638,17 @@ classdef fiscalizaGUI < fiscalizaLib
                         end
         
                     else
-                        fieldValue = DataTypeMapping(obj, 'py2mat', obj.issueInfo.(fieldNames));
+                        fieldValue = obj.issueInfo.(fieldNames);
                     end
 
                 case 'cellstr'
-                    fieldValue = cellfun(@(x) char(obj.issueInfo.(x)), fieldNames, "UniformOutput", false);
+                    fieldValue = {};
+                    for ii = 1:numel(fieldNames)
+                        fieldValue{ii} = obj.issueInfo.(fieldNames{ii});
+                        if iscellstr(fieldValue{ii})
+                            fieldValue{ii} = char(fieldValue{ii});
+                        end
+                    end
             end
         end
 
@@ -703,15 +740,17 @@ classdef fiscalizaGUI < fiscalizaLib
         
         %-----------------------------------------------------------------%
         function Listener(obj, src, evt, eventName)
+            obj.progressDialog.Visible = 'visible';
+
             try
                 switch eventName
                     case 'ContainerImage'
                         fieldTag = src.Tag;
     
                         switch fieldTag
-                            case 'NO_FISCALIZA_ISSUE,NO_SEI_PROCESSO_FISCALIZACAO'
+                            case 'NO_FISCALIZA_ISSUE,no_sei_processo_fiscalizacao'
                                 fieldValues = struct('FISCALIZA', FieldInfo(obj, 'NO_FISCALIZA_ISSUE', 'normal'), ...
-                                                     'SEI',       FieldInfo(obj, 'NO_SEI_PROCESSO_FISCALIZACAO', 'normal'));
+                                                     'SEI',       FieldInfo(obj, 'no_sei_processo_fiscalizacao', 'normal'));
                                 fieldText   = sprintf(['Outras informações acerca da <b>Inspeção nº %s</b> constam no próprio FISCALIZA, acessível <a href="%s">aqui</a>.<br><br>' ...
                                                        'Já informações acerca do <b>Processo nº %s</b> constam no SEI, acessível <a href="%s">aqui</a>.'], fieldValues.FISCALIZA.numero, fieldValues.FISCALIZA.link_acesso, fieldValues.SEI.numero, fieldValues.SEI.link_acesso);
                                 UIAlert(obj, fieldText, 'warning')
@@ -772,24 +811,23 @@ classdef fiscalizaGUI < fiscalizaLib
                             fieldValue = {fieldValue};
                         end
 
-                        obj.Issue.update_fields(py.dict(struct(fieldName, fieldValue)));
+                        matData = struct(fieldName, fieldValue);
+                        pyData  = DataTypeMapping(obj, 'mat2py', matData);
+                        obj.Issue.update_fields(pyData);
 
-                        oldIssueInfo  = obj.issueInfo;
-                        obj.issueInfo = DataTypeMapping(obj, 'py2mat', py.getattr(obj.Issue, 'attrs'));
-                        checkIssueURLField(obj)
+                        oldFields2Render  = obj.fields2Render;
+                        obj.fields2Render = struct(py.getattr(obj.Issue, 'editable_fields'));
 
-                        % Avalia se foram retornados valores diferentes...
-                        [isEqual, changedFields] = equalStructTest(oldIssueInfo, obj.issueInfo);
-
-                        if ~isEqual
+                        if ~isequal(oldFields2Render, obj.fields2Render)
                             Data2GUI(obj)
-                            UIAlert(obj, jsonencode(changedFields, "PrettyPrint", true), 'success')
                         end
                 end
 
             catch ME
                 UIAlert(obj, ME.message, 'error')
             end
+
+            obj.progressDialog.Visible = 'hidden';
         end
 
 

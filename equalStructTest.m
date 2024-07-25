@@ -24,5 +24,6 @@ function [isEqual, changedFields] = equalStructTest(oldData, newData)
             end
         end
     end
+    changedFields = struct2table(changedFields);
 
 end

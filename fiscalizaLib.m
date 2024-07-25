@@ -40,31 +40,31 @@ classdef fiscalizaLib < handle
 
             issueType = char(obj.Issue.type);
             if ~strcmp(issueType, 'atividade_de_inspecao')
-                error('O relato da lib fiscaliza é restrito às <i>issues</i> do tipo "Atividade de inspeção".')
+                error('O relato da lib fiscaliza é restrito às <i>issues</i> do tipo "Atividade de inspeção". A <i>issue</i> nº %s, contudo, é um objeto Redmine do tipo "%s"', issueNumber, issueType)
             end
             
             obj.issueID   = issueNumber;
             obj.issueInfo = DataTypeMapping(obj, 'py2mat', py.getattr(obj.Issue, 'attrs'));
-            checkIssueURLField(obj)
         end
 
 
         %-----------------------------------------------------------------%
         function refreshIssue(obj)
-            obj.Issue.refresh();
+            if isempty(obj.issueID)
+                error('The "getIssue" method must be called before the "refreshIssue" method.')
+            end
 
+            obj.Issue.refresh();
             obj.issueInfo = DataTypeMapping(obj, 'py2mat', py.getattr(obj.Issue, 'attrs'));
-            checkIssueURLField(obj)
         end
 
 
         %-----------------------------------------------------------------%
         function updateIssue(obj, matData)
             pyData = DataTypeMapping(obj, 'mat2py', matData);
-            obj.Issue.update(pyData)
 
+            obj.Issue.update(pyData)
             obj.issueInfo = DataTypeMapping(obj, 'py2mat', py.getattr(obj.Issue, 'attrs'));
-            checkIssueURLField(obj)
         end
     end
 
@@ -86,7 +86,10 @@ classdef fiscalizaLib < handle
                 % Por exemplo: "py.numpy.ndarray, "py.pandas.DataFrame" etc.
                 case 'py2mat'
                     switch inClass
-                        case {'py.int', 'py.float'}
+                        case 'py.int'
+                            outValue = int64(inValue);
+
+                        case 'py.float'
                             outValue = double(inValue);
 
                         case 'py.bool'
@@ -162,14 +165,6 @@ classdef fiscalizaLib < handle
                                 outValue = inValue;
                             end
                     end
-            end
-        end
-
-
-        %-----------------------------------------------------------------%
-        function checkIssueURLField(obj)
-            if ~isfield(obj.issueInfo, 'NO_FISCALIZA_ISSUE')
-                obj.issueInfo.NO_FISCALIZA_ISSUE = struct('numero', obj.issueID, 'link_acesso', sprintf('%s/issues/%s', char(obj.Issue.client.url), obj.issueID));
             end
         end
     end

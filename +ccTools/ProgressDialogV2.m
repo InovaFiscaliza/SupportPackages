@@ -1,10 +1,16 @@
 classdef ProgressDialogV2 < handle
 
+    properties (Access = private)
+        %-----------------------------------------------------------------%
+        hFigure
+        jsBackDoor
+    end
+
+
     properties
         %-----------------------------------------------------------------%
-        jsBackDoor
         Size    = '40px'
-        Color   = '#d95319' % '#d95319' (appColeta)
+        Color   = '#d95319'
         Visible = 'hidden'
     end
 
@@ -12,18 +18,34 @@ classdef ProgressDialogV2 < handle
     properties (Constant)
         %-----------------------------------------------------------------%
         UUID    = char(matlab.lang.internal.uuid())
+        Type    = 'ccTools.ProgressDialog'
     end
 
 
     methods
         %-----------------------------------------------------------------%
         function obj = ProgressDialogV2(jsBackDoor)
-            obj.jsBackDoor = jsBackDoor;
+            arguments
+                jsBackDoor (1,1) matlab.ui.control.HTML
+            end
+
+            if ~isvalid(jsBackDoor)
+                error('HTML component is not valid!')
+            end
             
+            obj.hFigure    = ancestor(jsBackDoor, 'figure');
+            obj.jsBackDoor = jsBackDoor;
             sendEventToHTMLSource(obj.jsBackDoor, "progressDialog", struct("Type",  "Creation", ...
                                                                            "UUID",  obj.UUID,   ...
                                                                            "Size",  obj.Size,   ...
                                                                            "Color", obj.Color));
+            registerInstance(obj, 'onCreation')
+        end
+
+
+        %-----------------------------------------------------------------%
+        function delete(obj)
+            registerInstance(obj, 'onCleanup')
         end
 
 
@@ -50,6 +72,18 @@ classdef ProgressDialogV2 < handle
 
 
     methods (Access = private)
+        %-----------------------------------------------------------------%
+        function registerInstance(obj, registerType)
+            switch registerType
+                case 'onCreation'
+                    ccTools.Object.addRegister(obj.hFigure, obj)
+
+                case 'onCleanup'
+                    ccTools.Object.delRegister(obj.hFigure)
+            end
+        end
+
+
         %-----------------------------------------------------------------%
         function changeSize(obj)
             sendEventToHTMLSource(obj.jsBackDoor, "progressDialog", struct("Type",  "changeSize", ...
