@@ -119,7 +119,7 @@ classdef fiscalizaLib < handle
                             end
 
                         case 'py.NoneType'
-                            outValue = [];
+                            outValue = '';
 
                         otherwise
                             outValue = inValue;

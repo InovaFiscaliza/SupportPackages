@@ -107,9 +107,9 @@ classdef fiscalizaGUI < fiscalizaLib
             if isempty(obj.issueID)
                 msg = 'The "getIssue" method must be called before the "Data2GUI" method.';
             else
-                if isfield(obj.issueInfo, 'TRACKER')
-                    if ~strcmp(obj.issueInfo.TRACKER, 'Atividade de Inspeção')
-                        msg = sprintf('A <i>issue</i> nº %s não é uma "Atividade de Inspeção", mas uma "%s".', obj.issueID, obj.issueInfo.TRACKER); 
+                if isfield(obj.issueInfo, 'tracker')
+                    if ~strcmp(obj.issueInfo.tracker, 'Atividade de Inspeção')
+                        msg = sprintf('A <i>issue</i> nº %s não é uma "Atividade de Inspeção", mas uma "%s".', obj.issueID, obj.issueInfo.tracker); 
                     end
                 end
     
@@ -229,7 +229,7 @@ classdef fiscalizaGUI < fiscalizaLib
 
         %-----------------------------------------------------------------%
         function preBuiltGroup_TITLE(obj)
-            titleFields = {'ID', 'status', 'SUBJECT', 'AUTHOR', 'ATUALIZACAO'};
+            titleFields = {'id', 'status', 'subject', 'author', 'atualizacao'};
             titleValues = FieldInfo(obj, titleFields, 'cellstr');
             titleText   = sprintf(['<h2 style="display: inline-flex; font-size: 16px;">Inspeção nº %.0f <font style="display: inline-block; font-size: 10px; ' ...
                                    'text-transform: uppercase; color: #0065ff;">%s</font></h2><p style="font-size: 12px;">%s<p style="font-size: 10px; '     ...
@@ -249,9 +249,9 @@ classdef fiscalizaGUI < fiscalizaLib
                                        'Label',       'Aspectos gerais',                                  ...
                                        'Interpreter', 'none',                                             ...
                                        'Image',       fullfile(Path(obj), 'fiscalizaGUI', 'Link_18.png'), ...
-                                       'ImageTag',    'NO_FISCALIZA_ISSUE,no_sei_processo_fiscalizacao');
+                                       'ImageTag',    'no_fiscaliza_issue,no_sei_processo_fiscalizacao');
 
-            typeFields = {'TEMA', 'SUBTEMA'};
+            typeFields = {'tema', 'subtema'};
             typeValues = FieldInfo(obj, typeFields, 'cellstr');
             typeText   = sprintf('%s\n%s', typeValues{:});
             
@@ -325,7 +325,10 @@ classdef fiscalizaGUI < fiscalizaLib
                             AtomicOrSimpleFields(obj, editableFields, fieldName);
         
                         case 'py.fiscaliza.datatypes.FieldWithOptions'
-                            FieldWithOptions(obj, editableFields, fieldName);                            
+                            FieldWithOptions(obj, editableFields, fieldName);
+
+                        otherwise
+                            error('Unexpected field class "%s"', fieldClass)
                     end
         
                 catch ME
@@ -393,7 +396,11 @@ classdef fiscalizaGUI < fiscalizaLib
             if isnumeric(fieldValue)
                 fieldValue = num2str(fieldValue);
             end
-            fieldOptions = unique([{''}, fieldOptions]);
+
+            if ~ismember('', fieldOptions)
+                fieldName
+                fieldOptions = unique([{''}, fieldOptions]);
+            end
 
             hDropDown = uidropdown(hGrid, 'FontSize',        11,           ...
                                           'BackgroundColor', [1 1 1],      ...
@@ -748,8 +755,8 @@ classdef fiscalizaGUI < fiscalizaLib
                         fieldTag = src.Tag;
     
                         switch fieldTag
-                            case 'NO_FISCALIZA_ISSUE,no_sei_processo_fiscalizacao'
-                                fieldValues = struct('FISCALIZA', FieldInfo(obj, 'NO_FISCALIZA_ISSUE', 'normal'), ...
+                            case 'no_fiscaliza_issue,no_sei_processo_fiscalizacao'
+                                fieldValues = struct('FISCALIZA', FieldInfo(obj, 'no_fiscaliza_issue', 'normal'), ...
                                                      'SEI',       FieldInfo(obj, 'no_sei_processo_fiscalizacao', 'normal'));
                                 fieldText   = sprintf(['Outras informações acerca da <b>Inspeção nº %s</b> constam no próprio FISCALIZA, acessível <a href="%s">aqui</a>.<br><br>' ...
                                                        'Já informações acerca do <b>Processo nº %s</b> constam no SEI, acessível <a href="%s">aqui</a>.'], fieldValues.FISCALIZA.numero, fieldValues.FISCALIZA.link_acesso, fieldValues.SEI.numero, fieldValues.SEI.link_acesso);
