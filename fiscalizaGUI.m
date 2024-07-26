@@ -1,6 +1,6 @@
 classdef fiscalizaGUI < fiscalizaLib
 
-    % !! PENDÊNCAS EM 24/07/2024 !!
+    % !! PENDÊNCAS EM 26/07/2024 !!
 
     % ERIC
     % (1) function preBuiltGroup_REPORT(obj). "Gerar relatório".
@@ -10,18 +10,24 @@ classdef fiscalizaGUI < fiscalizaLib
     %     "Procedimentos". Enviar campo "Gerar PLAI" igual a '1', além dos dois auxiliaries.
 
     % (3) Preencher "Precisa reservar instrumentos?" como '0'. E "Utilizou
-    % algum instrumento" como 'Não'.
+    %     algum instrumento" como 'Não'.
 
-    % (4) Atualizar StackOrder para todos os tipos de inspeção. Organizar
-    %     pasta com arquivos de suporte.
-
-    % RONALDO    
-    % (1) Corrigir bugs identificados em 24/07/2024.
+    % (4) Preciso testar ainda criação do relatório, criação do plai, e
+    %     upload do JSON.
 
     % INSPEÇÕES DE TESTE
     % (1) #124287 a 124290: "" no estado "Rascunho" (toda vazia)
     % (2) #124300: "Monitoração" no estado "Relatando" (toda preenchida)
     % (3) #124301: "Certificação" no estado "Relatando" (toda preenchida)
+
+    % TESTAR RELATAR UM CNPJ QUE NÃO EXISTE.
+    % E UM CNPJ QUE A WEB NÃO ACEITA. TIPO O DO PALMEIRAS.
+
+    % Pendências do webapp SCH: 
+    % (a) relato Fiscaliza; 
+    % (b) templates relatórios;
+    % (c) validações antes de gerar relatório; e
+    % (d) rotina de atualização da base (arquivo gerado carregado no Sharepoint (usar gerenciador do próprio Windows).
 
 
     properties
@@ -36,6 +42,8 @@ classdef fiscalizaGUI < fiscalizaLib
         hGridRow
 
         fields2Render
+        fields2Ignore = {'precisa_reservar_instrumentos', '0'; ...
+                         'utilizou_algum_instrumento',    '0'}
         fields2JS
         
         jsBackDoor
@@ -72,7 +80,7 @@ classdef fiscalizaGUI < fiscalizaLib
             if nargin == 5
                 try
                     getIssue(obj, issueNumber)
-                    Data2GUI(obj)
+                    Data2GUI(obj, true)
                 catch ME
                     UIAlert(obj, ME.message, 'error')
                 end
@@ -83,7 +91,7 @@ classdef fiscalizaGUI < fiscalizaLib
         %-----------------------------------------------------------------%
         function RefreshGUI(obj)
             refreshIssue(obj)
-            Data2GUI(obj)
+            Data2GUI(obj, true)
         end
 
 
@@ -93,6 +101,7 @@ classdef fiscalizaGUI < fiscalizaLib
 
             if ~isempty(newData)
                 updateIssue(obj, newData)
+                Data2GUI(obj, true)
             else
                 msg = 'Não identificada edição de campo da Inspeção';
                 UIAlert(obj, msg, 'warning')
@@ -101,7 +110,7 @@ classdef fiscalizaGUI < fiscalizaLib
 
 
         %-----------------------------------------------------------------%
-        function Data2GUI(obj)
+        function Data2GUI(obj, updateFields2Render)
             % Validações iniciais:
             msg = '';
             if isempty(obj.issueID)
@@ -126,8 +135,10 @@ classdef fiscalizaGUI < fiscalizaLib
             end
 
             % Identificando os campos a renderizar em tela:
-            obj.fields2Render = struct(py.getattr(obj.Issue, 'editable_fields'));
-            obj.fields2JS     = fields(struct(obj.Issue.conditional_fields));
+            if updateFields2Render
+                obj.fields2Render = struct(py.getattr(obj.Issue, 'editable_fields'));
+            end
+            obj.fields2JS = fields(struct(obj.Issue.conditional_fields));
 
             % Renderizando os elementos (após a reinicialização da GUI):
             GridInitialization(obj, true)
@@ -146,25 +157,23 @@ classdef fiscalizaGUI < fiscalizaLib
 
 
         %-----------------------------------------------------------------%
-        function newData = GUI2Data(obj)
-            newData = [];
+        function guiData = GUI2Data(obj)
+            guiData    = readDataFromComponents(obj);
+            fieldNames = fields(guiData);
 
-            % Identifica elementos que armazenam informações passíveis de edição. 
-            % Esses elementos, diga-se, possuem o seu atributo "Tag" preenchido.
-            hComponents = FindComponents(obj);
+            for ii = 1:numel(fieldNames)
+                fieldName  = fieldNames{ii};
+                fieldValue = guiData.(fieldName);
 
-            for ii = 1:numel(hComponents)
-                hComponent = hComponents(ii);
-
-                if isempty(hComponent.Tag)
-                    continue
+                previousValue = obj.issueInfo.(fieldName);
+                if isstruct(previousValue)
+                    fieldsList = fields(previousValue);
+                    previousValue = previousValue.(fieldsList{1});
                 end
 
-                fieldName = hComponent.Tag;
-                [fieldValue, trimFlag]   = ComponentFieldValue(obj, hComponent);
-                
-                previousValue = obj.issueInfo.(fieldName);
-                if trimFlag
+                % Esse é um passo opcional e puramente estético, eliminando
+                % possíveis caracteres vazios inseridos pelo usuário.
+                if ischar(previousValue)
                     previousValue = strtrim(previousValue);
                 end
 
@@ -172,10 +181,20 @@ classdef fiscalizaGUI < fiscalizaLib
                 % entre si. Ao validar que ao menos um dos valores - o antigo ou o 
                 % novo - deva ser diferente de vazio, garante-se que o valor do campo
                 % sob análise foi, de fato, alterado.
-                if ~isempty(previousValue) || ~isempty(fieldValue)
-                    if ~isequal(previousValue, fieldValue)                    
-                        newData.(fieldName) = fieldValue;
-                    end
+                if (isempty(previousValue) && isempty(fieldValue)) || isequal(previousValue, fieldValue)
+                    guiData = rmfield(guiData, fieldName);
+                end
+            end
+
+            % Por fim, os campos ignorados - atualmente "precisa_reservar_instrumentos"
+            % e "utilizou_algum_instrumento" - são relatados com os seus valores padrões,
+            % caso estejam vazios.
+            field2IgnoreName         = obj.fields2Ignore(:,1);
+            field2IgnoreDefaultValue = obj.fields2Ignore(:,2);
+
+            for ii = 1:numel(Fields2Ignore)
+                if isfield(obj.issueInfo, field2IgnoreName) && isempty(obj.issueInfo.(field2IgnoreName))
+                    guiData.(field2IgnoreName) = field2IgnoreDefaultValue;
                 end
             end
         end
@@ -305,16 +324,16 @@ classdef fiscalizaGUI < fiscalizaLib
         function OthersEditableFields(obj)
             % Editable fields (fields2Render property)
             editableFields      = obj.fields2Render;
-            editableFieldsNames = CheckStackOrderOfFields(obj, editableFields);
+            editableFieldsNames = setStackOrder(obj, editableFields);
 
             % Renderizable fields:
-            renderizedComp      = findobj(obj.hGrid, '-not', {'Type', 'uigridlayout', '-or', 'Type', 'uipanel'});
+            renderizedComp      = findobj(obj.hGrid, '-not', {'Type', 'uigridlayout', '-or', 'Type', 'uipanel', '-or', 'Type', 'uiimage'});
             renderizedComp(cellfun(@(x) isempty(x), {renderizedComp.Tag})) = [];
             renderizedFields    = strsplit(strjoin({renderizedComp.Tag}, ','), ',');            
         
             for ii = 1:numel(editableFieldsNames)
                 fieldName  = editableFieldsNames{ii};
-                if ismember(fieldName, renderizedFields)
+                if ismember(fieldName, [renderizedFields'; obj.fields2Ignore(:,1)])
                     continue
                 end
         
@@ -395,11 +414,6 @@ classdef fiscalizaGUI < fiscalizaLib
             [fieldValue, fieldOptions] = FieldInfo(obj, fieldName, 'normal');            
             if isnumeric(fieldValue)
                 fieldValue = num2str(fieldValue);
-            end
-
-            if ~ismember('', fieldOptions)
-                fieldName
-                fieldOptions = unique([{''}, fieldOptions]);
             end
 
             hDropDown = uidropdown(hGrid, 'FontSize',        11,           ...
@@ -609,7 +623,7 @@ classdef fiscalizaGUI < fiscalizaLib
                     hGridGroup = GridLayout(obj, obj.hGrid, {'1x'}, {'1x', 16}, [0,0,0,0]);
                     hGridGroup.Layout.Row = obj.hGridRow-1;
             
-                    uieditfield(hGridGroup, 'text', 'FontSize', 11, 'Tag', fieldName);
+                    uieditfield(hGridGroup, 'text', 'FontSize', 11);
                     uiimage(hGridGroup, 'VerticalAlignment', 'bottom', 'ImageSource', fullfile(Path(obj), 'fiscalizaGUI', 'Sum_18.png'), 'ImageClickedFcn', @(src, evt)obj.Listener(src, evt, 'AddTreeNode'), 'Tag', fieldName);
             
                     hTree = uitree(obj.hGrid, 'checkbox', 'FontSize', 11, 'Tag', fieldName);
@@ -661,36 +675,6 @@ classdef fiscalizaGUI < fiscalizaLib
 
 
         %-----------------------------------------------------------------%
-        function editableFieldsNames = CheckStackOrderOfFields(obj, editableFields)
-            editableFieldsNames = fields(editableFields);
-
-            % Tentativa de ordenar os campos de acordo com o StackOrder apresentado 
-            % em GUI. Os campos não identificados no mapeamento serão renderizados
-            % no final.
-
-            issueSubType  = obj.issueInfo.tipo_de_inspecao;
-            refStackOrder = jsondecode(fileread(fullfile(Path(obj), 'fiscalizaGUI', 'typeFieldsMapping.json')));
-            refStackOrder(~strcmp({refStackOrder.type}, issueSubType)) = [];
-
-            if ~isempty(refStackOrder)
-                stackOrderCellIndex    = cellfun(@(x) find(strcmp(x, refStackOrder.fields), 1), editableFieldsNames, 'UniformOutput', false);
-                stackOrderNumericIndex = cell2mat(stackOrderCellIndex);
-
-                if numel(stackOrderCellIndex) ~= numel(stackOrderNumericIndex)
-                    idx  = cellfun(@(x) isempty(x), stackOrderCellIndex);
-                    nMax = max(stackOrderNumericIndex);
-                    
-                    stackOrderCellIndex(idx) = num2cell(nMax+1:nMax+sum(idx))';
-                    stackOrderNumericIndex   = cell2mat(stackOrderCellIndex);
-                end
-
-                [~, stackOrderNumericIndex] = sort(stackOrderNumericIndex);
-                editableFieldsNames = editableFieldsNames(stackOrderNumericIndex);
-            end
-        end
-
-
-        %-----------------------------------------------------------------%
         function hComponents = FindComponents(obj)
             hComponents = findobj(obj.hGrid, 'Type', 'uicheckbox',     '-or', ...
                                              'Type', 'uicheckboxtree', '-or', ...
@@ -702,8 +686,7 @@ classdef fiscalizaGUI < fiscalizaLib
 
 
         function [fieldValue, trimFlag] = ComponentFieldValue(obj, hComponent)
-            trimFlag  = false;
-
+            trimFlag = false;
             switch hComponent.Type
                 case 'uicheckbox'
                     if hComponent.Value
@@ -715,9 +698,6 @@ classdef fiscalizaGUI < fiscalizaLib
                 case 'uicheckboxtree'
                     if ~isempty(hComponent.CheckedNodes)
                         fieldValue = {hComponent.CheckedNodes.Text};
-                        if ~iscell(fieldValue)
-                            fieldValue = {fieldValue};
-                        end
                     else
                         fieldValue = {};
                     end
@@ -769,8 +749,8 @@ classdef fiscalizaGUI < fiscalizaLib
                     case 'AddTreeNode'
                         fieldName  = src.Tag;
     
-                        hEditField = findobj(obj.hFigure, 'Type', 'uieditfield',    'Tag', fieldName);
-                        hTree      = findobj(obj.hFigure, 'Type', 'uicheckboxtree', 'Tag', fieldName);                    
+                        hEditField = findobj(src.Parent,  'Type', 'uieditfield');
+                        hTree      = findobj(obj.hFigure, 'Type', 'uicheckboxtree', 'Tag', fieldName);
                         
                         fieldValue = strtrim(hEditField.Value);
                         if isempty(fieldValue)
@@ -814,19 +794,77 @@ classdef fiscalizaGUI < fiscalizaLib
                     case 'JSEffect'
                         fieldName  = src.Tag;
                         fieldValue = ComponentFieldValue(obj, src);
-                        if iscell(fieldValue)
-                            fieldValue = {fieldValue};
-                        end
 
-                        matData = struct(fieldName, fieldValue);
-                        pyData  = DataTypeMapping(obj, 'mat2py', matData);
-                        obj.Issue.update_fields(pyData);
+                        matData.(fieldName) = fieldValue;
+                        updateFields(obj, matData);
 
-                        oldFields2Render  = obj.fields2Render;
-                        obj.fields2Render = struct(py.getattr(obj.Issue, 'editable_fields'));
+                        oldFields2RenderNames = fields(obj.fields2Render);
+                        newFields2RenderNames = fields(struct(py.getattr(obj.Issue, 'editable_fields')));
 
-                        if ~isequal(oldFields2Render, obj.fields2Render)
-                            Data2GUI(obj)
+                        components2Delete     = setdiff(oldFields2RenderNames, newFields2RenderNames);
+                        components2Create     = setdiff(newFields2RenderNames, oldFields2RenderNames);
+
+                        if ~isequal(oldFields2RenderNames, newFields2RenderNames)
+
+
+                            % Dados relacionados aos componentes atuais da GUI.
+                            guiData = rmfield(readDataFromComponents(obj), fieldName);
+                            guiFieldNames = fields(guiData);
+
+                            % Atualiza a GUI...
+                            Data2GUI(obj, false)
+
+                            % E, finalmente, reexibe valores da GUI registrados antes
+                            % da operação.
+                            for ii = 1:numel(guiFieldNames)
+                                guiFieldName  = guiFieldNames{ii};
+                                guiFieldValue = guiData.(guiFieldName);
+
+                                % ESTOU AQUI NESSE PROCESSO DE ATUALIZAÇÃO.
+                                % TALVEZ ATUALIZAR APENAS O PRÓPRIO CAMPO
+                                % JS?
+
+                                % hComponent = findobj(FindComponents(obj), 'Tag', guiFieldName);
+                                % if ~isempty(hComponent)
+                                %     switch hComponent.Type
+                                %         case 'uicheckbox'
+                                %             hComponent.Value = str2double(guiFieldValue);
+                                % 
+                                %         case 'uicheckboxtree'
+                                %             if ~isempty(hComponent.CheckedNodes)
+                                %                 fieldValue = {hComponent.CheckedNodes.Text};
+                                %             else
+                                %                 fieldValue = {};
+                                %             end
+                                % 
+                                %         case 'uidatepicker'
+                                %             fieldValue = datestr(hComponent.Value, 'yyyy-mm-dd');
+                                % 
+                                %         case 'uidropdown'
+                                %             fieldValue = hComponent.Value;
+                                % 
+                                %         case 'uieditfield'
+                                %             fieldValue = hComponent.Value;
+                                %             if ~isnumeric(fieldValue)
+                                %                 fieldValue = strtrim(fieldValue);
+                                %                 trimFlag   = true;
+                                %             end
+                                % 
+                                %         case 'uitextarea'
+                                %             fieldValue = strtrim(strjoin(hComponent.Value, '\n'));
+                                %             trimFlag   = true;
+                                % 
+                                %         otherwise
+                                %             error('Unexpexted value.')
+                                %     end
+
+
+                                % end
+
+                                if isfield(obj.issueInfo, guiFieldName)
+                                    obj.issueInfo.(guiFieldName) = guiFieldValue;
+                                end
+                            end
                         end
                 end
 
@@ -847,6 +885,75 @@ classdef fiscalizaGUI < fiscalizaLib
         %-----------------------------------------------------------------%
         function UIAlert(obj, dialogMessage, dialogIcon)
             uialert(obj.hFigure, HTMLSyntax(obj, dialogMessage), '', 'Icon', dialogIcon, 'Interpreter', 'html')
+        end
+
+
+        %-----------------------------------------------------------------%
+        function editableFieldsNames = setStackOrder(obj, editableFields)
+            editableFieldsNames = fields(editableFields);
+            referenceStackOrder = refStackOrder(obj);
+
+            stackOrderCellIndex    = cellfun(@(x) find(strcmp(x, referenceStackOrder), 1), editableFieldsNames, 'UniformOutput', false);
+            stackOrderNumericIndex = cell2mat(stackOrderCellIndex);
+
+            if numel(stackOrderCellIndex) ~= numel(stackOrderNumericIndex)
+                idx  = cellfun(@(x) isempty(x), stackOrderCellIndex);
+                nMax = max(stackOrderNumericIndex);
+                
+                stackOrderCellIndex(idx) = num2cell(nMax+1:nMax+sum(idx))';
+                stackOrderNumericIndex   = cell2mat(stackOrderCellIndex);
+            end
+
+            [~, stackOrderNumericIndex] = sort(stackOrderNumericIndex);
+            editableFieldsNames = editableFieldsNames(stackOrderNumericIndex);
+        end
+
+
+        %-----------------------------------------------------------------%
+        function stackOrder = refStackOrder(obj)
+            stackOrder = {'status' 'tipo_de_inspecao' 'start_date' 'due_date' 'description'                                  ... % CAMPOS REDMINE (exceto "tipo_de_inspecao")
+                          'horas_de_preparacao' 'horas_de_deslocamento' 'horas_de_execucao' 'horas_de_conclusao'             ... % HORAS
+                          'no_sei_processo_fiscalizacao'                                                                     ... % PFIS
+                          'coordenacao_responsavel' 'fiscal_responsavel' 'fiscais' 'agrupamento'                             ... % UNIDADE EXECUTANTE
+                          'area_do_pacp' 'nome_da_entidade' 'entidade_da_inspecao' 'identificacao_da_nao_outorgada'          ... % FISCALIZADA (1/3)
+                          'cnpjcpf_da_entidade' 'entidade_com_cadastro_stel' 'entidade_outorgada' 'numero_da_estacao'        ... % FISCALIZADA (2/3)
+                          'servicos_da_inspecao' 'esta_em_operacao'                                                          ... % FISCALIZADA (3/3)
+                          'ufmunicipio' 'endereco_da_inspecao' 'coordenadas_geograficas' 'latitude_coordenadas'              ... % LOCAL DA FISCALIZAÇÃO (1/2)
+                          'longitude_coordenadas' 'coordenadas_estacao' 'latitude_da_estacao' 'longitude_da_estacao'         ... % LOCAL DA FISCALIZAÇÃO (2/2)
+                          'frequencias' 'unidade_de_frequencia' 'frequencia_inicial' 'unidade_da_frequencia_inicial'         ... % ASPECTOS TÉCNICOS (1/4)
+                          'frequencia_final' 'unidade_da_frequencia_final' 'potencia_medida' 'unidade_de_potencia'           ... % ASPECTOS TÉCNICOS (2/4)
+                          'tipo_de_medicao' 'campo_eletrico__pico_vm' 'campo_eletrico_rms_vm'                                ... % ASPECTOS TÉCNICOS (3/4)
+                          'altura_do_sistema_irradiante' 'uso_de_produto_homologado' 'no_de_homologacao'                     ... % ASPECTOS TÉCNICOS (4/4)
+                          'qtd_de_emissoes' 'qtd_identificadas' 'qtd_licenciadas'                                            ... % QTD. EMISSÕES
+                          'foi_constatada_interferencia' 'houve_interferencia' 'identificada_a_origem' 'sanada_ou_mitigada'  ... % INTERFERÊNCIA
+                          'procedimentos' 'houve_obice' 'situacao_constatada' 'irregularidade' 'tipificacao_da_infracao'     ... % PROCEDIMENTOS
+                          'situacao_de_risco_a_vida' 'acao_de_risco_a_vida_criada'                                           ... % RISCO À VIDA
+                          'motivo_de_lai' 'qnt_produt_lacradosapreend' 'no_do_lacre' 'lai_vinculadas' 'no_sei_do_plaiguarda' ... % PLAI (1/2)
+                          'gerar_plai' 'tipo_do_processo_plai' 'coord_fi_plai' 'no_sei_do_aviso_lai'                         ... % PLAI (2/2)
+                          'gerar_relatorio' 'no_sei_relatorio_monitoramento' 'relatorio_de_atividades' 'html'                ... % RELATÓRIO
+                          'documento_instaurador_do_pado' 'numero_do_pai' 'pai_instaurado_pela_anatel' 'no_sav' 'no_pcdp'    ... % PROCEDIMENTOS
+                          'precisa_reservar_instrumentos' 'reserva_de_instrumentos' 'utilizou_algum_instrumento'             ... % INSTRUMENTOS (1/2)
+                          'copiar_instrumento_da_reserva' 'instrumentos_utilizados'                                          ... % INSTRUMENTOS (2/2)
+                          'utilizou_apoio_policial' 'utilizou_tecnicas_amostrais' 'observacao_tecnica_amostral' 'observacoes'};
+        end
+
+
+        %-----------------------------------------------------------------%
+        function guiData = readDataFromComponents(obj)
+            % Identifica elementos que armazenam informações passíveis de edição. 
+            % Esses elementos, diga-se, possuem o seu atributo "Tag" preenchido.
+            guiData     = struct;
+            hComponents = FindComponents(obj);
+
+            for ii = 1:numel(hComponents)
+                if isempty(hComponents(ii).Tag)
+                    continue
+                end
+
+                fieldName  = hComponents(ii).Tag;
+                fieldValue = ComponentFieldValue(obj, hComponents(ii));
+                guiData.(fieldName) = fieldValue;
+            end
         end
     end
 end

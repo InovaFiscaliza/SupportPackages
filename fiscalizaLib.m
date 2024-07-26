@@ -60,6 +60,15 @@ classdef fiscalizaLib < handle
 
 
         %-----------------------------------------------------------------%
+        function updateFields(obj, matData)
+            pyData = DataTypeMapping(obj, 'mat2py', matData);
+
+            obj.Issue.update_fields(pyData);
+            obj.issueInfo = DataTypeMapping(obj, 'py2mat', py.getattr(obj.Issue, 'attrs'));
+        end
+
+
+        %-----------------------------------------------------------------%
         function updateIssue(obj, matData)
             pyData = DataTypeMapping(obj, 'mat2py', matData);
 
