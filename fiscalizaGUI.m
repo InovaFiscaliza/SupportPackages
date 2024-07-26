@@ -9,10 +9,7 @@ classdef fiscalizaGUI < fiscalizaLib
     %     selecionado "Apreensão", "Lacração" ou "Interrupção" no campo
     %     "Procedimentos". Enviar campo "Gerar PLAI" igual a '1', além dos dois auxiliaries.
 
-    % (3) Preencher "Precisa reservar instrumentos?" como '0'. E "Utilizou
-    %     algum instrumento" como 'Não'.
-
-    % (4) Preciso testar ainda criação do relatório, criação do plai, e
+    % (3) Preciso testar ainda criação do relatório, criação do plai, e
     %     upload do JSON.
 
     % INSPEÇÕES DE TESTE
@@ -44,7 +41,8 @@ classdef fiscalizaGUI < fiscalizaLib
         fields2Render
         fields2Ignore = {'precisa_reservar_instrumentos', '0'; ...
                          'utilizou_algum_instrumento',    '0'}
-        fields2JS
+        
+        fieldsThatTriggerJSEffect
         
         jsBackDoor
         progressDialog
@@ -80,7 +78,7 @@ classdef fiscalizaGUI < fiscalizaLib
             if nargin == 5
                 try
                     getIssue(obj, issueNumber)
-                    Data2GUI(obj, true)
+                    Data2GUI(obj)
                 catch ME
                     UIAlert(obj, ME.message, 'error')
                 end
@@ -91,7 +89,7 @@ classdef fiscalizaGUI < fiscalizaLib
         %-----------------------------------------------------------------%
         function RefreshGUI(obj)
             refreshIssue(obj)
-            Data2GUI(obj, true)
+            Data2GUI(obj)
         end
 
 
@@ -101,7 +99,7 @@ classdef fiscalizaGUI < fiscalizaLib
 
             if ~isempty(newData)
                 updateIssue(obj, newData)
-                Data2GUI(obj, true)
+                Data2GUI(obj)
             else
                 msg = 'Não identificada edição de campo da Inspeção';
                 UIAlert(obj, msg, 'warning')
@@ -110,7 +108,7 @@ classdef fiscalizaGUI < fiscalizaLib
 
 
         %-----------------------------------------------------------------%
-        function Data2GUI(obj, updateFields2Render)
+        function Data2GUI(obj)
             % Validações iniciais:
             msg = '';
             if isempty(obj.issueID)
@@ -135,10 +133,8 @@ classdef fiscalizaGUI < fiscalizaLib
             end
 
             % Identificando os campos a renderizar em tela:
-            if updateFields2Render
-                obj.fields2Render = struct(py.getattr(obj.Issue, 'editable_fields'));
-            end
-            obj.fields2JS = fields(struct(obj.Issue.conditional_fields));
+            obj.fields2Render = struct(py.getattr(obj.Issue, 'editable_fields'));
+            obj.fieldsThatTriggerJSEffect = fields(struct(obj.Issue.conditional_fields));
 
             % Renderizando os elementos (após a reinicialização da GUI):
             GridInitialization(obj, true)
@@ -192,9 +188,9 @@ classdef fiscalizaGUI < fiscalizaLib
             field2IgnoreName         = obj.fields2Ignore(:,1);
             field2IgnoreDefaultValue = obj.fields2Ignore(:,2);
 
-            for ii = 1:numel(Fields2Ignore)
-                if isfield(obj.issueInfo, field2IgnoreName) && isempty(obj.issueInfo.(field2IgnoreName))
-                    guiData.(field2IgnoreName) = field2IgnoreDefaultValue;
+            for ii = 1:numel(field2IgnoreName)
+                if isfield(obj.issueInfo, field2IgnoreName{ii}) && isempty(obj.issueInfo.(field2IgnoreName{ii}))
+                    guiData.(field2IgnoreName{ii}) = field2IgnoreDefaultValue;
                 end
             end
         end
@@ -364,7 +360,7 @@ classdef fiscalizaGUI < fiscalizaLib
             for ii = 1:numel(hComponents)
                 hComponent = hComponents(ii);
 
-                if isempty(hComponent.Tag) || ~ismember(hComponent.Tag, obj.fields2JS)
+                if isempty(hComponent.Tag) || ~ismember(hComponent.Tag, obj.fieldsThatTriggerJSEffect)
                     continue
                 end
 
@@ -592,12 +588,12 @@ classdef fiscalizaGUI < fiscalizaLib
             fieldValue   = DataTypeMapping(obj, 'py2mat', editableFields.(fieldName).value);
             fieldOptions = DataTypeMapping(obj, 'py2mat', editableFields.(fieldName).options);
             fieldOptionsElements = numel(fieldOptions);
+
+            obj.hGridRow = obj.hGridRow + 1;
+            obj.hGrid.RowHeight{obj.hGridRow} = 17;
+            Label(obj, obj.hGrid, char(editableFields.(fieldName).name), {'left', 'bottom'}, 11, [0,0,0], 'none', '', obj.hGridRow, 1)
         
             if editableFields.(fieldName).multiple
-                obj.hGridRow = obj.hGridRow + 1;
-                obj.hGrid.RowHeight{obj.hGridRow} = 17;
-                Label(obj, obj.hGrid, char(editableFields.(fieldName).name), {'left', 'bottom'}, 11, [0,0,0], 'none', '', obj.hGridRow, 1)
-
                 if any(cellfun(@(x) isnumeric(x), fieldValue))
                     fieldValue = cellfun(@(x) num2str(x), fieldValue, 'UniformOutput', false);
                 end
@@ -636,36 +632,35 @@ classdef fiscalizaGUI < fiscalizaLib
                 end
             
             else
-                obj.hGridRow = obj.hGridRow + 2;
-                obj.hGrid.RowHeight(obj.hGridRow-1:obj.hGridRow) = {17, 22};
+                obj.hGridRow = obj.hGridRow + 1;
+                obj.hGrid.RowHeight{obj.hGridRow} = 22;
 
-                Label(obj, obj.hGrid, char(editableFields.(fieldName).name), {'left', 'bottom'}, 11, [0,0,0], 'none', '', obj.hGridRow-1, 1)
                 DropDown(obj, obj.hGrid, fieldName, obj.hGridRow, 1)
-            end  
+            end
         end
 
 
         %-----------------------------------------------------------------%
-        function [fieldValue, fieldOptions] = FieldInfo(obj, fieldNames, searchType)
+        function [fieldValue, fieldOptions] = FieldInfo(obj, fieldName, searchType)
             editableFields = obj.fields2Render;
             fieldOptions   = {};
 
             switch searchType
                 case 'normal'
-                    if isfield(editableFields, fieldNames)
-                        fieldValue = DataTypeMapping(obj, 'py2mat', editableFields.(fieldNames).value);
-                        if isfield(struct(editableFields.(fieldNames)), 'options')
-                            fieldOptions = DataTypeMapping(obj, 'py2mat', editableFields.(fieldNames).options);
+                    if isfield(editableFields, fieldName)
+                        fieldValue = DataTypeMapping(obj, 'py2mat', editableFields.(fieldName).value);
+                        if isfield(struct(editableFields.(fieldName)), 'options')
+                            fieldOptions = DataTypeMapping(obj, 'py2mat', editableFields.(fieldName).options);
                         end
         
                     else
-                        fieldValue = obj.issueInfo.(fieldNames);
+                        fieldValue = obj.issueInfo.(fieldName);
                     end
 
                 case 'cellstr'
                     fieldValue = {};
-                    for ii = 1:numel(fieldNames)
-                        fieldValue{ii} = obj.issueInfo.(fieldNames{ii});
+                    for ii = 1:numel(fieldName)
+                        fieldValue{ii} = obj.issueInfo.(fieldName{ii});
                         if iscellstr(fieldValue{ii})
                             fieldValue{ii} = char(fieldValue{ii});
                         end
@@ -676,11 +671,12 @@ classdef fiscalizaGUI < fiscalizaLib
 
         %-----------------------------------------------------------------%
         function hComponents = FindComponents(obj)
-            hComponents = findobj(obj.hGrid, 'Type', 'uicheckbox',     '-or', ...
-                                             'Type', 'uicheckboxtree', '-or', ...
-                                             'Type', 'uidatepicker',   '-or', ...
-                                             'Type', 'uidropdown',     '-or', ...
-                                             'Type', 'uieditfield',    '-or', ...
+            hComponents = findobj(obj.hGrid, 'Type', 'uicheckbox',         '-or', ...
+                                             'Type', 'uicheckboxtree',     '-or', ...
+                                             'Type', 'uidatepicker',       '-or', ...
+                                             'Type', 'uidropdown',         '-or', ...
+                                             'Type', 'uieditfield',        '-or', ...
+                                             'Type', 'uinumericeditfield', '-or', ...
                                              'Type', 'uitextarea');
         end
 
@@ -705,15 +701,12 @@ classdef fiscalizaGUI < fiscalizaLib
                 case 'uidatepicker'
                     fieldValue = datestr(hComponent.Value, 'yyyy-mm-dd');
 
-                case 'uidropdown'
+                case {'uidropdown', 'uinumericeditfield'}
                     fieldValue = hComponent.Value;
 
                 case 'uieditfield'
-                    fieldValue = hComponent.Value;
-                    if ~isnumeric(fieldValue)
-                        fieldValue = strtrim(fieldValue);
-                        trimFlag   = true;
-                    end
+                    fieldValue = strtrim(hComponent.Value);
+                    trimFlag   = true;
 
                 case 'uitextarea'
                     fieldValue = strtrim(strjoin(hComponent.Value, '\n'));
@@ -792,80 +785,9 @@ classdef fiscalizaGUI < fiscalizaLib
                         hEditField.Value   = '';
     
                     case 'JSEffect'
-                        fieldName  = src.Tag;
-                        fieldValue = ComponentFieldValue(obj, src);
-
-                        matData.(fieldName) = fieldValue;
-                        updateFields(obj, matData);
-
-                        oldFields2RenderNames = fields(obj.fields2Render);
-                        newFields2RenderNames = fields(struct(py.getattr(obj.Issue, 'editable_fields')));
-
-                        components2Delete     = setdiff(oldFields2RenderNames, newFields2RenderNames);
-                        components2Create     = setdiff(newFields2RenderNames, oldFields2RenderNames);
-
-                        if ~isequal(oldFields2RenderNames, newFields2RenderNames)
-
-
-                            % Dados relacionados aos componentes atuais da GUI.
-                            guiData = rmfield(readDataFromComponents(obj), fieldName);
-                            guiFieldNames = fields(guiData);
-
-                            % Atualiza a GUI...
-                            Data2GUI(obj, false)
-
-                            % E, finalmente, reexibe valores da GUI registrados antes
-                            % da operação.
-                            for ii = 1:numel(guiFieldNames)
-                                guiFieldName  = guiFieldNames{ii};
-                                guiFieldValue = guiData.(guiFieldName);
-
-                                % ESTOU AQUI NESSE PROCESSO DE ATUALIZAÇÃO.
-                                % TALVEZ ATUALIZAR APENAS O PRÓPRIO CAMPO
-                                % JS?
-
-                                % hComponent = findobj(FindComponents(obj), 'Tag', guiFieldName);
-                                % if ~isempty(hComponent)
-                                %     switch hComponent.Type
-                                %         case 'uicheckbox'
-                                %             hComponent.Value = str2double(guiFieldValue);
-                                % 
-                                %         case 'uicheckboxtree'
-                                %             if ~isempty(hComponent.CheckedNodes)
-                                %                 fieldValue = {hComponent.CheckedNodes.Text};
-                                %             else
-                                %                 fieldValue = {};
-                                %             end
-                                % 
-                                %         case 'uidatepicker'
-                                %             fieldValue = datestr(hComponent.Value, 'yyyy-mm-dd');
-                                % 
-                                %         case 'uidropdown'
-                                %             fieldValue = hComponent.Value;
-                                % 
-                                %         case 'uieditfield'
-                                %             fieldValue = hComponent.Value;
-                                %             if ~isnumeric(fieldValue)
-                                %                 fieldValue = strtrim(fieldValue);
-                                %                 trimFlag   = true;
-                                %             end
-                                % 
-                                %         case 'uitextarea'
-                                %             fieldValue = strtrim(strjoin(hComponent.Value, '\n'));
-                                %             trimFlag   = true;
-                                % 
-                                %         otherwise
-                                %             error('Unexpexted value.')
-                                %     end
-
-
-                                % end
-
-                                if isfield(obj.issueInfo, guiFieldName)
-                                    obj.issueInfo.(guiFieldName) = guiFieldValue;
-                                end
-                            end
-                        end
+                        guiData = readDataFromComponents(obj);
+                        updateFields(obj, guiData);
+                        Data2GUI(obj)
                 end
 
             catch ME
