@@ -57,7 +57,7 @@ classdef fiscalizaGUI < fiscalizaLib
                 userPass    (1,:) char
                 testFlag    (1,1) logical
                 hGrid       (1,1) matlab.ui.container.GridLayout
-                issueNumber (1,1) {mustBeInteger, mustBePositive} = 123456
+                issueNumber (1,1) {mustBeInteger, mustBePositive}
             end
 
             if ~isvalid(hGrid)
@@ -72,16 +72,11 @@ classdef fiscalizaGUI < fiscalizaLib
             jsBackDoorInitialization(obj)
             progressDialogInitialization(obj)
 
-            % 123456 como valor padrão de "issueNumber" é apenas uma forma de 
-            % torná-lo um argumento opcional. Na prática, contudo, este valor
-            % não será utilizado.
-            if nargin == 5
-                try
-                    getIssue(obj, issueNumber)
-                    Data2GUI(obj)
-                catch ME
-                    UIAlert(obj, ME.message, 'error')
-                end
+            try
+                getIssue(obj, issueNumber)
+                Data2GUI(obj)
+            catch ME
+                UIAlert(obj, ME.message, 'error')
             end
         end
 
