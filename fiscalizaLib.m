@@ -64,7 +64,7 @@ classdef fiscalizaLib < handle
             pyData = DataTypeMapping(obj, 'mat2py', matData);
 
             obj.Issue.update_fields(pyData);
-            obj.issueInfo = DataTypeMapping(obj, 'py2mat', py.getattr(obj.Issue, 'attrs'));
+            obj.issueInfo = DataTypeMapping(obj, 'py2mat', getPythonAttribute(obj, obj.Issue, 'attrs'));
         end
 
 
@@ -73,7 +73,7 @@ classdef fiscalizaLib < handle
             pyData = DataTypeMapping(obj, 'mat2py', matData);
 
             obj.Issue.update(pyData)
-            obj.issueInfo = DataTypeMapping(obj, 'py2mat', py.getattr(obj.Issue, 'attrs'));
+            obj.issueInfo = DataTypeMapping(obj, 'py2mat', getPythonAttribute(obj, obj.Issue, 'attrs'));
         end
     end
 
@@ -82,6 +82,16 @@ classdef fiscalizaLib < handle
         %-----------------------------------------------------------------%
         function path = Path(obj)
             path = fileparts(mfilename('fullpath'));
+        end
+
+
+        %-----------------------------------------------------------------%
+        function pyAttributeValue = getPythonAttribute(obj, pyObject, pyAttributeName)
+            try
+                pyAttributeValue = pyObject.(pyAttributeName);
+            catch
+                pyAttributeValue = py.getattr(pyObject, pyAttributeName);
+            end
         end
 
 

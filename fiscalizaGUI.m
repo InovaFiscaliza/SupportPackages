@@ -133,8 +133,8 @@ classdef fiscalizaGUI < fiscalizaLib
             end
 
             % Identificando os campos a renderizar em tela:
-            obj.fields2Render = struct(py.getattr(obj.Issue, 'editable_fields'));
-            obj.fieldsThatTriggerJSEffect = fields(struct(obj.Issue.conditional_fields));
+            obj.fields2Render = struct(getPythonAttribute(obj, obj.Issue, 'editable_fields'));
+            obj.fieldsThatTriggerJSEffect = fields(struct(getPythonAttribute(obj, obj.Issue, 'conditional_fields')));
 
             % Renderizando os elementos (após a reinicialização da GUI):
             GridInitialization(obj, true)
@@ -158,27 +158,30 @@ classdef fiscalizaGUI < fiscalizaLib
             fieldNames = fields(guiData);
 
             for ii = 1:numel(fieldNames)
-                fieldName  = fieldNames{ii};
-                fieldValue = guiData.(fieldName);
+                fieldName = fieldNames{ii};
 
-                previousValue = obj.issueInfo.(fieldName);
-                if isstruct(previousValue)
-                    fieldsList = fields(previousValue);
-                    previousValue = previousValue.(fieldsList{1});
-                end
-
-                % Esse é um passo opcional e puramente estético, eliminando
-                % possíveis caracteres vazios inseridos pelo usuário.
-                if ischar(previousValue)
-                    previousValue = strtrim(previousValue);
-                end
-
-                % Essa comparação aqui é perigosa porque [], '' e {} são diferentes 
-                % entre si. Ao validar que ao menos um dos valores - o antigo ou o 
-                % novo - deva ser diferente de vazio, garante-se que o valor do campo
-                % sob análise foi, de fato, alterado.
-                if (isempty(previousValue) && isempty(fieldValue)) || isequal(previousValue, fieldValue)
-                    guiData = rmfield(guiData, fieldName);
+                if isfield(obj.issueInfo, fieldName)                    
+                    fieldValue = guiData.(fieldName);
+    
+                    previousValue = obj.issueInfo.(fieldName);
+                    if isstruct(previousValue)
+                        fieldsList = fields(previousValue);
+                        previousValue = previousValue.(fieldsList{1});
+                    end
+    
+                    % Esse é um passo opcional e puramente estético, eliminando
+                    % possíveis caracteres vazios inseridos pelo usuário.
+                    if ischar(previousValue)
+                        previousValue = strtrim(previousValue);
+                    end
+    
+                    % Essa comparação aqui é perigosa porque [], '' e {} são diferentes 
+                    % entre si. Ao validar que ao menos um dos valores - o antigo ou o 
+                    % novo - deva ser diferente de vazio, garante-se que o valor do campo
+                    % sob análise foi, de fato, alterado.
+                    if (isempty(previousValue) && isempty(fieldValue)) || isequal(previousValue, fieldValue)
+                        guiData = rmfield(guiData, fieldName);
+                    end
                 end
             end
 
@@ -190,7 +193,7 @@ classdef fiscalizaGUI < fiscalizaLib
 
             for ii = 1:numel(field2IgnoreName)
                 if isfield(obj.issueInfo, field2IgnoreName{ii}) && isempty(obj.issueInfo.(field2IgnoreName{ii}))
-                    guiData.(field2IgnoreName{ii}) = field2IgnoreDefaultValue;
+                    guiData.(field2IgnoreName{ii}) = field2IgnoreDefaultValue{ii};
                 end
             end
         end
@@ -433,9 +436,9 @@ classdef fiscalizaGUI < fiscalizaLib
                 fieldValue = true;
             end
 
-            hCheckBox = uicheckbox(hGrid, 'FontSize', 11,                                    ...
-                                          'Value',    fieldValue,                            ...
-                                          'Text',     char(editableFields.(fieldName).name), ...
+            hCheckBox = uicheckbox(hGrid, 'FontSize', 11,         ...
+                                          'Value',    fieldValue, ...
+                                          'Text',     char(getPythonAttribute(obj, editableFields.(fieldName), 'name')), ...
                                           'Tag',      fieldName);
             hCheckBox.Layout.Row = Row;
             hCheckBox.Layout.Column = Column;
@@ -474,7 +477,6 @@ classdef fiscalizaGUI < fiscalizaLib
             % Criada exceção para alguns campos, como "no_sei_processo_fiscalizacao", 
             % para o qual a lib retorna como uma string uma estrutura.
             % "{'numero': '53554.000003/2024-29', 'link_acesso': 'https://seihm.anatel.gov.br/sei/controlador.php?acao=procedimento_trabalhar&id_procedimento=1981673'}"
-
             if isstruct(fieldValue)
                 fieldsList = fields(fieldValue);
                 fieldValue = fieldValue.(fieldsList{1});
@@ -573,7 +575,7 @@ classdef fiscalizaGUI < fiscalizaLib
             % Label
             obj.hGridRow = obj.hGridRow + 1;
             obj.hGrid.RowHeight{obj.hGridRow} = 17;
-            Label(obj, obj.hGrid, char(editableFields.(fieldName).name), {'left', 'bottom'}, 11, [0,0,0], 'none', '', obj.hGridRow, 1)
+            Label(obj, obj.hGrid, char(getPythonAttribute(obj, editableFields.(fieldName), 'name')), {'left', 'bottom'}, 11, [0,0,0], 'none', '', obj.hGridRow, 1)
 
             % EditField
             obj.hGridRow = obj.hGridRow + 1;
@@ -585,15 +587,15 @@ classdef fiscalizaGUI < fiscalizaLib
         
         %-----------------------------------------------------------------%
         function FieldWithOptions(obj, editableFields, fieldName)
-            fieldValue   = DataTypeMapping(obj, 'py2mat', editableFields.(fieldName).value);
-            fieldOptions = DataTypeMapping(obj, 'py2mat', editableFields.(fieldName).options);
+            fieldValue   = DataTypeMapping(obj, 'py2mat', getPythonAttribute(obj, editableFields.(fieldName), 'value'));
+            fieldOptions = DataTypeMapping(obj, 'py2mat', getPythonAttribute(obj, editableFields.(fieldName), 'options'));
             fieldOptionsElements = numel(fieldOptions);
 
             obj.hGridRow = obj.hGridRow + 1;
             obj.hGrid.RowHeight{obj.hGridRow} = 17;
-            Label(obj, obj.hGrid, char(editableFields.(fieldName).name), {'left', 'bottom'}, 11, [0,0,0], 'none', '', obj.hGridRow, 1)
+            Label(obj, obj.hGrid, char(getPythonAttribute(obj, editableFields.(fieldName), 'name')), {'left', 'bottom'}, 11, [0,0,0], 'none', '', obj.hGridRow, 1)
         
-            if editableFields.(fieldName).multiple
+            if getPythonAttribute(obj, editableFields.(fieldName), 'multiple')
                 if any(cellfun(@(x) isnumeric(x), fieldValue))
                     fieldValue = cellfun(@(x) num2str(x), fieldValue, 'UniformOutput', false);
                 end
@@ -648,9 +650,9 @@ classdef fiscalizaGUI < fiscalizaLib
             switch searchType
                 case 'normal'
                     if isfield(editableFields, fieldName)
-                        fieldValue = DataTypeMapping(obj, 'py2mat', editableFields.(fieldName).value);
+                        fieldValue = DataTypeMapping(obj, 'py2mat', getPythonAttribute(obj, editableFields.(fieldName), 'value'));
                         if isfield(struct(editableFields.(fieldName)), 'options')
-                            fieldOptions = DataTypeMapping(obj, 'py2mat', editableFields.(fieldName).options);
+                            fieldOptions = DataTypeMapping(obj, 'py2mat', getPythonAttribute(obj, editableFields.(fieldName), 'options'));
                         end
         
                     else
