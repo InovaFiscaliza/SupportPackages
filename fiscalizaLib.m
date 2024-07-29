@@ -69,10 +69,10 @@ classdef fiscalizaLib < handle
 
 
         %-----------------------------------------------------------------%
-        function updateIssue(obj, matData)
+        function status = updateIssue(obj, matData)
             pyData = DataTypeMapping(obj, 'mat2py', matData);
 
-            obj.Issue.update(pyData)
+            status = obj.Issue.update(pyData);
             obj.issueInfo = DataTypeMapping(obj, 'py2mat', getPythonAttribute(obj, obj.Issue, 'attrs'));
         end
     end

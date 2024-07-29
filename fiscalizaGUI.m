@@ -1,32 +1,5 @@
 classdef fiscalizaGUI < fiscalizaLib
 
-    % !! PENDÊNCAS EM 26/07/2024 !!
-
-    % ERIC
-    % (1) function preBuiltGroup_REPORT(obj). "Gerar relatório".
-    
-    % (2) function preBuiltGroup_PLAI(obj): aparece apenas quando
-    %     selecionado "Apreensão", "Lacração" ou "Interrupção" no campo
-    %     "Procedimentos". Enviar campo "Gerar PLAI" igual a '1', além dos dois auxiliaries.
-
-    % (3) Preciso testar ainda criação do relatório, criação do plai, e
-    %     upload do JSON.
-
-    % INSPEÇÕES DE TESTE
-    % (1) #124287 a 124290: "" no estado "Rascunho" (toda vazia)
-    % (2) #124300: "Monitoração" no estado "Relatando" (toda preenchida)
-    % (3) #124301: "Certificação" no estado "Relatando" (toda preenchida)
-
-    % TESTAR RELATAR UM CNPJ QUE NÃO EXISTE.
-    % E UM CNPJ QUE A WEB NÃO ACEITA. TIPO O DO PALMEIRAS.
-
-    % Pendências do webapp SCH: 
-    % (a) relato Fiscaliza; 
-    % (b) templates relatórios;
-    % (c) validações antes de gerar relatório; e
-    % (d) rotina de atualização da base (arquivo gerado carregado no Sharepoint (usar gerenciador do próprio Windows).
-
-
     properties
         BackgroundColor (1,3) {mustBeInRange(BackgroundColor, 0, 1)} = [1,1,1]
     end
@@ -90,13 +63,15 @@ classdef fiscalizaGUI < fiscalizaLib
 
         %-----------------------------------------------------------------%
         function UploadFiscaliza(obj)
-            newData = GUI2Data(obj);
-
-            if ~isempty(newData)
-                updateIssue(obj, newData)
-                Data2GUI(obj)
-            else
-                msg = 'Não identificada edição de campo da Inspeção';
+            [status, guiData] = GUI2Data(obj);
+            
+            if status
+                if ~isempty(guiData)
+                    msg = char(updateIssue(obj, guiData));
+                    Data2GUI(obj)
+                else
+                    msg = 'Não identificada edição de campo da Inspeção';
+                end
                 UIAlert(obj, msg, 'warning')
             end
         end
@@ -137,6 +112,7 @@ classdef fiscalizaGUI < fiscalizaLib
             renderComponents(obj, 'TITLE');
             renderComponents(obj, 'GENERAL');
             renderComponents(obj, 'HOURS');
+            renderComponents(obj, 'REPORT')
             renderComponents(obj, 'OTHERS_EDITABLE_FIELDS');
             addJSListenerEffect(obj)
             drawnow
@@ -148,7 +124,8 @@ classdef fiscalizaGUI < fiscalizaLib
 
 
         %-----------------------------------------------------------------%
-        function guiData = GUI2Data(obj)
+        function [status, guiData] = GUI2Data(obj)
+            status     = true;
             guiData    = readDataFromComponents(obj);
             fieldNames = fields(guiData);
 
@@ -180,15 +157,71 @@ classdef fiscalizaGUI < fiscalizaLib
                 end
             end
 
+            % Avaliar se o campo "html_path" está preenchido, o que acarretará na 
+            % criação de um novo documento no SEI.
+            if isfield(guiData, 'html_path')
+                HTMLDocFullPath = guiData.html_path;
+
+                if isfile(HTMLDocFullPath)
+                    [filePath, fileName, fileExt] = fileparts(HTMLDocFullPath);
+
+                    % Avalia se existe um nº SEI de outro relatório...
+                    % nesse caso, questionar usuário se quer continuar, o
+                    % que fará 
+                    if isfield(obj.issueInfo, 'no_sei_relatorio_de_atividades') && isfield(obj.issueInfo.no_sei_relatorio_de_atividades, 'numero') && ~isempty(obj.issueInfo.no_sei_relatorio_de_atividades.numero)
+                        obj.progressDialog.Visible = 'hidden';
+
+                        msgQuestion = sprintf('A Inspeção nº %s já está relacionado ao Relatório de Atividades SEI nº %s.\n\nCaso seja submetido ao FISCALIZA o arquivo abaixo, o FISCALIZA criará no SEI um novo documento.\n• %s\n\nDeseja continuar?', obj.issueID, obj.issueInfo.no_sei_relatorio_de_atividades.numero, [fileName fileExt]);
+                        selection   = uiconfirm(obj.hFigure, HTMLSyntax(obj, msgQuestion), '', 'Interpreter', 'html', 'Options', {'Sim', 'Não'}, 'DefaultOption', 2, 'CancelOption', 2, 'Icon', 'question');
+
+                        if strcmp(selection, 'Não')
+                            status = false;
+                            return
+                        end
+
+                        obj.progressDialog.Visible = 'visible';
+                    end
+
+                    % Trigger para criação do relatório...
+                    guiData.gerar_relatorio = '1';
+
+                    % Agora avalia os arquivos que serão anexados à issue...
+                    % Eles precisam ter o mesmo nome do que o HTML, mas extensão 
+                    % diferente.
+                    fileList = dir(fullfile(filePath, [fileName '.*']));
+
+                    uploads = {};
+                    for ii = 1:numel(fileList)
+                        if ~strcmp([fileName fileExt], fileList(ii).name)
+                            uploads{end+1} = struct('path', fullfile(fileList(ii).folder, fileList(ii).name), 'filename', fileList(ii).name);
+                        end
+                    end
+
+                    if ~isempty(uploads)
+                        guiData.uploads = uploads;
+                    end
+
+                else
+                    guiData = rmfield(guiData, 'html_path');
+                end
+            end
+
+            % Atualiza relação de campos de guiData, haja vista a possível
+            % exclusão de campos nos passos anteriores de validação...
+            fieldNames = fields(guiData);
+            if isempty(fieldNames)
+                error('Não identificada alteração em algum dos campos da Inspeção nº %s', obj.issueID)
+            end
+
             % Por fim, os campos ignorados - atualmente "precisa_reservar_instrumentos"
             % e "utilizou_algum_instrumento" - são relatados com os seus valores padrões,
             % caso estejam vazios.
             field2IgnoreName         = obj.fields2Ignore(:,1);
             field2IgnoreDefaultValue = obj.fields2Ignore(:,2);
 
-            for ii = 1:numel(field2IgnoreName)
-                if isfield(obj.issueInfo, field2IgnoreName{ii}) && isempty(obj.issueInfo.(field2IgnoreName{ii}))
-                    guiData.(field2IgnoreName{ii}) = field2IgnoreDefaultValue{ii};
+            for kk = 1:numel(field2IgnoreName)
+                if isfield(obj.issueInfo, field2IgnoreName{kk}) && isempty(obj.issueInfo.(field2IgnoreName{kk}))
+                    guiData.(field2IgnoreName{kk}) = field2IgnoreDefaultValue{kk};
                 end
             end
         end
@@ -232,8 +265,6 @@ classdef fiscalizaGUI < fiscalizaLib
                     preBuiltGroup_HOURS(obj);
                 case 'REPORT'
                     preBuiltGroup_REPORT(obj);
-                case 'PLAI'
-                    preBuiltGroup_PLAI(obj);
                 case 'OTHERS_EDITABLE_FIELDS'
                     OthersEditableFields(obj);
             end
@@ -258,10 +289,10 @@ classdef fiscalizaGUI < fiscalizaLib
 
         %-----------------------------------------------------------------%
         function preBuiltGroup_GENERAL(obj)
-            containerSettings = struct('Height',      {{17, 198}},                                        ...
-                                       'Label',       'Aspectos gerais',                                  ...
-                                       'Interpreter', 'none',                                             ...
-                                       'Image',       fullfile(Path(obj), 'fiscalizaGUI', 'Link_18.png'), ...
+            containerSettings = struct('Height',      {{17, 198}},       ...
+                                       'Label',       'Aspectos gerais', ...
+                                       'Interpreter', 'none',            ...
+                                       'Image',       'Link_18.png',     ...
                                        'ImageTag',    'no_fiscaliza_issue,no_sei_processo_fiscalizacao');
 
             typeFields = {'tema', 'subtema'};
@@ -304,20 +335,36 @@ classdef fiscalizaGUI < fiscalizaLib
 
         %-----------------------------------------------------------------%
         function preBuiltGroup_REPORT(obj)
+            containerSettings = struct('Height',      {{17, 110}}, ...
+                                       'Label',       'Documento', ...
+                                       'Interpreter', 'none');
 
-        end
+            % Componentes:
+            hContainer = Container(obj, containerSettings);
+            hGridGroup = GridLayout(obj, hContainer, {17,22,17,22}, {110,'1x',20}, [10,10,10,5]);
 
+            Label(obj, hGridGroup, 'Nº SEI:',    {'left', 'bottom'}, 11, [0,0,0], 'none', '', 1, 1)
+            Label(obj, hGridGroup, 'Arquivo:',   {'left', 'bottom'}, 11, [0,0,0], 'none', '', 3, 1)
 
-        %-----------------------------------------------------------------%
-        function preBuiltGroup_PLAI(obj)
-
+            EditField(obj, hGridGroup, 'no_sei_relatorio_de_atividades', [], 2, 1)
+            set(findobj(hGridGroup, 'Tag', 'no_sei_relatorio_de_atividades'), 'Editable', 0)
+            
+            EditField(obj, hGridGroup, 'html_path', [], 4, [1,2])
+            Image(obj, hGridGroup, 'html_path', 4, 3, 'OpenFile_18.png', {'center', 'center'}, 'GetFileImage')
         end
 
 
         %-----------------------------------------------------------------%
         function OthersEditableFields(obj)
+            % !! DELETAR TRECHO POSTERIORMENTE AO AJUSTE DA LIB !!
+            if isfield(obj.fields2Render, 'gerar_plai') && isequal(char(py.getattr(obj.fields2Render.gerar_plai, 'value')), '1')
+                obj.fields2Render.tipo_do_processo_plai = py.fiscaliza.datatypes.FieldWithOptions(426, 'Tipo do PLAI:',     pyargs('options', py.list({'', 'Gestão da Fiscalização: Lacração, Apreensão e Interrupção', 'Gestão da Fiscalização: Processo de Guarda'})));
+                obj.fields2Render.coord_fi_plai         = py.fiscaliza.datatypes.FieldWithOptions(426, 'Coordenação PLAI:', pyargs('options', py.list({'', 'FI1', 'FI2'})));
+            end            
+            % !! DELETAR TRECHO POSTERIORMENTE AO AJUSTE DA LIB !!
+            
             % Editable fields (fields2Render property)
-            editableFields      = obj.fields2Render;
+            editableFields = obj.fields2Render;
             editableFieldsNames = setStackOrder(obj, editableFields);
 
             % Renderizable fields:
@@ -454,6 +501,18 @@ classdef fiscalizaGUI < fiscalizaLib
 
 
         %-----------------------------------------------------------------%
+        function Image(obj, hGrid, fieldName, Row, Column, ImageFile, ImageAlign, ImageCallback)
+            hImage = uiimage(hGrid, 'HorizontalAlignment', ImageAlign{1}, ...
+                                    'VerticalAlignment',   ImageAlign{2}, ...
+                                    'ImageSource',         fullfile(Path(obj), 'fiscalizaGUI', ImageFile),   ...
+                                    'ImageClickedFcn',     @(src, evt)obj.Listener(src, evt, ImageCallback), ...
+                                    'Tag',                 fieldName);
+            hImage.Layout.Row = Row;
+            hImage.Layout.Column = Column;
+        end
+
+
+        %-----------------------------------------------------------------%
         function TextArea(obj, hGrid, fieldName, Row, Column)
             fieldValue = FieldInfo(obj, fieldName, 'normal');
 
@@ -551,12 +610,11 @@ classdef fiscalizaGUI < fiscalizaLib
                 hGridGroup = GridLayout(obj, obj.hGrid, {'1x'}, {'1x', 16}, [0,0,0,0]);
                 hGridGroup.Layout.Row = obj.hGridRow-1;
         
-                uilabel(hGridGroup, 'VerticalAlignment', 'bottom', 'Text', containerSettings.Label, 'FontSize', 11, 'Interpreter', containerSettings.Interpreter);
-                uiimage(hGridGroup, 'VerticalAlignment', 'bottom', 'ImageSource', containerSettings.Image, 'ImageClickedFcn', @(src, evt)obj.Listener(src, evt, 'ContainerImage'), 'Tag', containerSettings.ImageTag);
+                Label(obj, hGridGroup, containerSettings.Label, {'left', 'bottom'}, 11, [0,0,0], containerSettings.Interpreter, '', 1, 1)
+                Image(obj, hGridGroup, containerSettings.ImageTag, 1, 2, containerSettings.Image, {'center', 'bottom'}, 'ContainerImage')
                 
             else
-                hLabel = uilabel(obj.hGrid, 'VerticalAlignment', 'bottom', 'Text', containerSettings.Label, 'FontSize', 11, 'Interpreter', containerSettings.Interpreter);
-                hLabel.Layout.Row = obj.hGridRow-1;
+                Label(obj, obj.hGrid, containerSettings.Label, {'left', 'bottom'}, 11, [0,0,0], containerSettings.Interpreter, '', obj.hGridRow-1, 1)
             end    
         
             % Container
@@ -617,7 +675,7 @@ classdef fiscalizaGUI < fiscalizaLib
                     hGridGroup.Layout.Row = obj.hGridRow-1;
             
                     uieditfield(hGridGroup, 'text', 'FontSize', 11);
-                    uiimage(hGridGroup, 'VerticalAlignment', 'bottom', 'ImageSource', fullfile(Path(obj), 'fiscalizaGUI', 'Sum_18.png'), 'ImageClickedFcn', @(src, evt)obj.Listener(src, evt, 'AddTreeNode'), 'Tag', fieldName);
+                    Image(obj,  hGridGroup, fieldName, 1, 2, 'Sum_18.png', {'center', 'bottom'}, 'AddTreeNode')
             
                     hTree = uitree(obj.hGrid, 'checkbox', 'FontSize', 11, 'Tag', fieldName);
                     hTree.Layout.Row = obj.hGridRow;
@@ -649,9 +707,12 @@ classdef fiscalizaGUI < fiscalizaLib
                         if isfield(struct(editableFields.(fieldName)), 'options')
                             fieldOptions = DataTypeMapping(obj, 'py2mat', getPythonAttribute(obj, editableFields.(fieldName), 'options'));
                         end
+
+                    elseif isfield(obj.issueInfo, fieldName)
+                        fieldValue = obj.issueInfo.(fieldName);
         
                     else
-                        fieldValue = obj.issueInfo.(fieldName);
+                        fieldValue = '';                        
                     end
 
                 case 'cellstr'
@@ -734,6 +795,15 @@ classdef fiscalizaGUI < fiscalizaLib
     
                             otherwise
                                 % Place holder para eventos futuros...
+                        end
+
+                    case 'GetFileImage'
+                        [fileName, filePath] = uigetfile({'*.html', 'HTML (*.html)'}, '');
+                        figure(obj.hFigure)
+                        
+                        if fileName
+                            hEditField = findobj(src.Parent,  'Type', 'uieditfield', 'Tag', src.Tag);
+                            hEditField.Value = fullfile(filePath, fileName);
                         end
     
                     case 'AddTreeNode'
@@ -846,11 +916,14 @@ classdef fiscalizaGUI < fiscalizaLib
                           'qtd_de_emissoes' 'qtd_identificadas' 'qtd_licenciadas'                                            ... % QTD. EMISSÕES
                           'foi_constatada_interferencia' 'houve_interferencia' 'identificada_a_origem' 'sanada_ou_mitigada'  ... % INTERFERÊNCIA
                           'procedimentos' 'houve_obice' 'situacao_constatada' 'irregularidade' 'tipificacao_da_infracao'     ... % PROCEDIMENTOS
+                          'motivo_de_lai' 'qnt_produt_lacradosapreend' 'no_do_lacre'                                         ... % PLAI (1/3)
+                          'gerar_plai' 'tipo_do_processo_plai' 'coord_fi_plai'                                               ... % PLAI (2/3)
+                          'lai_vinculadas' 'no_sei_do_plaiguarda' 'no_sei_do_aviso_lai'                                      ... % PLAI (3/3)
                           'situacao_de_risco_a_vida' 'acao_de_risco_a_vida_criada'                                           ... % RISCO À VIDA
-                          'motivo_de_lai' 'qnt_produt_lacradosapreend' 'no_do_lacre' 'lai_vinculadas' 'no_sei_do_plaiguarda' ... % PLAI (1/2)
-                          'gerar_plai' 'tipo_do_processo_plai' 'coord_fi_plai' 'no_sei_do_aviso_lai'                         ... % PLAI (2/2)
-                          'gerar_relatorio' 'no_sei_relatorio_monitoramento' 'relatorio_de_atividades' 'html'                ... % RELATÓRIO
-                          'documento_instaurador_do_pado' 'numero_do_pai' 'pai_instaurado_pela_anatel' 'no_sav' 'no_pcdp'    ... % PROCEDIMENTOS
+                          'gerar_relatorio' 'no_sei_relatorio_de_atividades' 'no_sei_relatorio_monitoramento'                ... % RELATÓRIO (1/2)
+                          'relatorio_de_atividades' 'html'                                                                   ... % RELATÓRIO (2/2) (campos internos à lib)
+                          'documento_instaurador_do_pado' 'numero_do_pai' 'pai_instaurado_pela_anatel'                       ... % PROCEDIMENTOS (1/2)
+                          'no_sei_do_oficio_ao_mctic' 'no_sav' 'no_pcdp'                                                     ... % PROCEDIMENTOS (2/2)
                           'precisa_reservar_instrumentos' 'reserva_de_instrumentos' 'utilizou_algum_instrumento'             ... % INSTRUMENTOS (1/2)
                           'copiar_instrumento_da_reserva' 'instrumentos_utilizados'                                          ... % INSTRUMENTOS (2/2)
                           'utilizou_apoio_policial' 'utilizou_tecnicas_amostrais' 'observacao_tecnica_amostral' 'observacoes'};
