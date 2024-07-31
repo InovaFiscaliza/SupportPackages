@@ -12,10 +12,11 @@ classdef fiscalizaGUI < fiscalizaLib
         hGridRow
 
         fields2Render
-        fields2Ignore = {'precisa_reservar_instrumentos', '0'; ...
-                         'utilizou_algum_instrumento',    '0'}
-        
+        fields2Ignore  = {'precisa_reservar_instrumentos', '0'; ...
+                          'utilizou_algum_instrumento',    '0'}
         fieldsThatTriggerJSEffect
+
+        reportFilePath = ''
         
         jsBackDoor
         progressDialog
@@ -68,10 +69,12 @@ classdef fiscalizaGUI < fiscalizaLib
             if status
                 if ~isempty(guiData)
                     msg = char(updateIssue(obj, guiData));
+                    obj.reportFilePath = '';
                     Data2GUI(obj)
                 else
                     msg = 'Não identificada edição de campo da Inspeção';
                 end
+                
                 UIAlert(obj, msg, 'warning')
             end
         end
@@ -228,6 +231,20 @@ classdef fiscalizaGUI < fiscalizaLib
 
 
         %-----------------------------------------------------------------%
+        function AutoFillFields(obj, newData)
+            fieldNames  = fields(newData);
+            hComponents = FindComponents(obj);
+            
+            for ii = 1:numel(fieldNames)
+                hComponent = findobj(hComponents, 'Tag', fieldNames{ii});
+                if ~isempty(hComponent)
+
+                end
+            end
+        end
+
+
+        %-----------------------------------------------------------------%
         function GridInitialization(obj, placeHolderFlag)
             if placeHolderFlag
                 hPlaceHolder = findobj(obj.hFigure, 'Type', 'uiimage', 'Tag', 'FiscalizaPlaceHolder');
@@ -350,6 +367,8 @@ classdef fiscalizaGUI < fiscalizaLib
             set(findobj(hGridGroup, 'Tag', 'no_sei_relatorio_de_atividades'), 'Editable', 0)
             
             EditField(obj, hGridGroup, 'html_path', [], 4, [1,2])
+            set(findobj(hGridGroup, 'Type', 'uieditfield', 'Tag', 'html_path'), 'Editable', 0, 'Value', obj.reportFilePath)
+
             Image(obj, hGridGroup, 'html_path', 4, 3, 'OpenFile_18.png', {'center', 'center'}, 'GetFileImage')
         end
 
@@ -595,7 +614,7 @@ classdef fiscalizaGUI < fiscalizaLib
             if ~isempty(hProgressDialog)
                 obj.progressDialog = hProgressDialog;
             else
-                obj.progressDialog = ccTools.ProgressDialogV2(app.jsBackDoor);
+                obj.progressDialog = ccTools.ProgressDialogV2(obj.jsBackDoor);
             end
         end
 
@@ -739,7 +758,7 @@ classdef fiscalizaGUI < fiscalizaLib
         end
 
 
-        function [fieldValue, trimFlag] = ComponentFieldValue(obj, hComponent)
+        function [fieldValue, trimFlag] = getComponentFieldValue(obj, hComponent)
             trimFlag = false;
             switch hComponent.Type
                 case 'uicheckbox'
@@ -774,6 +793,25 @@ classdef fiscalizaGUI < fiscalizaLib
                     error('Unexpexted value.')
             end
         end
+
+
+        %-----------------------------------------------------------------%
+        function setComponentFieldValue(obj, hComponent, newValue)
+            switch hComponent.Type
+                case {'uicheckbox', 'uidatepicker', 'uidropdown', 'uinumericeditfield', 'uieditfield', 'uitextarea'}
+                    hComponent.Value = newValue;
+
+                case 'uicheckboxtree'
+                    % if ~isempty(hComponent.CheckedNodes)
+                    %     fieldValue = {hComponent.CheckedNodes.Text};
+                    % else
+                    %     fieldValue = {};
+                    % end
+
+                otherwise
+                    error('Unexpexted value.')
+            end
+        end
         
         
         %-----------------------------------------------------------------%
@@ -802,8 +840,12 @@ classdef fiscalizaGUI < fiscalizaLib
                         figure(obj.hFigure)
                         
                         if fileName
-                            hEditField = findobj(src.Parent,  'Type', 'uieditfield', 'Tag', src.Tag);
+                            hEditField = findobj(src.Parent, 'Type', 'uieditfield', 'Tag', src.Tag);
                             hEditField.Value = fullfile(filePath, fileName);
+
+                            obj.reportFilePath = fullfile(filePath, fileName);
+                        else
+                            obj.reportFilePath = '';
                         end
     
                     case 'AddTreeNode'
@@ -943,7 +985,7 @@ classdef fiscalizaGUI < fiscalizaLib
                 end
 
                 fieldName  = hComponents(ii).Tag;
-                fieldValue = ComponentFieldValue(obj, hComponents(ii));
+                fieldValue = getComponentFieldValue(obj, hComponents(ii));
                 guiData.(fieldName) = fieldValue;
             end
         end

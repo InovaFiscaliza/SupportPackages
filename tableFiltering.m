@@ -2,9 +2,9 @@ classdef tableFiltering < handle
 
     properties
         %-----------------------------------------------------------------%
-        Config = table('Size',          [0, 4],                              ...
-                       'VariableTypes', {'cell', 'cell', 'cell', 'logical'}, ...
-                       'VariableNames', {'Column', 'Operation', 'Value', 'Enable'})
+        filterRules table = table('Size',          [0, 4],                              ...
+                                  'VariableTypes', {'cell', 'cell', 'cell', 'logical'}, ...
+                                  'VariableNames', {'Column', 'Operation', 'Value', 'Enable'})
     end
 
 
@@ -16,22 +16,33 @@ classdef tableFiltering < handle
     
     methods
         %-----------------------------------------------------------------%
-        function msgWarning = addFilter(obj, Column, Operation, Value)
+        function fIndex = run(obj, filterType, varargin)
+            switch filterType
+                case 'words2Search'
+                    fIndex = stringMatchFiltering(obj, varargin{:});
+                case 'filterRules'
+                    fIndex = rulesOrientedFiltering(obj, varargin{:});
+            end
+        end
 
 
-            fHeight  = height(obj.Config);
+        %-----------------------------------------------------------------%
+        function msgWarning = addFilterRule(obj, Column, Operation, Value)
+
+
+            fHeight  = height(obj.filterRules);
             fLogical = ones(fHeight, 3, 'logical');
 
-            fLogical(:,1) = strcmp(obj.Config.Column,    Column);
-            fLogical(:,2) = strcmp(obj.Config.Operation, Operation);
-            fLogical(:,3) = cellfun(@(x) isequal(x, Value), obj.Config.Value);
+            fLogical(:,1) = strcmp(obj.filterRules.Column,    Column);
+            fLogical(:,2) = strcmp(obj.filterRules.Operation, Operation);
+            fLogical(:,3) = cellfun(@(x) isequal(x, Value), obj.filterRules.Value);
 
             if (fHeight == 0) || ~any(all(fLogical, 2))
                 if ~ischar(Value)
                     Value = {Value};
                 end
-                obj.Config(end+1,:) = {Column, Operation, Value, true};
-                obj.Config = sortrows(obj.Config, 'Column');
+                obj.filterRules(end+1,:) = {Column, Operation, Value, true};
+                obj.filterRules = sortrows(obj.filterRules, 'Column');
                 msgWarning = '';
             else
                 msgWarning = 'O conjunto Coluna-Operação-Valor já consta na lista de filtros secundários.';
@@ -40,45 +51,88 @@ classdef tableFiltering < handle
 
 
         %-----------------------------------------------------------------%
-        function msgWarning = removeFilter(obj, idx)
+        function msgWarning = removeFilterRule(obj, idx)
             try
-                obj.Config(idx,:) = [];
+                obj.filterRules(idx,:) = [];
                 msgWarning = '';
             catch ME
                 msgWarning = ME.message;
             end
         end
+    end
+
+
+    methods (Access = private)
+        %-----------------------------------------------------------------%
+        function fIndex = stringMatchFiltering(obj, varargin)
+            rawTable       = varargin{1};
+            columnNames    = varargin{2};
+            rawCell        = rawTable{:,columnNames};
+            
+            sortOrder      = varargin{3};
+            searchFunction = varargin{4};
+            words2Search   = varargin{5};
+            nWords2Search  = numel(words2Search);
+
+            switch sortOrder
+                case 'stable'
+                    if nWords2Search < 150
+                        switch searchFunction
+                            case 'strcmp'
+                                listOfIndex = cellfun(@(x) find(any(strcmp(rawCell, x), 2)),   words2Search, 'UniformOutput', false);
+                            case 'contains'
+                                listOfIndex = cellfun(@(x) find(any(contains(rawCell, x), 2)), words2Search, 'UniformOutput', false);
+                        end
+                        
+                    else
+                        listOfIndex = cell(1, nWords2Search);
+                        parpoolCheck()
+                        parfor ii = 1:nWords2Search
+                            switch searchFunction
+                                case 'strcmp'
+                                    listOfIndex{ii} = find(any(strcmp(rawCell,   words2Search{ii}), 2));
+                                case 'contains'
+                                    listOfIndex{ii} = find(any(contains(rawCell, words2Search{ii}), 2));
+                            end
+                        end
+                    end        
+                    fIndex = unique(vertcat(listOfIndex{:}), 'stable');
+
+                case 'unstable'
+                    fIndex = find(any(ismember(rawCell, words2Search), 2));
+            end
+        end
 
 
         %-----------------------------------------------------------------%
-        function fLogical = execute(obj, Table)
+        function fLogicalIndex = rulesOrientedFiltering(obj, varargin)
+            rawTable = varargin{1};
             
-            tHeight = height(Table);            
-            fConfig = obj.Config(obj.Config.Enable, :);
+            tHeight = height(rawTable);            
+            fRules  = obj.filterRules(obj.filterRules.Enable, :);
             
-            if isempty(fConfig)
-                fLogical = ones(tHeight, 1, 'logical');
+            if isempty(fRules)
+                fLogicalIndex = ones(tHeight, 1, 'logical');
             
             else
-                [columnNames, ~, columnIndex] = unique(obj.Config.Column);
-                NN = numel(columnNames);
+                [columnNames, ~, columnIndex] = unique(obj.filterRules.Column);
+                nColumns = numel(columnNames);
+                fLogical = zeros(tHeight, nColumns, 'logical');
 
-                fLogical = zeros(tHeight, NN, 'logical');
-        
-                for ii = 1:NN
+                for ii = 1:nColumns
                     idx = find(columnIndex == ii)';
                     for jj = idx
-                        Fcn = functionHandle(obj, fConfig.Operation{jj}, fConfig.Value{jj});
-                        fLogical(:,ii) = or(fLogical(:,ii), Fcn(Table{:, fConfig.Column{jj}}));
+                        Fcn = functionHandle(obj, fRules.Operation{jj}, fRules.Value{jj});
+                        fLogical(:,ii) = or(fLogical(:,ii), Fcn(rawTable{:, fRules.Column{jj}}));
                     end
                 end
 
-                fLogical = all(fLogical, 2);
+                fLogicalIndex = all(fLogical, 2);
             end
         end
-        
-        
-        %-------------------------------------------------------------------------%
+
+
+        %-----------------------------------------------------------------%
         function Fcn = functionHandle(obj, Operation, Value)
             if isnumeric(Value) || isdatetime(Value)
                 floatTolerance = obj.floatDiffTolerance;
