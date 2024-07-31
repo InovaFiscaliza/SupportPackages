@@ -22,6 +22,8 @@ function setup(htmlComponent) {
             let keyEvents = ["ArrowUp", "ArrowDown", "Enter", "Escape", "Tab"];
         
             if (keyEvents.includes(event.key)) {
+                event.preventDefault();
+                event.stopPropagation();
                 htmlComponent.sendEventToMATLAB(objDataName, event.key);
             }
         });

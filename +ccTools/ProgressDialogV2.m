@@ -51,22 +51,28 @@ classdef ProgressDialogV2 < handle
 
         %-----------------------------------------------------------------%
         function set.Size(obj, value)
-            obj.Size = value;
-            changeSize(obj)
+            if ~strcmp(obj.Size, value)
+                obj.Size = value;
+                changeSize(obj)
+            end
         end
 
 
         %-----------------------------------------------------------------%
         function set.Color(obj, value)
-            obj.Color = value;
-            changeColor(obj)
+            if ~strcmp(obj.Color, value)
+                obj.Color = value;
+                changeColor(obj)
+            end
         end
 
 
         %-----------------------------------------------------------------%
         function set.Visible(obj, value)
-            obj.Visible = value;
-            changeVisibility(obj)
+            if ~strcmp(obj.Visible, value)
+                obj.Visible = value;
+                changeVisibility(obj)
+            end
         end
     end
 
