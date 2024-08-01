@@ -99,7 +99,12 @@ classdef tableFiltering < handle
                     fIndex = unique(vertcat(listOfIndex{:}), 'stable');
 
                 case 'unstable'
-                    fIndex = find(any(ismember(rawCell, words2Search), 2));
+                    switch searchFunction
+                        case 'strcmp'
+                            fIndex = find(any(ismember(rawCell, words2Search), 2));
+                        case 'contains'
+                            fIndex = find(any(contains(rawCell, words2Search), 2));
+                    end
             end
         end
 
