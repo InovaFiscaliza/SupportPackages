@@ -14,9 +14,12 @@ classdef fiscalizaGUI < fiscalizaLib
         fields2Render
         fields2Ignore  = {'precisa_reservar_instrumentos', '0'; ...
                           'utilizou_algum_instrumento',    '0'}
-        fieldsThatTriggerJSEffect
+        
+        fieldsTriggerJSEffect
+        fieldsTriggedJSEffect
 
         reportFilePath = ''
+        autoFillStruct
         
         jsBackDoor
         progressDialog
@@ -107,7 +110,14 @@ classdef fiscalizaGUI < fiscalizaLib
 
             % Identificando os campos a renderizar em tela:
             obj.fields2Render = struct(getPythonAttribute(obj, obj.Issue, 'editable_fields'));
-            obj.fieldsThatTriggerJSEffect = fields(struct(getPythonAttribute(obj, obj.Issue, 'conditional_fields')));
+            obj.fieldsTriggerJSEffect = fields(struct(getPythonAttribute(obj, obj.Issue, 'conditional_fields')));
+
+            % !! DELETAR TRECHO POSTERIORMENTE AO AJUSTE DA LIB !!
+            if isfield(obj.fields2Render, 'gerar_plai') && isequal(char(py.getattr(obj.fields2Render.gerar_plai, 'value')), '1')
+                obj.fields2Render.tipo_do_processo_plai = py.fiscaliza.datatypes.FieldWithOptions(426, 'Tipo do PLAI:',     pyargs('options', py.list({'', 'Gestão da Fiscalização: Lacração, Apreensão e Interrupção', 'Gestão da Fiscalização: Processo de Guarda'})));
+                obj.fields2Render.coord_fi_plai         = py.fiscaliza.datatypes.FieldWithOptions(426, 'Coordenação PLAI:', pyargs('options', py.list({'', 'FI', 'FI1', 'FI2', 'FI3'})));
+            end            
+            % !! DELETAR TRECHO POSTERIORMENTE AO AJUSTE DA LIB !!
 
             % Renderizando os elementos (após a reinicialização da GUI):
             GridInitialization(obj, true)
@@ -133,11 +143,10 @@ classdef fiscalizaGUI < fiscalizaLib
             fieldNames = fields(guiData);
 
             for ii = 1:numel(fieldNames)
-                fieldName = fieldNames{ii};
+                fieldName  = fieldNames{ii};
+                fieldValue = guiData.(fieldName);
 
-                if isfield(obj.issueInfo, fieldName)                    
-                    fieldValue = guiData.(fieldName);
-    
+                if isfield(obj.issueInfo, fieldName)
                     previousValue = obj.issueInfo.(fieldName);
                     if isstruct(previousValue)
                         fieldsList = fields(previousValue);
@@ -157,6 +166,9 @@ classdef fiscalizaGUI < fiscalizaLib
                     if (isempty(previousValue) && isempty(fieldValue)) || isequal(previousValue, fieldValue)
                         guiData = rmfield(guiData, fieldName);
                     end
+
+                elseif isempty(fieldValue)
+                    guiData = rmfield(guiData, fieldName);
                 end
             end
 
@@ -231,15 +243,31 @@ classdef fiscalizaGUI < fiscalizaLib
 
 
         %-----------------------------------------------------------------%
-        function AutoFillFields(obj, newData)
-            fieldNames  = fields(newData);
-            hComponents = FindComponents(obj);
+        function AutoFillFields(obj, newData, recurrenceIndex)
+            fieldNames   = fields(newData);
+            hComponents  = FindComponents(obj);
+
+            if recurrenceIndex == 1
+                obj.fieldsTriggedJSEffect = {};
+            end
+
+            JSEffectFlag = false;
             
             for ii = 1:numel(fieldNames)
                 hComponent = findobj(hComponents, 'Tag', fieldNames{ii});
                 if ~isempty(hComponent)
-
+                    setComponentFieldValue(obj, hComponent, newData.(fieldNames{ii}))
+                    
+                    if ismember(fieldNames{ii}, setdiff(obj.fieldsTriggerJSEffect, obj.fieldsTriggedJSEffect))
+                        JSEffectFlag = true;
+                        obj.fieldsTriggedJSEffect = [obj.fieldsTriggedJSEffect; fieldNames{ii}];
+                    end
                 end
+            end
+
+            if JSEffectFlag
+                Listener(obj, [], [], 'JSEffect')
+                AutoFillFields(obj, newData, recurrenceIndex+1)
             end
         end
 
@@ -374,14 +402,7 @@ classdef fiscalizaGUI < fiscalizaLib
 
 
         %-----------------------------------------------------------------%
-        function OthersEditableFields(obj)
-            % !! DELETAR TRECHO POSTERIORMENTE AO AJUSTE DA LIB !!
-            if isfield(obj.fields2Render, 'gerar_plai') && isequal(char(py.getattr(obj.fields2Render.gerar_plai, 'value')), '1')
-                obj.fields2Render.tipo_do_processo_plai = py.fiscaliza.datatypes.FieldWithOptions(426, 'Tipo do PLAI:',     pyargs('options', py.list({'', 'Gestão da Fiscalização: Lacração, Apreensão e Interrupção', 'Gestão da Fiscalização: Processo de Guarda'})));
-                obj.fields2Render.coord_fi_plai         = py.fiscaliza.datatypes.FieldWithOptions(426, 'Coordenação PLAI:', pyargs('options', py.list({'', 'FI1', 'FI2'})));
-            end            
-            % !! DELETAR TRECHO POSTERIORMENTE AO AJUSTE DA LIB !!
-            
+        function OthersEditableFields(obj)            
             % Editable fields (fields2Render property)
             editableFields = obj.fields2Render;
             editableFieldsNames = setStackOrder(obj, editableFields);
@@ -424,7 +445,7 @@ classdef fiscalizaGUI < fiscalizaLib
             for ii = 1:numel(hComponents)
                 hComponent = hComponents(ii);
 
-                if isempty(hComponent.Tag) || ~ismember(hComponent.Tag, obj.fieldsThatTriggerJSEffect)
+                if isempty(hComponent.Tag) || ~ismember(hComponent.Tag, obj.fieldsTriggerJSEffect)
                     continue
                 end
 
@@ -583,6 +604,28 @@ classdef fiscalizaGUI < fiscalizaLib
             hEditFields.Layout.Row = Row;
             hEditFields.Layout.Column = Column;
         end
+
+
+        %-----------------------------------------------------------------%
+        function Tree(obj, hGrid, fieldName, fieldValue, fieldOptions, Row)
+            hTree = uitree(hGrid, 'checkbox', 'FontSize', 11, 'Tag', fieldName);
+            hTree.Layout.Row = Row;
+
+            if isempty(fieldOptions)
+                for ii = 1:numel(fieldValue)
+                    childNode = uitreenode(hTree, 'Text', fieldValue{ii});
+                    hTree.CheckedNodes = [hTree.CheckedNodes; childNode];
+                end
+
+            else
+                for ii = 1:numel(fieldOptions)
+                    childNode = uitreenode(hTree, 'Text', fieldOptions{ii});
+                    if ismember(fieldOptions{ii}, fieldValue)
+                        hTree.CheckedNodes = [hTree.CheckedNodes; childNode];
+                    end
+                end
+            end
+        end
     end
 
 
@@ -675,16 +718,8 @@ classdef fiscalizaGUI < fiscalizaLib
                 if fieldOptionsElements && fieldOptionsElements <= 200
                     obj.hGridRow = obj.hGridRow + 1;
                     obj.hGrid.RowHeight{obj.hGridRow} = 112;
-        
-                    hTree = uitree(obj.hGrid, 'checkbox', 'FontSize', 11, 'Tag', fieldName);
-                    hTree.Layout.Row = obj.hGridRow;
-            
-                    for ii = 1:numel(fieldOptions)
-                        childNode = uitreenode(hTree, 'Text', fieldOptions{ii});
-                        if ismember(fieldOptions{ii}, fieldValue)
-                            hTree.CheckedNodes = [hTree.CheckedNodes; childNode];
-                        end
-                    end
+
+                    Tree(obj, obj.hGrid, fieldName, fieldValue, fieldOptions, obj.hGridRow)
             
                 else
                     obj.hGridRow = obj.hGridRow + 2;
@@ -695,14 +730,8 @@ classdef fiscalizaGUI < fiscalizaLib
             
                     uieditfield(hGridGroup, 'text', 'FontSize', 11);
                     Image(obj,  hGridGroup, fieldName, 1, 2, 'Sum_18.png', {'center', 'bottom'}, 'AddTreeNode')
-            
-                    hTree = uitree(obj.hGrid, 'checkbox', 'FontSize', 11, 'Tag', fieldName);
-                    hTree.Layout.Row = obj.hGridRow;
-            
-                    for ii = 1:numel(fieldValue)
-                        childNode = uitreenode(hTree, 'Text', fieldValue{ii});
-                        hTree.CheckedNodes = [hTree.CheckedNodes; childNode];
-                    end
+
+                    Tree(obj, obj.hGrid, fieldName, fieldValue, [], obj.hGridRow)
                 end
             
             else
@@ -796,17 +825,38 @@ classdef fiscalizaGUI < fiscalizaLib
 
 
         %-----------------------------------------------------------------%
-        function setComponentFieldValue(obj, hComponent, newValue)
+        function setComponentFieldValue(obj, hComponent, newFieldValue)
+            hComponent.BackgroundColor = [0.84, 0.91, 0.97];
+
             switch hComponent.Type
                 case {'uicheckbox', 'uidatepicker', 'uidropdown', 'uinumericeditfield', 'uieditfield', 'uitextarea'}
-                    hComponent.Value = newValue;
+                    fieldValueClass = class(hComponent.Value);
+                    switch fieldValueClass
+                        case 'char'
+                            if isnumeric(newFieldValue)
+                                newFieldValue = num2str(newFieldValue);
+                            end
+                        case 'double'
+                            if ~isnumeric(newFieldValue)
+                                newFieldValue = str2double(newFieldValue);
+                            end
+                    end
+                    hComponent.Value = newFieldValue;
 
                 case 'uicheckboxtree'
-                    % if ~isempty(hComponent.CheckedNodes)
-                    %     fieldValue = {hComponent.CheckedNodes.Text};
-                    % else
-                    %     fieldValue = {};
-                    % end
+                    for ii = 1:numel(newFieldValue)
+                        idx = [];
+                        if ~isempty(hComponent.Children)
+                            idx = find(strcmp({hComponent.Children.Text}, newFieldValue{ii}), 1);
+                        end
+    
+                        if ~isempty(idx)
+                            hComponent.CheckedNodes = [hComponent.CheckedNodes; hComponent.Children(idx)];
+                        else
+                            childNode = uitreenode(hComponent, 'Text', newFieldValue{ii});
+                            hComponent.CheckedNodes = [hComponent.CheckedNodes; childNode];
+                        end
+                    end
 
                 otherwise
                     error('Unexpexted value.')
@@ -825,8 +875,8 @@ classdef fiscalizaGUI < fiscalizaLib
     
                         switch fieldTag
                             case 'no_fiscaliza_issue,no_sei_processo_fiscalizacao'
-                                fieldValues = struct('FISCALIZA', FieldInfo(obj, 'no_fiscaliza_issue', 'normal'), ...
-                                                     'SEI',       FieldInfo(obj, 'no_sei_processo_fiscalizacao', 'normal'));
+                                fieldValues = struct('FISCALIZA', FieldInfo(obj, {'no_fiscaliza_issue'},           'cellstr'), ...
+                                                     'SEI',       FieldInfo(obj, {'no_sei_processo_fiscalizacao'}, 'cellstr'));
                                 fieldText   = sprintf(['Outras informações acerca da <b>Inspeção nº %s</b> constam no próprio FISCALIZA, acessível <a href="%s">aqui</a>.<br><br>' ...
                                                        'Já informações acerca do <b>Processo nº %s</b> constam no SEI, acessível <a href="%s">aqui</a>.'], fieldValues.FISCALIZA.numero, fieldValues.FISCALIZA.link_acesso, fieldValues.SEI.numero, fieldValues.SEI.link_acesso);
                                 UIAlert(obj, fieldText, 'warning')
@@ -945,9 +995,9 @@ classdef fiscalizaGUI < fiscalizaLib
             stackOrder = {'status' 'tipo_de_inspecao' 'start_date' 'due_date' 'description'                                  ... % CAMPOS REDMINE (exceto "tipo_de_inspecao")
                           'horas_de_preparacao' 'horas_de_deslocamento' 'horas_de_execucao' 'horas_de_conclusao'             ... % HORAS
                           'no_sei_processo_fiscalizacao'                                                                     ... % PFIS
-                          'coordenacao_responsavel' 'fiscal_responsavel' 'fiscais' 'agrupamento'                             ... % UNIDADE EXECUTANTE
-                          'area_do_pacp' 'nome_da_entidade' 'entidade_da_inspecao' 'identificacao_da_nao_outorgada'          ... % FISCALIZADA (1/3)
-                          'cnpjcpf_da_entidade' 'entidade_com_cadastro_stel' 'entidade_outorgada' 'numero_da_estacao'        ... % FISCALIZADA (2/3)
+                          'coordenacao_responsavel' 'fiscal_responsavel' 'fiscais' 'agrupamento' 'area_do_pacp'              ... % UNIDADE EXECUTANTE
+                          'entidade_com_cadastro_stel' 'entidade_da_inspecao' 'nome_da_entidade' 'cnpjcpf_da_entidade'       ... % FISCALIZADA (1/3)
+                          'entidade_outorgada' 'numero_da_estacao' 'identificacao_da_nao_outorgada'                          ... % FISCALIZADA (2/3)
                           'servicos_da_inspecao' 'esta_em_operacao'                                                          ... % FISCALIZADA (3/3)
                           'ufmunicipio' 'endereco_da_inspecao' 'coordenadas_geograficas' 'latitude_coordenadas'              ... % LOCAL DA FISCALIZAÇÃO (1/2)
                           'longitude_coordenadas' 'coordenadas_estacao' 'latitude_da_estacao' 'longitude_da_estacao'         ... % LOCAL DA FISCALIZAÇÃO (2/2)

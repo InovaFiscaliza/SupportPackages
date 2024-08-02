@@ -1,4 +1,4 @@
-function CNPJ = checkCNPJ(entityID, apiFlag)
+function [CNPJ, nCNPJ] = checkCNPJ(entityID, apiFlag)
 
 arguments
     entityID (1,:) char
