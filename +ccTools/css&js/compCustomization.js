@@ -42,6 +42,27 @@ function setup(htmlComponent) {
         }
     });
 
+    htmlComponent.addEventListener("turningBackgroundColorInvisible", function(event) {
+        let objDataName = event.Data.componentName.toString();
+        let objDataTag  = event.Data.componentDataTag.toString();
+        let objHandle   = window.parent.document.querySelector(`div[data-tag="${objDataTag}"]`);
+
+        try {
+            let opacityValue = 1.0;
+            let intervalId = setInterval(() => {
+                opacityValue -= 0.02;
+                objHandle.style.opacity = opacityValue;
+
+                if (opacityValue <= 0.02) {
+                    clearInterval(intervalId);
+                    htmlComponent.sendEventToMATLAB("BackgroundColorTurnedInvisible", objDataName);
+                }
+            }, 25);
+        } catch (ME) {
+            // console.log(ME)
+        }
+    });
+
     htmlComponent.addEventListener("htmlClassCustomization", function(event) {
         try {
             var className       = event.Data.className.toString();
