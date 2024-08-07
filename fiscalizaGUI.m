@@ -112,13 +112,6 @@ classdef fiscalizaGUI < fiscalizaLib
             obj.fields2Render = struct(getPythonAttribute(obj, obj.Issue, 'editable_fields'));
             obj.fieldsTriggerJSEffect = fields(struct(getPythonAttribute(obj, obj.Issue, 'conditional_fields')));
 
-            % !! DELETAR TRECHO POSTERIORMENTE AO AJUSTE DA LIB !!
-            if isfield(obj.fields2Render, 'gerar_plai') && isequal(char(py.getattr(obj.fields2Render.gerar_plai, 'value')), '1')
-                obj.fields2Render.tipo_do_processo_plai = py.fiscaliza.datatypes.FieldWithOptions(426, 'Tipo do PLAI:',     pyargs('options', py.list({'', 'Gestão da Fiscalização: Lacração, Apreensão e Interrupção', 'Gestão da Fiscalização: Processo de Guarda'})));
-                obj.fields2Render.coord_fi_plai         = py.fiscaliza.datatypes.FieldWithOptions(426, 'Coordenação PLAI:', pyargs('options', py.list({'', 'FI', 'FI1', 'FI2', 'FI3'})));
-            end            
-            % !! DELETAR TRECHO POSTERIORMENTE AO AJUSTE DA LIB !!
-
             % Renderizando os elementos (após a reinicialização da GUI):
             GridInitialization(obj, true)
             
@@ -157,6 +150,16 @@ classdef fiscalizaGUI < fiscalizaLib
                     % possíveis caracteres vazios inseridos pelo usuário.
                     if ischar(previousValue)
                         previousValue = strtrim(previousValue);
+                    end
+
+                    % Garantir que a ordem de uma cellstr não interfira na análise 
+                    % para determinar se houve edição do campo.
+                    if iscellstr(previousValue)
+                        previousValue = sort(previousValue);
+                    end
+
+                    if iscellstr(fieldValue)
+                        fieldValue = sort(fieldValue);
                     end
     
                     % Essa comparação aqui é perigosa porque [], '' e {} são diferentes 
@@ -971,19 +974,21 @@ classdef fiscalizaGUI < fiscalizaLib
 
         %-----------------------------------------------------------------%
         function editableFieldsNames = setStackOrder(obj, editableFields)
-            editableFieldsNames = fields(editableFields);
-            referenceStackOrder = refStackOrder(obj);
+            editableFieldsNames  = fields(editableFields);
+            referenceStackOrder  = refStackOrder(obj);
 
-            stackOrderCellIndex    = cellfun(@(x) find(strcmp(x, referenceStackOrder), 1), editableFieldsNames, 'UniformOutput', false);
-            stackOrderNumericIndex = cell2mat(stackOrderCellIndex);
+            stackOrderCellIndex  = cellfun(@(x) find(strcmp(x, referenceStackOrder), 1), editableFieldsNames, 'UniformOutput', false);
+            stackOrderEmptyIndex = cellfun(@(x) isempty(x), stackOrderCellIndex);
 
-            if numel(stackOrderCellIndex) ~= numel(stackOrderNumericIndex)
-                idx  = cellfun(@(x) isempty(x), stackOrderCellIndex);
-                nMax = max(stackOrderNumericIndex);
+            % Se a lib entregar um campo não mapeado em "refStackOrder", esse 
+            % campo será renderizado ao final.
+            if any(stackOrderEmptyIndex)
+                idx  = find(stackOrderEmptyIndex);
+                nMax = max(cell2mat(stackOrderCellIndex(~stackOrderEmptyIndex)));
                 
-                stackOrderCellIndex(idx) = num2cell(nMax+1:nMax+sum(idx))';
-                stackOrderNumericIndex   = cell2mat(stackOrderCellIndex);
+                stackOrderCellIndex(idx) = num2cell(nMax+1:nMax+numel(idx))';
             end
+            stackOrderNumericIndex = cell2mat(stackOrderCellIndex);
 
             [~, stackOrderNumericIndex] = sort(stackOrderNumericIndex);
             editableFieldsNames = editableFieldsNames(stackOrderNumericIndex);
@@ -1011,10 +1016,10 @@ classdef fiscalizaGUI < fiscalizaLib
                           'motivo_de_lai' 'qnt_produt_lacradosapreend' 'no_do_lacre'                                         ... % PLAI (1/3)
                           'gerar_plai' 'tipo_do_processo_plai' 'coord_fi_plai'                                               ... % PLAI (2/3)
                           'lai_vinculadas' 'no_sei_do_plaiguarda' 'no_sei_do_aviso_lai'                                      ... % PLAI (3/3)
-                          'situacao_de_risco_a_vida' 'acao_de_risco_a_vida_criada'                                           ... % RISCO À VIDA
+                          'situacao_de_risco_a_vida' 'acao_de_risco_a_vida_criada' 'acao_de_risco_a_vida'                    ... % RISCO À VIDA
                           'gerar_relatorio' 'no_sei_relatorio_de_atividades' 'no_sei_relatorio_monitoramento'                ... % RELATÓRIO (1/2)
                           'relatorio_de_atividades' 'html'                                                                   ... % RELATÓRIO (2/2) (campos internos à lib)
-                          'documento_instaurador_do_pado' 'numero_do_pai' 'pai_instaurado_pela_anatel'                       ... % PROCEDIMENTOS (1/2)
+                          'documento_instaurador_do_pado' 'pai_instaurado_pela_anatel' 'numero_do_pai'                       ... % PROCEDIMENTOS (1/2)
                           'no_sei_do_oficio_ao_mctic' 'no_sav' 'no_pcdp'                                                     ... % PROCEDIMENTOS (2/2)
                           'precisa_reservar_instrumentos' 'reserva_de_instrumentos' 'utilizou_algum_instrumento'             ... % INSTRUMENTOS (1/2)
                           'copiar_instrumento_da_reserva' 'instrumentos_utilizados'                                          ... % INSTRUMENTOS (2/2)
