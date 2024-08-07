@@ -7,15 +7,9 @@ function setup(htmlComponent) {
         }
     });
 
-    htmlComponent.addEventListener("onBeforeTabClose", function() {
-        window.parent.parent.addEventListener("beforeunload", function(event) {
-            htmlComponent.sendEventToMATLAB("onBeforeTabClose");
-        });
-    });
-
-    htmlComponent.addEventListener("addKeyDownListener", function(event) {
-        let objDataName  = event.Data.componentName.toString();
-        let objDataTag   = event.Data.componentDataTag.toString();
+    htmlComponent.addEventListener("addKeyDownListener", function(customEvent) {
+        let objDataName  = customEvent.Data.componentName.toString();
+        let objDataTag   = customEvent.Data.componentDataTag.toString();
         let objHandle    = window.parent.document.querySelector(`div[data-tag="${objDataTag}"]`).children[0];
 
         objHandle.addEventListener("keydown", function(event) {
@@ -29,9 +23,9 @@ function setup(htmlComponent) {
         });
     });
 
-    htmlComponent.addEventListener("setFocus", function(event) {
-        let objDataName  = event.Data.componentName.toString();
-        let objDataTag   = event.Data.componentDataTag.toString();
+    htmlComponent.addEventListener("setFocus", function(customEvent) {
+        let objDataName  = customEvent.Data.componentName.toString();
+        let objDataTag   = customEvent.Data.componentDataTag.toString();
         let objHandle    = window.parent.document.querySelector(`div[data-tag="${objDataTag}"]`).querySelector("input");
 
         try {
@@ -42,9 +36,9 @@ function setup(htmlComponent) {
         }
     });
 
-    htmlComponent.addEventListener("turningBackgroundColorInvisible", function(event) {
-        let objDataName = event.Data.componentName.toString();
-        let objDataTag  = event.Data.componentDataTag.toString();
+    htmlComponent.addEventListener("turningBackgroundColorInvisible", function(customEvent) {
+        let objDataName = customEvent.Data.componentName.toString();
+        let objDataTag  = customEvent.Data.componentDataTag.toString();
         let objHandle   = window.parent.document.querySelector(`div[data-tag="${objDataTag}"]`);
 
         try {
@@ -63,10 +57,10 @@ function setup(htmlComponent) {
         }
     });
 
-    htmlComponent.addEventListener("htmlClassCustomization", function(event) {
+    htmlComponent.addEventListener("htmlClassCustomization", function(customEvent) {
         try {
-            var className       = event.Data.className.toString();
-            var classAttributes = event.Data.classAttributes.toString();
+            var className       = customEvent.Data.className.toString();
+            var classAttributes = customEvent.Data.classAttributes.toString();
     
             var s = document.createElement("style");
             s.type = "text/css";
@@ -77,9 +71,9 @@ function setup(htmlComponent) {
         }
     });
 
-    htmlComponent.addEventListener("credentialDialog", function(event) {
+    htmlComponent.addEventListener("credentialDialog", function(customEvent) {
         try {    
-            var UUID = event.Data.UUID.toString();
+            var UUID = customEvent.Data.UUID.toString();
             var zIndex = 1000;
 
             // Style
@@ -201,14 +195,14 @@ function setup(htmlComponent) {
         }
     });
 
-    htmlComponent.addEventListener("progressDialog", function(event) {
+    htmlComponent.addEventListener("progressDialog", function(customEvent) {
         try {
-            var Type = event.Data.Type.toString();
-            var UUID = event.Data.UUID.toString();
+            var Type = customEvent.Data.Type.toString();
+            var UUID = customEvent.Data.UUID.toString();
     
             switch (Type) {
                 case "changeVisibility":
-                    var Visible  = event.Data.Visibility.toString();
+                    var Visible  = customEvent.Data.Visibility.toString();
                     var elements = window.parent.document.querySelectorAll(`div[data-tag="${UUID}"]`);                    
                     elements.forEach(element => {
                         element.style.visibility = Visible;
@@ -216,19 +210,19 @@ function setup(htmlComponent) {
                     break;
 
                 case "changeColor":
-                    var newColor = event.Data.Color.toString();
+                    var newColor = customEvent.Data.Color.toString();
                     window.parent.document.documentElement.style.setProperty("--sk-color", newColor);
                     break;
 
                 case "changeSize":
-                    var newSize  = event.Data.Size.toString();
+                    var newSize  = customEvent.Data.Size.toString();
                     window.parent.document.documentElement.style.setProperty("--sk-size", newSize);
                     break;
 
                 case "Creation":
                     var zIndex = 1000;
-                    var Size   = event.Data.Size.toString();
-                    var Color  = event.Data.Color.toString();
+                    var Size   = customEvent.Data.Size.toString();
+                    var Color  = customEvent.Data.Color.toString();
 
                     // Style
                     var s = document.createElement("style");
@@ -325,11 +319,11 @@ function setup(htmlComponent) {
         }
     });
         
-    htmlComponent.addEventListener("compCustomization", function(event) {
-        let objClass    = event.Data.Class.toString();
-        let objDataTag  = event.Data.DataTag.toString();
-        let objProperty = event.Data.Property.toString();
-        let objValue    = event.Data.Value.toString();
+    htmlComponent.addEventListener("compCustomization", function(customEvent) {
+        let objClass    = customEvent.Data.Class.toString();
+        let objDataTag  = customEvent.Data.DataTag.toString();
+        let objProperty = customEvent.Data.Property.toString();
+        let objValue    = customEvent.Data.Value.toString();
         let objHandle   = window.parent.document.querySelector(`div[data-tag="${objDataTag}"]`);
         
         if (!objHandle) {
