@@ -3,7 +3,6 @@ classdef (Abstract) textAnalysis
     properties (Constant)
         %-----------------------------------------------------------------%
         stopWords = {'a', 'as', 'e', 'o', 'os', 'da', 'das', 'de', 'do', 'dos', 'em', 'um', 'uma', 'para', 'com', 'que', 'na', 'nas', 'no', 'nos', 'mas'}
-
     end
 
 

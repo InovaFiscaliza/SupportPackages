@@ -55,9 +55,9 @@ classdef (Abstract) appUtil
 
 
         %-----------------------------------------------------------------%
-        function d = modalWindow(fHandle, type, msg, varargin)
+        function d = modalWindow(hFigure, type, msg, varargin)
             arguments
-                fHandle matlab.ui.Figure
+                hFigure matlab.ui.Figure
                 type    {mustBeMember(type, {'error', 'warning', 'info', 'progressdlg'})}
                 msg     {mustBeTextScalar} = ''
             end
@@ -71,15 +71,15 @@ classdef (Abstract) appUtil
                 case {'error', 'warning', 'info'}
                     msg = sprintf('<p style="font-size:12px; text-align: justify;">%s</p>', msg);
                     switch type
-                        case 'error';   uialert(fHandle, msg, '', 'Interpreter', 'html', 'Icon', 'error',   varargin{:})
-                        case 'warning'; uialert(fHandle, msg, '', 'Interpreter', 'html', 'Icon', 'warning', varargin{:})
-                        case 'info';    uialert(fHandle, msg, '', 'Interpreter', 'html', 'Icon', 'info',    varargin{:})
+                        case 'error';   uialert(hFigure, msg, '', 'Interpreter', 'html', 'Icon', 'error',   varargin{:})
+                        case 'warning'; uialert(hFigure, msg, '', 'Interpreter', 'html', 'Icon', 'warning', varargin{:})
+                        case 'info';    uialert(hFigure, msg, '', 'Interpreter', 'html', 'Icon', 'info',    varargin{:})
                     end
                     beep
                     
                 case 'progressdlg'
                     msg = sprintf('<p style="font-size:12px; text-align: justify;">%s</p>', msg);
-                    d = uiprogressdlg(fHandle, 'Indeterminate', 'on', 'Interpreter', 'html', 'Message', msg, varargin{:});
+                    d = uiprogressdlg(hFigure, 'Indeterminate', 'on', 'Interpreter', 'html', 'Message', msg, varargin{:});
             end
         end
 
@@ -88,6 +88,22 @@ classdef (Abstract) appUtil
         function [projectFolder, programDataFolder] = Path(appName, rootFolder)
             projectFolder     = fullfile(rootFolder, 'Settings');
             programDataFolder = fullfile(ccTools.fcn.OperationSystem('programData'), 'ANATEL', appName);
+        end
+
+
+        %-----------------------------------------------------------------%
+        function userPaths = UserPaths(userPath)
+            userPaths = [ccTools.fcn.OperationSystem('userPath'), {userPath}];
+            userPaths(~isfolder(userPaths)) = [];
+        
+            if isempty(userPaths)
+                tempFolder = tempname;
+                if ~isfolder(tempFolder)
+                    mkdir(tempFolder)
+                end
+
+                userPaths  = {tempFolder};
+            end        
         end
 
 

@@ -14,9 +14,17 @@ classdef fiscalizaGUI < fiscalizaLib
         fields2Render
         fields2Ignore  = {'precisa_reservar_instrumentos', '0'; ...
                           'utilizou_algum_instrumento',    '0'}
+        fields2Integer = {'horas_de_preparacao'   ...
+                          'horas_de_deslocamento' ...
+                          'horas_de_execucao'     ...
+                          'horas_de_conclusao'    ...
+                          'qtd_de_emissoes'       ...
+                          'qtd_identificadas'     ...
+                          'qtd_licenciadas'       ...
+                          'qnt_produt_lacradosapreend'}
         
-        fieldsTriggerJSEffect
-        fieldsTriggedJSEffect
+        fieldsTriggerJSEffect = {}
+        fieldsTriggedJSEffect = {}
 
         reportFilePath = ''
         autoFillStruct
@@ -131,49 +139,8 @@ classdef fiscalizaGUI < fiscalizaLib
 
         %-----------------------------------------------------------------%
         function [status, guiData] = GUI2Data(obj)
-            status     = true;
-            guiData    = readDataFromComponents(obj);
-            fieldNames = fields(guiData);
-
-            for ii = 1:numel(fieldNames)
-                fieldName  = fieldNames{ii};
-                fieldValue = guiData.(fieldName);
-
-                if isfield(obj.issueInfo, fieldName)
-                    previousValue = obj.issueInfo.(fieldName);
-                    if isstruct(previousValue)
-                        fieldsList = fields(previousValue);
-                        previousValue = previousValue.(fieldsList{1});
-                    end
-    
-                    % Esse é um passo opcional e puramente estético, eliminando
-                    % possíveis caracteres vazios inseridos pelo usuário.
-                    if ischar(previousValue)
-                        previousValue = strtrim(previousValue);
-                    end
-
-                    % Garantir que a ordem de uma cellstr não interfira na análise 
-                    % para determinar se houve edição do campo.
-                    if iscellstr(previousValue)
-                        previousValue = sort(previousValue);
-                    end
-
-                    if iscellstr(fieldValue)
-                        fieldValue = sort(fieldValue);
-                    end
-    
-                    % Essa comparação aqui é perigosa porque [], '' e {} são diferentes 
-                    % entre si. Ao validar que ao menos um dos valores - o antigo ou o 
-                    % novo - deva ser diferente de vazio, garante-se que o valor do campo
-                    % sob análise foi, de fato, alterado.
-                    if (isempty(previousValue) && isempty(fieldValue)) || isequal(previousValue, fieldValue)
-                        guiData = rmfield(guiData, fieldName);
-                    end
-
-                elseif isempty(fieldValue)
-                    guiData = rmfield(guiData, fieldName);
-                end
-            end
+            status  = true;
+            guiData = readDataFromComponents(obj);
 
             % Avaliar se o campo "html_path" está preenchido, o que acarretará na 
             % criação de um novo documento no SEI.
@@ -569,7 +536,8 @@ classdef fiscalizaGUI < fiscalizaLib
 
         %-----------------------------------------------------------------%
         function EditField(obj, hGrid, fieldName, fieldLimits, Row, Column)
-            fieldValue  = FieldInfo(obj, fieldName, 'normal');
+            fieldValue = FieldInfo(obj, fieldName, 'normal');
+            fieldValue = checkIfNumericField(obj, fieldName, fieldValue);
 
             % Criada exceção para alguns campos, como "no_sei_processo_fiscalizacao", 
             % para o qual a lib retorna como uma string uma estrutura.
@@ -779,6 +747,16 @@ classdef fiscalizaGUI < fiscalizaLib
 
 
         %-----------------------------------------------------------------%
+        function fieldValue = checkIfNumericField(obj, fieldName, fieldValue)
+            if ismember(fieldName, obj.fields2Integer)
+                if ~isnumeric(fieldValue)
+                    fieldValue = int32(str2double(fieldValue));
+                end
+            end
+        end
+
+
+        %-----------------------------------------------------------------%
         function hComponents = FindComponents(obj)
             hComponents = findobj(obj.hGrid, 'Type', 'uicheckbox',         '-or', ...
                                              'Type', 'uicheckboxtree',     '-or', ...
@@ -926,9 +904,15 @@ classdef fiscalizaGUI < fiscalizaLib
                                 case 'entidade_da_inspecao'
                                     checkCNPJ(fieldValue, false);
                                     fieldValue = regexprep(fieldValue, '\D', '');
+
+                                case 'acao_de_risco_a_vida'
+                                    if isempty(regexpi(fieldValue, '^ACAO_.*_[0-9]{4}_[0-9]{4}$', 'once'))
+                                        error('Deve ser inserida a identificação textual da Ação. Por exemplo: ACAO_GR08_2024_0013.')
+                                    end
+                                    fieldValue = upper(fieldValue);
                                 
                                 otherwise
-                                    error('Não prevista a forma de consulta para inclusão de valor do campo "%s".', fieldName)
+                                    % error('Não prevista a forma de consulta para inclusão de valor do campo "%s".', fieldName)
                             end
                         end
 
@@ -1006,12 +990,20 @@ classdef fiscalizaGUI < fiscalizaLib
                           'servicos_da_inspecao' 'esta_em_operacao'                                                          ... % FISCALIZADA (3/3)
                           'ufmunicipio' 'endereco_da_inspecao' 'coordenadas_geograficas' 'latitude_coordenadas'              ... % LOCAL DA FISCALIZAÇÃO (1/2)
                           'longitude_coordenadas' 'coordenadas_estacao' 'latitude_da_estacao' 'longitude_da_estacao'         ... % LOCAL DA FISCALIZAÇÃO (2/2)
-                          'frequencias' 'unidade_de_frequencia' 'frequencia_inicial' 'unidade_da_frequencia_inicial'         ... % ASPECTOS TÉCNICOS (1/4)
-                          'frequencia_final' 'unidade_da_frequencia_final' 'potencia_medida' 'unidade_de_potencia'           ... % ASPECTOS TÉCNICOS (2/4)
-                          'tipo_de_medicao' 'campo_eletrico__pico_vm' 'campo_eletrico_rms_vm'                                ... % ASPECTOS TÉCNICOS (3/4)
-                          'altura_do_sistema_irradiante' 'uso_de_produto_homologado' 'no_de_homologacao'                     ... % ASPECTOS TÉCNICOS (4/4)
+                          'houve_interferencia' 'identificada_a_origem' 'sanada_ou_mitigada'                                 ... % INTERFERÊNCIA (1/8)
+                          'foi_constatada_interferencia' 'interferencia_sanada' 'local_interf_confere_indicado' 'ha_outras_fontes_interfer'                             ... % INTERFERÊNCIA (2/8)
+                          'tipo_de_fonte_interferente'   'fonte_e_modelo'   'frequencia_mhz'   'potencia_de_operacao_w'   'distancia_ao_interferido'     'homologada'   ... % INTERFERÊNCIA (3/8)
+                          'tipo_de_fonte_interferente_1' 'fonte_e_modelo_1' 'frequencia_mhz_1' 'potencia_de_operacao_w_1' 'distancia_ao_interferido_m_1' 'homologada_1' ... % INTERFERÊNCIA (4/8)
+                          'tipo_de_fonte_interferente_2' 'fonte_e_modelo_2' 'frequencia_mhz_2' 'potencia_de_operacao_w_2' 'distancia_ao_interferido_m_2' 'homologada_2' ... % INTERFERÊNCIA (5/8)
+                          'tipo_de_fonte_interferente_3' 'fonte_e_modelo_3' 'frequencia_mhz_3' 'potencia_de_operacao_w_3' 'distancia_ao_interferido_m_3' 'homologada_3' ... % INTERFERÊNCIA (6/8)
+                          'tipo_de_fonte_interferente_4' 'fonte_e_modelo_4' 'frequencia_mhz_4' 'potencia_de_operacao_w_4' 'distancia_ao_interferido_m_4' 'homologada_4' ... % INTERFERÊNCIA (7/8)
+                          'tipo_de_fonte_interferente_5' 'fonte_e_modelo_5' 'frequencia_mhz_5' 'potencia_de_operacao_w_5' 'distancia_ao_interferido_m_5' 'homologada_5' ... % INTERFERÊNCIA (8/8)
+                          'frequencias' 'unidade_de_frequencia' 'frequencia_inicial' 'unidade_da_frequencia_inicial'         ... % ASPECTOS TÉCNICOS (1/5) - FREQUÊNCIA (1/2)
+                          'frequencia_final' 'unidade_da_frequencia_final'                                                   ... % ASPECTOS TÉCNICOS (2/5) - FREQUÊNCIA (2/2)
+                          'potencia_medida' 'unidade_de_potencia'                                                            ... % ASPECTOS TÉCNICOS (3/5) - POTÊNCIA
+                          'tipo_de_medicao' 'campo_eletrico__pico_vm' 'campo_eletrico_rms_vm' 'altura_do_sistema_irradiante' ... % ASPECTOS TÉCNICOS (4/5) - CAMPO ELÉTRICO E ALTURA
+                          'uso_de_produto_homologado' 'no_de_homologacao'                                                    ... % ASPECTOS TÉCNICOS (5/5) - HOMOLOGAÇÃO
                           'qtd_de_emissoes' 'qtd_identificadas' 'qtd_licenciadas'                                            ... % QTD. EMISSÕES
-                          'foi_constatada_interferencia' 'houve_interferencia' 'identificada_a_origem' 'sanada_ou_mitigada'  ... % INTERFERÊNCIA
                           'procedimentos' 'houve_obice' 'situacao_constatada' 'irregularidade' 'tipificacao_da_infracao'     ... % PROCEDIMENTOS
                           'motivo_de_lai' 'qnt_produt_lacradosapreend' 'no_do_lacre'                                         ... % PLAI (1/3)
                           'gerar_plai' 'tipo_do_processo_plai' 'coord_fi_plai'                                               ... % PLAI (2/3)
@@ -1019,8 +1011,8 @@ classdef fiscalizaGUI < fiscalizaLib
                           'situacao_de_risco_a_vida' 'acao_de_risco_a_vida_criada' 'acao_de_risco_a_vida'                    ... % RISCO À VIDA
                           'gerar_relatorio' 'no_sei_relatorio_de_atividades' 'no_sei_relatorio_monitoramento'                ... % RELATÓRIO (1/2)
                           'relatorio_de_atividades' 'html'                                                                   ... % RELATÓRIO (2/2) (campos internos à lib)
-                          'documento_instaurador_do_pado' 'pai_instaurado_pela_anatel' 'numero_do_pai'                       ... % PROCEDIMENTOS (1/2)
-                          'no_sei_do_oficio_ao_mctic' 'no_sav' 'no_pcdp'                                                     ... % PROCEDIMENTOS (2/2)
+                          'documento_instaurador_do_pado' 'pai_instaurado_pela_anatel' 'numero_do_pai'                       ... % PROCESSOS SANCIONATÓRIOS (1/2)
+                          'no_sei_do_oficio_ao_mctic' 'no_sav' 'no_pcdp'                                                     ... % PROCESSOS SANCIONATÓRIOS (2/2)
                           'precisa_reservar_instrumentos' 'reserva_de_instrumentos' 'utilizou_algum_instrumento'             ... % INSTRUMENTOS (1/2)
                           'copiar_instrumento_da_reserva' 'instrumentos_utilizados'                                          ... % INSTRUMENTOS (2/2)
                           'utilizou_apoio_policial' 'utilizou_tecnicas_amostrais' 'observacao_tecnica_amostral' 'observacoes'};
@@ -1029,10 +1021,12 @@ classdef fiscalizaGUI < fiscalizaLib
 
         %-----------------------------------------------------------------%
         function guiData = readDataFromComponents(obj)
-            % Identifica elementos que armazenam informações passíveis de edição. 
-            % Esses elementos, diga-se, possuem o seu atributo "Tag" preenchido.
-            guiData     = struct;
-            hComponents = FindComponents(obj);
+            % Identifica elementos que armazenam informações que foram efetivamente
+            % editadas. Esses elementos, diga-se, possuem o seu atributo "Tag" 
+            % preenchido.
+            guiData        = struct;
+            hComponents    = FindComponents(obj);
+            editableFields = obj.fields2Render;
 
             for ii = 1:numel(hComponents)
                 if isempty(hComponents(ii).Tag)
@@ -1041,7 +1035,49 @@ classdef fiscalizaGUI < fiscalizaLib
 
                 fieldName  = hComponents(ii).Tag;
                 fieldValue = getComponentFieldValue(obj, hComponents(ii));
+                
                 guiData.(fieldName) = fieldValue;
+
+                if isfield(editableFields, fieldName)
+                    if isfield(obj.issueInfo, fieldName)
+                        previousValue = obj.issueInfo.(fieldName);
+                    else
+                        previousValue = '';
+                    end
+                    previousValue = checkIfNumericField(obj, fieldName, previousValue);
+                    
+                    if isstruct(previousValue)
+                        fieldsList = fields(previousValue);
+                        previousValue = previousValue.(fieldsList{1});
+                    end
+    
+                    % Esse é um passo opcional e puramente estético, eliminando
+                    % possíveis caracteres vazios inseridos pelo usuário.
+                    if ischar(previousValue)
+                        previousValue = strtrim(previousValue);
+                    end
+
+                    % Garantir que a ordem de uma cellstr não interfira na análise 
+                    % para determinar se houve edição do campo.
+                    if iscellstr(previousValue)
+                        previousValue = sort(previousValue);
+                    end
+
+                    if iscellstr(fieldValue)
+                        fieldValue = sort(fieldValue);
+                    end
+    
+                    % Essa comparação aqui é perigosa porque [], '' e {} são diferentes 
+                    % entre si. Ao validar que ao menos um dos valores - o antigo ou o 
+                    % novo - deva ser diferente de vazio, garante-se que o valor do campo
+                    % sob análise foi, de fato, alterado.
+                    if (isempty(previousValue) && isempty(fieldValue)) || isequal(previousValue, fieldValue)
+                        guiData = rmfield(guiData, fieldName);
+                    end
+
+                elseif isempty(fieldValue)
+                    guiData = rmfield(guiData, fieldName);
+                end
             end
         end
     end
