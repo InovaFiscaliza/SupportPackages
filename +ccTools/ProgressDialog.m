@@ -1,48 +1,117 @@
-function d = ProgressDialog(comp, varargin)
+classdef ProgressDialog < handle
 
-    arguments
-        comp {ccTools.validators.mustBeBuiltInComponent}
+    properties (Access = private)
+        %-----------------------------------------------------------------%
+        hFigure
+        jsBackDoor
     end
 
-    arguments (Repeating)
-        varargin
-    end
-    
-    % ccTools.fcn.compatibilityWarning('ProgressDialog')
 
-    % nargin validation
-    if mod(nargin-1, 2)
-        error('Name-value parameters must be in pairs.')
+    properties
+        %-----------------------------------------------------------------%
+        Size    = '40px'
+        Color   = '#d95319'
+        Visible = 'hidden'
     end
 
-    warning('off', 'MATLAB:structOnObject')
-    warning('off', 'MATLAB:ui:javaframe:PropertyToBeRemoved')
-    
-    % main variables
-    pathToMFILE = fileparts(mfilename('fullpath'));
-    [webWin, compTag] = ccTools.fcn.componentInfo(comp);
 
-    % ProgressDialog model
-    p = ccTools.fcn.InputParser({'size', 'color'}, varargin{:});
-
-    dataTag      = char(matlab.lang.internal.uuid());
-    uniqueSuffix = datestr(now, '_THHMMSSFFF');
-    
-    switch class(comp)
-        case {'matlab.ui.container.internal.AppContainer', 'matlab.ui.Figure'}
-            jsSetParent = sprintf(['document.body.appendChild(u%s);\n' ...
-                                   'document.body.appendChild(w%s);'], uniqueSuffix, uniqueSuffix);
-        otherwise
-            jsSetParent = sprintf(['document.querySelector(''[data-tag="%s"]'').appendChild(u%s);\n' ...
-                                   'document.querySelector(''[data-tag="%s"]'').appendChild(w%s);'], compTag, uniqueSuffix, compTag, uniqueSuffix);
+    properties (Constant)
+        %-----------------------------------------------------------------%
+        UUID    = char(matlab.lang.internal.uuid())
+        Type    = 'ccTools.ProgressDialog'
     end
-    jsCodeOnCreation = sprintf(replace(fileread(fullfile(pathToMFILE, 'css&js', 'ProgressDialog_onCreation.js')), '<uniqueSuffix>', uniqueSuffix), jsSetParent, dataTag, dataTag, dataTag, p.size, p.color);
-    jsCodeOnCleanup  = replace(fileread(fullfile(pathToMFILE, 'css&js', 'ProgressDialog_onCleanup.js')),  '<uniqueSuffix>', uniqueSuffix);
 
-    % JS
-    pause(.001)
-    try
-        d = ccTools.class.modalDialog('ProgressDialog', webWin, compTag, dataTag, jsCodeOnCreation, jsCodeOnCleanup, pathToMFILE);
-    catch
+
+    methods
+        %-----------------------------------------------------------------%
+        function obj = ProgressDialog(jsBackDoor)
+            arguments
+                jsBackDoor (1,1) matlab.ui.control.HTML
+            end
+
+            if ~isvalid(jsBackDoor)
+                error('HTML component is not valid!')
+            end
+            
+            obj.hFigure    = ancestor(jsBackDoor, 'figure');
+            obj.jsBackDoor = jsBackDoor;
+            sendEventToHTMLSource(obj.jsBackDoor, "progressDialog", struct("Type",  "Creation", ...
+                                                                           "UUID",  obj.UUID,   ...
+                                                                           "Size",  obj.Size,   ...
+                                                                           "Color", obj.Color));
+            registerInstance(obj, 'onCreation')
+        end
+
+
+        %-----------------------------------------------------------------%
+        function delete(obj)
+            registerInstance(obj, 'onCleanup')
+        end
+
+
+        %-----------------------------------------------------------------%
+        function set.Size(obj, value)
+            if ~strcmp(obj.Size, value)
+                obj.Size = value;
+                changeSize(obj)
+            end
+        end
+
+
+        %-----------------------------------------------------------------%
+        function set.Color(obj, value)
+            if ~strcmp(obj.Color, value)
+                obj.Color = value;
+                changeColor(obj)
+            end
+        end
+
+
+        %-----------------------------------------------------------------%
+        function set.Visible(obj, value)
+            if ~strcmp(obj.Visible, value)
+                obj.Visible = value;
+                changeVisibility(obj)
+            end
+        end
+    end
+
+
+    methods (Access = private)
+        %-----------------------------------------------------------------%
+        function registerInstance(obj, registerType)
+            switch registerType
+                case 'onCreation'
+                    ccTools.Object.addRegister(obj.hFigure, obj)
+
+                case 'onCleanup'
+                    ccTools.Object.delRegister(obj.hFigure)
+            end
+        end
+
+
+        %-----------------------------------------------------------------%
+        function changeSize(obj)
+            sendEventToHTMLSource(obj.jsBackDoor, "progressDialog", struct("Type",  "changeSize", ...
+                                                                           "UUID",  obj.UUID,     ...
+                                                                           "Size",  obj.Size));
+        end
+
+
+        %-----------------------------------------------------------------%
+        function changeColor(obj)
+            sendEventToHTMLSource(obj.jsBackDoor, "progressDialog", struct("Type",  "changeColor", ...
+                                                                           "UUID",  obj.UUID,      ...
+                                                                           "Color", obj.Color));
+        end
+
+
+        %-----------------------------------------------------------------%
+        function changeVisibility(obj)
+            sendEventToHTMLSource(obj.jsBackDoor, "progressDialog", struct("Type",       "changeVisibility", ...
+                                                                           "UUID",       obj.UUID,           ...
+                                                                           "Visibility", obj.Visible));
+            drawnow
+        end
     end
 end

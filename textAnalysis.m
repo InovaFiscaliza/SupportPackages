@@ -16,17 +16,6 @@ classdef (Abstract) textAnalysis
 
 
         %-----------------------------------------------------------------%
-        function formattedString = cellstrGUIStyle(unformattedString)
-            % cellstr >> char
-            % {'name1', 'name2', 'name3'} >> '["name1", "name2", "name3"]'
-            arguments
-                unformattedString string
-            end
-            formattedString = char("[" + strjoin("""" + unformattedString + """", ', ') + "]");
-        end
-
-
-        %-----------------------------------------------------------------%
         function [uniqueData, referenceData] = preProcessedData(rawData)
             classData = class(rawData);
             switch classData
