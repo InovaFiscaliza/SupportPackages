@@ -12,8 +12,9 @@ classdef fiscalizaGUI < fiscalizaLib
         hGridRow
 
         fields2Render
-        fields2Ignore  = {'precisa_reservar_instrumentos', '0'; ...
-                          'utilizou_algum_instrumento',    '0'}
+        fields2Ignore  = {'precisa_reservar_instrumentos', '0',   'precisa_reservar_instrumentos'; ...
+                          'utilizou_algum_instrumento',    '0',   'utilizou_algum_instrumento';    ...
+                          'ha_outras_fontes_interfer',     'Não', 'foi_constatada_interferencia'}
         fields2Integer = {'horas_de_preparacao'   ...
                           'horas_de_deslocamento' ...
                           'horas_de_execucao'     ...
@@ -118,7 +119,7 @@ classdef fiscalizaGUI < fiscalizaLib
 
             % Identificando os campos a renderizar em tela:
             obj.fields2Render = struct(getPythonAttribute(obj, obj.Issue, 'editable_fields'));
-            obj.fieldsTriggerJSEffect = fields(struct(getPythonAttribute(obj, obj.Issue, 'conditional_fields')));
+            obj.fieldsTriggerJSEffect = fieldnames(struct(getPythonAttribute(obj, obj.Issue, 'conditional_fields')));
 
             % Renderizando os elementos (após a reinicialização da GUI):
             GridInitialization(obj, true)
@@ -153,7 +154,10 @@ classdef fiscalizaGUI < fiscalizaLib
                     % Avalia se existe um nº SEI de outro relatório...
                     % nesse caso, questionar usuário se quer continuar, o
                     % que fará 
-                    if isfield(obj.issueInfo, 'no_sei_relatorio_de_atividades') && isfield(obj.issueInfo.no_sei_relatorio_de_atividades, 'numero') && ~isempty(obj.issueInfo.no_sei_relatorio_de_atividades.numero)
+                    if ~strcmpi(fileExt, '.html')
+                        error('O documento a ser submetido ao FISCALIZA precisa ser no formato "HTML".')
+                        
+                    elseif isfield(obj.issueInfo, 'no_sei_relatorio_de_atividades') && isfield(obj.issueInfo.no_sei_relatorio_de_atividades, 'numero') && ~isempty(obj.issueInfo.no_sei_relatorio_de_atividades.numero)
                         obj.progressDialog.Visible = 'hidden';
 
                         msgQuestion = sprintf('A Inspeção nº %s já está relacionado ao Relatório de Atividades SEI nº %s.\n\nCaso seja submetido ao FISCALIZA o arquivo abaixo, o FISCALIZA criará no SEI um novo documento.\n• %s\n\nDeseja continuar?', obj.issueID, obj.issueInfo.no_sei_relatorio_de_atividades.numero, [fileName fileExt]);
@@ -193,7 +197,7 @@ classdef fiscalizaGUI < fiscalizaLib
 
             % Atualiza relação de campos de guiData, haja vista a possível
             % exclusão de campos nos passos anteriores de validação...
-            fieldNames = fields(guiData);
+            fieldNames = fieldnames(guiData);
             if isempty(fieldNames)
                 error('Não identificada alteração em algum dos campos da Inspeção nº %s', obj.issueID)
             end
@@ -203,9 +207,13 @@ classdef fiscalizaGUI < fiscalizaLib
             % caso estejam vazios.
             field2IgnoreName         = obj.fields2Ignore(:,1);
             field2IgnoreDefaultValue = obj.fields2Ignore(:,2);
+            field2IgnoreTrigger      = obj.fields2Ignore(:,3);
 
             for kk = 1:numel(field2IgnoreName)
-                if isfield(obj.issueInfo, field2IgnoreName{kk}) && isempty(obj.issueInfo.(field2IgnoreName{kk}))
+                fieldTrigger = field2IgnoreTrigger{kk};
+
+                if (isfield(obj.issueInfo, fieldTrigger) && isempty(obj.issueInfo.(fieldTrigger))) || ...
+                        (isfield(guiData, fieldTrigger) && ismember(guiData.(fieldTrigger), {'1', 'Sim'}))
                     guiData.(field2IgnoreName{kk}) = field2IgnoreDefaultValue{kk};
                 end
             end
@@ -214,7 +222,7 @@ classdef fiscalizaGUI < fiscalizaLib
 
         %-----------------------------------------------------------------%
         function AutoFillFields(obj, newData, recurrenceIndex)
-            fieldNames   = fields(newData);
+            fieldNames   = fieldnames(newData);
             hComponents  = FindComponents(obj);
 
             if recurrenceIndex == 1
@@ -238,6 +246,16 @@ classdef fiscalizaGUI < fiscalizaLib
             if JSEffectFlag
                 Listener(obj, [], [], 'JSEffect')
                 AutoFillFields(obj, newData, recurrenceIndex+1)
+            end
+        end
+
+
+        %-----------------------------------------------------------------%
+        function currentUser = getCurrentUser(obj)
+            try
+                currentUser = char(getPythonAttribute(obj, obj.Issue, 'current_user'));
+            catch
+                currentUser = '';
             end
         end
 
@@ -365,7 +383,7 @@ classdef fiscalizaGUI < fiscalizaLib
             set(findobj(hGridGroup, 'Tag', 'no_sei_relatorio_de_atividades'), 'Editable', 0)
             
             EditField(obj, hGridGroup, 'html_path', [], 4, [1,2])
-            set(findobj(hGridGroup, 'Type', 'uieditfield', 'Tag', 'html_path'), 'Editable', 0, 'Value', obj.reportFilePath)
+            set(findobj(hGridGroup, 'Type', 'uieditfield', 'Tag', 'html_path'), 'Value', obj.reportFilePath)
 
             Image(obj, hGridGroup, 'html_path', 4, 3, 'OpenFile_18.png', {'center', 'center'}, 'GetFileImage')
         end
@@ -462,7 +480,7 @@ classdef fiscalizaGUI < fiscalizaLib
 
         %-----------------------------------------------------------------%
         function DropDown(obj, hGrid, fieldName, Row, Column)
-            [fieldValue, fieldOptions] = FieldInfo(obj, fieldName, 'normal');            
+            [fieldValue, fieldOptions] = FieldInfo(obj, fieldName, 'normal');
             if isnumeric(fieldValue)
                 fieldValue = num2str(fieldValue);
             end
@@ -543,7 +561,7 @@ classdef fiscalizaGUI < fiscalizaLib
             % para o qual a lib retorna como uma string uma estrutura.
             % "{'numero': '53554.000003/2024-29', 'link_acesso': 'https://seihm.anatel.gov.br/sei/controlador.php?acao=procedimento_trabalhar&id_procedimento=1981673'}"
             if isstruct(fieldValue)
-                fieldsList = fields(fieldValue);
+                fieldsList = fieldnames(fieldValue);
                 fieldValue = fieldValue.(fieldsList{1});
             end
 
@@ -673,8 +691,7 @@ classdef fiscalizaGUI < fiscalizaLib
         
         %-----------------------------------------------------------------%
         function FieldWithOptions(obj, editableFields, fieldName)
-            fieldValue   = DataTypeMapping(obj, 'py2mat', getPythonAttribute(obj, editableFields.(fieldName), 'value'));
-            fieldOptions = DataTypeMapping(obj, 'py2mat', getPythonAttribute(obj, editableFields.(fieldName), 'options'));
+            [fieldValue, fieldOptions] = FieldInfo(obj, fieldName, 'normal');
             fieldOptionsElements = numel(fieldOptions);
 
             obj.hGridRow = obj.hGridRow + 1;
@@ -688,11 +705,10 @@ classdef fiscalizaGUI < fiscalizaLib
         
                 if fieldOptionsElements && fieldOptionsElements <= 200
                     obj.hGridRow = obj.hGridRow + 1;
-                    obj.hGrid.RowHeight{obj.hGridRow} = 112;
-
-                    Tree(obj, obj.hGrid, fieldName, fieldValue, fieldOptions, obj.hGridRow)
-            
+                    obj.hGrid.RowHeight{obj.hGridRow} = 112;            
                 else
+                    fieldOptions = {};
+
                     obj.hGridRow = obj.hGridRow + 2;
                     obj.hGrid.RowHeight(obj.hGridRow-1:obj.hGridRow) = {22, 112};
         
@@ -701,9 +717,9 @@ classdef fiscalizaGUI < fiscalizaLib
             
                     uieditfield(hGridGroup, 'text', 'FontSize', 11);
                     Image(obj,  hGridGroup, fieldName, 1, 2, 'Sum_18.png', {'center', 'bottom'}, 'AddTreeNode')
-
-                    Tree(obj, obj.hGrid, fieldName, fieldValue, [], obj.hGridRow)
                 end
+
+                Tree(obj, obj.hGrid, fieldName, fieldValue, fieldOptions, obj.hGridRow)
             
             else
                 obj.hGridRow = obj.hGridRow + 1;
@@ -724,7 +740,7 @@ classdef fiscalizaGUI < fiscalizaLib
                     if isfield(editableFields, fieldName)
                         fieldValue = DataTypeMapping(obj, 'py2mat', getPythonAttribute(obj, editableFields.(fieldName), 'value'));
                         if isfield(struct(editableFields.(fieldName)), 'options')
-                            fieldOptions = DataTypeMapping(obj, 'py2mat', getPythonAttribute(obj, editableFields.(fieldName), 'options'));
+                            fieldOptions = sort(DataTypeMapping(obj, 'py2mat', getPythonAttribute(obj, editableFields.(fieldName), 'options')));
                         end
 
                     elseif isfield(obj.issueInfo, fieldName)
@@ -958,7 +974,7 @@ classdef fiscalizaGUI < fiscalizaLib
 
         %-----------------------------------------------------------------%
         function editableFieldsNames = setStackOrder(obj, editableFields)
-            editableFieldsNames  = fields(editableFields);
+            editableFieldsNames  = fieldnames(editableFields);
             referenceStackOrder  = refStackOrder(obj);
 
             stackOrderCellIndex  = cellfun(@(x) find(strcmp(x, referenceStackOrder), 1), editableFieldsNames, 'UniformOutput', false);
@@ -990,14 +1006,10 @@ classdef fiscalizaGUI < fiscalizaLib
                           'servicos_da_inspecao' 'esta_em_operacao'                                                          ... % FISCALIZADA (3/3)
                           'ufmunicipio' 'endereco_da_inspecao' 'coordenadas_geograficas' 'latitude_coordenadas'              ... % LOCAL DA FISCALIZAÇÃO (1/2)
                           'longitude_coordenadas' 'coordenadas_estacao' 'latitude_da_estacao' 'longitude_da_estacao'         ... % LOCAL DA FISCALIZAÇÃO (2/2)
-                          'houve_interferencia' 'identificada_a_origem' 'sanada_ou_mitigada'                                 ... % INTERFERÊNCIA (1/8)
-                          'foi_constatada_interferencia' 'interferencia_sanada' 'local_interf_confere_indicado' 'ha_outras_fontes_interfer'                             ... % INTERFERÊNCIA (2/8)
-                          'tipo_de_fonte_interferente'   'fonte_e_modelo'   'frequencia_mhz'   'potencia_de_operacao_w'   'distancia_ao_interferido'     'homologada'   ... % INTERFERÊNCIA (3/8)
-                          'tipo_de_fonte_interferente_1' 'fonte_e_modelo_1' 'frequencia_mhz_1' 'potencia_de_operacao_w_1' 'distancia_ao_interferido_m_1' 'homologada_1' ... % INTERFERÊNCIA (4/8)
-                          'tipo_de_fonte_interferente_2' 'fonte_e_modelo_2' 'frequencia_mhz_2' 'potencia_de_operacao_w_2' 'distancia_ao_interferido_m_2' 'homologada_2' ... % INTERFERÊNCIA (5/8)
-                          'tipo_de_fonte_interferente_3' 'fonte_e_modelo_3' 'frequencia_mhz_3' 'potencia_de_operacao_w_3' 'distancia_ao_interferido_m_3' 'homologada_3' ... % INTERFERÊNCIA (6/8)
-                          'tipo_de_fonte_interferente_4' 'fonte_e_modelo_4' 'frequencia_mhz_4' 'potencia_de_operacao_w_4' 'distancia_ao_interferido_m_4' 'homologada_4' ... % INTERFERÊNCIA (7/8)
-                          'tipo_de_fonte_interferente_5' 'fonte_e_modelo_5' 'frequencia_mhz_5' 'potencia_de_operacao_w_5' 'distancia_ao_interferido_m_5' 'homologada_5' ... % INTERFERÊNCIA (8/8)
+                          'houve_interferencia' 'identificada_a_origem' 'sanada_ou_mitigada' 'foi_constatada_interferencia'  ... % INTERFERÊNCIA (1/4)
+                          'interferencia_sanada' 'justificativa_nao_resolucao' 'local_interf_confere_indicado'               ... % INTERFERÊNCIA (2/4)
+                          'tipo_de_fonte_interferente' 'fonte_e_modelo' 'frequencia_mhz' 'potencia_de_operacao_w'            ... % INTERFERÊNCIA (3/4)
+                          'distancia_ao_interferido' 'homologada' 'ha_outras_fontes_interfer'                                ... % INTERFERÊNCIA (4/4)
                           'frequencias' 'unidade_de_frequencia' 'frequencia_inicial' 'unidade_da_frequencia_inicial'         ... % ASPECTOS TÉCNICOS (1/5) - FREQUÊNCIA (1/2)
                           'frequencia_final' 'unidade_da_frequencia_final'                                                   ... % ASPECTOS TÉCNICOS (2/5) - FREQUÊNCIA (2/2)
                           'potencia_medida' 'unidade_de_potencia'                                                            ... % ASPECTOS TÉCNICOS (3/5) - POTÊNCIA
@@ -1047,7 +1059,7 @@ classdef fiscalizaGUI < fiscalizaLib
                     previousValue = checkIfNumericField(obj, fieldName, previousValue);
                     
                     if isstruct(previousValue)
-                        fieldsList = fields(previousValue);
+                        fieldsList = fieldnames(previousValue);
                         previousValue = previousValue.(fieldsList{1});
                     end
     

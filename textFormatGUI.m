@@ -36,7 +36,7 @@ classdef (Abstract) textFormatGUI
             % dataStruct(3) = struct('group', [upper(appName) 'Data'], 'value', struct('releasedData', releasedData, 'numberOfRows', height(rawDataTable), 'numberOfUniqueHom', numel(unique(rawDataTable.("Homologação"))), 'cacheColumns', cacheColumns));
             % dataStruct(4) = struct('group', 'MATLAB',                'value', appVersion.Matlab);
             
-            htmlCode = sprintf('<p style="font-family: Helvetica, Arial, sans-serif; font-size: %s; text-align: justify; line-height: 12px;">', fontSize);
+            htmlCode = sprintf('<p style="font-family: Helvetica, Arial, sans-serif; font-size: %s; text-align: justify; line-height: 12px; margin: 5px;">', fontSize);
             for ii = 1:numel(dataStruct)
                 htmlCode = sprintf('%s<font style="font-size: 10px;"><b>%s</b></font>', htmlCode, dataStruct(ii).group);
                 htmlCode = textFormatGUI.structParser(htmlCode, dataStruct(ii).value, 1, invalidStatus);
