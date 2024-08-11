@@ -70,7 +70,15 @@ function varargout = OperationSystem(operationType)
                 [~, userName] = system('whoami');
                 userName = strtrim(userName);
             end
-            varargout{1} = userName;            
+            varargout{1} = userName; 
+
+        case 'pythonExecutable'
+            if ispc
+                pyFileName = 'python.exe';
+            else
+                pyFileName = 'python3';
+            end
+            varargout{1} = pyFileName; 
     end
 
 end
