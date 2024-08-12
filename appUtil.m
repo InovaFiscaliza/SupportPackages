@@ -14,22 +14,35 @@ classdef (Abstract) appUtil
 
 
         %-----------------------------------------------------------------%
-        function [rootFolder, executionMode] = ApplicationMode(appName, MFilePath)
-            rootFolder = MFilePath;
-        
-            if isdeployed
-                [~, result]     = system('path');            
-                executionFolder = char(regexpi(result, 'Path=(.*?);', 'tokens', 'once'));
-                executionExt    = ccTools.fcn.OperationSystem('executionExt');
-            
-                if isfile(fullfile(executionFolder, sprintf('%s.%s', appName, executionExt)))
-                    executionMode = 'desktopStandaloneApp';
-                    rootFolder    = executionFolder;
-                else
-                    executionMode = 'webApp';
-                end
+        function executionMode = ExecutionMode(hFigure)
+            % No MATLAB R2024a, o container da figura de uma aplicação desktop é o arquivo "cefComponentContainer.html"
+            % 'https://127.0.0.1:31517/toolbox/matlab/uitools/uifigureappjs/cefComponentContainer.html?channel=/uifigure/45562d91-459d-4a9e-bafc-4f51c6940e09&websocket=on&syncMode=MF0ViewModel&snc=FV5YKZ'
+
+            % Já o container de uma aplicação webapp, por outro lado, é o arquivo "webAppContainer.html".
+            % 'http://df6963612dtn:9988/services/static/24.1/toolbox/compiler/mdwas/client/session/webAppContainer.html?MDWAS-Connection-Id=5d9ffe85-3824-419b-bedb-1ad678c5ac4b'
+
+            figureURL = struct(struct(hFigure).Controller).PeerModelInfo.URL;
+            if contains(figureURL, 'webAppContainer.html', 'IgnoreCase', true)
+                executionMode = 'webApp';
             else
-                executionMode = 'MATLABEnvironment';
+                if isdeployed
+                    executionMode = 'desktopStandaloneApp';
+                else
+                    executionMode = 'MATLABEnvironment';
+                end
+            end
+        end
+
+
+        %-----------------------------------------------------------------%
+        function rootFolder = RootFolder(appName, MFilePath)
+            rootFolder = MFilePath;
+
+            if isdeployed
+                [status, executionFolder] = ccTools.fcn.OperationSystem('desktopStandaloneAppFolder', appName);            
+                if status
+                    rootFolder = executionFolder;
+                end
             end        
         end
 

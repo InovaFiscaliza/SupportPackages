@@ -1,4 +1,4 @@
-function varargout = OperationSystem(operationType)
+function varargout = OperationSystem(operationType, varargin)
 
     if ~ispc && ~ismac && ~isunix
         error('Platform not supported')
@@ -44,15 +44,25 @@ function varargout = OperationSystem(operationType)
             end
             varargout{1} = programDataFolder;
 
-        case 'executionExt'
+        case 'desktopStandaloneAppFolder'
+            status  = false;
+            appName = varargin{1};
             if ispc
-                executionExt = 'exe';
+                [~, result]     = system('path');    
+                executionFolder = char(regexpi(result, 'Path=(.*?);', 'tokens', 'once'));
+                if isfile(fullfile(executionFolder, [appName '.exe']))
+                    status = true;
+                end
             elseif ismac
-                executionExt = 'app';
-            elseif isunix
-                executionExt = 'sh';
+                executionFolder = fileparts(fileparts(fileparts(fileparts(ctfroot))));
+                if isfolder(fullfile(executionFolder, [appName '.app']))
+                    status = true;
+                end
+            else
+                % !! PENDENTE !!
+                error('Pendente análise de como as distribuições Linux descompactam o arquivo compilado no MATLAB. :(')
             end
-            varargout{1} = executionExt;
+            varargout = {status, executionFolder};
 
         case 'computerName'
             if ispc
@@ -75,7 +85,7 @@ function varargout = OperationSystem(operationType)
         case 'pythonExecutable'
             if ispc
                 pyFileName = 'python.exe';
-            else
+            else % ismac
                 pyFileName = 'python3';
             end
             varargout{1} = pyFileName; 
