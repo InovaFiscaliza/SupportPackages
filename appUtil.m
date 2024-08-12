@@ -188,23 +188,24 @@ classdef (Abstract) appUtil
             if isempty(generalSettings)
                 generalSettings = projectFileContent;
             end
-
-            folderFields = fieldnames(generalSettings.fileFolder);
-            for kk = 1:numel(folderFields)
-                if ~isfolder(generalSettings.fileFolder.(folderFields{kk}))
-                    generalSettings.fileFolder.(folderFields{kk}) = '';
-                end
-            end
         end
 
 
         %-------------------------------------------------------------------------%
-        function generalSettingsSave(appName, rootFolder, appGeneral, fields2Remove)
+        function generalSettingsSave(appName, rootFolder, appGeneral, executionMode, fields2Remove)
+            % Aplicável apenas à versão desktop do app. Dessa forma, o parâmetro
+            % de configuração alterado por um usuário do webapp terá efeito apenas 
+            % na própria sessão do webapp.
             arguments
                 appName       char
                 rootFolder    char
                 appGeneral    struct
+                executionMode char
                 fields2Remove cell = {}
+            end
+
+            if strcmp(executionMode, 'webApp')
+                return
             end
         
             if ~isempty(fields2Remove)
