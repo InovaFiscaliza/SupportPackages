@@ -8,7 +8,19 @@ classdef (Abstract) textFormatGUI
             arguments
                 unformattedString string
             end
+            
             formattedString = char("[" + strjoin("""" + unformattedString + """", ', ') + "]");
+        end
+
+
+        %-----------------------------------------------------------------%
+        function formattedString = HTMLParagraph(unformattedString)
+            arguments
+                unformattedString char
+            end
+
+            unformattedString = replace(strtrim(unformattedString), newline, '<br>');
+            formattedString   = sprintf('<p style="font-size: 12px; text-align: justify;">%s</p>', unformattedString);
         end
 
 

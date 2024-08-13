@@ -68,6 +68,16 @@ classdef (Abstract) appUtil
 
 
         %-----------------------------------------------------------------%
+        function winMinSize(hFigure, minSize)
+            try
+                webWin = struct(struct(struct(hFigure).Controller).PlatformHost).CEF;
+                webWin.setMinSize(minSize)
+            catch
+            end
+        end
+
+
+        %-----------------------------------------------------------------%
         function d = modalWindow(hFigure, type, msg, varargin)
             arguments
                 hFigure matlab.ui.Figure
@@ -187,6 +197,10 @@ classdef (Abstract) appUtil
         
             if isempty(generalSettings)
                 generalSettings = projectFileContent;
+            end
+
+            if ~isempty(generalSettings.fileFolder.lastVisited) && ~isfolder(generalSettings.fileFolder.lastVisited)
+                generalSettings.fileFolder.lastVisited = '';
             end
         end
 
