@@ -15,14 +15,22 @@ classdef (Abstract) appUtil
 
         %-----------------------------------------------------------------%
         function executionMode = ExecutionMode(hFigure)
-            % No MATLAB R2024a, o container da figura de uma aplicação desktop é o arquivo "cefComponentContainer.html"
-            % 'https://127.0.0.1:31517/toolbox/matlab/uitools/uifigureappjs/cefComponentContainer.html?channel=/uifigure/45562d91-459d-4a9e-bafc-4f51c6940e09&websocket=on&syncMode=MF0ViewModel&snc=FV5YKZ'
+            % No MATLAB R2024, os containeres das versões desktop e webapp
+            % de um app são os arquivos "cefComponentContainer.html" e 
+            % "webAppsComponentContainer.html", respectivamente.
 
-            % Já o container de uma aplicação webapp, por outro lado, é o arquivo "webAppContainer.html".
-            % 'http://df6963612dtn:9988/services/static/24.1/toolbox/compiler/mdwas/client/session/webAppContainer.html?MDWAS-Connection-Id=5d9ffe85-3824-419b-bedb-1ad678c5ac4b'
+            % >> struct(struct(hFigure).Controller).PeerModelInfo.URL
+            % 'https://127.0.0.1:31517/toolbox/matlab/uitools/uifigureappjs/cefComponentContainer.html?channel=/uifigure/45562d91-459d-4a9e-bafc-4f51c6940e09&websocket=on&syncMode=MF0ViewModel&snc=FV5YKZ' (MATLAB)
+            % 'https://127.0.0.1:31517/toolbox/matlab/uitools/uifigureappjs/cefComponentContainer.html?channel=/uifigure/04fb3193-a2cb-405a-9eac-8e3e38486454&websocket=on&syncMode=MF0ViewModel&snc=JOZ8GB' (MATLAB Runtime)
+            % 'http://df6963612dtn:9988/services/static/24.1/toolbox/compiler/mdwas/client/session/webAppContainer.html?MDWAS-Connection-Id=5d9ffe85-3824-419b-bedb-1ad678c5ac4b'                            (MATLAB WebServer - DEPLOY)
+            % 'https://fiscalizacao.anatel.gov.br/services/static/24.1/toolbox/compiler/mdwas/client/session/webAppContainer.html?MDWAS-Connection-Id=2240b1cf-15c0-4894-9ee0-6b52508f1b44'                  (MATLAB WebServer)
 
-            figureURL = struct(struct(hFigure).Controller).PeerModelInfo.URL;
-            if contains(figureURL, 'webAppContainer.html', 'IgnoreCase', true)
+            % >> struct(struct(struct(hFigure).Controller).PlatformHost).ReleaseHTMLFile
+            % 'cefComponentContainer.html'     (MATLAB, e MATLAB Runtime)
+            % 'webAppsComponentContainer.html' (MATLAB WebServer)
+            
+            htmlAppContainer = struct(struct(struct(hFigure).Controller).PlatformHost).ReleaseHTMLFile;
+            if contains(htmlAppContainer, 'webApp', 'IgnoreCase', true)
                 executionMode = 'webApp';
             else
                 if isdeployed
@@ -78,10 +86,10 @@ classdef (Abstract) appUtil
 
 
         %-----------------------------------------------------------------%
-        function d = modalWindow(hFigure, type, msg, varargin)
+        function dlg = modalWindow(hFigure, type, msg, varargin)
             arguments
                 hFigure matlab.ui.Figure
-                type    {mustBeMember(type, {'error', 'warning', 'info', 'progressdlg'})}
+                type    {mustBeMember(type, {'error', 'warning', 'info', 'progressdlg', 'uiconfirm'})}
                 msg     {mustBeTextScalar} = ''
             end
         
@@ -89,10 +97,11 @@ classdef (Abstract) appUtil
                 varargin
             end
             
-            d = [];
+            dlg = [];
+            msg = textFormatGUI.HTMLParagraph(msg);
+
             switch type
                 case {'error', 'warning', 'info'}
-                    msg = sprintf('<p style="font-size:12px; text-align: justify;">%s</p>', msg);
                     switch type
                         case 'error';   uialert(hFigure, msg, '', 'Interpreter', 'html', 'Icon', 'error',   varargin{:})
                         case 'warning'; uialert(hFigure, msg, '', 'Interpreter', 'html', 'Icon', 'warning', varargin{:})
@@ -101,8 +110,10 @@ classdef (Abstract) appUtil
                     beep
                     
                 case 'progressdlg'
-                    msg = sprintf('<p style="font-size:12px; text-align: justify;">%s</p>', msg);
-                    d = uiprogressdlg(hFigure, 'Indeterminate', 'on', 'Interpreter', 'html', 'Message', msg, varargin{:});
+                    dlg = uiprogressdlg(hFigure, 'Indeterminate', 'on', 'Interpreter', 'html', 'Message', msg, varargin{:});
+
+                case 'uiconfirm'
+                    dlg = uiconfirm(hFigure, msg, '', 'Options', varargin{1}, 'DefaultOption', varargin{2}, 'CancelOption', varargin{3}, 'Interpreter', 'html', 'Icon', 'question');
             end
         end
 
