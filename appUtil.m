@@ -86,10 +86,10 @@ classdef (Abstract) appUtil
 
 
         %-----------------------------------------------------------------%
-        function dlg = modalWindow(hFigure, type, msg, varargin)
+        function varargout = modalWindow(hFigure, type, msg, varargin)
             arguments
                 hFigure matlab.ui.Figure
-                type    {mustBeMember(type, {'error', 'warning', 'info', 'progressdlg', 'uiconfirm'})}
+                type    {mustBeMember(type, {'error', 'warning', 'info', 'progressdlg', 'uiconfirm', 'uigetfile'})}
                 msg     {mustBeTextScalar} = ''
             end
         
@@ -97,8 +97,9 @@ classdef (Abstract) appUtil
                 varargin
             end
             
-            dlg = [];
-            msg = textFormatGUI.HTMLParagraph(msg);
+            if ~isempty(msg)
+                msg = textFormatGUI.HTMLParagraph(msg);
+            end
 
             switch type
                 case {'error', 'warning', 'info'}
@@ -107,13 +108,36 @@ classdef (Abstract) appUtil
                         case 'warning'; uialert(hFigure, msg, '', 'Interpreter', 'html', 'Icon', 'warning', varargin{:})
                         case 'info';    uialert(hFigure, msg, '', 'Interpreter', 'html', 'Icon', 'info',    varargin{:})
                     end
+                    varargout = {[]};
                     beep
                     
                 case 'progressdlg'
                     dlg = uiprogressdlg(hFigure, 'Indeterminate', 'on', 'Interpreter', 'html', 'Message', msg, varargin{:});
+                    varargout{1} = dlg;
 
                 case 'uiconfirm'
-                    dlg = uiconfirm(hFigure, msg, '', 'Options', varargin{1}, 'DefaultOption', varargin{2}, 'CancelOption', varargin{3}, 'Interpreter', 'html', 'Icon', 'question');
+                    userSelection = uiconfirm(hFigure, msg, '', 'Options', varargin{1}, 'DefaultOption', varargin{2}, 'CancelOption', varargin{3}, 'Interpreter', 'html', 'Icon', 'question');
+                    varargout{1} = userSelection;
+
+                case 'uigetfile'
+                    fileFormats       = varargin{1};
+                    lastVisitedFolder = varargin{2};
+                    otherParameters   = {};
+                    if nargin == 6
+                        otherParameters = varargin{3};
+                    end
+
+                    [fileName, fileFolder] = uigetfile(fileFormats, '', lastVisitedFolder, otherParameters{:});
+                    figure(hFigure)
+                    if isequal(fileName, 0)
+                        varargout = {[], [], [], []};
+                        return
+                    end
+
+                    fileFullPath    = fullfile(fileFolder, fileName);
+                    [~, ~, fileExt] = fileparts(fileName);
+
+                    varargout = {fileFullPath, fileFolder, lower(fileExt), fileName};
             end
         end
 
