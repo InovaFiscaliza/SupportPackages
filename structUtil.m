@@ -16,7 +16,6 @@ classdef (Abstract) structUtil
             end
         end
 
-
         %-----------------------------------------------------------------%
         function outStruct = renameFieldNames(inStruct, fieldNameMapping)
             arguments
@@ -36,6 +35,24 @@ classdef (Abstract) structUtil
             end
         end
 
+        %-----------------------------------------------------------------%
+        function outStruct = addingFields(inStruct, refStruct)
+            arguments
+                inStruct  struct
+                refStruct struct
+            end
+
+            outStruct     = inStruct;
+
+            inFieldNames  = fieldnames(inStruct);
+            refFieldNames = fieldnames(refStruct);
+
+            for ii = 1:numel(refFieldNames)
+                if ~ismember(refFieldNames{ii}, inFieldNames)
+                    outStruct.(refFieldNames{ii}) = refStruct.(refFieldNames{ii});
+                end
+            end
+        end
 
         %-----------------------------------------------------------------%
         function outCell = struct2cellWithFields(inStruct)
