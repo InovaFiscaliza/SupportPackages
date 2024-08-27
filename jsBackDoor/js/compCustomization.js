@@ -1,7 +1,16 @@
 function setup(htmlComponent) {
     htmlComponent.addEventListener("delProgressDialog", function() {
         try {
-            window.parent.parent.document.getElementsByClassName("mw-busyIndicator")[0].remove();
+            window.top.document.getElementsByClassName("mw-busyIndicator")[0].remove();
+        } catch (ME) {
+            // console.log(ME)
+        }
+    });
+
+    htmlComponent.addEventListener("getURL", function() {
+        try {
+            let URL = window.top.location.href;
+            htmlComponent.sendEventToMATLAB("getURL", URL);
         } catch (ME) {
             // console.log(ME)
         }
