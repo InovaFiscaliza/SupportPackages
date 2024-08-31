@@ -12,17 +12,16 @@ classdef (Abstract) textFormatGUI
             formattedString = char("[" + strjoin("""" + unformattedString + """", ', ') + "]");
         end
 
-
         %-----------------------------------------------------------------%
-        function formattedString = HTMLParagraph(unformattedString)
+        function formattedString = HTMLParagraph(unformattedString, fontSize)
             arguments
                 unformattedString char
+                fontSize          double = 12
             end
 
             unformattedString = replace(strtrim(unformattedString), newline, '<br>');
-            formattedString   = sprintf('<p style="font-size: 12px; text-align: justify;">%s</p>', unformattedString);
+            formattedString   = sprintf('<p style="font-size: %.0fpx; text-align: justify;">%s</p>', fontSize, unformattedString);
         end
-
 
         %-----------------------------------------------------------------%
         function htmlCode = struct2PrettyPrintList(dataStruct, invalidStatus, fontSize)
@@ -55,8 +54,7 @@ classdef (Abstract) textFormatGUI
                 htmlCode = sprintf('%s\n\n', htmlCode);
             end
             htmlCode = replace(sprintf('%s</p>', strtrim(htmlCode)), newline, '<br>');
-        end
-        
+        end        
         
         %-------------------------------------------------------------------------%
         function htmlCode = structParser(htmlCode, dataStruct, recurrenceLevel, invalidStatus)        
@@ -118,7 +116,37 @@ classdef (Abstract) textFormatGUI
                 end
             end
         end
-        
+
+        %-------------------------------------------------------------------------%
+        function htmlLOG = editionTable2LOG(originalTable, editedTable, columnNames, editionColor, fontSize)
+            arguments
+                originalTable (1,:) table
+                editedTable         table
+                columnNames   (1,:) cell
+                editionColor  (1,7) char = '#c94756'
+                fontSize      (1,1) double = 11
+            end
+
+            if isempty(editedTable) || isequal(originalTable(1,columnNames), editedTable(1,columnNames))
+                htmlLOG = 'Não identificada alteração no registro.';
+            else
+                htmlLOG = {};
+                for ii = 1:numel(columnNames)
+                    try
+                        originalValue = string(originalTable.(columnNames{ii}));
+                        editedValue   = string(editedTable.(columnNames{ii}));
+    
+                        if ~isequal(originalValue, editedValue)
+                            htmlLOG{end+1} = sprintf('<b style="color:%s;">%s:</b> "%s" → "%s"', editionColor, columnNames{ii}, originalValue, editedValue);
+                        end
+                    catch
+                    end
+                end    
+                htmlLOG = strjoin(htmlLOG, '; ');
+            end
+
+            htmlLOG = textFormatGUI.HTMLParagraph(htmlLOG, fontSize);
+        end        
         
         %-------------------------------------------------------------------------%
         function editedValue = array2scalar(rawValue)
@@ -138,15 +166,15 @@ classdef (Abstract) textFormatGUI
             else
                 editedValue = rawValue;
             end
-        end
-        
+        end        
         
         %-------------------------------------------------------------------------%
         function status = isJSON(value)
             status = false;
         
             try
-                if isstruct(jsondecode(value))
+                value = jsondecode(value);
+                if isstruct(value) && isscalar(value)
                     status = true;
                 end
             catch        

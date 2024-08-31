@@ -19,11 +19,10 @@ function setup(htmlComponent) {
     htmlComponent.addEventListener("addKeyDownListener", function(customEvent) {
         let objDataName  = customEvent.Data.componentName.toString();
         let objDataTag   = customEvent.Data.componentDataTag.toString();
+        let keyEvents    = customEvent.Data.keyEvents;
         let objHandle    = window.parent.document.querySelector(`div[data-tag="${objDataTag}"]`).children[0];
 
         objHandle.addEventListener("keydown", function(event) {
-            let keyEvents = ["ArrowUp", "ArrowDown", "Enter", "Escape", "Tab"];
-        
             if (keyEvents.includes(event.key)) {
                 event.preventDefault();
                 event.stopPropagation();
@@ -353,7 +352,7 @@ function setup(htmlComponent) {
                     break;
                     
                 case "matlab.ui.container.GridLayout":
-                    objHandle.style.backgroundColor = objValue;
+                    objHandle.style[objProperty] = objValue;
                     break;
                     
                 case "matlab.ui.container.TabGroup":
