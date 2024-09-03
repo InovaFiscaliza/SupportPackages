@@ -31,17 +31,17 @@ classdef Elevation < handle
         end
 
         %-----------------------------------------------------------------%
-        function [wayPoints3D, msgWarning] = Get(obj, txInfo, rxInfo, nPoints, ForceSearch, Server)
+        function [wayPoints3D, msgWarning] = Get(obj, txObj, rxObj, nPoints, ForceSearch, Server)
             arguments
                 obj
-                txInfo      struct % struct('Latitude', {}, 'Longitude', {})
-                rxInfo      struct % struct('Latitude', {}, 'Longitude', {})
-                nPoints     uint16  {mustBeGreaterThanOrEqual(nPoints, 64), mustBeLessThanOrEqual(nPoints, 1024)} = 256
+                txObj       struct % struct('Latitude', {}, 'Longitude', {})
+                rxObj       struct % struct('Latitude', {}, 'Longitude', {})
+                nPoints     double {mustBeInteger mustBeGreaterThanOrEqual(nPoints, 64), mustBeLessThanOrEqual(nPoints, 1024)} = 256
                 ForceSearch logical = false
                 Server      char {mustBeMember(Server, {'Open-Elevation', 'MathWorks WMS Server'})} = 'Open-Elevation'                
             end
 
-            wayPoints2D = WayPoints2D(obj, txInfo, rxInfo, nPoints);
+            wayPoints2D = WayPoints2D(obj, txObj, rxObj, nPoints);
             if ForceSearch
                 [wayPoints3D, msgWarning] = WebRequest(obj, Server, wayPoints2D);
             
@@ -152,10 +152,14 @@ classdef Elevation < handle
             idxCache = find(cacheValidation1 & cacheValidation2, 1);
 
             if isempty(idxCache)
-                cacheValidation3 = obj.cacheMapping.Lat1  <= Lat1  & ...
-                                   obj.cacheMapping.Lat2  >= Lat2  & ...
-                                   obj.cacheMapping.Long1 <= Long1 & ...
-                                   obj.cacheMapping.Long2 >= Long2;
+                cacheValidation3 = Lat1  >= obj.cacheMapping.Lat1  & ...
+                                   Lat1  <= obj.cacheMapping.Lat2  & ...
+                                   Lat2  >= obj.cacheMapping.Lat1  & ...
+                                   Lat2  <= obj.cacheMapping.Lat2  & ...
+                                   Long1 >= obj.cacheMapping.Long1 & ...
+                                   Long1 <= obj.cacheMapping.Long2 & ...
+                                   Long2 >= obj.cacheMapping.Long1 & ...
+                                   Long2 <= obj.cacheMapping.Long2;
                 idxCache = find(~cacheValidation1 & cacheValidation3, 1);
             end
 
@@ -184,8 +188,8 @@ classdef Elevation < handle
         end
 
         %-----------------------------------------------------------------%
-        function wayPoints2D = WayPoints2D(obj, txInfo, rxInfo, nPoints)
-            wayPoints2D = gcwaypts(txInfo.Latitude, txInfo.Longitude, rxInfo.Latitude, rxInfo.Longitude, nPoints-1);
+        function wayPoints2D = WayPoints2D(obj, txObj, rxObj, nPoints)
+            wayPoints2D = gcwaypts(txObj.Latitude, txObj.Longitude, rxObj.Latitude, rxObj.Longitude, nPoints-1);
         end
 
         %-----------------------------------------------------------------%
