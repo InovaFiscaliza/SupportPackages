@@ -1,21 +1,3 @@
-function htmlSource = jsBackDoorHTMLSource(jsContent)
-
-    arguments
-        jsContent char = 'inline'
-    end
-
-    switch jsContent
-        case 'inline'
-            htmlSource = sprintf(['<!DOCTYPE html>\n' ...
-                                  '<html>\n'          ...
-                                    '<head>\n'        ...
-                                        '<script>\n'  ...
-                                            '%s\n'    ...
-                                        '</script>\n' ...
-                                    '</head>\n'       ...
-                                  '</html>'], fileread(fullfile(ccTools.Path, 'css&js', 'compCustomization.js')));
-
-        case 'external'
-            htmlSource = fullfile(fileparts(fileparts(fileparts(mfilename('fullpath')))), 'jsBackDoor', 'Container.html');
-    end
+function htmlSource = jsBackDoorHTMLSource()
+    htmlSource = fullfile(fileparts(fileparts(fileparts(mfilename('fullpath')))), 'jsBackDoor', 'Container.html');
 end

@@ -86,7 +86,12 @@ classdef (Abstract) textFormatGUI
                         fieldValue = strjoin(string(double(fieldValue)), ', ');
 
                     elseif isdatetime(fieldValue)
-                        fieldValue = datestr(fieldValue, 'dd/mm/yyyy');
+                        if hour(fieldValue) || minute(fieldValue) || second(fieldValue)
+                            fieldFormat = 'dd/mm/yyyy HH:MM:SS';
+                        else
+                            fieldFormat = 'dd/mm/yyyy';
+                        end
+                        fieldValue = datestr(fieldValue, fieldFormat);
             
                     elseif iscellstr(fieldValue) || (isstring(fieldValue) && ~isscalar(fieldValue))
                         fieldValue = strjoin(fieldValue, ', ');

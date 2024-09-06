@@ -344,7 +344,6 @@ function setup(htmlComponent) {
             switch (objClass) {
                 case "matlab.ui.container.ButtonGroup":
                 case "matlab.ui.container.CheckBoxTree":
-                case "matlab.ui.container.Panel":
                 case "matlab.ui.container.Tree":
                 case "matlab.ui.container.Label":
                     objHandle.style[objProperty] = objValue;
@@ -352,6 +351,7 @@ function setup(htmlComponent) {
                     break;
                     
                 case "matlab.ui.container.GridLayout":
+                case "matlab.ui.container.Panel":
                     objHandle.style[objProperty] = objValue;
                     break;
                     

@@ -36,13 +36,15 @@ function compCustomizationV2(jsBackDoor, comp, varargin)
     %---------------------------------------------------------------------%
         case {'matlab.ui.container.ButtonGroup',  ...
               'matlab.ui.container.CheckBoxTree', ...
-              'matlab.ui.container.Panel',        ...
               'matlab.ui.container.Tree'}
             propStruct = InputParser({'backgroundColor', ...
-                                      'borderRadius', 'borderWidth', 'borderColor'}, varargin{:});
+                                      'borderRadius', 'borderWidth', 'borderColor', 'padding'}, varargin{:});
+
+        case 'matlab.ui.container.Panel'
+            propStruct = InputParser({'padding'}, varargin{:});
 
         case 'matlab.ui.container.GridLayout'
-            propStruct = InputParser({'backgroundColor', 'borderRadius'}, varargin{:});
+            propStruct = InputParser({'backgroundColor', 'borderRadius', 'borderBottomLeftRadius', 'borderBottomRightRadius', 'borderTopLeftRadius', 'borderTopRightRadius'}, varargin{:});
 
         case 'matlab.ui.container.TabGroup'
             propStruct = InputParser({'backgroundColor', 'backgroundHeaderColor', 'transparentHeader', ...
@@ -97,26 +99,31 @@ function propStruct = InputParser(propList, varargin)
     for ii = 1:numel(propList)
         switch(propList{ii})
             % Window
-            case 'windowMinSize';         addParameter(p, 'windowMinSize',         d, @(x) ccTools.validators.mustBeNumericArray(x, 2, 'NonNegativeInteger'))
+            case 'windowMinSize';           addParameter(p, 'windowMinSize',           d, @(x) ccTools.validators.mustBeNumericArray(x, 2, 'NonNegativeInteger'))
 
             % BackgroundColor
-            case 'backgroundColor';       addParameter(p, 'backgroundColor',       d)
-            case 'backgroundHeaderColor'; addParameter(p, 'backgroundHeaderColor', d, @(x) ccTools.validators.mustBeColor(x, 'all'))
-            case 'transparentHeader';     addParameter(p, 'transparentHeader',     d, @(x) ccTools.validators.mustBeColor(x, 'all'))
+            case 'backgroundColor';         addParameter(p, 'backgroundColor',         d)
+            case 'backgroundHeaderColor';   addParameter(p, 'backgroundHeaderColor',   d, @(x) ccTools.validators.mustBeColor(x, 'all'))
+            case 'transparentHeader';       addParameter(p, 'transparentHeader',       d, @(x) ccTools.validators.mustBeColor(x, 'all'))
 
             % Border
-            case 'borderRadius';          addParameter(p, 'borderRadius',          d, @(x) ccTools.validators.mustBeCSSProperty(x, 'border-radius'))
-            case 'borderWidth';           addParameter(p, 'borderWidth',           d, @(x) ccTools.validators.mustBeCSSProperty(x, 'border-width'))
-            case 'borderColor';           addParameter(p, 'borderColor',           d, @(x) ccTools.validators.mustBeColor(x, 'all'))
+            case 'padding';                 addParameter(p, 'padding',                 d)
+            case 'borderRadius';            addParameter(p, 'borderRadius',            d, @(x) ccTools.validators.mustBeCSSProperty(x, 'border-radius'))
+            case 'borderBottomLeftRadius';  addParameter(p, 'borderBottomLeftRadius',  d)
+            case 'borderBottomRightRadius'; addParameter(p, 'borderBottomRightRadius', d)
+            case 'borderTopLeftRadius';     addParameter(p, 'borderTopLeftRadius',     d)
+            case 'borderTopRightRadius';    addParameter(p, 'borderTopRightRadius',    d)
+            case 'borderWidth';             addParameter(p, 'borderWidth',             d, @(x) ccTools.validators.mustBeCSSProperty(x, 'border-width'))
+            case 'borderColor';             addParameter(p, 'borderColor',             d, @(x) ccTools.validators.mustBeColor(x, 'all'))
 
             % Font
-            case 'textAlign';             addParameter(p, 'textAlign',             d, @(x) ccTools.validators.mustBeCSSProperty(x, 'text-align'))
-            case 'paddingTop';            addParameter(p, 'paddingTop',            d, @(x) ccTools.validators.mustBeCSSProperty(x, 'paddingTop'))
-            case 'fontFamily';            addParameter(p, 'fontFamily',            d, @(x) ccTools.validators.mustBeCSSProperty(x, 'font-family'))
-            case 'fontStyle';             addParameter(p, 'fontStyle',             d, @(x) ccTools.validators.mustBeCSSProperty(x, 'font-style'))
-            case 'fontWeight';            addParameter(p, 'fontWeight',            d, @(x) ccTools.validators.mustBeCSSProperty(x, 'font-weight'))
-            case 'fontSize';              addParameter(p, 'fontSize',              d, @(x) ccTools.validators.mustBeCSSProperty(x, 'font-size'))
-            case 'color';                 addParameter(p, 'color',                 d, @(x) ccTools.validators.mustBeColor(x, 'all'))
+            case 'textAlign';               addParameter(p, 'textAlign',               d, @(x) ccTools.validators.mustBeCSSProperty(x, 'text-align'))
+            case 'paddingTop';              addParameter(p, 'paddingTop',              d, @(x) ccTools.validators.mustBeCSSProperty(x, 'paddingTop'))
+            case 'fontFamily';              addParameter(p, 'fontFamily',              d, @(x) ccTools.validators.mustBeCSSProperty(x, 'font-family'))
+            case 'fontStyle';               addParameter(p, 'fontStyle',               d, @(x) ccTools.validators.mustBeCSSProperty(x, 'font-style'))
+            case 'fontWeight';              addParameter(p, 'fontWeight',              d, @(x) ccTools.validators.mustBeCSSProperty(x, 'font-weight'))
+            case 'fontSize';                addParameter(p, 'fontSize',                d, @(x) ccTools.validators.mustBeCSSProperty(x, 'font-size'))
+            case 'color';                   addParameter(p, 'color',                   d, @(x) ccTools.validators.mustBeColor(x, 'all'))
         end
     end
             

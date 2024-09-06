@@ -51,7 +51,7 @@ classdef (Abstract) Propagation
             % o que seria esquisito.
 
             yFresnelUp = yLOS + yFresnel;
-            totalObstructionPerBin = yTerrain >= yFresnelUp;
+            totalObstructionPerBin = yTerrain > yFresnelUp;
 
             if any(totalObstructionPerBin)
                 Status = false;
