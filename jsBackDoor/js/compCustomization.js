@@ -392,6 +392,7 @@ function setup(htmlComponent) {
                             for (let ii = 0; ii < elements.length; ii++) {
                                 elements[ii].style[objProperty] = objValue;
                             }
+                            break;
                     }
                 
                 case "matlab.ui.control.Button":
@@ -414,6 +415,7 @@ function setup(htmlComponent) {
                             break;                            
                         default:
                             objHandle.children[0].style[objProperty] = objValue;
+                            break;
                     }
                     
                 case "matlab.ui.control.CheckBox":
@@ -455,6 +457,10 @@ function setup(htmlComponent) {
                             }
                             break;
                     }
+
+                default:
+                    objHandle.style[objProperty] = objValue;
+                    break;
             }
         } catch (ME) {
             // console.log(ME)
