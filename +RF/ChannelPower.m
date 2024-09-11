@@ -1,4 +1,4 @@
-function chPower = ChannelPower(specData, chLimits)
+function [chPower, PowerSpectralDensity] = ChannelPower(specData, chLimits)
 
     FreqStart  = specData.MetaData.FreqStart;
     FreStop    = specData.MetaData.FreqStop;
@@ -31,11 +31,14 @@ function chPower = ChannelPower(specData, chLimits)
     idx2 = round((chLimits(2) - bCoef)/aCoef);
    
     xData_ch = xData(idx1:idx2);
-    yData_ch = yData(idx1:idx2,:);
+    yData_ch = double(yData(idx1:idx2,:));
 
     if idx1 ~= idx2
         chPower = pow2db((trapz(xData_ch, db2pow(yData_ch)/RBW, 1)))';
     else
         chPower = yData_ch';
     end
+
+    chBandWidth = range(chLimits);
+    PowerSpectralDensity = chPower - 10*log10(chBandWidth);
 end

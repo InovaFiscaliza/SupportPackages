@@ -49,8 +49,14 @@ classdef (Abstract) textFormatGUI
             
             htmlCode = sprintf('<p style="font-family: Helvetica, Arial, sans-serif; font-size: %s; text-align: justify; line-height: 12px; margin: 5px;">', fontSize);
             for ii = 1:numel(dataStruct)
-                htmlCode = sprintf('%s<font style="font-size: 10px;"><b>%s</b></font>', htmlCode, dataStruct(ii).group);
-                htmlCode = textFormatGUI.structParser(htmlCode, dataStruct(ii).value, 1, invalidStatus);
+                htmlCode = sprintf('%s<font style="font-size: 10px;">%s</font>', htmlCode, upper(dataStruct(ii).group));
+
+                if isstruct(dataStruct(ii).value)
+                    htmlCode = textFormatGUI.structParser(htmlCode, dataStruct(ii).value, 1, invalidStatus);
+                else
+                    htmlCode = sprintf('%s\n%s', htmlCode, dataStruct(ii).value);
+                end
+
                 htmlCode = sprintf('%s\n\n', htmlCode);
             end
             htmlCode = replace(sprintf('%s</p>', strtrim(htmlCode)), newline, '<br>');
