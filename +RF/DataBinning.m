@@ -2,7 +2,7 @@ classdef (Abstract) DataBinning
     
     methods (Static = true)
         %-----------------------------------------------------------------%
-        function specRawTable = RawTableCreation(specData, idxThread, channelAssigned)
+        function specRawTable = RawTableCreation(specData, idxThread, chAssigned)
             Timestamp = specData(idxThread).Data{1}';
             
             Latitude  = [];
@@ -12,9 +12,9 @@ classdef (Abstract) DataBinning
                 Longitude = [Longitude; specData(idxThread).RelatedFiles.GPS{ii}.Matrix(:,2)];
             end
             
-            FreqCenter   = channelAssigned.FreqCenter * 1e+6;
-            ChannelBW    = channelAssigned.ChannelBW  * 1e+3;
-            ChannelPower = RF.ChannelPower(specData(idxThread), [FreqCenter-ChannelBW/2, FreqCenter+ChannelBW/2]);
+            Frequency    = chAssigned.Frequency * 1e+6; % MHz >> Hz
+            ChannelBW    = chAssigned.ChannelBW * 1e+3; % kHz >> Hz
+            ChannelPower = RF.ChannelPower(specData, idxThread, [Frequency-ChannelBW/2, Frequency+ChannelBW/2]);
 
             specRawTable = table(Timestamp, Latitude, Longitude, ChannelPower);
         end

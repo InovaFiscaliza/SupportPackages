@@ -1,12 +1,12 @@
-function [chPower, PowerSpectralDensity] = ChannelPower(specData, chLimits)
+function [chPower, PowerSpectralDensity] = ChannelPower(specData, idxThread, chLimits)
 
-    FreqStart  = specData.MetaData.FreqStart;
-    FreStop    = specData.MetaData.FreqStop;
-    DataPoints = specData.MetaData.DataPoints;
-    RBW        = specData.MetaData.Resolution;
+    FreqStart  = specData(idxThread).MetaData.FreqStart;
+    FreStop    = specData(idxThread).MetaData.FreqStop;
+    DataPoints = specData(idxThread).MetaData.DataPoints;
+    RBW        = specData(idxThread).MetaData.Resolution;
     
     if (chLimits(1) > FreStop) || (chLimits(2) < FreqStart)
-        error('RF:chPower:OutOfRabge', 'Out of range')
+        error('RF:ChannelPower:OutOfRange', 'Out of range')
     end
 
     chLimits(1) = max(chLimits(1), FreqStart);
@@ -17,13 +17,13 @@ function [chPower, PowerSpectralDensity] = ChannelPower(specData, chLimits)
     bCoef  = FreqStart - aCoef;    
     xData  = linspace(FreqStart, FreStop, DataPoints)';
 
-    switch specData.MetaData.LevelUnit
+    switch specData(idxThread).MetaData.LevelUnit
         case 'dBm'
-            yData = specData.Data{2};
+            yData = specData(idxThread).Data{2};
         case 'dBµV'
-            yData = specData.Data{2} - 107;
+            yData = specData(idxThread).Data{2} - 107;
         otherwise
-            error('RF:chPower:UnexpectedLevelUnit', 'Unexpected level unit')
+            error('RF:ChannelPower:UnexpectedLevelUnit', 'Unexpected level unit')
     end
 
     % Channel Limits (idx)
