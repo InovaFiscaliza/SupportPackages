@@ -116,7 +116,13 @@ classdef (Abstract) appUtil
                     varargout{1} = dlg;
 
                 case 'uiconfirm'
-                    userSelection = uiconfirm(hFigure, msg, '', 'Options', varargin{1}, 'DefaultOption', varargin{2}, 'CancelOption', varargin{3}, 'Interpreter', 'html', 'Icon', 'question');
+                    if isscalar(varargin{1})
+                        Icon = 'warning';
+                    else
+                        Icon = 'question';
+                    end
+
+                    userSelection = uiconfirm(hFigure, msg, '', 'Options', varargin{1}, 'DefaultOption', varargin{2}, 'CancelOption', varargin{3}, 'Interpreter', 'html', 'Icon', Icon);
                     varargout{1} = userSelection;
 
                 case 'uigetfile'
