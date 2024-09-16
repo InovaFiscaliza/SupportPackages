@@ -97,7 +97,16 @@ classdef (Abstract) DataBinning
         
                 idy2 = zeros(height(specRawTable), 1, 'logical');
                 for ii = idx2'
-                    idy2 = or(idy2, inROI(filterSpec.roi(ii).handle, specRawTable.Latitude, specRawTable.Longitude));
+                    hROI = filterSpec.roi(ii).handle;
+                    switch class(hROI)
+                        case {'images.roi.Circle', 'images.roi.Rectangle', 'images.roi.Polygon'}
+                            idy2 = or(idy2, inROI(hROI, specRawTable.Latitude, specRawTable.Longitude));
+                        case 'map.graphics.chart.primitive.Polygon'
+                            hMeasurePoints = geopointshape(specRawTable.Latitude, specRawTable.Longitude);
+                            idy2 = or(idy2, isinterior(hROI.ShapeData, hMeasurePoints));
+                        otherwise
+                            error('RF:DataBinning:Filtering:UnexpectedROI', 'Unexpected ROI')
+                    end
                 end
         
                 idy = and(idy1, idy2);
@@ -112,7 +121,16 @@ classdef (Abstract) DataBinning
             elseif ~isempty(idx2)
                 idy2 = zeros(height(specRawTable), 1, 'logical');
                 for ii = idx2'
-                    idy2 = or(idy2, inROI(filterSpec.roi(ii).handle, specRawTable.Latitude, specRawTable.Longitude));
+                    hROI = filterSpec.roi(ii).handle;
+                    switch class(hROI)
+                        case {'images.roi.Circle', 'images.roi.Rectangle', 'images.roi.Polygon'}
+                            idy2 = or(idy2, inROI(hROI, specRawTable.Latitude, specRawTable.Longitude));
+                        case 'map.graphics.chart.primitive.Polygon'
+                            hMeasurePoints = geopointshape(specRawTable.Latitude, specRawTable.Longitude);
+                            idy2 = or(idy2, isinterior(hROI.ShapeData, hMeasurePoints));
+                        otherwise
+                            error('RF:DataBinning:Filtering:UnexpectedROI', 'Unexpected ROI')
+                    end
                 end
         
                 idy = idy2;                
@@ -124,14 +142,13 @@ classdef (Abstract) DataBinning
         
             specRawTable.Filtered = idy;
         
-            % A tabela com os dados filtrados - specFilteredTable - não copia apenas
-            % a coluna "Timestamp".
+            % A tabela com os dados filtrados - specFilteredTable...
             specFilteredTable     = specRawTable(idy,1:4);
             [specFilteredTable.xyLatitude, ...
              specFilteredTable.xyLongitude] = grn2eqa(specFilteredTable.Latitude, specFilteredTable.Longitude);
         
             if ~isempty(idx1)
-                filterSpec.roi(idx1).handle.Position(2) = height(specFilteredTable);
+                filterSpec.roi(idx1).handle.Position(:,1) = [height(specRawTable); 1];
             end
         end
 
