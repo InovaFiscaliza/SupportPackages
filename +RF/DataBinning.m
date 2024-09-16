@@ -78,7 +78,7 @@ classdef (Abstract) DataBinning
         
             % O processo de filtragem é orientado às interações na GUI, inserindo
             % um FILTRO DE NÍVEL (ROI de linha) e FILTROS GEOGRÁFICOS (ROI circular, 
-            % retangular ou poligonal).
+            % retangular ou poligonal, ou geoshape extraído de arquivo KML).
         
             % (a) Coluna "type"...: "Level" | "Geographic ROI"
             % (b) Coluna "subtype": "Threshold" | "Circle" | "Rectangle" | "Polygon"
@@ -94,46 +94,18 @@ classdef (Abstract) DataBinning
                 for ii = idx1'
                     idy1 = specRawTable.ChannelPower >= filterSpec.roi(ii).handle.Position(3);
                 end
-        
-                idy2 = zeros(height(specRawTable), 1, 'logical');
-                for ii = idx2'
-                    hROI = filterSpec.roi(ii).handle;
-                    switch class(hROI)
-                        case {'images.roi.Circle', 'images.roi.Rectangle', 'images.roi.Polygon'}
-                            idy2 = or(idy2, inROI(hROI, specRawTable.Latitude, specRawTable.Longitude));
-                        case 'map.graphics.chart.primitive.Polygon'
-                            hMeasurePoints = geopointshape(specRawTable.Latitude, specRawTable.Longitude);
-                            idy2 = or(idy2, isinterior(hROI.ShapeData, hMeasurePoints));
-                        otherwise
-                            error('RF:DataBinning:Filtering:UnexpectedROI', 'Unexpected ROI')
-                    end
-                end
-        
-                idy = and(idy1, idy2);
+
+                idy2 = RF.DataBinning.InROI(specRawTable, filterSpec);        
+                idy  = idy1 & idy2;
         
             elseif ~isempty(idx1)
                 for ii = idx1'
                     idy1 = specRawTable.ChannelPower >= filterSpec.roi(ii).handle.Position(3);
-                end
-        
+                end        
                 idy = idy1;
         
             elseif ~isempty(idx2)
-                idy2 = zeros(height(specRawTable), 1, 'logical');
-                for ii = idx2'
-                    hROI = filterSpec.roi(ii).handle;
-                    switch class(hROI)
-                        case {'images.roi.Circle', 'images.roi.Rectangle', 'images.roi.Polygon'}
-                            idy2 = or(idy2, inROI(hROI, specRawTable.Latitude, specRawTable.Longitude));
-                        case 'map.graphics.chart.primitive.Polygon'
-                            hMeasurePoints = geopointshape(specRawTable.Latitude, specRawTable.Longitude);
-                            idy2 = or(idy2, isinterior(hROI.ShapeData, hMeasurePoints));
-                        otherwise
-                            error('RF:DataBinning:Filtering:UnexpectedROI', 'Unexpected ROI')
-                    end
-                end
-        
-                idy = idy2;                
+                idy = RF.DataBinning.InROI(specRawTable, filterSpec);
             end
             
             if ~sum(idy)
@@ -149,6 +121,28 @@ classdef (Abstract) DataBinning
         
             if ~isempty(idx1)
                 filterSpec.roi(idx1).handle.Position(:,1) = [height(specRawTable); 1];
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function inROI = InROI(specRawTable, filterSpec)
+            idxFilter = find(filterSpec.type == "Geographic ROI");
+            inROI = zeros(height(specRawTable), 1, 'logical');
+
+            for ii = idxFilter'
+                hROI = filterSpec.roi(ii).handle;
+
+                switch class(hROI)
+                    case {'images.roi.Circle', 'images.roi.Rectangle', 'images.roi.Polygon'}
+                        inROI = or(inROI, inROI(hROI, specRawTable.Latitude, specRawTable.Longitude));
+
+                    case 'map.graphics.chart.primitive.Polygon'
+                        hMeasurePoints = geopointshape(specRawTable.Latitude, specRawTable.Longitude);
+                        inROI = or(inROI, isinterior(hROI.ShapeData, hMeasurePoints));
+
+                    otherwise
+                        error('RF:DataBinning:InROI:UnexpectedROI', 'Unexpected ROI')
+                end
             end
         end
 
