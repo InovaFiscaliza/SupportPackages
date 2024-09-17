@@ -125,20 +125,20 @@ classdef (Abstract) DataBinning
         end
 
         %-----------------------------------------------------------------%
-        function inROI = InROI(specRawTable, filterSpec)
+        function insideROI = InROI(specRawTable, filterSpec)
             idxFilter = find(filterSpec.type == "Geographic ROI");
-            inROI = zeros(height(specRawTable), 1, 'logical');
+            insideROI = zeros(height(specRawTable), 1, 'logical');
 
             for ii = idxFilter'
                 hROI = filterSpec.roi(ii).handle;
 
                 switch class(hROI)
                     case {'images.roi.Circle', 'images.roi.Rectangle', 'images.roi.Polygon'}
-                        inROI = or(inROI, inROI(hROI, specRawTable.Latitude, specRawTable.Longitude));
+                        insideROI = insideROI | inROI(hROI, specRawTable.Latitude, specRawTable.Longitude);
 
                     case 'map.graphics.chart.primitive.Polygon'
                         hMeasurePoints = geopointshape(specRawTable.Latitude, specRawTable.Longitude);
-                        inROI = or(inROI, isinterior(hROI.ShapeData, hMeasurePoints));
+                        insideROI = insideROI | isinterior(hROI.ShapeData, hMeasurePoints);
 
                     otherwise
                         error('RF:DataBinning:InROI:UnexpectedROI', 'Unexpected ROI')
