@@ -12,6 +12,18 @@ classdef (Abstract) textFormatGUI
             formattedString = char("[" + strjoin("""" + unformattedString + """", ', ') + "]");
         end
 
+
+        %-----------------------------------------------------------------%
+        function formattedString = cellstr2Bullets(unformattedString)
+            % cellstr >> char
+            % {'name1', 'name2', 'name3'} >> sprintf('• name1\n• name2\n• name3'
+            arguments
+                unformattedString cell
+            end
+
+            formattedString = strjoin(strcat('•&thinsp;', unformattedString), '\n');
+        end
+
         %-----------------------------------------------------------------%
         function formattedString = HTMLParagraph(unformattedString, fontSize)
             arguments
@@ -62,7 +74,7 @@ classdef (Abstract) textFormatGUI
             htmlCode = replace(sprintf('%s</p>', strtrim(htmlCode)), newline, '<br>');
         end        
         
-        %-------------------------------------------------------------------------%
+        %-----------------------------------------------------------------%
         function htmlCode = structParser(htmlCode, dataStruct, recurrenceLevel, invalidStatus)        
             % Cada projeto deve ter o seu próprio dicionário english2portuguese
             % na classe "Constants". Caso não tenha, não será feito ajuste
@@ -128,7 +140,7 @@ classdef (Abstract) textFormatGUI
             end
         end
 
-        %-------------------------------------------------------------------------%
+        %-----------------------------------------------------------------%
         function htmlLOG = editionTable2LOG(originalTable, editedTable, columnNames, editionColor, fontSize)
             arguments
                 originalTable (1,:) table
@@ -159,7 +171,7 @@ classdef (Abstract) textFormatGUI
             htmlLOG = textFormatGUI.HTMLParagraph(htmlLOG, fontSize);
         end        
         
-        %-------------------------------------------------------------------------%
+        %-----------------------------------------------------------------%
         function editedValue = array2scalar(rawValue)
             if istable(rawValue)
                 rawValue = table2struct(rawValue);
@@ -179,7 +191,7 @@ classdef (Abstract) textFormatGUI
             end
         end        
         
-        %-------------------------------------------------------------------------%
+        %-----------------------------------------------------------------%
         function status = isJSON(value)
             status = false;
         
