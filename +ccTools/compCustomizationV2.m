@@ -41,7 +41,7 @@ function compCustomizationV2(jsBackDoor, comp, varargin)
                                       'borderRadius', 'borderWidth', 'borderColor', 'padding'}, varargin{:});
 
         case 'matlab.ui.container.Panel'
-            propStruct = InputParser({'padding'}, varargin{:});
+            propStruct = InputParser({'padding', 'backgroundColor'}, varargin{:});
 
         case 'matlab.ui.container.GridLayout'
             propStruct = InputParser({'backgroundColor', 'borderRadius', 'borderBottomLeftRadius', 'borderBottomRightRadius', 'borderTopLeftRadius', 'borderTopRightRadius'}, varargin{:});
