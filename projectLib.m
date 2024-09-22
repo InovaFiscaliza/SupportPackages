@@ -26,7 +26,7 @@ classdef projectLib < dynamicprops
             obj.callingApp = callingApp;
 
             switch class(callingApp)
-                case 'winAppAnalise'
+                case {'winAppAnalise', 'winAppAnalise_exported'}
                     obj.defaultFilePreffix = 'appAnalise';
                     obj.customProperties   = {'peaksTable', 'exceptionList', 'externalFiles'};
 
@@ -46,7 +46,7 @@ classdef projectLib < dynamicprops
                                               'VariableTypes', {'uint8', 'cell', 'cell'}, ...
                                               'VariableNames', {'ID', 'Tag', 'Filename'});
 
-                case 'winSCH'
+                case {'winSCH', 'winSCH_exported'}
                     obj.defaultFilePreffix = 'SCH';
                     obj.customProperties   = {'EntityType', 'EntityID', 'EntityName', 'listOfProducts'};
                     
