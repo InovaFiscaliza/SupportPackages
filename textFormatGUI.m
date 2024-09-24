@@ -2,6 +2,22 @@ classdef (Abstract) textFormatGUI
 
     methods (Static = true)
         %-----------------------------------------------------------------%
+        function htmlSource = jsBackDoorContainer(containerName)
+            arguments
+                containerName char {mustBeMember(containerName, {'jsBackDoor', 'textBox'})}
+            end
+
+            MFilePath = fileparts(mfilename('fullpath'));
+
+            switch containerName
+                case 'jsBackDoor'
+                    htmlSource = fullfile(MFilePath, 'jsBackDoor', 'Container.html');
+                case 'textBox'
+                    htmlSource = fullfile(MFilePath, 'textBox',    'Container.html');
+            end
+        end
+
+        %-----------------------------------------------------------------%
         function formattedString = cellstr2ListWithQuotes(unformattedString)
             % cellstr >> char
             % {'name1', 'name2', 'name3'} >> '["name1", "name2", "name3"]'
@@ -58,10 +74,21 @@ classdef (Abstract) textFormatGUI
             % dataStruct(2) = struct('group', upper(appName),          'value', appVersion.(appName));
             % dataStruct(3) = struct('group', [upper(appName) 'Data'], 'value', struct('releasedData', releasedData, 'numberOfRows', height(rawDataTable), 'numberOfUniqueHom', numel(unique(rawDataTable.("Homologação"))), 'cacheColumns', cacheColumns));
             % dataStruct(4) = struct('group', 'MATLAB',                'value', appVersion.Matlab);
+
+            try
+                d = class.Constants.english2portuguese();
+            catch
+                d = [];
+            end
             
             htmlCode = sprintf('<p style="font-family: Helvetica, Arial, sans-serif; font-size: %s; text-align: justify; line-height: 12px; margin: 5px;">', fontSize);
             for ii = 1:numel(dataStruct)
-                htmlCode = sprintf('%s<font style="font-size: 10px;">%s</font>', htmlCode, upper(dataStruct(ii).group));
+                dataGroup = dataStruct(ii).group;
+                if ~isempty(d) && isKey(d, dataGroup)
+                    dataGroup = d(dataGroup);
+                end
+
+                htmlCode  = sprintf('%s<font style="font-size: 10px;">%s</font>', htmlCode, upper(dataGroup));
 
                 if isstruct(dataStruct(ii).value)
                     htmlCode = textFormatGUI.structParser(htmlCode, dataStruct(ii).value, 1, invalidStatus);
@@ -120,7 +147,10 @@ classdef (Abstract) textFormatGUI
                             fieldValue = textFormatGUI.structParser('', fieldValue, recurrenceLevel+1, invalidStatus);
 
                         elseif textFormatGUI.isJSON(fieldValue) && (recurrenceLevel == 1)
-                            fieldValue = textFormatGUI.structParser('', jsondecode(fieldValue), recurrenceLevel+1, invalidStatus);                
+                            fieldValue = textFormatGUI.structParser('', jsondecode(fieldValue), recurrenceLevel+1, invalidStatus);
+
+                        elseif iscategorical(fieldValue) && (fieldValue == "-1")
+                            continue
                         end
                     end
                     

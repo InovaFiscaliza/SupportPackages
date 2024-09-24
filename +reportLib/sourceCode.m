@@ -36,7 +36,7 @@ classdef (Abstract) sourceCode
                         global ID_img
                         ID_img = ID_img+1;
 
-                        [imgExt, imgString] = reportLib.sourceCode.img2base64(imgFullPath);
+                        [imgExt, imgString] = imageUtil.img2base64(imgFullPath);
                         
                         htmlContent = reportLib.sourceCode.AuxiliarHTMLBlock(htmlContent, 'Introduction', componentIntro);                        
                         htmlContent = sprintf(['%s<figure id="image_%.0f">\n'                                                                             ...
@@ -224,29 +224,6 @@ classdef (Abstract) sourceCode
         %-----------------------------------------------------------------%
         function htmlSeparator = Separator()
             htmlSeparator = reportLib.sourceCode.htmlCreation(struct('Type', 'Footnote',  'Data', struct('Editable', 'false', 'Text', repmat('_', 1, 45), 'Variable', [])));
-        end
-
-
-        %-----------------------------------------------------------------%
-        function [imgExt, imgString] = img2base64(imgFullPath)
-            fileID = -1;
-            while fileID == -1
-                fileID = fopen(imgFullPath, 'r');
-                pause(1)                
-            end
-            
-            [~, ~, imgExt] = fileparts(imgFullPath);
-            switch lower(imgExt)
-                case '.png';            imgExt = 'png';
-                case {'.jpg', '.jpeg'}; imgExt = 'jpeg';
-                case '.gif';            imgExt = 'gif';
-                case '.svg';            imgExt = 'svg+xml';
-                otherwise;              error('report:sourceCode:img2base64', 'Image file format must be "JPEG", "PNG", "GIF", or "SVG".')
-            end
-            
-            imgArray  = fread(fileID, 'uint8=>uint8');
-            imgString = matlab.net.base64encode(imgArray);
-            fclose(fileID);        
         end
 
 

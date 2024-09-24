@@ -16,6 +16,20 @@ function setup(htmlComponent) {
         }
     });
 
+    htmlComponent.addEventListener("getNavigatorBasicInformation", function() {
+        try {
+            let navigatorBasicInformation = {
+                "userAgent": navigator.userAgent,
+                "platform": navigator.userAgentData.platform,
+                "mobile": navigator.userAgentData.mobile
+            }
+
+            htmlComponent.sendEventToMATLAB("getNavigatorBasicInformation", navigatorBasicInformation);
+        } catch (ME) {
+            // console.log(ME)
+        }
+    });
+
     htmlComponent.addEventListener("addKeyDownListener", function(customEvent) {
         let objDataName  = customEvent.Data.componentName.toString();
         let objDataTag   = customEvent.Data.componentDataTag.toString();

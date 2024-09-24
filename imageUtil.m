@@ -1,6 +1,7 @@
 classdef (Abstract) imageUtil
     
     methods (Static = true)
+        %-----------------------------------------------------------------%
         function RGB = getRGB(hPlot, idx)
             arguments
                 hPlot 
@@ -20,23 +21,20 @@ classdef (Abstract) imageUtil
         end
 
         %-----------------------------------------------------------------%
-        % OLHAR SOLUÇÃO DO SCH, ver coisas do CCTOOLs. Migrar tudo pra
-        % aqui.
-        %-----------------------------------------------------------------%
-        function [imgExt, imgString] = ReportGenerator_img2base64(imgFullPath)        
-            fileID = fopen(imgFullPath, 'r');
+        function [imgExt, imgString] = img2base64(imgFullPath)
+            fileID = -1;
             while fileID == -1
-                pause(1)
                 fileID = fopen(imgFullPath, 'r');
+                pause(1)                
             end
             
-            [~,~,imgExt] = fileparts(imgFullPath);
+            [~, ~, imgExt] = fileparts(imgFullPath);
             switch lower(imgExt)
                 case '.png';            imgExt = 'png';
                 case {'.jpg', '.jpeg'}; imgExt = 'jpeg';
                 case '.gif';            imgExt = 'gif';
                 case '.svg';            imgExt = 'svg+xml';
-                otherwise;              error('Image file format must be "JPEG", "PNG", "GIF", or "SVG".')
+                otherwise;              error('imageUtil:img2base64', 'Image file format must be "JPEG", "PNG", "GIF", or "SVG".')
             end
             
             imgArray  = fread(fileID, 'uint8=>uint8');
