@@ -19,23 +19,29 @@ classdef (Abstract) Propagation
         end
 
         %-----------------------------------------------------------------%
-        function [Rn, Dm, d1] = FresnelZone(txSite, rxSite, nPoints)
+        function [Rn, distM, d1, Azimuth] = FresnelZone(txSite, rxSite, nPoints)
             arguments
                 txSite
                 rxSite
                 nPoints = 256
             end
 
-            Dm = RF.Propagation.Distance(txSite, rxSite, 'm');
-            d1 = linspace(0, Dm, nPoints)';
-            d2 = Dm-d1;
+            [distM, Azimuth] = RF.Propagation.Distance(txSite, rxSite, 'm');
+            d1 = linspace(0, distM, nPoints)';
+            d2 = distM-d1;
         
             lambda = physconst('LightSpeed')/txSite.TransmitterFrequency;
-            Rn = sqrt(((d1.*d2)/Dm) * lambda);
+            Rn = sqrt(((d1.*d2)/distM) * lambda);
         end
 
         %-----------------------------------------------------------------%
         function [Distance, Azimuth] = Distance(txSite, rxSite, Unit)
+            arguments
+                txSite
+                rxSite
+                Unit char {mustBeMember(Unit, {'m', 'km'})} = 'km'
+            end
+            
             [distArc, Azimuth] = distance(txSite.Latitude, txSite.Longitude, ...
                                           rxSite.Latitude, rxSite.Longitude);
             Distance = deg2km(distArc);
