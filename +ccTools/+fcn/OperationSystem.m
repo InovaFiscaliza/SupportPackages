@@ -88,7 +88,16 @@ function varargout = OperationSystem(operationType, varargin)
             else % ismac
                 pyFileName = 'python3';
             end
-            varargout{1} = pyFileName; 
-    end
+            varargout{1} = pyFileName;
 
+        case 'openFile'
+            fileName = varargin{1};
+            if ispc
+                winopen(fileName)
+            elseif ismac
+                system(sprintf('open "%s" &', fileName));
+            else
+                system(sprintf('xdg-open "%s" &', fileName));
+            end
+    end
 end

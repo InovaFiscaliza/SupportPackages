@@ -9,16 +9,16 @@ classdef ProgressDialog < handle
 
     properties
         %-----------------------------------------------------------------%
-        Size    = '40px'
-        Color   = '#d95319'
-        Visible = 'hidden'
+        Size         {mustBeA(Size,  {'char', 'string', 'double'})}                    = '40px'
+        Color        {mustBeA(Color, {'char', 'string', 'double', 'single', 'uint8'})} = '#d95319'
+        Visible char {mustBeMember(Visible, {'hidden', 'visible'})}                    = 'hidden'
     end
 
 
     properties (Constant)
         %-----------------------------------------------------------------%
-        UUID    = char(matlab.lang.internal.uuid())
-        Type    = 'ccTools.ProgressDialog'
+        UUID = char(matlab.lang.internal.uuid())
+        Type = 'ccTools.ProgressDialog'
     end
 
 
@@ -51,7 +51,11 @@ classdef ProgressDialog < handle
 
         %-----------------------------------------------------------------%
         function set.Size(obj, value)
-            if ~strcmp(obj.Size, value)
+            if ~isequal(obj.Size, value)
+                if isnumeric(value)
+                    value = sprintf('%dpx', value);
+                end
+
                 obj.Size = value;
                 changeSize(obj)
             end
@@ -60,7 +64,11 @@ classdef ProgressDialog < handle
 
         %-----------------------------------------------------------------%
         function set.Color(obj, value)
-            if ~strcmp(obj.Color, value)
+            if ~isequal(obj.Color, value)
+                if isnumeric(value)
+                    value = rgb2hex(value);
+                end
+
                 obj.Color = value;
                 changeColor(obj)
             end

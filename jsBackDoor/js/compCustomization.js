@@ -123,8 +123,8 @@ function setup(htmlComponent) {
             var w = document.createElement("div");
             w.setAttribute("data-tag", UUID);
             w.innerHTML = `
-                <div class="mwDialog mwAlertDialog mwModalDialog mw-theme-light mwModalDialogFg" style="width: 260px; height: 162px; visibility: visible; z-index: ${zIndex + 4}; color-scheme: light; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);">
-                    <div class="mwDialogTitleBar">
+                <div class="mwDialog mwAlertDialog mwModalDialog mw-theme-light mwModalDialogFg" data-tag="${UUID}_uiCredential" style="width: 260px; height: 162px; visibility: visible; z-index: ${zIndex + 4}; color-scheme: light; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+                    <div class="mwDialogTitleBar mwDraggableDialog" data-tag="${UUID}_PanelTitle">
                         <span class="mwTitleNode"></span>
                         <div class="mwControlNodeBar">
                             <button class="mwCloseNode" data-tag="${UUID}_Close">
@@ -138,14 +138,12 @@ function setup(htmlComponent) {
                         </div>
                     </div>
                     <div class="mwDialogBody" style="height: 49px; padding: 13px 10px 10px 10px;">
-                        <div class="mwIconAndMessageWidget">
-                            <form style="display: grid; grid-template-columns: 60px auto; gap: 5px; font-size: 12px; align-items: center;">
-                                <label style="grid-column: 1;">Usuário:</label>
-                                <input type="text" class="ccToolsEditField" data-tag="${UUID}_Login" style="grid-column: 2; height: 18px;">                                
-                                <label style="grid-column: 1;">Senha:</label>
-                                <input type="password" class="ccToolsEditField" data-tag="${UUID}_Password" style="grid-column: 2; height: 18px;">
-                            </form>
-                        </div>
+                        <form style="display: grid; grid-template-columns: 60px auto; gap: 5px; font-size: 12px; align-items: center;">
+                            <label style="grid-column: 1;">Usuário:</label>
+                            <input type="text" class="ccToolsEditField" data-tag="${UUID}_Login" style="grid-column: 2; height: 18px;">                                
+                            <label style="grid-column: 1;">Senha:</label>
+                            <input type="password" class="ccToolsEditField" data-tag="${UUID}_Password" style="grid-column: 2; height: 18px;">
+                        </form>
                     </div>
                     <div class="mwDialogButtonBar mwNoSplBtn">
                         <div class="mwActionButtonBar">
@@ -159,11 +157,61 @@ function setup(htmlComponent) {
             window.parent.document.body.appendChild(u);
             window.parent.document.body.appendChild(w);
 
+            // Handles
+            let uiCredential = window.parent.document.querySelector(`div[data-tag="${UUID}_uiCredential"]`);
+            let panelTitle   = window.parent.document.querySelector(`div[data-tag="${UUID}_PanelTitle"]`);
+            let btnClose     = window.parent.document.querySelector(`button[data-tag="${UUID}_Close"]`);
+            let loginField   = window.parent.document.querySelector(`input[data-tag="${UUID}_Login"]`);
+            let passField    = window.parent.document.querySelector(`input[data-tag="${UUID}_Password"]`);
+            let btnOK        = window.parent.document.querySelector(`button[data-tag="${UUID}_OK"]`);
+
             // Callbacks
-            let btnClose   = window.parent.document.querySelector(`button[data-tag="${UUID}_Close"]`);
-            let loginField = window.parent.document.querySelector(`input[data-tag="${UUID}_Login"]`);
-            let passField  = window.parent.document.querySelector(`input[data-tag="${UUID}_Password"]`);
-            let btnOK      = window.parent.document.querySelector(`button[data-tag="${UUID}_OK"]`);            
+            let mousePosX, mousePosY;
+            let objNormLeft, objNormTop;
+            panelTitle.addEventListener("mousedown", function(event) {
+                event.preventDefault();
+
+                mousePosX    = event.clientX;
+                mousePosY    = event.clientY;
+
+                objNormLeft  = uiCredential.offsetLeft;
+                objNormTop   = uiCredential.offsetTop;
+                
+                uiCredential.style.cursor = "move";
+                window.parent.document.addEventListener("mousemove", mouseMoveCallback);
+                window.parent.document.addEventListener("mouseup", mouseUpCallback);
+            });
+
+            function mouseMoveCallback(event) {
+                mouseDiffX   = event.clientX - mousePosX;
+                mouseDiffY   = event.clientY - mousePosY;
+
+                objNormLeft += mouseDiffX;
+                objNormTop  += mouseDiffY;
+
+                let minLeft  = uiCredential.offsetWidth/2;
+                let maxLeft  = window.parent.innerWidth  - uiCredential.offsetWidth/2;
+                let minTop   = uiCredential.offsetHeight/2;
+                let maxTop   = window.parent.innerHeight - uiCredential.offsetHeight/2;
+
+                if (objNormLeft < minLeft) objNormLeft = minLeft;
+                if (objNormLeft > maxLeft) objNormLeft = maxLeft;
+
+                if (objNormTop  < minTop)  objNormTop  = minTop;
+                if (objNormTop  > maxTop)  objNormTop  = maxTop;
+                
+                uiCredential.style.left = 100 * objNormLeft/window.parent.innerWidth + "%";
+                uiCredential.style.top  = 100 * objNormTop/window.parent.innerHeight + "%";
+
+                mousePosX    = event.clientX;
+                mousePosY    = event.clientY;
+            }
+
+            function mouseUpCallback(event) {
+                uiCredential.style.cursor = "default";                
+                window.parent.document.removeEventListener("mousemove", mouseMoveCallback);
+                window.parent.document.removeEventListener("mouseup", mouseUpCallback);
+            }
 
             btnClose.addEventListener("click", function() {
                 s.remove();
