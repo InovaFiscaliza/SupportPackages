@@ -20,6 +20,6 @@ function imgFile = base642img(imgString, imgExt, viewFlag)
 
     if viewFlag
         img = imread(imgFile);
-        imshow(img);
+        figure, imshow(img);
     end
 end
