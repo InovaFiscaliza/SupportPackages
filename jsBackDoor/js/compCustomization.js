@@ -93,6 +93,18 @@ function setup(htmlComponent) {
         }
     });
 
+    htmlComponent.addEventListener("panelDialog", function(customEvent) {
+        let objDataTag = customEvent.Data.componentDataTag.toString();
+        let objHandle  = window.parent.document.querySelector(`div[data-tag="${objDataTag}"]`);
+
+        if (objHandle) {
+            objHandle.style.borderRadius             = "5px";
+            objHandle.style.boxShadow                = "0 2px 5px 1px var(--mw-boxShadowColor,#a6a6a6)";
+            objHandle.children[0].style.borderRadius = "5px";
+            objHandle.children[0].style.borderColor  = "var(--mw-borderColor-secondary,#bfbfbf)";
+        }
+    });
+
     htmlComponent.addEventListener("credentialDialog", function(customEvent) {
         try {    
             var UUID = customEvent.Data.UUID.toString();
@@ -117,7 +129,7 @@ function setup(htmlComponent) {
 
             // Background layer
             var u = document.createElement("div");
-            u.style.cssText = "visibility: visible; position: absolute; left: 0%; top: 0%; width: 100%; height: 100%; background-color: rgba(255, 255, 255, 0.65); z-index: " + (zIndex + 3) + ";";
+            u.style.cssText = "visibility: visible; position: absolute; left: 0%; top: 0%; width: 100%; height: 100%; background: var(--mw-backgroundColor-tertiary,#fff); opacity: var(--mw-opacity-dialogUnderlay); z-index: " + (zIndex + 3) + ";";
 
             // Progress dialog
             var w = document.createElement("div");

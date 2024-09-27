@@ -149,6 +149,61 @@ classdef (Abstract) appUtil
 
 
         %-----------------------------------------------------------------%
+        function hPanel = modalDockContainer(jsBackDoor, containerType, varargin)
+            arguments
+                jsBackDoor    (1,1) matlab.ui.control.HTML
+                containerType char {mustBeMember(containerType, {'Popup', 'Popup+CloseButton'})} = 'Popup'
+            end
+
+            arguments (Repeating)
+                varargin
+            end
+
+            switch containerType
+                case 'Popup'
+                    Padding   = varargin{1};
+                    winWidth  = varargin{2};
+                    winHeight = varargin{3};                    
+
+                    hFigure = ancestor(jsBackDoor, 'figure');
+                    hGrid   = uigridlayout(hFigure, ColumnWidth={'1x', winWidth, '1x'}, RowHeight={'1x', winHeight, '1x'}, Padding=Padding*[1,1,1,1], ColumnSpacing=0, RowSpacing=0);
+
+                    hPanel  = uipanel(hGrid, Title='', AutoResizeChildren='off');
+                    hPanel.Layout.Row = 2;
+                    hPanel.Layout.Column = 2;
+                    
+                    drawnow
+                    ccTools.compCustomizationV2(jsBackDoor, hGrid, 'backgroundColor', 'rgba(255,255,255,0.65)')
+
+                    hPanelDataTag = struct(hPanel).Controller.ViewModel.Id;
+                    sendEventToHTMLSource(jsBackDoor, "panelDialog", struct('componentDataTag', hPanelDataTag))                    
+
+                case 'Popup+CloseButton'
+                    Padding = varargin{1};
+                    
+                    hFigure = ancestor(jsBackDoor, 'figure');
+                    hGrid   = uigridlayout(hFigure, ColumnWidth={'1x', 16}, RowHeight={20, '1x'}, Padding=Padding*[1,1,1,1], ColumnSpacing=0, RowSpacing=0);
+
+                    hPanel  = uipanel(hGrid, Title='', AutoResizeChildren='off');
+                    hPanel.Layout.Row = [1,2];
+                    hPanel.Layout.Column = [1,2];                    
+                    
+                    hImage  = uiimage(hGrid, ImageSource='Delete_32Gray.png');
+                    hImage.Layout.Row = 1;
+                    hImage.Layout.Column = 2;
+                    
+                    drawnow
+                    ccTools.compCustomizationV2(jsBackDoor, hGrid, 'backgroundColor', 'rgba(255,255,255,0.65)')
+            end
+
+            hPanel.DeleteFcn = @(~,~)DeleteModalContainer();
+            function DeleteModalContainer()
+                delete(hGrid)
+            end
+        end
+
+
+        %-----------------------------------------------------------------%
         function [projectFolder, programDataFolder] = Path(appName, rootFolder)
             projectFolder     = fullfile(rootFolder, 'Settings');
             programDataFolder = fullfile(ccTools.fcn.OperationSystem('programData'), 'ANATEL', appName);
