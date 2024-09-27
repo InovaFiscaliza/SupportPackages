@@ -129,7 +129,7 @@ function setup(htmlComponent) {
 
             // Background layer
             var u = document.createElement("div");
-            u.style.cssText = "visibility: visible; position: absolute; left: 0%; top: 0%; width: 100%; height: 100%; background: var(--mw-backgroundColor-tertiary,#fff); opacity: var(--mw-opacity-dialogUnderlay); z-index: " + (zIndex + 3) + ";";
+            u.style.cssText = "visibility: visible; position: absolute; left: 0%; top: 0%; width: 100%; height: 100%; background: rgba(255,255,255,0.65); z-index: " + (zIndex + 3) + ";";
 
             // Progress dialog
             var w = document.createElement("div");
