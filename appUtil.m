@@ -12,7 +12,6 @@ classdef (Abstract) appUtil
             warning('off', 'MATLAB:colon:operandsNotRealScalar')            
         end
 
-
         %-----------------------------------------------------------------%
         function executionMode = ExecutionMode(hFigure)
             % No MATLAB R2024, os containeres das versões desktop e webapp
@@ -41,7 +40,6 @@ classdef (Abstract) appUtil
             end
         end
 
-
         %-----------------------------------------------------------------%
         function rootFolder = RootFolder(appName, MFilePath)
             rootFolder = MFilePath;
@@ -54,7 +52,6 @@ classdef (Abstract) appUtil
             end        
         end
 
-
         %-----------------------------------------------------------------%
         function killingMATLABRuntime(executionMode)
             if ismember(executionMode, {'desktopStandaloneApp', 'webapp'})
@@ -63,18 +60,22 @@ classdef (Abstract) appUtil
             end        
         end
 
-
         %-----------------------------------------------------------------%
         function winPosition(hFigure)
+            [xPosition, yPosition] = appUtil.winXYPosition(hFigure.Position(3), hFigure.Position(4));            
+            hFigure.Position(1:2)  = [xPosition, yPosition];
+        end
+
+        %-----------------------------------------------------------------%
+        function [xPosition, yPosition] = winXYPosition(figWidth, figHeight)
             mainMonitor = get(0, 'MonitorPositions');
             [~, idx]    = max(mainMonitor(:,3));
             mainMonitor = mainMonitor(idx,:);
-            
-            hFigure.Position(1:2) = [mainMonitor(1)+round((mainMonitor(3)-hFigure.Position(3))/2), ...
-                                     mainMonitor(2)+round((mainMonitor(4)+48-hFigure.Position(4)-30)/2)];
+
+            xPosition   = mainMonitor(1)+round((mainMonitor(3)-figWidth)/2);
+            yPosition   = mainMonitor(2)+round((mainMonitor(4)+18-figHeight)/2);
         end
-
-
+        
         %-----------------------------------------------------------------%
         function winMinSize(hFigure, minSize)
             try
@@ -83,7 +84,6 @@ classdef (Abstract) appUtil
             catch
             end
         end
-
 
         %-----------------------------------------------------------------%
         function varargout = modalWindow(hFigure, type, msg, varargin)
@@ -147,7 +147,6 @@ classdef (Abstract) appUtil
             end
         end
 
-
         %-----------------------------------------------------------------%
         function hPanel = modalDockContainer(jsBackDoor, containerType, varargin)
             arguments
@@ -176,7 +175,7 @@ classdef (Abstract) appUtil
                     ccTools.compCustomizationV2(jsBackDoor, hGrid, 'backgroundColor', 'rgba(255,255,255,0.65)')
 
                     hPanelDataTag = struct(hPanel).Controller.ViewModel.Id;
-                    sendEventToHTMLSource(jsBackDoor, "panelDialog", struct('componentDataTag', hPanelDataTag))                    
+                    sendEventToHTMLSource(jsBackDoor, "panelDialog", struct('componentDataTag', hPanelDataTag))
 
                 case 'Popup+CloseButton'
                     Padding = varargin{1};
@@ -202,13 +201,11 @@ classdef (Abstract) appUtil
             end
         end
 
-
         %-----------------------------------------------------------------%
         function [projectFolder, programDataFolder] = Path(appName, rootFolder)
             projectFolder     = fullfile(rootFolder, 'Settings');
             programDataFolder = fullfile(ccTools.fcn.OperationSystem('programData'), 'ANATEL', appName);
         end
-
 
         %-----------------------------------------------------------------%
         function userPaths = UserPaths(userPath)
@@ -224,7 +221,6 @@ classdef (Abstract) appUtil
                 userPaths  = {tempFolder};
             end        
         end
-
 
         %-----------------------------------------------------------------%
         function [generalSettings, msgWarning] = generalSettingsLoad(appName, rootFolder, files2Keep)
@@ -299,7 +295,6 @@ classdef (Abstract) appUtil
                 generalSettings.fileFolder.lastVisited = '';
             end
         end
-
 
         %-------------------------------------------------------------------------%
         function generalSettingsSave(appName, rootFolder, appGeneral, executionMode, fields2Remove)

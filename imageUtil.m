@@ -22,6 +22,9 @@ classdef (Abstract) imageUtil
 
         %-----------------------------------------------------------------%
         function [imgExt, imgString] = img2base64(imgFullPath)
+            % Especificação para gerar imagens "Warning.html":
+            % - Consolas, negrito, 10
+
             fileID = -1;
             while fileID == -1
                 fileID = fopen(imgFullPath, 'r');
