@@ -9,7 +9,8 @@ classdef (Abstract) appUtil
             warning('off', 'MATLAB:class:DestructorError')
             warning('off', 'MATLAB:modes:mode:InvalidPropertySet')
             warning('off', 'MATLAB:table:RowsAddedExistingVars')
-            warning('off', 'MATLAB:colon:operandsNotRealScalar')            
+            warning('off', 'MATLAB:colon:operandsNotRealScalar')
+            warning('off', 'MATLAB:opengl:unableToSelectHWGL')
         end
 
         %-----------------------------------------------------------------%
@@ -89,7 +90,7 @@ classdef (Abstract) appUtil
         function varargout = modalWindow(hFigure, type, msg, varargin)
             arguments
                 hFigure matlab.ui.Figure
-                type    {mustBeMember(type, {'error', 'warning', 'info', 'progressdlg', 'uiconfirm', 'uigetfile'})}
+                type    {mustBeMember(type, {'error', 'warning', 'info', 'progressdlg', 'uiconfirm', 'uigetfile', 'uiputfile'})}
                 msg     {mustBeTextScalar} = ''
             end
         
@@ -134,6 +135,22 @@ classdef (Abstract) appUtil
                     end
 
                     [fileName, fileFolder] = uigetfile(fileFormats, '', lastVisitedFolder, otherParameters{:});
+                    figure(hFigure)
+                    if isequal(fileName, 0)
+                        varargout = {[], [], [], []};
+                        return
+                    end
+
+                    fileFullPath    = fullfile(fileFolder, fileName);
+                    [~, ~, fileExt] = fileparts(fileName);
+
+                    varargout = {fileFullPath, fileFolder, lower(fileExt), fileName};
+
+                case 'uiputfile'
+                    nameFormatMap   = varargin{1};
+                    defaultFilename = varargin{2};
+        
+                    [fileName, fileFolder] = uiputfile(nameFormatMap, '', defaultFilename);
                     figure(hFigure)
                     if isequal(fileName, 0)
                         varargout = {[], [], [], []};
