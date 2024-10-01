@@ -92,16 +92,13 @@ function varargout = OperationSystem(operationType, varargin)
 
         case 'openFile'
             fileName = varargin{1};
-            try
-                if ispc
-                    winopen(fileName)
-                elseif ismac
-                    system(sprintf('open "%s" &', fileName));
-                else
-                    system(sprintf('xdg-open "%s" &', fileName));
-                end
-            catch
-                web(['file:///' fileName], '-browser')
+
+            if ispc
+                winopen(fileName)
+            elseif ismac
+                system(sprintf('open "%s" &', fileName));
+            else
+                system(sprintf('xdg-open "%s" &', fileName));
             end
     end
 end
