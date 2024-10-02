@@ -125,7 +125,7 @@ classdef (Abstract) textFormatGUI
                         fieldValue = "-1";
             
                     elseif isnumeric(fieldValue) || islogical(fieldValue)
-                        if (fieldValue == -1) && strcmp(invalidStatus, 'delete')
+                        if isequal(fieldValue, -1) && strcmp(invalidStatus, 'delete')
                             continue
                         end
                         fieldValue = strjoin(string(double(fieldValue)), ', ');
