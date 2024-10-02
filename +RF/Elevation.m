@@ -3,9 +3,9 @@ classdef Elevation < handle
     properties
         %-----------------------------------------------------------------%
         cacheFolder
-        cacheMapping = table('Size',          [0, 7],                                                           ...
-                             'VariableTypes', {'cell', 'double', 'double', 'double', 'double', 'cell', 'cell'}, ...
-                             'VariableNames', {'Server', 'Lat1', 'Long1', 'Lat2', 'Long2', 'File', 'Timestamp'});
+        cacheMapping = table('Size',          [0, 8],                                                                     ...
+                             'VariableTypes', {'cell', 'double', 'double', 'double', 'double', 'double', 'cell', 'cell'}, ...
+                             'VariableNames', {'Server', 'Lat1', 'Long1', 'Lat2', 'Long2', 'Resolution', 'File', 'Timestamp'});
     end
 
 
@@ -91,20 +91,39 @@ classdef Elevation < handle
 
         %-----------------------------------------------------------------%
         function msgWarning = add2Cache(obj, Server, wayPoints2D, varargin)
+            % O campo "Resolution" garante que será coletado em cache a informação
+            % que apresente melhor resolução (no caso, o menor valor), na hipótese 
+            % de ser encontrado mais de um arquivo em cache com informação do perfil 
+            % de terreno do enlace sob análise.
+
             switch Server
                 case 'Open-Elevation'
                     wayPoints3D = varargin{1};
-                    [Lat1, Long1, Lat2, Long2] = Bounds(obj, wayPoints2D);
+                    [Latitude1,  ...
+                     Longitude1, ...
+                     Latitude2,  ...
+                     Longitude2] = Bounds(obj, wayPoints2D);
+                    Distance     = deg2km(distance(Latitude1, Longitude1, Latitude2, Longitude2)) * 1000;
+                    Resolution   = Distance/height(wayPoints3D);
 
                 case 'MathWorks WMS Server'
-                    zMatrix = varargin{1};
+                    zMatrix     = varargin{1};
                     zMatrixReference = varargin{2};
 
-                    Lat1  = zMatrixReference.LatitudeLimits(1);
-                    Lat2  = zMatrixReference.LatitudeLimits(2);
-                    Long1 = zMatrixReference.LongitudeLimits(1);
-                    Long2 = zMatrixReference.LongitudeLimits(2);
-            end
+                    Latitude1   = zMatrixReference.LatitudeLimits(1);
+                    Latitude2   = zMatrixReference.LatitudeLimits(2);
+                    Longitude1  = zMatrixReference.LongitudeLimits(1);
+                    Longitude2  = zMatrixReference.LongitudeLimits(2);
+                    
+                    xDistance   = deg2km(zMatrixReference.RasterExtentInLongitude) * 1000; % Em metros
+                    yDistance   = deg2km(zMatrixReference.RasterExtentInLatitude)  * 1000;
+        
+                    xResolution = xDistance/width(zMatrix);
+                    yResolution = yDistance/height(zMatrix);
+
+                    % Escolhe-se como valor significativo a pior resolução...
+                    Resolution  = max(xResolution, yResolution);
+            end            
 
             fileFolder = fullfile(obj.cacheFolder, Server, datestr(now, 'yyyy.mm'));
             if ~isfolder(fileFolder)
@@ -112,7 +131,7 @@ classdef Elevation < handle
             end
 
             fileName = fullfile(fileFolder, [char(matlab.lang.internal.uuid()) '.mat']);            
-            obj.cacheMapping(end+1, :) = {Server, Lat1, Long1, Lat2, Long2, fileName, datestr(now)};
+            obj.cacheMapping(end+1, :) = {Server, Latitude1, Longitude1, Latitude2, Longitude2, Resolution, fileName, datestr(now)};
 
             try
                 switch Server
@@ -149,7 +168,7 @@ classdef Elevation < handle
                                abs(obj.cacheMapping.Lat2  - Lat2)  <= obj.floatTol & ...
                                abs(obj.cacheMapping.Long1 - Long1) <= obj.floatTol & ...
                                abs(obj.cacheMapping.Long2 - Long2) <= obj.floatTol;            
-            idxCache = find(cacheValidation1 & cacheValidation2, 1);
+            idxCache = find(cacheValidation1 & cacheValidation2);
 
             if isempty(idxCache)
                 cacheValidation3 = Lat1  >= obj.cacheMapping.Lat1  & ...
@@ -160,11 +179,16 @@ classdef Elevation < handle
                                    Long1 <= obj.cacheMapping.Long2 & ...
                                    Long2 >= obj.cacheMapping.Long1 & ...
                                    Long2 <= obj.cacheMapping.Long2;
-                idxCache = find(~cacheValidation1 & cacheValidation3, 1);
+                idxCache = find(~cacheValidation1 & cacheValidation3);
             end
 
             wayPoints3D = [];
             if ~isempty(idxCache)
+                if ~isscalar(idxCache)
+                    [~, idxMin] = min(obj.cacheMapping.Resolution(idxCache));
+                    idxCache = idxCache(idxMin);
+                end
+
                 fileName = obj.cacheMapping.File{idxCache};
 
                 switch obj.cacheMapping.Server{idxCache}
