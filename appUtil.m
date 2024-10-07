@@ -87,6 +87,11 @@ classdef (Abstract) appUtil
         end
 
         %-----------------------------------------------------------------%
+        function htmlSource = jsBackDoorHTMLSource()
+            htmlSource = fullfile(fileparts(mfilename('fullpath')), 'jsBackDoor', 'Container.html');
+        end
+
+        %-----------------------------------------------------------------%
         function varargout = modalWindow(hFigure, type, msg, varargin)
             arguments
                 hFigure matlab.ui.Figure
