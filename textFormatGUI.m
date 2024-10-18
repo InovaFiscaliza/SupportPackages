@@ -146,7 +146,7 @@ classdef (Abstract) textFormatGUI
                             fieldValue = textFormatGUI.array2scalar(fieldValue);
                             fieldValue = textFormatGUI.structParser('', fieldValue, recurrenceLevel+1, invalidStatus);
 
-                        elseif textFormatGUI.isJSON(fieldValue) && (recurrenceLevel == 1)
+                        elseif textFormatGUI.isJSON(fieldValue)
                             fieldValue = textFormatGUI.structParser('', jsondecode(fieldValue), recurrenceLevel+1, invalidStatus);
 
                         elseif iscategorical(fieldValue) && (fieldValue == "-1")
