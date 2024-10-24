@@ -68,15 +68,15 @@ classdef (Abstract) Occupancy
         end
   
         %-----------------------------------------------------------------%
-        function occData = Analysis(specData, occInfo, occTHR)        
+        function occData = Analysis(TimeStamp, Matrix, occInfo, occTHR)
             % Estimativa da quantidade de amostras que poderá ter o fluxo de 
             % ocupação, pré-alocando espaço em memória (para fins de tornar 
             % mais eficiente a operação).
-            Observation = minutes(specData.Data{1}(end) - specData.Data{1}(1));
+            Observation = minutes(TimeStamp(end) - TimeStamp(1));
             occSamples  = ceil(Observation / occInfo.IntegrationTime);
-            occData     = {repmat(datetime(0,0,0), 1, occSamples),                    ...
-                           zeros(specData.MetaData.DataPoints, occSamples, 'single'), ...
-                           zeros(specData.MetaData.DataPoints,          3, 'single')};
+            occData     = {repmat(datetime(0,0,0), 1, occSamples),      ...
+                           zeros(height(Matrix), occSamples, 'single'), ...
+                           zeros(height(Matrix),          3, 'single')};
             
             % O horário de referência engloba a primeira amostra da varredura, 
             % sendo orientado ao tempo de integração. Por exemplo, caso escolhido 
@@ -90,23 +90,23 @@ classdef (Abstract) Occupancy
             % - 30min: [0,30]
             % - 60min: 0
 
-            referenceTime        = specData.Data{1}(1);
+            referenceTime        = TimeStamp(1);
             referenceTime.Minute = referenceTime.Minute - mod(referenceTime.Minute, occInfo.IntegrationTime);
             referenceTime.Second = 0;
 
             % Aqui começa a aferição da ocupação orientada ao BIN...
             occStamp = 1;            
-            while referenceTime < specData.Data{1}(end)
-                [~, idx] = find((specData.Data{1} >= referenceTime) & ...
-                                (specData.Data{1} <  referenceTime + minutes(occInfo.IntegrationTime)));
+            while referenceTime < TimeStamp(end)
+                [~, idx] = find((TimeStamp >= referenceTime) & ...
+                                (TimeStamp <  referenceTime + minutes(occInfo.IntegrationTime)));
                 
                 if ~isempty(idx)
                     switch occInfo.Method
                         case {'Fixed', 'Offset Noise-Envelope'}
-                            occMatrix = single(specData.Data{2}(:, idx) > occTHR);
+                            occMatrix = single(Matrix(:, idx) > occTHR);
 
                         case 'Adaptive Linear'
-                            occMatrix = single(specData.Data{2}(:, idx) > occTHR(idx));
+                            occMatrix = single(Matrix(:, idx) > occTHR(idx));
                     end
                     
                     occData{1}(occStamp)   = referenceTime;
