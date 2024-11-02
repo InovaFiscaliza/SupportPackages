@@ -233,5 +233,14 @@ classdef (Abstract) textFormatGUI
             catch        
             end
         end
+
+        %-----------------------------------------------------------------%
+        function cellArray = struct2cellArray(dataStruct)
+            structFields = fieldnames(dataStruct);
+            structValues = struct2cell(dataStruct);
+            
+            cellMatrix   = [structFields'; structValues'];
+            cellArray    = cellMatrix(:)';
+        end
     end
 end

@@ -92,6 +92,20 @@ classdef (Abstract) appUtil
         end
 
         %-----------------------------------------------------------------%
+        function defaultFileName = DefaultFileName(userPath, Prefix, Suffix)
+            arguments
+                userPath string
+                Prefix   string
+                Suffix   string = ''
+            end
+            defaultFileName = fullfile(userPath, sprintf('%s_%s', Prefix, datestr(now, 'yyyy.mm.dd_THH.MM.SS')));
+
+            if Suffix ~= "-1"
+                defaultFileName = sprintf('%s_%s', defaultFileName, Suffix);
+            end
+        end
+
+        %-----------------------------------------------------------------%
         function varargout = modalWindow(hFigure, type, msg, varargin)
             arguments
                 hFigure matlab.ui.Figure
