@@ -80,11 +80,7 @@ classdef (Abstract) sourceCode
                             if componentData.Settings(jj).Width ~= "auto"
                                 value = sprintf(' style="width: %s;"', componentData.Settings(jj).Width);
                             end
-
-                            columnName = componentData.Settings(jj).ColumnName;
-                            if isempty(columnName)
-                                columnName = Table.Properties.VariableNames{jj};
-                            end
+                            columnName  = Table.Properties.VariableNames{jj};
                     
                             htmlContent = sprintf(['%s\n'                                              ...
                                                  '\t\t\t<th scope="col"%s>\n'                          ...
