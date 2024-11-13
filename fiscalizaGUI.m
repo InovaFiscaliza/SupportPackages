@@ -181,7 +181,8 @@ classdef fiscalizaGUI < fiscalizaLib
 
                     uploads = {};
                     for ii = 1:numel(fileList)
-                        if ~strcmp([fileName fileExt], fileList(ii).name)
+                        [~, ~, fileListExt] = fileparts(fileList(ii).name);
+                        if all(~strcmpi(fileListExt, {'.html', '.mat'}))
                             uploads{end+1} = struct('path', fullfile(fileList(ii).folder, fileList(ii).name), 'filename', fileList(ii).name);
                         end
                     end
@@ -270,7 +271,7 @@ classdef fiscalizaGUI < fiscalizaLib
             end
 
             if ~isempty(obj.hGrid.Children)
-                delete(obj.hGrid.Children)
+                delete(setdiff(obj.hGrid.Children, findobj(obj.hFigure, 'Type', 'uiimage', 'Tag', 'FiscalizaPlaceHolder')))
             end
             set(obj.hGrid, 'RowHeight', {'1x'}, 'ColumnWidth', {'1x'}, 'RowSpacing', 5, 'Scrollable', 'on', 'BackgroundColor', [1,1,1])
 
@@ -883,7 +884,7 @@ classdef fiscalizaGUI < fiscalizaLib
                         end
 
                     case 'GetFileImage'
-                        [fileName, filePath] = uigetfile({'*.html', 'HTML (*.html)'}, '');
+                        [fileName, filePath] = uigetfile({'*.zip',  'ZIP (*.zip)'; '*.html', 'HTML (*.html)'}, '');
                         figure(obj.hFigure)
                         
                         if fileName

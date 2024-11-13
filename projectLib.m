@@ -9,6 +9,7 @@ classdef projectLib < dynamicprops
         documentType {mustBeMember(documentType, {'Relatório de Atividades', 'Relatório de Fiscalização', 'Informe'})} = 'Relatório de Atividades'
         documentModel      = ''
         documentScript     = []
+        generatedFiles     = []
     end
 
     
@@ -75,6 +76,7 @@ classdef projectLib < dynamicprops
             obj.documentType   = 'Relatório de Atividades';
             obj.documentModel  = '';
             obj.documentScript = [];
+            obj.generatedFiles = [];
 
             customPropertiesList = obj.customProperties;
             for ii = 1:numel(customPropertiesList)
@@ -97,7 +99,7 @@ classdef projectLib < dynamicprops
             report_ProjectDataGUI(obj.callingApp)
 
             if isprop(obj.callingApp, 'fiscalizaObj') && ~isempty(obj.callingApp.fiscalizaObj)
-                fiscalizaLibConnection.ResetGUI(obj.callingApp)
+                fiscalizaLibConnection.report_ResetGUI(obj.callingApp)
             end
         end
     end

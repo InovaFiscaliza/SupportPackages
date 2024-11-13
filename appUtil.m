@@ -92,17 +92,19 @@ classdef (Abstract) appUtil
         end
 
         %-----------------------------------------------------------------%
-        function defaultFileName = DefaultFileName(userPath, Prefix, Suffix)
+        function [fileFullName, fileName] = DefaultFileName(filePath, Prefix, Suffix)
             arguments
-                userPath string
+                filePath char
                 Prefix   string
                 Suffix   string = ''
             end
-            defaultFileName = fullfile(userPath, sprintf('%s_%s', Prefix, datestr(now, 'yyyy.mm.dd_THH.MM.SS')));
 
+            fileName = sprintf('%s_%s', Prefix, datestr(now, 'yyyy.mm.dd_THH.MM.SS'));
             if Suffix ~= "-1"
-                defaultFileName = sprintf('%s_%s', defaultFileName, Suffix);
+                fileName = sprintf('%s_%s', fileName, Suffix);
             end
+
+            fileFullName = fullfile(filePath, fileName);
         end
 
         %-----------------------------------------------------------------%
@@ -352,9 +354,6 @@ classdef (Abstract) appUtil
             if ~isempty(fields2Remove)
                 appGeneral = rmfield(appGeneral, fields2Remove);
             end
-            
-            appGeneral.fiscaliza.lastHTMLDocFullPath = '';
-            appGeneral.fiscaliza.lastTableFullPath   = '';
         
             [~, ...
              programDataFolder] = appUtil.Path(appName, rootFolder);
