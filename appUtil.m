@@ -354,6 +354,8 @@ classdef (Abstract) appUtil
             if ~isempty(fields2Remove)
                 appGeneral = rmfield(appGeneral, fields2Remove);
             end
+
+            appGeneral.fileFolder.tempPath = '';
         
             [~, ...
              programDataFolder] = appUtil.Path(appName, rootFolder);
