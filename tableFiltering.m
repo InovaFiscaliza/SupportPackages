@@ -59,6 +59,27 @@ classdef tableFiltering < handle
                 msgWarning = ME.message;
             end
         end
+
+
+        %-----------------------------------------------------------------%
+        function filterList = FilterList(obj, baseName)
+            configValue = {};
+            for ii = 1:height(obj.filterRules)
+                Value = obj.filterRules.Value{ii};
+
+                if isnumeric(Value)
+                    configValue{ii,1} = sprintf('[%s]', strjoin(string(Value), ', '));
+
+                elseif iscellstr(Value)
+                    configValue{ii,1} = textAnalysis.cellstrGUIStyle(Value);
+
+                else %ischar(Value)
+                    configValue{ii,1} = sprintf('"%s"', Value);
+                end
+            end
+            
+            filterList = cellstr(string(baseName) + ".(""" + string(obj.filterRules.Column) + """) " + string(obj.filterRules.Operation) + " " + string(configValue));
+        end
     end
 
 

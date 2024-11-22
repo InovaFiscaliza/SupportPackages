@@ -60,10 +60,14 @@ classdef projectLib < dynamicprops
                     obj.EntityID       = '';
                     obj.EntityName     = '';
                     
-                    obj.listOfProducts = table('Size',          [0, 19],                                                                                                                                                                              ...
-                                               'VariableTypes', {'cell', 'cell', 'cell', 'categorical', 'cell', 'cell', 'logical', 'logical', 'logical', 'double', 'uint32', 'uint32', 'uint32', 'uint32', 'uint32', 'cell', 'cell', 'cell', 'cell'}, ...
+                    obj.listOfProducts = table('Size',          [0, 19],                                                                                                                                                                                                   ...
+                                               'VariableTypes', {'cell', 'cell', 'cell', 'categorical', 'cell', 'cell', 'logical', 'logical', 'logical', 'double', 'uint32', 'uint32', 'uint32', 'uint32', 'uint32', 'categorical', 'categorical', 'categorical', 'cell'}, ...
                                                'VariableNames', {'Homologação', 'Importador', 'Código aduaneiro', 'Tipo', 'Fabricante', 'Modelo', 'RF?', 'Em uso?', 'Interferência?', 'Valor Unit. (R$)', 'Qtd. uso/vendida', 'Qtd. estoque/aduana', 'Qtd. lacradas', 'Qtd. apreendidas', 'Qtd. retidas (RFB)', 'Situação', 'Infração', 'Sanável?', 'Informações adicionais'});
-                    obj.listOfProducts.("Tipo") = categorical(obj.listOfProducts.("Tipo"), varargin{1});
+                    
+                    obj.listOfProducts.("Tipo")     = categorical(obj.listOfProducts.("Tipo"),     varargin{1});
+                    obj.listOfProducts.("Situação") = categorical(obj.listOfProducts.("Situação"), {'Irregular', 'Regular'});
+                    obj.listOfProducts.("Infração") = categorical(obj.listOfProducts.("Infração"), varargin{2});
+                    obj.listOfProducts.("Sanável?") = categorical(obj.listOfProducts.("Sanável?"), {'-1', 'Sim', 'Não'});
             end
         end
 
