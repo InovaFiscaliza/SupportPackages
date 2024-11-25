@@ -41,12 +41,16 @@ classdef (Abstract) textFormatGUI
         end
 
         %-----------------------------------------------------------------%
-        function formattedString = cellstr2TextField(unformattedString)
+        function formattedString = cellstr2TextField(unformattedString, Delimiter)
             % cellstr >> char
             % {'   name1 ', '   ', 'name2', '  name3', ''} >> 'name1 name2 name3'
+            arguments
+                unformattedString
+                Delimiter char = ' '
+            end
             formattedString = strtrim(unformattedString);
             formattedString(cellfun(@(x) isempty(x), formattedString)) = [];
-            formattedString = strjoin(formattedString);
+            formattedString = strjoin(formattedString, Delimiter);
         end
 
         %-----------------------------------------------------------------%
