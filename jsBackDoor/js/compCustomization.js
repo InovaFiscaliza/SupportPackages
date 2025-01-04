@@ -93,6 +93,7 @@ function setup(htmlComponent) {
         }
     });
 
+    // ## MATLAB-STYLE PANEL DIALOG
     htmlComponent.addEventListener("panelDialog", function(customEvent) {
         let objDataTag = customEvent.Data.componentDataTag.toString();
         let objHandle  = window.parent.document.querySelector(`div[data-tag="${objDataTag}"]`);
@@ -105,10 +106,16 @@ function setup(htmlComponent) {
         }
     });
 
-    htmlComponent.addEventListener("credentialDialog", function(customEvent) {
+    // ## CUSTOM FORM
+    htmlComponent.addEventListener("customForm", function(customEvent) {
         try {    
-            var UUID = customEvent.Data.UUID.toString();
-            var zIndex = 1000;
+            let UUID    = customEvent.Data.UUID.toString();
+            let Fields  = customEvent.Data.Fields;
+            Fields      = Array.isArray(Fields) ? Fields : [Fields];
+            let zIndex  = 1000;
+
+            let nFields = Fields.length;
+            let Height  = nFields <= 3 ? 165 : 95+20*nFields+5*(nFields-1);
 
             // Style
             var s = document.createElement("style");
@@ -135,7 +142,7 @@ function setup(htmlComponent) {
             var w = document.createElement("div");
             w.setAttribute("data-tag", UUID);
             w.innerHTML = `
-                <div class="mwDialog mwAlertDialog mwModalDialog mw-theme-light mwModalDialogFg" data-tag="${UUID}_uiCredential" style="width: 260px; height: 162px; visibility: visible; z-index: ${zIndex + 4}; color-scheme: light; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+                <div class="mwDialog mwAlertDialog mwModalDialog mw-theme-light mwModalDialogFg" data-tag="${UUID}_uiCustomForm" style="width: 260px; height: ${Height}px; visibility: visible; z-index: ${zIndex + 4}; color-scheme: light; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);">
                     <div class="mwDialogTitleBar mwDraggableDialog" data-tag="${UUID}_PanelTitle">
                         <span class="mwTitleNode"></span>
                         <div class="mwControlNodeBar">
@@ -149,13 +156,7 @@ function setup(htmlComponent) {
                             </button>
                         </div>
                     </div>
-                    <div class="mwDialogBody" style="height: 49px; padding: 13px 10px 10px 10px;">
-                        <form style="display: grid; grid-template-columns: 60px auto; gap: 5px; font-size: 12px; align-items: center;">
-                            <label style="grid-column: 1;">Usuário:</label>
-                            <input type="text" class="ccToolsEditField" data-tag="${UUID}_Login" style="grid-column: 2; height: 18px;">                                
-                            <label style="grid-column: 1;">Senha:</label>
-                            <input type="password" class="ccToolsEditField" data-tag="${UUID}_Password" style="grid-column: 2; height: 18px;">
-                        </form>
+                    <div id="mwDialogBody" style="padding: 10px; height: ${Height-75}px;">
                     </div>
                     <div class="mwDialogButtonBar mwNoSplBtn">
                         <div class="mwActionButtonBar">
@@ -164,18 +165,39 @@ function setup(htmlComponent) {
                     </div>    
                 </div>
             `;
-            
+
             window.parent.document.head.appendChild(s);
             window.parent.document.body.appendChild(u);
             window.parent.document.body.appendChild(w);
 
+            // Form generation
+            let formContainer = document.createElement("form");
+            formContainer.style.cssText = "display: grid; grid-template-columns: 70px auto; gap: 5px; font-size: 12px; align-items: center;";
+    
+            Fields.forEach(function(field) {
+                // Label
+                let label = document.createElement("label");
+                label.textContent = field.label;
+                formContainer.appendChild(label);
+    
+                // Input field
+                let input = document.createElement("input");
+                input.type = field.type;
+                input.className = "ccToolsEditField";
+                input.style.cssText = "height: 18px;";
+                input.setAttribute("data-tag", UUID + "_" + field.id);
+                formContainer.appendChild(input);
+            });
+    
+            // Append form to the dialog body
+            let dialogBody = window.parent.document.getElementById("mwDialogBody");
+            dialogBody.appendChild(formContainer);
+
             // Handles
-            let uiCredential = window.parent.document.querySelector(`div[data-tag="${UUID}_uiCredential"]`);
-            let panelTitle   = window.parent.document.querySelector(`div[data-tag="${UUID}_PanelTitle"]`);
-            let btnClose     = window.parent.document.querySelector(`button[data-tag="${UUID}_Close"]`);
-            let loginField   = window.parent.document.querySelector(`input[data-tag="${UUID}_Login"]`);
-            let passField    = window.parent.document.querySelector(`input[data-tag="${UUID}_Password"]`);
-            let btnOK        = window.parent.document.querySelector(`button[data-tag="${UUID}_OK"]`);
+            let dialogBox  = window.parent.document.querySelector(`div[data-tag="${UUID}_uiCustomForm"]`);            
+            let panelTitle = window.parent.document.querySelector(`div[data-tag="${UUID}_PanelTitle"]`);            
+            let btnClose   = window.parent.document.querySelector(`button[data-tag="${UUID}_Close"]`);
+            let btnOK      = window.parent.document.querySelector(`button[data-tag="${UUID}_OK"]`);
 
             // Callbacks
             let mousePosX, mousePosY;
@@ -186,10 +208,10 @@ function setup(htmlComponent) {
                 mousePosX    = event.clientX;
                 mousePosY    = event.clientY;
 
-                objNormLeft  = uiCredential.offsetLeft;
-                objNormTop   = uiCredential.offsetTop;
+                objNormLeft  = dialogBox.offsetLeft;
+                objNormTop   = dialogBox.offsetTop;
                 
-                uiCredential.style.cursor = "move";
+                dialogBox.style.cursor = "move";
                 window.parent.document.addEventListener("mousemove", mouseMoveCallback);
                 window.parent.document.addEventListener("mouseup", mouseUpCallback);
             });
@@ -201,10 +223,10 @@ function setup(htmlComponent) {
                 objNormLeft += mouseDiffX;
                 objNormTop  += mouseDiffY;
 
-                let minLeft  = uiCredential.offsetWidth/2;
-                let maxLeft  = window.parent.innerWidth  - uiCredential.offsetWidth/2;
-                let minTop   = uiCredential.offsetHeight/2;
-                let maxTop   = window.parent.innerHeight - uiCredential.offsetHeight/2;
+                let minLeft  = dialogBox.offsetWidth/2;
+                let maxLeft  = window.parent.innerWidth  - dialogBox.offsetWidth/2;
+                let minTop   = dialogBox.offsetHeight/2;
+                let maxTop   = window.parent.innerHeight - dialogBox.offsetHeight/2;
 
                 if (objNormLeft < minLeft) objNormLeft = minLeft;
                 if (objNormLeft > maxLeft) objNormLeft = maxLeft;
@@ -212,15 +234,15 @@ function setup(htmlComponent) {
                 if (objNormTop  < minTop)  objNormTop  = minTop;
                 if (objNormTop  > maxTop)  objNormTop  = maxTop;
                 
-                uiCredential.style.left = 100 * objNormLeft/window.parent.innerWidth + "%";
-                uiCredential.style.top  = 100 * objNormTop/window.parent.innerHeight + "%";
+                dialogBox.style.left = 100 * objNormLeft/window.parent.innerWidth + "%";
+                dialogBox.style.top  = 100 * objNormTop/window.parent.innerHeight + "%";
 
                 mousePosX    = event.clientX;
                 mousePosY    = event.clientY;
             }
 
             function mouseUpCallback(event) {
-                uiCredential.style.cursor = "default";                
+                dialogBox.style.cursor = "default";                
                 window.parent.document.removeEventListener("mousemove", mouseMoveCallback);
                 window.parent.document.removeEventListener("mouseup", mouseUpCallback);
             }
@@ -232,18 +254,21 @@ function setup(htmlComponent) {
             });
 
             btnOK.addEventListener("click", function() {
-                loginField.value = loginField.value.trim();
-                passField.value  = passField.value.trim();
-
-                if (loginField.value == "") {
-                    loginField.focus();
-                    return;
-                } else if (passField.value == "") {
-                    passField.focus();
+                let formData = {};
+                Fields.forEach(function(field) {
+                    let inputField = window.parent.document.querySelector(`input[data-tag="${UUID}_${field.id}"]`);
+                    formData[field.id] = inputField.value.trim();
+                });
+    
+                // Validation
+                let firstEmptyField = Object.keys(formData).find(key => formData[key] === "");
+                if (firstEmptyField) {
+                    let emptyField = window.parent.document.querySelector(`input[data-tag="${UUID}_${firstEmptyField}"]`);
+                    emptyField.focus();
                     return;
                 }
 
-                htmlComponent.sendEventToMATLAB("credentialDialog", {"login": loginField.value, "password": passField.value});
+                htmlComponent.sendEventToMATLAB("customForm", formData);
 
                 s.remove();
                 u.remove();
@@ -270,13 +295,15 @@ function setup(htmlComponent) {
                 }
             });
 
-            loginField.focus();
+            let firstInput = window.parent.document.querySelector(`input[data-tag="${UUID}_${Fields[0].id}"]`);
+            firstInput.focus();
 
         } catch (ME) {
             console.log(ME)
         }
     });
 
+    // ## PROGRESS DIALOG
     htmlComponent.addEventListener("progressDialog", function(customEvent) {
         try {
             var Type = customEvent.Data.Type.toString();

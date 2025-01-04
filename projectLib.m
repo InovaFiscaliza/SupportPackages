@@ -68,6 +68,14 @@ classdef projectLib < dynamicprops
                     obj.listOfProducts.("Situação") = categorical(obj.listOfProducts.("Situação"), {'Irregular', 'Regular'});
                     obj.listOfProducts.("Infração") = categorical(obj.listOfProducts.("Infração"), varargin{2});
                     obj.listOfProducts.("Sanável?") = categorical(obj.listOfProducts.("Sanável?"), {'-1', 'Sim', 'Não'});
+
+                case {'winRNI', 'winRNI_exported'}
+                    obj.defaultFilePreffix = 'monitorRNI';
+                    obj.customProperties   = {'listOfLocations'};
+
+                    addprop(obj, 'listOfLocations');
+                    
+                    obj.listOfLocations = struct('Manual', [], 'Automatic', []);
             end
         end
 
