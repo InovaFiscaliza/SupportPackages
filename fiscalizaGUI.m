@@ -919,7 +919,7 @@ classdef fiscalizaGUI < fiscalizaLib
                         else
                             switch fieldName
                                 case 'entidade_da_inspecao'
-                                    checkCNPJ(fieldValue, false);
+                                    checkCNPJOrCPF(fieldValue, 'NumberValidation');
                                     fieldValue = regexprep(fieldValue, '\D', '');
 
                                 case 'acao_de_risco_a_vida'
