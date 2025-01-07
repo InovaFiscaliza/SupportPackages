@@ -74,7 +74,7 @@ classdef projectLib < dynamicprops
                     obj.customProperties   = {'referenceListOfLocations', 'referenceListOfStates', 'listOfLocations'};
 
                     addprop(obj, 'referenceListOfLocations');
-                    addprop(obj, 'referenceListOfStates')
+                    addprop(obj, 'referenceListOfStates');
                     addprop(obj, 'listOfLocations');
                     
                     obj.listOfLocations = struct('Manual', [], 'Automatic', []);
