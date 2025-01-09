@@ -17,14 +17,18 @@ classdef tabGroupGraphicMenu < handle
 
     properties
         %-----------------------------------------------------------------%
-        MenuGrid      matlab.ui.container.GridLayout
-        TabGroup      matlab.ui.container.TabGroup
-        progressDialog
-
         Components    table = table('Size',          [0, 9],                                                                                                ...
                                     'VariableNames', {'Tag', 'Type', 'File', 'appHandle', 'btnHandle', 'btnStatus', 'btnIcon', 'btnRefHandle', 'tabIndex'}, ...
                                     'VariableTypes', {'string', 'categorical', 'string', 'cell', 'matlab.ui.control.StateButton', 'categorical', 'struct', 'matlab.ui.control.StateButton', 'double'})
+    end
 
+
+    properties (Access = private)
+        %-----------------------------------------------------------------%
+        MenuGrid      matlab.ui.container.GridLayout
+        TabGroup      matlab.ui.container.TabGroup
+        progressDialog
+        executionMode        
         jsCustomFcn
         layoutCustomFcn
     end
@@ -35,6 +39,7 @@ classdef tabGroupGraphicMenu < handle
         function obj = tabGroupGraphicMenu(menuGrid, tabGroup, progressDialog, jsCustomFcn, layoutCustomFcn)
             obj.MenuGrid        = menuGrid;
             obj.TabGroup        = tabGroup;
+            obj.executionMode   = ancestor(menuGrid, 'figure').RunningAppInstance.executionMode;
             obj.progressDialog  = progressDialog;
             obj.jsCustomFcn     = jsCustomFcn;
             obj.layoutCustomFcn = layoutCustomFcn;
@@ -133,6 +138,8 @@ classdef tabGroupGraphicMenu < handle
 
         %-----------------------------------------------------------------%
         function closeModule(obj, auxAppTag, appGeneral)
+            obj.progressDialog.Visible = 'visible';
+
             [~, idx]  = ismember(auxAppTag, obj.Components.Tag);
             btnHandle = obj.Components.btnHandle(idx);
 
@@ -154,6 +161,8 @@ classdef tabGroupGraphicMenu < handle
     
             delete(obj.Components.appHandle{idx})
             obj.Components.appHandle{idx} = [];
+
+            obj.progressDialog.Visible = 'hidden';
         end
 
         %-----------------------------------------------------------------%
@@ -179,8 +188,14 @@ classdef tabGroupGraphicMenu < handle
         %-----------------------------------------------------------------%
         function switchingMode(obj, clickedButton, nonClickedButtons, tabIndex, dockControlWidth)
             changingButtonsIcon(obj, clickedButton, nonClickedButtons)
-            obj.MenuGrid.ColumnWidth(end-1:end) = {dockControlWidth, dockControlWidth};                    
             obj.TabGroup.SelectedTab = obj.TabGroup.Children(tabIndex);
+            
+            switch obj.executionMode
+                case 'webApp'
+                    obj.MenuGrid.ColumnWidth(end-1:end) = {0, dockControlWidth};
+                otherwise
+                    obj.MenuGrid.ColumnWidth(end-1:end) = {dockControlWidth, dockControlWidth};
+            end
         end
 
         %-----------------------------------------------------------------%

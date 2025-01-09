@@ -71,8 +71,9 @@ classdef projectLib < dynamicprops
 
                 case {'winRNI', 'winRNI_exported'}
                     obj.defaultFilePreffix = 'monitorRNI';
-                    obj.customProperties   = {'referenceListOfLocations', 'referenceListOfStates', 'listOfLocations'};
+                    obj.customProperties   = {'rawListOfYears', 'referenceListOfLocations', 'referenceListOfStates', 'listOfLocations'};
 
+                    addprop(obj, 'rawListOfYears');
                     addprop(obj, 'referenceListOfLocations');
                     addprop(obj, 'referenceListOfStates');
                     addprop(obj, 'listOfLocations');
