@@ -31,18 +31,25 @@ function setup(htmlComponent) {
     });
 
     htmlComponent.addEventListener("addKeyDownListener", function(customEvent) {
-        let objDataName  = customEvent.Data.componentName.toString();
-        let objDataTag   = customEvent.Data.componentDataTag.toString();
-        let keyEvents    = customEvent.Data.keyEvents;
-        let objHandle    = window.parent.document.querySelector(`div[data-tag="${objDataTag}"]`).children[0];
+        let objDataName = customEvent.Data.componentName.toString();
+        let objDataTag  = customEvent.Data.componentDataTag.toString();
+        let keyEvents   = customEvent.Data.keyEvents;
 
-        objHandle.addEventListener("keydown", function(event) {
-            if (keyEvents.includes(event.key)) {
-                event.preventDefault();
-                event.stopPropagation();
-                htmlComponent.sendEventToMATLAB(objDataName, event.key);
+        const interval = setInterval(function() {
+            let objHandle = window.parent.document.querySelector(`div[data-tag="${objDataTag}"]`);
+        
+            if (objHandle !== null) {
+                clearInterval(interval);
+        
+                objHandle.addEventListener("keydown", function(event) {
+                    if (keyEvents.includes(event.key)) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        htmlComponent.sendEventToMATLAB(objDataName, event.key);
+                    }
+                });
             }
-        });
+        }, 100);
     });
 
     htmlComponent.addEventListener("setFocus", function(customEvent) {
@@ -299,7 +306,7 @@ function setup(htmlComponent) {
             firstInput.focus();
 
         } catch (ME) {
-            console.log(ME)
+            // console.log(ME)
         }
     });
 
@@ -433,138 +440,141 @@ function setup(htmlComponent) {
         let objDataTag  = customEvent.Data.DataTag.toString();
         let objProperty = customEvent.Data.Property.toString();
         let objValue    = customEvent.Data.Value.toString();
-        let objHandle   = window.parent.document.querySelector(`div[data-tag="${objDataTag}"]`);
+
+        const interval = setInterval(function() {
+            let objHandle = window.parent.document.querySelector(`div[data-tag="${objDataTag}"]`);
         
-        if (!objHandle) {
-            return;
-        }
+            if (objHandle !== null) {
+                clearInterval(interval);
         
-        try {
-            let elements = null;
-
-            switch (objClass) {
-                case "matlab.ui.container.ButtonGroup":
-                case "matlab.ui.container.CheckBoxTree":
-                case "matlab.ui.container.Tree":
-                case "matlab.ui.container.Label":
-                    objHandle.style[objProperty] = objValue;
-                    objHandle.children[0].style[objProperty] = objValue;
-                    break;
-                    
-                case "matlab.ui.container.GridLayout":
-                case "matlab.ui.container.Panel":
-                    objHandle.style[objProperty] = objValue;
-                    break;
-                    
-                case "matlab.ui.container.TabGroup":
-                    switch (objProperty) {
-                        case "backgroundColor":
-                            // Pendente!
-                            return;                         
-                        case "backgroundHeaderColor":
-                            objHandle.style.backgroundColor = "transparent";
-                            objHandle.children[1].style.backgroundColor = objValue;
-                            break;
-                        case "transparentHeader":
-                            objHandle.style.border = "none";
-                            objHandle.style.backgroundColor = "transparent";
-                            
-                            objHandle.children[1].style.border = "none";
-                            objHandle.children[1].style.backgroundColor = "transparent";                            
-
-                            var childElements = objHandle.children[1].querySelectorAll("*");
-
-                            childElements.forEach(function(child) {
-                                child.style.border = "none";
-                                child.style.backgroundColor = "transparent";                                
-                            });
-                            break;
-                        case "borderRadius":
-                        case "borderWidth":
-                        case "borderColor":
+                try {
+                    let elements = null;
+        
+                    switch (objClass) {
+                        case "matlab.ui.container.ButtonGroup":
+                        case "matlab.ui.container.CheckBoxTree":
+                        case "matlab.ui.container.Tree":
+                        case "matlab.ui.container.Label":
                             objHandle.style[objProperty] = objValue;
-                            break;
-                        case "fontFamily":
-                        case "fontStyle":
-                        case "fontWeight":
-                        case "fontSize":
-                        case "color":
-                            elements = objHandle.getElementsByClassName("mwTabLabel");                            
-                            for (let ii = 0; ii < elements.length; ii++) {
-                                elements[ii].style[objProperty] = objValue;
-                            }
-                            break;
-                    }
-                
-                case "matlab.ui.control.Button":
-                case "matlab.ui.control.DropDown":
-                case "matlab.ui.control.EditField":
-                case "matlab.ui.control.ListBox":
-                case "matlab.ui.control.NumericEditField":
-                case "matlab.ui.control.StateButton":
-                    objHandle.children[0].style[objProperty] = objValue;
-                    break;
-                    
-                case "matlab.ui.control.TextArea":
-                    switch (objProperty) {
-                        case "backgroundColor":
-                            objHandle.style.backgroundColor = "transparent";
-                            objHandle.children[0].style.backgroundColor = objValue;
-                            break;                            
-                        case "textAlign":
-                            objHandle.getElementsByTagName("textarea")[0].style.textAlign = objValue;
-                            break;                            
-                        default:
                             objHandle.children[0].style[objProperty] = objValue;
                             break;
-                    }
-                    
-                case "matlab.ui.control.CheckBox":
-                    objHandle.getElementsByClassName("mwCheckBoxRadioIconNode")[0].style[objProperty] = objValue;
-                    break;
-
-                case "matlab.ui.control.Table":
-                    switch (objProperty) {
-                        case "backgroundColor":
-                            objHandle.children[0].style.backgroundColor = "transparent";
-                            objHandle.children[0].children[0].style.backgroundColor = objValue;
-                            break;    
-                        case "backgroundHeaderColor":
-                            objHandle.children[0].children[0].children[0].style.backgroundColor = objValue;
-                            break;    
-                        case "borderRadius":
-                            objHandle.children[0].style.borderRadius = objValue;
-                            objHandle.children[0].children[0].style.borderRadius = objValue;
-                            break;    
-                        case "borderWidth":
-                        case "borderColor":
-                            objHandle.children[0].children[0].style[objProperty] = objValue;
+                            
+                        case "matlab.ui.container.GridLayout":
+                        case "matlab.ui.container.Panel":
+                            objHandle.style[objProperty] = objValue;
                             break;
-                        case "textAlign":
-                        case "paddingTop":
-                            elements = objHandle.getElementsByClassName("mw-table-header-row")[0].children;                      
-                            for (let ii = 0; ii < elements.length; ii++) {
-                                elements[ii].style[objProperty] = objValue;
+                            
+                        case "matlab.ui.container.TabGroup":
+                            switch (objProperty) {
+                                case "backgroundColor":
+                                    // Pendente!
+                                    return;                         
+                                case "backgroundHeaderColor":
+                                    objHandle.style.backgroundColor = "transparent";
+                                    objHandle.children[1].style.backgroundColor = objValue;
+                                    break;
+                                case "transparentHeader":
+                                    objHandle.style.border = "none";
+                                    objHandle.style.backgroundColor = "transparent";
+                                    
+                                    objHandle.children[1].style.border = "none";
+                                    objHandle.children[1].style.backgroundColor = "transparent";                            
+        
+                                    var childElements = objHandle.children[1].querySelectorAll("*");
+        
+                                    childElements.forEach(function(child) {
+                                        child.style.border = "none";
+                                        child.style.backgroundColor = "transparent";                                
+                                    });
+                                    break;
+                                case "borderRadius":
+                                case "borderWidth":
+                                case "borderColor":
+                                    objHandle.style[objProperty] = objValue;
+                                    break;
+                                case "fontFamily":
+                                case "fontStyle":
+                                case "fontWeight":
+                                case "fontSize":
+                                case "color":
+                                    elements = objHandle.getElementsByClassName("mwTabLabel");                            
+                                    for (let ii = 0; ii < elements.length; ii++) {
+                                        elements[ii].style[objProperty] = objValue;
+                                    }
+                                    break;
                             }
+                        
+                        case "matlab.ui.control.Button":
+                        case "matlab.ui.control.DropDown":
+                        case "matlab.ui.control.EditField":
+                        case "matlab.ui.control.ListBox":
+                        case "matlab.ui.control.NumericEditField":
+                        case "matlab.ui.control.StateButton":
+                            objHandle.children[0].style[objProperty] = objValue;
                             break;
-                        case "fontFamily":
-                        case "fontStyle":
-                        case "fontWeight":
-                        case "fontSize":
-                        case "color":
-                            elements = objHandle.getElementsByClassName("mw-default-header-cell");
-                            for (let ii = 0; ii < elements.length; ii++) {
-                                elements[ii].style[objProperty] = objValue;
+                            
+                        case "matlab.ui.control.TextArea":
+                            switch (objProperty) {
+                                case "backgroundColor":
+                                    objHandle.style.backgroundColor = "transparent";
+                                    objHandle.children[0].style.backgroundColor = objValue;
+                                    break;                            
+                                case "textAlign":
+                                    objHandle.getElementsByTagName("textarea")[0].style.textAlign = objValue;
+                                    break;                            
+                                default:
+                                    objHandle.children[0].style[objProperty] = objValue;
+                                    break;
                             }
+                            
+                        case "matlab.ui.control.CheckBox":
+                            objHandle.getElementsByClassName("mwCheckBoxRadioIconNode")[0].style[objProperty] = objValue;
+                            break;
+        
+                        case "matlab.ui.control.Table":
+                            switch (objProperty) {
+                                case "backgroundColor":
+                                    objHandle.children[0].style.backgroundColor = "transparent";
+                                    objHandle.children[0].children[0].style.backgroundColor = objValue;
+                                    break;    
+                                case "backgroundHeaderColor":
+                                    objHandle.children[0].children[0].children[0].style.backgroundColor = objValue;
+                                    break;    
+                                case "borderRadius":
+                                    objHandle.children[0].style.borderRadius = objValue;
+                                    objHandle.children[0].children[0].style.borderRadius = objValue;
+                                    break;    
+                                case "borderWidth":
+                                case "borderColor":
+                                    objHandle.children[0].children[0].style[objProperty] = objValue;
+                                    break;
+                                case "textAlign":
+                                case "paddingTop":
+                                    elements = objHandle.getElementsByClassName("mw-table-header-row")[0].children;                      
+                                    for (let ii = 0; ii < elements.length; ii++) {
+                                        elements[ii].style[objProperty] = objValue;
+                                    }
+                                    break;
+                                case "fontFamily":
+                                case "fontStyle":
+                                case "fontWeight":
+                                case "fontSize":
+                                case "color":
+                                    elements = objHandle.getElementsByClassName("mw-default-header-cell");
+                                    for (let ii = 0; ii < elements.length; ii++) {
+                                        elements[ii].style[objProperty] = objValue;
+                                    }
+                                    break;
+                            }
+        
+                        default:
+                            objHandle.style[objProperty] = objValue;
                             break;
                     }
-
-                default:
-                    objHandle.style[objProperty] = objValue;
-                    break;
+                } catch (ME) {
+                    // console.log(ME)
+                }
             }
-        } catch (ME) {
-            // console.log(ME)
-        }
+        }, 100);
     });
 }
