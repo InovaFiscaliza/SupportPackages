@@ -115,7 +115,7 @@ function setup(htmlComponent) {
 
     // ## CUSTOM FORM
     htmlComponent.addEventListener("customForm", function(customEvent) {
-        try {    
+        try {
             let UUID    = customEvent.Data.UUID.toString();
             let Fields  = customEvent.Data.Fields;
             Fields      = Array.isArray(Fields) ? Fields : [Fields];
@@ -312,127 +312,145 @@ function setup(htmlComponent) {
 
     // ## PROGRESS DIALOG
     htmlComponent.addEventListener("progressDialog", function(customEvent) {
-        try {
-            var Type = customEvent.Data.Type.toString();
-            var UUID = customEvent.Data.UUID.toString();
-    
-            switch (Type) {
-                case "changeVisibility":
-                    var Visible  = customEvent.Data.Visibility.toString();
-                    var elements = window.parent.document.querySelectorAll(`div[data-tag="${UUID}"]`);                    
-                    elements.forEach(element => {
-                        element.style.visibility = Visible;
-                    });
-                    break;
+        const Type = customEvent.Data.Type.toString();
+        const UUID = customEvent.Data.UUID.toString();
 
-                case "changeColor":
-                    var newColor = customEvent.Data.Color.toString();
-                    window.parent.document.documentElement.style.setProperty("--sk-color", newColor);
-                    break;
+        let objHandle = window.parent.document.body.querySelectorAll(`div[data-tag="${UUID}"]`);
+        if ((Type === "Creation") || (objHandle.length === 0)) {
+            const zIndex = 1000;
 
-                case "changeSize":
-                    var newSize  = customEvent.Data.Size.toString();
-                    window.parent.document.documentElement.style.setProperty("--sk-size", newSize);
-                    break;
+            if ("Size" in customEvent.Data) {
+                Size = customEvent.Data.Size.toString();
+            } else if (sessionStorage.getItem("ProgressDialog") !== null) {
+                Size = JSON.parse(sessionStorage.getItem("ProgressDialog")).Size;
+            } else {
+                Size = "40px";
+            }
 
-                case "Creation":
-                    var zIndex = 1000;
-                    var Size   = customEvent.Data.Size.toString();
-                    var Color  = customEvent.Data.Color.toString();
+            if ("Color" in customEvent.Data) {
+                Color = customEvent.Data.Color.toString();
+            } else if (sessionStorage.getItem("ProgressDialog") !== null) {
+                Color = JSON.parse(sessionStorage.getItem("ProgressDialog")).Color;
+            } else {
+                Color = "#d95319";
+            }
 
-                    // Style
-                    var s = document.createElement("style");
-                    s.type = "text/css";                    
-                    s.innerHTML = `
-                        :root {
-                            --sk-size: ${Size};
-                            --sk-color: ${Color};
-                        }
-                        
-                        .sk-chase {
-                            width: var(--sk-size);
-                            height: var(--sk-size);
-                            position: relative;
-                            animation: sk-chase 2.5s infinite linear both; 
-                        }
-                        
-                        .sk-chase-dot {
-                            width: 100%;
-                            height: 100%;
-                            position: absolute;
-                            left: 0;
-                            top: 0; 
-                            animation: sk-chase-dot 2.0s infinite ease-in-out both; 
-                        }
-                        
-                        .sk-chase-dot:before {
-                            content: "";
-                            display: block;
-                            width: 25%;
-                            height: 25%;
-                            background-color: var(--sk-color);
-                            border-radius: 100%;
-                            animation: sk-chase-dot-before 2.0s infinite ease-in-out both; 
-                        }
-                        
-                        .sk-chase-dot:nth-child(1) { animation-delay: -1.1s; }
-                        .sk-chase-dot:nth-child(2) { animation-delay: -1.0s; }
-                        .sk-chase-dot:nth-child(3) { animation-delay: -0.9s; }
-                        .sk-chase-dot:nth-child(4) { animation-delay: -0.8s; }
-                        .sk-chase-dot:nth-child(5) { animation-delay: -0.7s; }
-                        .sk-chase-dot:nth-child(6) { animation-delay: -0.6s; }
-                        .sk-chase-dot:nth-child(1):before { animation-delay: -1.1s; }
-                        .sk-chase-dot:nth-child(2):before { animation-delay: -1.0s; }
-                        .sk-chase-dot:nth-child(3):before { animation-delay: -0.9s; }
-                        .sk-chase-dot:nth-child(4):before { animation-delay: -0.8s; }
-                        .sk-chase-dot:nth-child(5):before { animation-delay: -0.7s; }
-                        .sk-chase-dot:nth-child(6):before { animation-delay: -0.6s; }
-                        
-                        @keyframes sk-chase {
-                            100% { transform: rotate(360deg); } 
-                        }
-                        
-                        @keyframes sk-chase-dot {
-                            80%, 100% { transform: rotate(360deg); } 
-                        }
-                        
-                        @keyframes sk-chase-dot-before {
-                            50% {
-                                transform: scale(0.4); 
-                            } 100%, 0% {
-                                transform: scale(1.0); 
-                            } 
-                        }
-                    `;
+            if (sessionStorage.getItem("ProgressDialog") === null) {
+                sessionStorage.setItem("ProgressDialog", JSON.stringify({"Type": Type, "UUID": UUID, "Size": Size, "Color": Color}))
+            }
 
-                    // Background layer
-                    var u = document.createElement("div");
-                    u.setAttribute("data-tag", UUID);
-                    u.style.cssText = "visibility: hidden; position: absolute; left: 0%; top: 0%; width: 100%; height: 100%; background-color: rgba(255, 255, 255, 0.65); z-index: " + (zIndex + 1) + ";";
-
-                    // Progress dialog
-                    var w = document.createElement("div");
-                    w.setAttribute("data-tag", UUID);
-                    w.style.cssText = "visibility: hidden; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: " + (zIndex + 2) + ";";
-                    w.innerHTML     = `
-                        <div class="sk-chase">
-                            <div class="sk-chase-dot"></div>
-                            <div class="sk-chase-dot"></div>
-                            <div class="sk-chase-dot"></div>
-                            <div class="sk-chase-dot"></div>
-                            <div class="sk-chase-dot"></div>
-                            <div class="sk-chase-dot"></div>
-                        </div>
-                    `;
+            try {
+                // Style
+                var s = document.createElement("style");
+                s.type = "text/css";                    
+                s.innerHTML = `
+                    :root {
+                        --sk-size: ${Size};
+                        --sk-color: ${Color};
+                    }
                     
-                    window.parent.document.head.appendChild(s);
-                    window.parent.document.body.appendChild(u);
-                    window.parent.document.body.appendChild(w);
-                    break;
-            };
-        } catch (ME) {
-            // console.log(ME)
+                    .sk-chase {
+                        width: var(--sk-size);
+                        height: var(--sk-size);
+                        position: relative;
+                        animation: sk-chase 2.5s infinite linear both; 
+                    }
+                    
+                    .sk-chase-dot {
+                        width: 100%;
+                        height: 100%;
+                        position: absolute;
+                        left: 0;
+                        top: 0; 
+                        animation: sk-chase-dot 2.0s infinite ease-in-out both; 
+                    }
+                    
+                    .sk-chase-dot:before {
+                        content: "";
+                        display: block;
+                        width: 25%;
+                        height: 25%;
+                        background-color: var(--sk-color);
+                        border-radius: 100%;
+                        animation: sk-chase-dot-before 2.0s infinite ease-in-out both; 
+                    }
+                    
+                    .sk-chase-dot:nth-child(1) { animation-delay: -1.1s; }
+                    .sk-chase-dot:nth-child(2) { animation-delay: -1.0s; }
+                    .sk-chase-dot:nth-child(3) { animation-delay: -0.9s; }
+                    .sk-chase-dot:nth-child(4) { animation-delay: -0.8s; }
+                    .sk-chase-dot:nth-child(5) { animation-delay: -0.7s; }
+                    .sk-chase-dot:nth-child(6) { animation-delay: -0.6s; }
+                    .sk-chase-dot:nth-child(1):before { animation-delay: -1.1s; }
+                    .sk-chase-dot:nth-child(2):before { animation-delay: -1.0s; }
+                    .sk-chase-dot:nth-child(3):before { animation-delay: -0.9s; }
+                    .sk-chase-dot:nth-child(4):before { animation-delay: -0.8s; }
+                    .sk-chase-dot:nth-child(5):before { animation-delay: -0.7s; }
+                    .sk-chase-dot:nth-child(6):before { animation-delay: -0.6s; }
+                    
+                    @keyframes sk-chase {
+                        100% { transform: rotate(360deg); } 
+                    }
+                    
+                    @keyframes sk-chase-dot {
+                        80%, 100% { transform: rotate(360deg); } 
+                    }
+                    
+                    @keyframes sk-chase-dot-before {
+                        50% {
+                            transform: scale(0.4); 
+                        } 100%, 0% {
+                            transform: scale(1.0); 
+                        } 
+                    }
+                `;
+        
+                // Background layer
+                var u = document.createElement("div");
+                u.setAttribute("data-tag", UUID);
+                u.style.cssText = "visibility: hidden; position: absolute; left: 0%; top: 0%; width: 100%; height: 100%; background-color: rgba(255, 255, 255, 0.65); z-index: " + (zIndex + 1) + ";";
+        
+                // Progress dialog
+                var w = document.createElement("div");
+                w.setAttribute("data-tag", UUID);
+                w.style.cssText = "visibility: hidden; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: " + (zIndex + 2) + ";";
+                w.innerHTML     = `
+                    <div class="sk-chase">
+                        <div class="sk-chase-dot"></div>
+                        <div class="sk-chase-dot"></div>
+                        <div class="sk-chase-dot"></div>
+                        <div class="sk-chase-dot"></div>
+                        <div class="sk-chase-dot"></div>
+                        <div class="sk-chase-dot"></div>
+                    </div>
+                `;
+                
+                window.parent.document.head.appendChild(s);
+                window.parent.document.body.appendChild(u);
+                window.parent.document.body.appendChild(w);
+            } catch (ME) {
+                console.log(ME)
+            }
         }
+        
+        switch (Type) {
+            case "changeVisibility":
+                const newVisibility = customEvent.Data.Visibility.toString();
+                objHandle.forEach(element => {
+                    element.style.visibility = newVisibility;
+                });
+                break;
+
+            case "changeColor":
+                const newColor = customEvent.Data.Color.toString();
+                window.parent.document.documentElement.style.setProperty("--sk-color", newColor);
+                break;
+
+            case "changeSize":
+                const newSize = customEvent.Data.Size.toString();
+                window.parent.document.documentElement.style.setProperty("--sk-size", newSize);
+                break;
+        };
     });
         
     htmlComponent.addEventListener("compCustomization", function(customEvent) {
