@@ -18,14 +18,21 @@ classdef (Abstract) textFormatGUI
         end
 
         %-----------------------------------------------------------------%
-        function formattedString = cellstr2ListWithQuotes(unformattedString)
+        function formattedString = cellstr2ListWithQuotes(unformattedString, bracketType)
             % cellstr >> char
             % {'name1', 'name2', 'name3'} >> '["name1", "name2", "name3"]'
             arguments
                 unformattedString string
+                bracketType char {mustBeMember(bracketType, {'round', 'square', 'curly', 'none'})} = 'square'
             end
-            
-            formattedString = char("[" + strjoin("""" + unformattedString + """", ', ') + "]");
+
+            formattedString = char(strjoin("""" + unformattedString + """", ', '));
+
+            switch bracketType
+                case 'round';  formattedString = ['(' formattedString ')'];
+                case 'square'; formattedString = ['[' formattedString ']'];
+                case 'curly';  formattedString = ['{' formattedString '}'];
+            end
         end
 
 
