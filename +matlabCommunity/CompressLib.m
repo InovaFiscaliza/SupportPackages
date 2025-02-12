@@ -13,50 +13,66 @@
 % Source:
 % https://www.mathworks.com/matlabcentral/fileexchange/25656-compression-routines
 % (Discussion tab)
+%
+% Edited by Eric Delgado to include the option of compressing not only the
+% ByteStream of the array but the array itself, and to use MATLAB's undocument
+% built-in functions "getArrayFromByteStream" and "getByteStreamFromArray" 
+% instead of creating a new serializer/deserializer.
 %--------------------------------------------------------------------------
 
 classdef CompressLib
-
 	methods(Static = true)
-
-		function out = decompress(byteArray)
+        %-----------------------------------------------------------------%
+        function out = decompress(in, byteStreamFlag)
+            arguments
+                in
+                byteStreamFlag = true
+            end
 
 			import com.mathworks.mlwidgets.io.InterruptibleStreamCopier
 
-			if ~strcmpi(class(byteArray), 'uint8') || ndims(byteArray) > 2 || min(size(byteArray) ~= 1)
+			if ~strcmpi(class(in), 'uint8') || ndims(in) > 2 || min(size(in) ~= 1)
 				error('Input must be a 1-D array of uint8');
 			end
 
-			a = java.io.ByteArrayInputStream(byteArray);
+			a = java.io.ByteArrayInputStream(in);
 			b = java.util.zip.GZIPInputStream(a);
             
             isc = InterruptibleStreamCopier.getInterruptibleStreamCopier;
 			c = java.io.ByteArrayOutputStream;
 			
             isc.copyStream(b,c);
-			byteData = typecast(c.toByteArray, 'uint8');
+			out = typecast(c.toByteArray, 'uint8');
 
 			% Decompressed byte array >> Matlab data type
-            out = getArrayFromByteStream(byteData);
-
+            if byteStreamFlag
+                out = getArrayFromByteStream(out);
+            end
 		end
 
 
-		function byteArray = compress(in)
+        %-----------------------------------------------------------------%
+		function out = compress(in, byteStreamFlag)
+            arguments
+                in 
+                byteStreamFlag = true
+            end
 
 			% Input variable >> array of bytes
-            byteData = getByteStreamFromArray(in);
+            if byteStreamFlag
+                in = getByteStreamFromArray(in);
+            elseif ~isa(in, 'uint8')
+                in = typecast(in, 'uint8');
+            end
 
 			f = java.io.ByteArrayOutputStream();
 			g = java.util.zip.GZIPOutputStream(f);
 
-			g.write(byteData);
+			g.write(in);
 			g.close;
 
-			byteArray = typecast(f.toByteArray, 'uint8');
+			out = typecast(f.toByteArray, 'uint8');
 			f.close;
-
         end
     end
-
 end
