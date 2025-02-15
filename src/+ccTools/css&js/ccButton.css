@@ -1,0 +1,65 @@
+	:root {
+		--buttonHeight: calc(100vh);
+		--buttonPadding: %dpx;
+		--borderWidth: %dpx;
+		--rowSpacing: %dpx;
+		--iconHeight: %dpx;
+	}
+	body {
+		overflow: hidden;
+	}
+	button {
+		width: calc(100%%);
+		height: var(--buttonHeight);
+		padding: var(--buttonPadding);
+		background-color: %s;
+		border: var(--borderWidth) solid %s;
+		border-radius: %s;
+	}
+	button:not(:disabled):hover {
+		background-color: %s;
+	}
+	button:disabled {
+		opacity: %.2f;
+	}
+	button:not(:disabled):active {
+		background-color: %s;
+	}
+	button:focus {
+  		outline: none;
+	}
+	.TextRowSpacing {
+		display: block;
+		height: %dpx;
+		content: "";
+	}
+	.Grid {
+		display: grid;
+		height: calc(var(--buttonHeight) - 2*(var(--buttonPadding) + var(--borderWidth)));
+		grid-template-rows: %s;
+		grid-template-columns: %s;
+		grid-row-gap: var(--rowSpacing);
+		grid-column-gap: %dpx;
+	}
+	.Image {
+		justify-self: %s;
+		align-self: %s;
+	}
+	.Image img {
+		width: %dpx;
+		height: var(--iconHeight);
+	}
+	.Text {
+		text-align: %s;
+		justify-self: %s;
+		align-self: %s;
+		font-family: %s;
+		font-weight: %s;
+		font-size: %dpx;
+		color: %s;
+	}
+	.Description {
+		font-weight: normal;
+		font-size: %dpx;		
+		color: %s;		
+	}

@@ -1,0 +1,46 @@
+classdef FontFamily
+
+    enumeration
+        Algerian
+        Arial
+        Bookman
+        Broadway
+        Calibri
+        Cambria
+        Candara
+        Castellar
+        Centaur
+        Century
+        Chiller
+        Consolas
+        Constantia
+        Corbel
+        Courier
+        Dialog
+        Dubai
+        Ebrima
+        Elephant
+        Forte
+        Gabriola
+        Gadugi
+        Garamond
+        Georgia
+        Gigi
+        Harrington
+        Helvetica
+        Impact
+        Jokerman
+        Magneto
+        Mistral
+        Monospaced
+        Montserrat
+        Rockwell
+        Serif
+        Symbol
+        Tahoma
+        Times
+        Verdana
+        Vivaldi
+    end   
+    
+end

@@ -1,0 +1,49 @@
+	table {
+		width: 100%%;
+	}
+	table th {
+		position: sticky;
+		top: 0;
+		font-family: %s;
+		font-size: %.0fpx;
+		font-weight: %s;
+		text-align: %s;
+		color: %s;
+		word-wrap: normal;
+		margin: 0 3px 0 3px;
+		padding: 5px;
+		padding-bottom: 5px;
+		vertical-align: top;
+		cursor: default;
+		background-color: %s;
+	}
+	table td {
+		font-family: %s;
+		font-size: %.0fpx;
+		font-weight: %s;
+		color: %s;
+		word-wrap: normal;
+		margin: 0 3px 0 3px;
+		padding: 5px;
+		padding-bottom: 5px;
+		vertical-align: top;
+		cursor: default;
+	}
+	.left {
+		text-align: left;
+	}
+	.center {
+		text-align: center;
+	}
+	.right {
+		text-align: right;
+	}
+	table tr:nth-child(even) {
+		background-color: %s;
+	}
+	table tr:not(th):hover {
+		background-color: %s;
+	}
+	table tr.selected {
+		background-color: %s;
+	}
