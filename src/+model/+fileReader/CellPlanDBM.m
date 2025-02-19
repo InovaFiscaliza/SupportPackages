@@ -147,7 +147,7 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileName)
     if ~isempty(gpsData.Matrix)
         gpsData.Status  = 1;
     end
-    gpsData = fcn.gpsSummary({gpsData});
+    gpsSummary = gpsLib.summary(gpsData);
 
     % Confirma que se tratam de fluxos diferentes, ou apenas um único fluxo
     % que a CellPlan dividiu em diversos blocos por extrapolar o limite de
@@ -174,11 +174,11 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileName)
 
     for jj = 1:numel(specData)
         specData(jj).Receiver = Receiver;
-        specData(jj).GPS      = rmfield(gpsData, 'Matrix');
+        specData(jj).GPS      = rmfield(gpsSummary, 'Matrix');
 
         nSweeps = height(specData(jj).FileMap{1});
         [BeginTime, EndTime, RevisitTime] = Read_ObservationTime(specData(jj), rawData, nSweeps);
-        specData(jj).RelatedFiles(1,:) = {[file ext], 'Undefined', ThreadID, 'Undefined', BeginTime, EndTime, nSweeps, RevisitTime, {gpsData}, char(matlab.lang.internal.uuid())};
+        specData(jj).RelatedFiles(1,:) = {[file ext], 'Undefined', ThreadID, 'Undefined', BeginTime, EndTime, nSweeps, RevisitTime, {gpsSummary}, char(matlab.lang.internal.uuid())};
     end
 end
 

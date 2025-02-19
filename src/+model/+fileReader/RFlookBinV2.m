@@ -1,7 +1,7 @@
 function specData = RFlookBinV2(specData, fileName, ReadType)
 
     % Author.: Eric Magalhães Delgado
-    % Date...: February 13, 2025
+    % Date...: February 18, 2025
     % Version: 1.03
 
     arguments
@@ -20,12 +20,12 @@ function specData = RFlookBinV2(specData, fileName, ReadType)
 
     fileFormat = char(rawData(1:15));
     if ~contains(fileFormat, 'RFlookBin v.2')
-        error('It is not a RFlookBin file! :(')
+        error('It is not a RFlookBinV2 file! :(')
     end
 
     switch ReadType
         case {'MetaData', 'SingleFile'}
-            specData = Fcn_MetaDataReader(specData, rawData, fileName);
+            specData = Fcn_MetaDataReader(specData, rawData, fileFormat, fileName);
 
             if strcmp(ReadType, 'SingleFile')
                 specData = Fcn_SpecDataReader(specData, rawData, fileFormat);
@@ -39,7 +39,7 @@ end
 
 
 %-------------------------------------------------------------------------%
-function specData = Fcn_MetaDataReader(specData, rawData, fileName)
+function specData = Fcn_MetaDataReader(specData, rawData, fileFormat, fileName)
 
     % Criação das variáveis principais (specData e gpsData)
     gpsData  = struct('Status', 0, 'Matrix', []);
@@ -92,7 +92,7 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileName)
     
     specData.MetaData.Detector   = MetaStruct.Detector;
     specData.MetaData.Antenna    = MetaStruct.AntennaInfo;
-    specData.MetaData.Others     = model.SpecDataBase.secundaryMetaData('RFlookBin v.2', MetaStruct);
+    specData.MetaData.Others     = model.SpecDataBase.secundaryMetaData(fileFormat, MetaStruct);
 
     % Número de bytes do cabeçalho dos blocos de espectro:
     % (a) blockOffset1: gps e atenuação
@@ -135,7 +135,7 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileName)
                               typecast(blockArray(10:13), 'single'), ...    % LATITUDE
                               typecast(blockArray(14:17), 'single')];       % LONGITUDE
         end
-        gpsData = fcn.gpsInterpolation(gpsArray);
+        gpsData = gpsLib.interpolation(gpsArray);
 
     else
         BeginTime = observationTime(rawData(startIndex(1):stopIndex(1)));
@@ -146,13 +146,13 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileName)
             gpsData.Matrix(end+1,:) = [MetaStruct.Latitude, MetaStruct.Longitude];
         end
     end
-    gpsData = fcn.gpsSummary({gpsData});
-
-    [~, file, ext]  = fileparts(fileName);
-    RevisitTime     = seconds(EndTime-BeginTime)/(nSweeps-1);
-
-    specData.GPS = rmfield(gpsData, 'Matrix');
-    specData.RelatedFiles(end+1,:) = {[file ext], MetaStruct.Task, MetaStruct.ID, MetaStruct.Description, BeginTime, EndTime, nSweeps, RevisitTime, {gpsData}, char(matlab.lang.internal.uuid())};    
+    
+    gpsSummary     = gpsLib.summary(gpsData);
+    [~, file, ext] = fileparts(fileName);
+    RevisitTime    = seconds(EndTime-BeginTime)/(nSweeps-1);
+    
+    specData.GPS   = rmfield(gpsSummary, 'Matrix');
+    specData.RelatedFiles(end+1,:) = {[file ext], MetaStruct.Task, MetaStruct.ID, MetaStruct.Description, BeginTime, EndTime, nSweeps, RevisitTime, {gpsSummary}, char(matlab.lang.internal.uuid())};    
 end
 
 

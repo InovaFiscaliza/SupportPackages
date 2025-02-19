@@ -1,7 +1,7 @@
 function specData = RFlookBinV1(specData, fileName, ReadType)
 
     % Author.: Eric Magalhães Delgado
-    % Date...: February 13, 2025
+    % Date...: February 18, 2025
     % Version: 1.02
 
     arguments
@@ -19,13 +19,13 @@ function specData = RFlookBinV1(specData, fileName, ReadType)
     fclose(fileID);
 
     fileFormat = char(rawData(1:15));
-    if ~strcmp(fileFormat, 'RFlookBin v.1/1')
+    if ~contains(fileFormat, 'RFlookBin v.1')
         error('It is not a RFlookBinV1 file! :(')
     end
 
     switch ReadType
         case {'MetaData', 'SingleFile'}
-            specData = Fcn_MetaDataReader(specData, rawData, fileName);
+            specData = Fcn_MetaDataReader(specData, rawData, fileFormat, fileName);
 
             if strcmp(ReadType, 'SingleFile')
                 specData = Fcn_SpecDataReader(specData);
@@ -39,7 +39,7 @@ end
 
 
 %-------------------------------------------------------------------------%
-function specData = Fcn_MetaDataReader(specData, rawData, fileName)
+function specData = Fcn_MetaDataReader(specData, rawData, fileFormat, fileName)
 
     % Criação das variáveis principais (specData e gpsData).
     gpsData  = struct('Status', 0, 'Matrix', []);
@@ -53,21 +53,22 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileName)
     [TaskName, ID, Description, Receiver, AntennaInfo, IntegrationFactor] = Fcn_TextBlockRead(TextTrailerBlock);
 
     % Metadados principais.
-    specData(1).Receiver               = Receiver;
-    specData.MetaData.DataType         = 1;
-    specData.MetaData.FreqStart        = double(FileHeaderBlock.Data.F0);
-    specData.MetaData.FreqStop         = double(FileHeaderBlock.Data.F1);
-    specData.MetaData.LevelUnit        = model.SpecDataBase.id2str('LevelUnit', FileHeaderBlock.Data.LevelUnit);
-    specData.MetaData.DataPoints       = double(FileHeaderBlock.Data.DataPoints);
-    specData.MetaData.Resolution       = double(FileHeaderBlock.Data.Resolution);
-    specData.MetaData.TraceMode        = model.SpecDataBase.id2str('TraceMode', FileHeaderBlock.Data.TraceMode);
+    specData(1).Receiver         = Receiver;
+    specData.MetaData.DataType   = 1;
+    specData.MetaData.FreqStart  = double(FileHeaderBlock.Data.F0);
+    specData.MetaData.FreqStop   = double(FileHeaderBlock.Data.F1);
+    specData.MetaData.LevelUnit  = model.SpecDataBase.id2str('LevelUnit', FileHeaderBlock.Data.LevelUnit);
+    specData.MetaData.DataPoints = double(FileHeaderBlock.Data.DataPoints);
+    specData.MetaData.Resolution = double(FileHeaderBlock.Data.Resolution);
+    specData.MetaData.TraceMode  = model.SpecDataBase.id2str('TraceMode', FileHeaderBlock.Data.TraceMode);
 
     if ~strcmp(specData.MetaData.TraceMode, 'ClearWrite')
         specData.MetaData.TraceIntegration = IntegrationFactor;
     end
     
-    specData.MetaData.Detector         = model.SpecDataBase.id2str('Detector', FileHeaderBlock.Data.Detector);
-    specData.MetaData.Antenna          = AntennaInfo;
+    specData.MetaData.Detector   = model.SpecDataBase.id2str('Detector', FileHeaderBlock.Data.Detector);
+    specData.MetaData.Antenna    = AntennaInfo;
+    specData.MetaData.Others     = model.SpecDataBase.secundaryMetaData(fileFormat, FileHeaderBlock.Data);
 
 
     % GPS.
@@ -77,14 +78,14 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileName)
             gpsData.Matrix = [double(FileHeaderBlock.Data.Latitude), double(FileHeaderBlock.Data.Longitude)];
         
         otherwise                                                                                   % AUTO (1: BUILT-IN; 2: EXTERNAL)
-            gpsArray = zeros(nSweeps, 3);
+            gpsArray = zeros(nSweeps, 3, 'single');
             for ii = 1:nSweeps
-                gpsArray(ii,:) = [double(gpsTimestampBlock.Data(ii).gpsStatus), double(gpsTimestampBlock.Data(ii).Latitude), double(gpsTimestampBlock.Data(ii).Longitude)];
+                gpsArray(ii,:) = [gpsTimestampBlock.Data(ii).gpsStatus, gpsTimestampBlock.Data(ii).Latitude, gpsTimestampBlock.Data(ii).Longitude];
             end
 
             gpsStatus = max(gpsArray(:,1));
             if gpsStatus
-                gpsData = fcn.gpsInterpolation(gpsArray);
+                gpsData = gpsLib.interpolation(gpsArray);
             else
                 if FileHeaderBlock.Data.gpsStatus
                     gpsData.Status = FileHeaderBlock.Data.gpsStatus;
@@ -92,8 +93,7 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileName)
                 end
             end
     end
-    gpsData = fcn.gpsSummary({gpsData});
-
+    gpsSummary = gpsLib.summary((gpsData));
 
     % Metadados secundários (incluso na tabela "RelatedFiles"), além de
     % informação acerca do mapeamento do arquivo (para fins de leitura dos
@@ -103,8 +103,8 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileName)
     EndTime        = datetime(gpsTimestampBlock.Data(end).localTimeStamp, 'Format', 'dd/MM/yyyy HH:mm:ss') + years(2000);
     RevisitTime    = seconds(EndTime-BeginTime)/(nSweeps-1);    
     
-    specData.GPS = rmfield(gpsData, 'Matrix');
-    specData.RelatedFiles(end+1,:) = {[file ext], TaskName, ID, Description, BeginTime, EndTime, nSweeps, RevisitTime, {gpsData}, char(matlab.lang.internal.uuid())};
+    specData.GPS = rmfield(gpsSummary, 'Matrix');
+    specData.RelatedFiles(end+1,:) = {[file ext], TaskName, ID, Description, BeginTime, EndTime, nSweeps, RevisitTime, {gpsSummary}, char(matlab.lang.internal.uuid())};
 
     specData.FileMap.BitsPerPoint      = FileHeaderBlock.Data.BitsPerPoint;
     specData.FileMap.gpsTimestampBlock = gpsTimestampBlock;

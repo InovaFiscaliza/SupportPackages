@@ -176,10 +176,10 @@ function specData = Fcn_MetaDataReader(specData, fileName)
     if exist('latDegree', 'var') && exist('longDegree', 'var')
         gpsData  = struct('Status', 1, 'Matrix', [latDegree longDegree]);
     end
-    gpsData = fcn.gpsSummary({gpsData});
-
-    specData.GPS = rmfield(gpsData, 'Matrix');
-    specData.RelatedFiles.GPS = {gpsData};
+    gpsSummary   = gpsLib.summary(gpsData);
+    
+    specData.GPS = rmfield(gpsSummary, 'Matrix');
+    specData.RelatedFiles.GPS = {gpsSummary};
 
     % Identifica índices da tabela cujos valores não estão relacionadas ao
     % vetor xArray, apagando-os. E depois salva a informação que será útil

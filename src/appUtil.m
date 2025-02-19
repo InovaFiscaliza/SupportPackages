@@ -241,7 +241,15 @@ classdef (Abstract) appUtil
 
         %-----------------------------------------------------------------%
         function [projectFolder, programDataFolder] = Path(appName, rootFolder)
-            projectFolder     = fullfile(rootFolder, 'Settings');
+            % ToDo: Quando migrar os arquivos de configuração de todos os apps
+            % p/ a pasta "config", eliminar a validação abaixo.
+
+            if isfolder(fullfile(rootFolder, 'config'))
+                projectFolder = fullfile(rootFolder, 'config');
+            else
+                projectFolder = fullfile(rootFolder, 'Settings');
+            end
+
             programDataFolder = fullfile(ccTools.fcn.OperationSystem('programData'), 'ANATEL', appName);
         end
 
@@ -267,7 +275,7 @@ classdef (Abstract) appUtil
             % 
             % Caso a pasta não exista, o app a criará no seu processo de inicialização,
             % copiando os arquivos de configuração do projeto, originalmente armazenados
-            % na subpasta "Settings" do projeto.
+            % na subpasta "Settings" ou "src/config" do projeto.
             %
             % Caso a pasta exista, por outro lado, verifica-se a versão do arquivo
             % "GeneralSettings.json".
@@ -287,12 +295,18 @@ classdef (Abstract) appUtil
         
             projectFileContent  = jsondecode(fileread(projectFilePath));
             try
+                if ~isfolder(programDataFolder)
+                    mkdir(programDataFolder)
+                end
+
+                programDataFolder_backup = fullfile(programDataFolder, '_oldFiles');
+                if ~isfolder(programDataFolder_backup)
+                    mkdir(programDataFolder_backup)
+                end
+
                 if ~isfile(programDataFilePath)
-                    if ~isfolder(programDataFolder)
-                        mkdir(programDataFolder)
-                    end
-                    appUtil.copyConfigFiles(projectFolder, programDataFolder)
-                
+                    appUtil.copyConfigFiles(programDataFolder, programDataFolder_backup, files2Keep, 'move')
+                    appUtil.copyConfigFiles(projectFolder,     programDataFolder,        files2Keep, 'copy')                
                 else
                     programDataFileContent = jsondecode(fileread(programDataFilePath));
         
@@ -304,13 +318,8 @@ classdef (Abstract) appUtil
                             end
                         end
         
-                        programDataFolder_backup = fullfile(programDataFolder, 'oldFiles');
-                        if ~isfolder(programDataFolder_backup)
-                            mkdir(programDataFolder_backup)
-                        end
-        
-                        appUtil.copyConfigFiles(programDataFolder, programDataFolder_backup, files2Keep)
-                        appUtil.copyConfigFiles(projectFolder,     programDataFolder)
+                        appUtil.copyConfigFiles(programDataFolder, programDataFolder_backup, files2Keep, 'move')
+                        appUtil.copyConfigFiles(projectFolder,     programDataFolder,        files2Keep, 'copy')
                         writematrix(jsonencode(projectFileContent, "PrettyPrint", true), programDataFilePath, "FileType", "text", "QuoteStrings", "none", "WriteMode", "overwrite")
                         
                         msgWarning = ['Os arquivos de configuração do app hospedado na pasta de configuração local, ' ...
@@ -371,22 +380,36 @@ classdef (Abstract) appUtil
 
     methods (Access = private, Static = true)
         %-------------------------------------------------------------------------%
-        function copyConfigFiles(oldPath, newPath, files2Keep)
+        function copyConfigFiles(oldPath, newPath, files2Keep, operationType)
             arguments
-                oldPath     char
-                newPath     char
-                files2Keep  cell = {}
+                oldPath       char
+                newPath       char
+                files2Keep    cell = {}
+                operationType char {mustBeMember(operationType, {'copy', 'move'})} = 'copy'
             end
         
             cfgFiles = dir(oldPath);
-            cfgFiles([cfgFiles.isdir]) = [];
+            
+            cfgFiles(ismember({cfgFiles.name}, {'.', '..', '_oldFiles'})) = [];
             if ~isempty(files2Keep)
                 cfgFiles(cellfun(@(x) any(strcmpi(x, files2Keep)), {cfgFiles.name})) = [];
             end
         
             for ii = 1:numel(cfgFiles)
-                jsonFilePath = fullfile(cfgFiles(ii).folder, cfgFiles(ii).name);
-                copyfile(jsonFilePath, newPath, 'f');
+                oldFullPath = fullfile(cfgFiles(ii).folder, cfgFiles(ii).name);
+                newFullPath = newPath;
+                
+                if isfolder(oldFullPath)
+                    newFullPath = fullfile(newPath, cfgFiles(ii).name);
+                    mkdir(newFullPath)
+                end
+
+                switch operationType
+                    case 'copy'
+                        copyfile(oldFullPath, newFullPath, 'f');
+                    case 'move'
+                        movefile(oldFullPath, newFullPath, 'f');
+                end
             end
         end
     end

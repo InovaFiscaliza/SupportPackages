@@ -77,7 +77,7 @@ function specData = Fcn_MetaDataReader(specData, fileID, fileName)
         gpsData.Status = 1;
         gpsData.Matrix = [latDegree, longDegree];
     end
-    gpsData = fcn.gpsSummary({gpsData});
+    gpsSummary = gpsLib.summary(gpsData);
     
     for ii=1:numel(FreqStart)
         specData(ii).Receiver             = Receiver;
@@ -116,13 +116,13 @@ function specData = Fcn_MetaDataReader(specData, fileID, fileName)
         catch
         end
 
-        specData(ii).GPS     = rmfield(gpsData, 'Matrix');
+        specData(ii).GPS     = rmfield(gpsSummary, 'Matrix');
         specData(ii).FileMap = struct('ReferenceDate', ReferenceDate, 'ByteOffset', ByteOffset);
 
         BeginTime = datetime(extractBefore(ObservationTime, ' - '), 'InputFormat', 'dd/MM/yyyy HH:mm:ss', 'Format', 'dd/MM/yyyy HH:mm:ss');
         EndTime   = datetime(extractAfter( ObservationTime, ' - '), 'InputFormat', 'dd/MM/yyyy HH:mm:ss', 'Format', 'dd/MM/yyyy HH:mm:ss');
 
-        specData(ii).RelatedFiles(1,:) = {[file ext], TaskName, str2double(ID{ii}), Description{ii}, BeginTime, EndTime, nSweeps, str2double(RevisitTime{ii}), {gpsData}, char(matlab.lang.internal.uuid())};
+        specData(ii).RelatedFiles(1,:) = {[file ext], TaskName, str2double(ID{ii}), Description{ii}, BeginTime, EndTime, nSweeps, str2double(RevisitTime{ii}), {gpsSummary}, char(matlab.lang.internal.uuid())};
     end
 end
 

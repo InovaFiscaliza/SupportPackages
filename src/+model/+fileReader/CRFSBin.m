@@ -172,8 +172,8 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileName)
         end
     end
 
-    gpsData  = fcn.gpsSummary({gpsData});
-    specData = Fcn_DataOrganization(specData, gpsData, fileName, rawData, BlocksTable, Hostname, Taskname, messageTable);
+    gpsSummary = gpsLib.summary((gpsData));
+    specData   = Fcn_DataOrganization(specData, gpsSummary, fileName, rawData, BlocksTable, Hostname, Taskname, messageTable);
 end
 
 

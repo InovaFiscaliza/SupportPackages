@@ -72,8 +72,8 @@ function specData = Fcn_MetaDataReader(specData, fileName)
                 end
 
                 % gpsData
-                gpsData = fcn.gpsSummary(prj_metaData(ii).RelatedGPS);
-                specData(ii).GPS = rmfield(gpsData, 'Matrix');
+                gpsSummary = gpsLib.summary(cell2mat(prj_metaData(ii).RelatedGPS));
+                specData(ii).GPS = rmfield(gpsSummary, 'Matrix');
             end
 
 

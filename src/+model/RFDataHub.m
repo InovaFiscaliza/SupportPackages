@@ -17,8 +17,8 @@ classdef (Abstract) RFDataHub
                 [projectFolder, ...
                  programDataFolder] = appUtil.Path(appName, rootFolder);
 
-                projectFilePath     = fullfile(projectFolder,     'RFDataHub.mat');
-                programDataFilePath = fullfile(programDataFolder, 'RFDataHub.mat');
+                projectFilePath     = fullfile(projectFolder,     'DataBase', 'RFDataHub.mat');
+                programDataFilePath = fullfile(programDataFolder, 'DataBase', 'RFDataHub.mat');
         
                 if isfile(programDataFilePath)
                     load(programDataFilePath, 'RFDataHub', 'RFDataHubLog', 'RFDataHub_info', '-mat')
@@ -30,7 +30,7 @@ classdef (Abstract) RFDataHub
         
                     try
                         RFDataHub      = parquetread(filename_parquet1, "VariableNamingRule", "preserve");
-                        RFDataHub      = RF.RFDataHub.parquet2mat(RFDataHub);
+                        RFDataHub      = model.RFDataHub.parquet2mat(RFDataHub);
 
                         RFDataHubLog   = parquetread(filename_parquet2, 'VariableNamingRule', 'preserve');
                         RFDataHubLog   = RFDataHubLog.Log;
@@ -78,7 +78,7 @@ classdef (Abstract) RFDataHub
             % Col. 13: "Largura_Emissão(kHz)" >> "BW"        {single}
             % Col. 29: "Relatório_Canal"      >> "URL"       {categorical}
 
-            RFDataHub = RF.RFDataHub.ColumnNames(RFDataHub, 'port2eng');
+            RFDataHub = model.RFDataHub.ColumnNames(RFDataHub, 'port2eng');
             RFDataHub = convertvars(RFDataHub, [1:7, 13], 'string');
 
             RFDataHub.Frequency = str2double(RFDataHub.Frequency);
@@ -160,7 +160,7 @@ classdef (Abstract) RFDataHub
         %-----------------------------------------------------------------%
         function RFDataHub = ColumnNames(RFDataHub, Type)
             [rawColumnNames, ...
-             editedColumnNames] = RF.RFDataHub.ColumnNamesMapping('columnArrays');
+             editedColumnNames] = model.RFDataHub.ColumnNamesMapping('columnArrays');
 
             switch Type
                 case 'port2eng'
@@ -227,7 +227,7 @@ classdef (Abstract) RFDataHub
             ID          = strjoin(string(idx), ', ');
             Service     = RFDataHub.Service(idx(1));
             Station     = RFDataHub.Station(idx(1));
-            Description = RF.RFDataHub.Description(RFDataHub, idx(1));
+            Description = model.RFDataHub.Description(RFDataHub, idx(1));
                         
             Distance    = deg2km(distance(latNode, longNode, Latitude, Longitude));
             stationInfo = struct('ID', ID, 'Frequency', Frequency, 'Service', Service, 'Station', Station, 'Description', Description, 'Distance', Distance);
