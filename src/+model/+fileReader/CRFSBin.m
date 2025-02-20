@@ -273,19 +273,19 @@ function [specData, idx] = Fcn_BinInfo(specData, ThreadID, DataType, Description
     
     idx = numel(specData)+1;
     for ii = 1:numel(specData)
-        if (specData(ii).RelatedFiles.ID == ThreadID) && strcmp(specData(ii).RelatedFiles.Description, Description) && isequal(specData(ii).MetaData, Bin)
+        if ~isempty(specData(ii).RelatedFiles) && (specData(ii).RelatedFiles.ID == ThreadID) && strcmp(specData(ii).RelatedFiles.Description, Description) && isequal(specData(ii).MetaData, Bin)
             idx = ii;
             break
         end
     end
 
     if idx > numel(specData)        
-        specData(idx).MetaData             = Bin;
-        specData(idx).MetaData.DataType    = double(specData(idx).MetaData.DataType);
-        specData(idx).MetaData.DataPoints  = double(specData(idx).MetaData.DataPoints);
-        specData(idx).MetaData.TraceMode   = double(specData(idx).MetaData.TraceMode);
+        specData(idx).MetaData            = Bin;
+        specData(idx).MetaData.DataType   = double(specData(idx).MetaData.DataType);
+        specData(idx).MetaData.DataPoints = double(specData(idx).MetaData.DataPoints);
+        specData(idx).MetaData.TraceMode  = double(specData(idx).MetaData.TraceMode);
 
-        specData(idx).RelatedFiles(1,3:4)  = {double(ThreadID), Description};
+        specData(idx).RelatedFiles(1,3:4) = {double(ThreadID), Description};
     end
 end
 

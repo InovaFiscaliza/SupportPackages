@@ -32,7 +32,7 @@ classdef SpecDataBase < handle
             
             switch lower(fileExt)
                 case '.bin'
-                    switch model.SpecDataBase.checkBINFormat(fileFullName)
+                    switch model.SpecDataBase.checkBinaryFormat(fileFullName)
                         case 'CRFS'
                             obj = model.fileReader.CRFSBin(obj, fileFullName, readType);
                         case 'RFlookBin v.1'
@@ -47,7 +47,7 @@ classdef SpecDataBase < handle
                 case '.csv'
                     obj = model.fileReader.ArgusCSV(obj, fileFullName, readType);
                 case '.mat'
-                    [obj, varargout{1}] = model.fileReader.MAT(obj, fileFullName, readType);
+                    [obj, varargout{1}] = model.fileReader.MAT(fileFullName, readType);
             end
 
             if ismember(readType, {'SpecData', 'SingleFile'})
@@ -56,8 +56,13 @@ classdef SpecDataBase < handle
         end
 
         %-----------------------------------------------------------------%
-        function copyObj = copy(obj, fields2remove)            
-            copyObj  = model.SpecDataBase();
+        function copyObj = copy(obj, fields2remove)
+            % A classe "model.SpecData", do appAnalise, extende a presente classe. 
+            % Por essa razão, utiliza-se "eval(class(obj))" de forma que seja criada 
+            % uma instância da classe sob análise ("model.SpecData" ou "model.SpecDataBase"). 
+            % Essa cópia do objeto é limitada às suas propriedades públicas.
+
+            copyObj  = eval(class(obj));
             propList = setdiff(properties(copyObj), fields2remove);
 
             for ii = 1:numel(obj)
@@ -119,7 +124,7 @@ classdef SpecDataBase < handle
 
     methods (Static = true)
         %-----------------------------------------------------------------%
-        function fileFormatName = checkBINFormat(fileFullName)
+        function fileFormatName = checkBinaryFormat(fileFullName)
             % O formato .BIN é muito comum, sendo gerado pelo Logger, appColeta
             % e outras tantas aplicações. Essencial, portanto, ler os primeiros
             % bytes do arquivo, identificando no cabeçalho do arquivo o formato.

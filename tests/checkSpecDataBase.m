@@ -1,8 +1,8 @@
 %% model.SpecDataBase
 % Test of the functions "model.SpecDataBase" and its subfolder "+fileReader".
 
-mfilePath = fileparts(mfilename('fullpath'));
-fileDir   = dir(fullfile(mfilePath, 'resources', 'SpecDataBase'));
+mFilePath = getThisFolderPath();
+fileDir   = dir(fullfile(mFilePath, 'resources', 'SpecDataBase'));
 
 fileList  = arrayfun(@(x) fullfile(x.folder, x.name), fileDir, "UniformOutput", false);
 fileList(~isfile(fileList)) = [];
@@ -81,3 +81,49 @@ hold(ax, "on")
 plot(ax, xData, specData(1).Data{3}(:,1), 'Color', '#4A90E2', 'DisplayName', 'MinHold')
 plot(ax, xData, specData(1).Data{3}(:,2), 'Color', '#ffff12', 'DisplayName', 'Average', 'MarkerIndices', idxPeakMax, 'Marker', 'o', 'MarkerSize', 6, 'MarkerFaceColor', 'red', 'MarkerEdgeColor', 'red')
 plot(ax, xData, specData(1).Data{3}(:,3), 'Color', '#FF5CAD', 'DisplayName', 'MaxHold')
+
+%% Test3: Read and write (CRFS File)
+% READ CRFS FILE
+fileName = fullfile(mfilePath, 'resources', 'SpecDataBase', 'rfeye002292_210211_T111912.bin');
+
+specData = model.SpecDataBase.empty;
+specData = read(specData, fileName, 'SingleFile');
+
+% WRITE FILE
+fileTempName = [tempname '.bin'];
+model.fileWriter.CRFSBin(fileTempName, specData)
+
+% READ CREATED CRFS FILE
+tempSpecData = model.SpecDataBase.empty;
+tempSpecData = read(tempSpecData, fileTempName, 'SingleFile');
+delete(fileTempName)
+
+% CONTENT COMPARISON
+if isequal(rmfield(struct(specData), {'GPS', 'RelatedFiles'}), rmfield(struct(tempSpecData), {'GPS', 'RelatedFiles'}))
+    disp('SUCESS! :)')    
+else
+    disp('ERROR! :(')
+end
+
+%% Test4: Read and write (MAT File)
+% READ CRFS FILE
+fileName = fullfile(mFilePath, 'resources', 'SpecDataBase', 'rfeye002292_210211_T111912.bin');
+
+specData = model.SpecDataBase.empty;
+specData = read(specData, fileName, 'SingleFile');
+
+% WRITE FILE (MAT)
+fileTempName = [tempname '.mat'];
+model.fileWriter.MAT(fileTempName, 'SpectralData', specData, [], {'UserData', 'callingApp', 'sortType'})
+
+% READ CREATED MAT FILE
+tempSpecData = model.SpecDataBase.empty;
+tempSpecData = read(tempSpecData, fileTempName, 'SingleFile');
+delete(fileTempName)
+
+% CONTENT COMPARISON
+if isequal(specData, tempSpecData)
+    disp('SUCESS! :)')    
+else
+    disp('ERROR! :(')
+end
