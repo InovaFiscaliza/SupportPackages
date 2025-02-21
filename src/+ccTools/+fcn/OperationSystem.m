@@ -1,5 +1,22 @@
 function varargout = OperationSystem(operationType, varargin)
 
+    arguments
+        operationType char {mustBeMember(operationType, {'platform',                   ...
+                                                         'ver',                        ...
+                                                         'userPath',                   ...
+                                                         'programData',                ...
+                                                         'desktopStandaloneAppFolder', ...
+                                                         'computerName',               ...
+                                                         'userName',                   ...
+                                                         'pythonExecutable',           ...
+                                                         'openFile',                   ...
+                                                         'terminateProcessImmediately'})}
+    end
+
+    arguments (Repeating)
+        varargin
+    end
+
     if ~ispc && ~ismac && ~isunix
         error('Platform not supported')
     end
@@ -99,6 +116,15 @@ function varargout = OperationSystem(operationType, varargin)
                 system(sprintf('open "%s" &', fileName));
             else
                 system(sprintf('xdg-open "%s" &', fileName));
+            end
+
+        case 'terminateProcessImmediately'
+            pidMatlab = varargin{1};
+
+            if ispc
+                system(sprintf('taskkill /F /PID %d', pidMatlab));
+            else
+                system(sprintf('kill -9 %d', pidMatlab));
             end
     end
 end

@@ -166,7 +166,7 @@ classdef tabGroupGraphicMenu < handle
         end
 
         %-----------------------------------------------------------------%
-        function status = checkStatusModule(obj, auxAppTag)
+        function [status, appHandle] = checkStatusModule(obj, auxAppTag)
             [~, idx]  = ismember(auxAppTag, obj.Components.Tag);
             appHandle = obj.Components.appHandle{idx};
 
