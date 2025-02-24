@@ -80,7 +80,7 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileFormat, fileName)
         otherwise                                                                                   % AUTO (1: BUILT-IN; 2: EXTERNAL)
             gpsArray = zeros(nSweeps, 3, 'single');
             for ii = 1:nSweeps
-                gpsArray(ii,:) = [gpsTimestampBlock.Data(ii).gpsStatus, gpsTimestampBlock.Data(ii).Latitude, gpsTimestampBlock.Data(ii).Longitude];
+                gpsArray(ii,:) = [single(gpsTimestampBlock.Data(ii).gpsStatus), gpsTimestampBlock.Data(ii).Latitude, gpsTimestampBlock.Data(ii).Longitude];
             end
 
             gpsStatus = max(gpsArray(:,1));
@@ -128,7 +128,7 @@ function specData = Fcn_SpecDataReader(specData)
         SpectralBlock     = specData.FileMap.SpectralBlock;
     
         for ii = 1:nSweeps
-            specData.Data{1}(ii) = datetime(gpsTimestampBlock.Data(ii).localTimeStamp, 'Format', 'dd/MM/yyyy HH:mm:ss') + years(2000);
+            specData.Data{1}(ii) = datetime(gpsTimestampBlock.Data(ii).localTimeStamp);
     
             switch BitsPerPoint
                 case 8
@@ -140,6 +140,8 @@ function specData = Fcn_SpecDataReader(specData)
                     specData.Data{2}(:,ii) = SpectralBlock.Data.Array(:,ii);
             end
         end
+        
+        specData.Data{1} = specData.Data{1} + years(2000);
     end
 
     specData.FileMap = [];
@@ -149,31 +151,31 @@ end
 %-------------------------------------------------------------------------%
 function [FileHeaderBlock, gpsTimestampBlock, SpectralBlock, TextTrailerBlock] = Fcn_FileMemoryMap(rawData, fileName)
 
-    FileHeaderBlock = memmapfile(fileName, 'Format', {'uint8',  [1 15], 'FileName';         ... % 15 (File Format)
-                                                      'uint8',  [1  1], 'BitsPerPoint';     ... % 16
-                                                      'uint32', [1  1], 'EstimatedSamples'; ... % 20
-                                                      'uint32', [1  1], 'WritedSamples';    ... % 24
-                                                      'single', [1  1], 'F0';               ... % 28 (Spectral MetaData)
-                                                      'single', [1  1], 'F1';               ... % 32
-                                                      'single', [1  1], 'Resolution';       ... % 36
-                                                      'uint16', [1  1], 'DataPoints';       ... % 38
-                                                      'int8',   [1  1], 'TraceMode';        ... % 39
-                                                      'int8',   [1  1], 'Detector';         ... % 40
-                                                      'int8',   [1  1], 'LevelUnit';        ... % 41
-                                                      'int8',   [1  1], 'Preamp';           ... % 42
-                                                      'int8',   [1  1], 'attMode';          ... % 43
-                                                      'int8',   [1  1], 'attFactor';        ... % 44
-                                                      'single', [1  1], 'SampleTime';       ... % 48
-                                                      'uint8',  [1  2], 'Alignment';        ... % 50
-                                                      'uint8',  [1  1], 'gpsType';          ... % 51 (GPS Data)
-                                                      'int8',   [1  1], 'gpsStatus';        ... % 52
-                                                      'single', [1  1], 'Latitude';         ... % 56
-                                                      'single', [1  1], 'Longitude';        ... % 60
-                                                      'int8',   [1  6], 'utcTimeStamp';     ... % 66
-                                                      'int16',  [1  1], 'utcTimeStamp_ms';  ... % 68
-                                                      'uint32', [1  1], 'Offset1';          ... % 72 (Offset Data)
-                                                      'uint32', [1  1], 'Offset2';          ... % 76
-                                                      'uint32', [1  1], 'Offset3'},         ... % 80
+    FileHeaderBlock = memmapfile(fileName, 'Format', {'uint8',  [1 15], 'FileName';         ... % Bytes  1-15 (File Format)
+                                                      'uint8',  [1  1], 'BitsPerPoint';     ... % Bytes 16
+                                                      'uint32', [1  1], 'EstimatedSamples'; ... % Bytes 17-20
+                                                      'uint32', [1  1], 'WritedSamples';    ... % Bytes 21-24
+                                                      'single', [1  1], 'F0';               ... % Bytes 25-28 (Spectral MetaData)
+                                                      'single', [1  1], 'F1';               ... % Bytes 29-32
+                                                      'single', [1  1], 'Resolution';       ... % Bytes 33-36
+                                                      'uint16', [1  1], 'DataPoints';       ... % Bytes 37-38
+                                                      'int8',   [1  1], 'TraceMode';        ... % Bytes 39
+                                                      'int8',   [1  1], 'Detector';         ... % Bytes 40
+                                                      'int8',   [1  1], 'LevelUnit';        ... % Bytes 41
+                                                      'int8',   [1  1], 'Preamp';           ... % Bytes 42
+                                                      'int8',   [1  1], 'attMode';          ... % Bytes 43
+                                                      'int8',   [1  1], 'attFactor';        ... % Bytes 44
+                                                      'single', [1  1], 'SampleTime';       ... % Bytes 45-48
+                                                      'uint8',  [1  2], 'Alignment';        ... % Bytes 49-50
+                                                      'uint8',  [1  1], 'gpsType';          ... % Bytes 51    (GPS Data)
+                                                      'int8',   [1  1], 'gpsStatus';        ... % Bytes 52
+                                                      'single', [1  1], 'Latitude';         ... % Bytes 53-56
+                                                      'single', [1  1], 'Longitude';        ... % Bytes 57-60
+                                                      'int8',   [1  6], 'utcTimeStamp';     ... % Bytes 61-66
+                                                      'int16',  [1  1], 'utcTimeStamp_ms';  ... % Bytes 67-68
+                                                      'uint32', [1  1], 'Offset1';          ... % Bytes 69-72 (Offset Data)
+                                                      'uint32', [1  1], 'Offset2';          ... % Bytes 73-76
+                                                      'uint32', [1  1], 'Offset3'},         ... % Bytes 77-80
                                            'Repeat', 1);
     
     switch FileHeaderBlock.Data.BitsPerPoint
