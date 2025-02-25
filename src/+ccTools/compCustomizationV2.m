@@ -44,7 +44,7 @@ function compCustomizationV2(jsBackDoor, comp, varargin)
             propStruct = InputParser({'padding', 'backgroundColor'}, varargin{:});
 
         case 'matlab.ui.container.GridLayout'
-            propStruct = InputParser({'backgroundColor', 'borderRadius', 'borderBottomLeftRadius', 'borderBottomRightRadius', 'borderTopLeftRadius', 'borderTopRightRadius'}, varargin{:});
+            propStruct = InputParser({'backgroundColor', 'borderRadius', 'borderBottomLeftRadius', 'borderBottomRightRadius', 'borderTopLeftRadius', 'borderTopRightRadius', 'opacity'}, varargin{:});
 
         case 'matlab.ui.container.TabGroup'
             propStruct = InputParser({'backgroundColor', 'backgroundHeaderColor', 'transparentHeader', ...
@@ -105,6 +105,7 @@ function propStruct = InputParser(propList, varargin)
             case 'backgroundColor';         addParameter(p, 'backgroundColor',         d)
             case 'backgroundHeaderColor';   addParameter(p, 'backgroundHeaderColor',   d, @(x) ccTools.validators.mustBeColor(x, 'all'))
             case 'transparentHeader';       addParameter(p, 'transparentHeader',       d, @(x) ccTools.validators.mustBeColor(x, 'all'))
+            case 'opacity';                 addParameter(p, 'opacity',                 d)
 
             % Border
             case 'padding';                 addParameter(p, 'padding',                 d)

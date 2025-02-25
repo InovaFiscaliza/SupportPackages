@@ -44,38 +44,38 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileFormat, fileName)
     % Criação das variáveis principais (specData e gpsData).
     gpsData  = struct('Status', 0, 'Matrix', []);
 
-    [FileHeaderBlock, gpsTimestampBlock, SpectralBlock, TextTrailerBlock] = Fcn_FileMemoryMap(rawData, fileName);
-    nSweeps = double(FileHeaderBlock.Data.WritedSamples);
+    [FileHeaderBlock, gpsTimestampBlock, SpectralBlock] = Fcn_FileMemoryMap(rawData, fileName);
+    nSweeps = double(FileHeaderBlock.WritedSamples);
     if ~nSweeps
         return
     end
 
-    [TaskName, ID, Description, Receiver, AntennaInfo, IntegrationFactor] = Fcn_TextBlockRead(TextTrailerBlock);
+    [TaskName, ID, Description, Receiver, AntennaInfo, IntegrationFactor] = Fcn_TextBlockRead(rawData(FileHeaderBlock.Offset3+1:end));
 
     % Metadados principais.
     specData(1).Receiver         = Receiver;
     specData.MetaData.DataType   = 1;
-    specData.MetaData.FreqStart  = double(FileHeaderBlock.Data.F0);
-    specData.MetaData.FreqStop   = double(FileHeaderBlock.Data.F1);
-    specData.MetaData.LevelUnit  = model.SpecDataBase.id2str('LevelUnit', FileHeaderBlock.Data.LevelUnit);
-    specData.MetaData.DataPoints = double(FileHeaderBlock.Data.DataPoints);
-    specData.MetaData.Resolution = double(FileHeaderBlock.Data.Resolution);
-    specData.MetaData.TraceMode  = model.SpecDataBase.id2str('TraceMode', FileHeaderBlock.Data.TraceMode);
+    specData.MetaData.FreqStart  = double(FileHeaderBlock.F0);
+    specData.MetaData.FreqStop   = double(FileHeaderBlock.F1);
+    specData.MetaData.LevelUnit  = model.SpecDataBase.id2str('LevelUnit', FileHeaderBlock.LevelUnit);
+    specData.MetaData.DataPoints = double(FileHeaderBlock.DataPoints);
+    specData.MetaData.Resolution = double(FileHeaderBlock.Resolution);
+    specData.MetaData.TraceMode  = model.SpecDataBase.id2str('TraceMode', FileHeaderBlock.TraceMode);
 
     if ~strcmp(specData.MetaData.TraceMode, 'ClearWrite')
         specData.MetaData.TraceIntegration = IntegrationFactor;
     end
     
-    specData.MetaData.Detector   = model.SpecDataBase.id2str('Detector', FileHeaderBlock.Data.Detector);
+    specData.MetaData.Detector   = model.SpecDataBase.id2str('Detector', FileHeaderBlock.Detector);
     specData.MetaData.Antenna    = AntennaInfo;
-    specData.MetaData.Others     = model.SpecDataBase.secundaryMetaData(fileFormat, FileHeaderBlock.Data);
+    specData.MetaData.Others     = model.SpecDataBase.secundaryMetaData(fileFormat, FileHeaderBlock);
 
 
     % GPS.
-    switch FileHeaderBlock.Data.gpsType
+    switch FileHeaderBlock.gpsType
         case 0                                                                                      % MANUAL
             gpsData.Status = -1;
-            gpsData.Matrix = [double(FileHeaderBlock.Data.Latitude), double(FileHeaderBlock.Data.Longitude)];
+            gpsData.Matrix = [double(FileHeaderBlock.Latitude), double(FileHeaderBlock.Longitude)];
         
         otherwise                                                                                   % AUTO (1: BUILT-IN; 2: EXTERNAL)
             gpsArray = zeros(nSweeps, 3, 'single');
@@ -87,9 +87,9 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileFormat, fileName)
             if gpsStatus
                 gpsData = gpsLib.interpolation(gpsArray);
             else
-                if FileHeaderBlock.Data.gpsStatus
-                    gpsData.Status = FileHeaderBlock.Data.gpsStatus;
-                    gpsData.Matrix = [double(FileHeaderBlock.Data.Latitude), double(FileHeaderBlock.Data.Longitude)];
+                if FileHeaderBlock.gpsStatus
+                    gpsData.Status = FileHeaderBlock.gpsStatus;
+                    gpsData.Matrix = [double(FileHeaderBlock.Latitude), double(FileHeaderBlock.Longitude)];
                 end
             end
     end
@@ -106,7 +106,7 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileFormat, fileName)
     specData.GPS = rmfield(gpsSummary, 'Matrix');
     specData.RelatedFiles(end+1,:) = {[file ext], TaskName, ID, Description, BeginTime, EndTime, nSweeps, RevisitTime, {gpsSummary}, char(matlab.lang.internal.uuid())};
 
-    specData.FileMap.BitsPerPoint      = FileHeaderBlock.Data.BitsPerPoint;
+    specData.FileMap.BitsPerPoint      = FileHeaderBlock.BitsPerPoint;
     specData.FileMap.gpsTimestampBlock = gpsTimestampBlock;
     specData.FileMap.SpectralBlock     = SpectralBlock;
 end
@@ -149,47 +149,44 @@ end
 
 
 %-------------------------------------------------------------------------%
-function [FileHeaderBlock, gpsTimestampBlock, SpectralBlock, TextTrailerBlock] = Fcn_FileMemoryMap(rawData, fileName)
+function [FileHeaderBlock, gpsTimestampBlock, SpectralBlock] = Fcn_FileMemoryMap(rawData, fileName)
 
-    FileHeaderBlock = memmapfile(fileName, 'Format', {'uint8',  [1 15], 'FileName';         ... % Bytes  1-15 (File Format)
-                                                      'uint8',  [1  1], 'BitsPerPoint';     ... % Bytes 16
-                                                      'uint32', [1  1], 'EstimatedSamples'; ... % Bytes 17-20
-                                                      'uint32', [1  1], 'WritedSamples';    ... % Bytes 21-24
-                                                      'single', [1  1], 'F0';               ... % Bytes 25-28 (Spectral MetaData)
-                                                      'single', [1  1], 'F1';               ... % Bytes 29-32
-                                                      'single', [1  1], 'Resolution';       ... % Bytes 33-36
-                                                      'uint16', [1  1], 'DataPoints';       ... % Bytes 37-38
-                                                      'int8',   [1  1], 'TraceMode';        ... % Bytes 39
-                                                      'int8',   [1  1], 'Detector';         ... % Bytes 40
-                                                      'int8',   [1  1], 'LevelUnit';        ... % Bytes 41
-                                                      'int8',   [1  1], 'Preamp';           ... % Bytes 42
-                                                      'int8',   [1  1], 'attMode';          ... % Bytes 43
-                                                      'int8',   [1  1], 'attFactor';        ... % Bytes 44
-                                                      'single', [1  1], 'SampleTime';       ... % Bytes 45-48
-                                                      'uint8',  [1  2], 'Alignment';        ... % Bytes 49-50
-                                                      'uint8',  [1  1], 'gpsType';          ... % Bytes 51    (GPS Data)
-                                                      'int8',   [1  1], 'gpsStatus';        ... % Bytes 52
-                                                      'single', [1  1], 'Latitude';         ... % Bytes 53-56
-                                                      'single', [1  1], 'Longitude';        ... % Bytes 57-60
-                                                      'int8',   [1  6], 'utcTimeStamp';     ... % Bytes 61-66
-                                                      'int16',  [1  1], 'utcTimeStamp_ms';  ... % Bytes 67-68
-                                                      'uint32', [1  1], 'Offset1';          ... % Bytes 69-72 (Offset Data)
-                                                      'uint32', [1  1], 'Offset2';          ... % Bytes 73-76
-                                                      'uint32', [1  1], 'Offset3'},         ... % Bytes 77-80
-                                           'Repeat', 1);
+    FileHeaderBlock = struct('FileName',         char(rawData(1:15)),                ...
+                             'BitsPerPoint',     rawData(16),                        ...
+                             'EstimatedSamples', typecast(rawData(17:20), 'uint32'), ...
+                             'WritedSamples',    typecast(rawData(21:24), 'uint32'), ...
+                             'F0',               typecast(rawData(25:28), 'single'), ...
+                             'F1',               typecast(rawData(29:32), 'single'), ...
+                             'Resolution',       typecast(rawData(33:36), 'single'), ...
+                             'DataPoints',       typecast(rawData(37:38), 'uint16'), ...
+                             'TraceMode',        typecast(rawData(39),    'int8'),   ...
+                             'Detector',         typecast(rawData(40),    'int8'),   ...
+                             'LevelUnit',        typecast(rawData(41),    'int8'),   ...
+                             'Preamp',           typecast(rawData(42),    'int8'),   ...
+                             'attMode',          typecast(rawData(43),    'int8'),   ...
+                             'attFactor',        typecast(rawData(44),    'int8'),   ...
+                             'SampleTime',       typecast(rawData(45:48), 'single'), ...
+                             'gpsType',          rawData(51),                        ...
+                             'gpsStatus',        typecast(rawData(52),    'int8'),   ...
+                             'Latitude',         typecast(rawData(53:56), 'single'), ...
+                             'Longitude',        typecast(rawData(57:60), 'single'), ...
+                             'utcTimeStamp',     typecast(rawData(61:66), 'int8'),   ...
+                             'utcTimeStamp_ms',  typecast(rawData(67:68), 'int16'),  ...
+                             'Offset1',          typecast(rawData(69:72), 'uint32'), ...
+                             'Offset2',          typecast(rawData(73:76), 'uint32'), ...
+                             'Offset3',          typecast(rawData(77:80), 'uint32'));
     
-    switch FileHeaderBlock.Data.BitsPerPoint
+    switch FileHeaderBlock.BitsPerPoint
         case  8; dataFormat = 'uint8';
         case 16; dataFormat = 'int16';
         case 32; dataFormat = 'single';
     end
     
-    DataPoints      = double(FileHeaderBlock.Data.DataPoints);
-    WritedSamples   = double(FileHeaderBlock.Data.WritedSamples);
-    TextBlockLength = double(numel(rawData)-FileHeaderBlock.Data.Offset3);
+    DataPoints    = double(FileHeaderBlock.DataPoints);
+    WritedSamples = double(FileHeaderBlock.WritedSamples);
     
     if WritedSamples > 0
-        gpsTimestampBlock  = memmapfile(fileName, 'Offset', FileHeaderBlock.Data.Offset1,           ...
+        gpsTimestampBlock  = memmapfile(fileName, 'Offset', FileHeaderBlock.Offset1,                ...
                                                   'Format', {'int8',   [1  6], 'localTimeStamp';    ...
                                                              'int16',  [1  1], 'localTimeStamp_ms'; ...
                                                              'int16',  [1  1], 'Offset';            ...
@@ -199,23 +196,18 @@ function [FileHeaderBlock, gpsTimestampBlock, SpectralBlock, TextTrailerBlock] =
                                                              'single', [1  1], 'Longitude'},        ...
                                                   'Repeat', WritedSamples);
         
-        SpectralBlock      = memmapfile(fileName, 'Offset', FileHeaderBlock.Data.Offset2,                       ...
+        SpectralBlock      = memmapfile(fileName, 'Offset', FileHeaderBlock.Offset2,                            ...
                                                   'Format', {dataFormat, [DataPoints, WritedSamples], 'Array'}, ...
-                                                  'Repeat', 1);
-        
-        TextTrailerBlock   = memmapfile(fileName, 'Offset', FileHeaderBlock.Data.Offset3,                 ...
-                                                  'Format', {'uint8', [1 TextBlockLength], 'Dictionary'}, ...
                                                   'Repeat', 1);
     else
         gpsTimestampBlock  = [];
         SpectralBlock      = [];
-        TextTrailerBlock   = [];
     end
 end
 
 
 %-------------------------------------------------------------------------%
-function [TaskName, ID, Description, Receiver, AntennaInfo, IntegrationFactor] = Fcn_TextBlockRead(metaStr)
+function [TaskName, ID, Description, Receiver, AntennaInfo, IntegrationFactor] = Fcn_TextBlockRead(metaByteStream)
 
     % - appColeta v. 1.00
     %   "TaskName", "ThreadID", "Description", "Node", "Antenna", "AntennaHeight", 
@@ -238,7 +230,7 @@ function [TaskName, ID, Description, Receiver, AntennaInfo, IntegrationFactor] =
     %       antena. "Height" é uma string no formato "2m" (diferente do antigo campo 
     %       "AntennaHeight" que era numérico).
 
-    metaStruct  = jsondecode(native2unicode(metaStr.Data.Dictionary));
+    metaStruct  = jsondecode(native2unicode(metaByteStream));
 
     TaskName    = metaStruct.TaskName;
     ID          = metaStruct.ThreadID;

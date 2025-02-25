@@ -345,7 +345,9 @@ end
 function Description = Read_Description(specData, ii, messageTable)
 
     Description = '';
-    if isequal(messageTable.ThreadID', specData.IDList())
+    listOfIDs   = idList(specData);
+
+    if isequal(messageTable.ThreadID', listOfIDs)
         Description = messageTable.Message{ii};
     else
         idx = find(messageTable.ThreadID == specData(ii).RelatedFiles.ID);
