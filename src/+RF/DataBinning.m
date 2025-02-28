@@ -3,6 +3,11 @@ classdef (Abstract) DataBinning
     methods (Static = true)
         %-----------------------------------------------------------------%
         function [specRawTable, ChannelPowerUnit] = RawTableCreation(specData, idxThread, chAssigned)
+            arguments
+                specData   model.SpecDataBase
+                idxThread  double {mustBeInteger, mustBePositive, mustBeFinite}
+                chAssigned struct
+            end
             Timestamp = specData(idxThread).Data{1}';
             
             Latitude  = [];
@@ -11,6 +16,13 @@ classdef (Abstract) DataBinning
                 Latitude  = [Latitude;  specData(idxThread).RelatedFiles.GPS{ii}.Matrix(:,1)];
                 Longitude = [Longitude; specData(idxThread).RelatedFiles.GPS{ii}.Matrix(:,2)];
             end
+
+            % MATLAB R2024a tem um BUG que produz resultado não esperado p/
+            % o método inROI quando Latitude/Longitude estão como "single". 
+            % Aberto registro de BUG na Mathworks, e recebida resposta de que 
+            % isso estaria resolvido na R2024b. 
+            Latitude  = double(Latitude);
+            Longitude = double(Longitude);
             
             Frequency = chAssigned.Frequency * 1e+6; % MHz >> Hz
             ChannelBW = chAssigned.ChannelBW * 1e+3; % kHz >> Hz

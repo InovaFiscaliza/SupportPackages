@@ -16,10 +16,10 @@ classdef SpecDataBase < handle
     
     methods
         %-----------------------------------------------------------------%
-        function [obj, varargout] = read(obj, fileFullName, readType, varargin)
+        function [obj, projectData] = read(obj, fileFullName, readType, varargin)
             arguments
                 obj
-                fileFullName char
+                fileFullName char {mustBeFile}
                 readType     char {mustBeMember(readType, {'MetaData', 'SpecData', 'SingleFile'})} = 'SingleFile'
             end
 
@@ -27,8 +27,8 @@ classdef SpecDataBase < handle
                 varargin
             end
 
-            varargout = {[]};
-            [~, ~, fileExt] = fileparts(fileFullName);
+            projectData = [];
+            [~, fileName, fileExt] = fileparts(fileFullName);
             
             switch lower(fileExt)
                 case '.bin'
@@ -47,7 +47,9 @@ classdef SpecDataBase < handle
                 case '.csv'
                     obj = model.fileReader.ArgusCSV(obj, fileFullName, readType);
                 case '.mat'
-                    [obj, varargout{1}] = model.fileReader.MAT(fileFullName, readType);
+                    [obj, projectData] = model.fileReader.MAT(fileFullName, readType);
+                otherwise
+                    error('Unexpected file format "%s"\n%s', fileExt, [fileName, fileExt])
             end
 
             if ismember(readType, {'SpecData', 'SingleFile'})
@@ -140,7 +142,8 @@ classdef SpecDataBase < handle
             elseif contains(fileHeader, 'RFlookBin v.2', 'IgnoreCase', true)
                 fileFormatName = 'RFlookBin v.2';
             else
-                error('Unexpected file format')
+                [~, fileName, fileExt] = fileparts(fileFullName);
+                error('Unexpected header for a "bin" file\n%s', [fileName, fileExt])
             end
         end
 
