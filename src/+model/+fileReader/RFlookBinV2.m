@@ -79,9 +79,13 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileFormat, fileName)
     specData.MetaData.LevelUnit  = model.SpecDataBase.str2str(MetaStruct.Unit);
     specData.MetaData.DataPoints = MetaStruct.DataPoints;
     
-    specData.MetaData.Resolution = str2double(extractBefore(MetaStruct.Resolution, ' kHz'))*1000;
+    specData.MetaData.Resolution = str2double(extractBefore(MetaStruct.Resolution, 'kHz'))*1000;
     if isfield(MetaStruct, 'VBW')
-        specData.MetaData.VBW = str2double(extractBefore(MetaStruct.VBW, ' kHz'))*1000;
+        % Campo VBW pode vir no formato "100 kHz" ou "auto".
+        vbw = str2double(extractBefore(MetaStruct.VBW, 'kHz'))*1000;
+        if ~isnan(vbw)
+            specData.MetaData.VBW = vbw;
+        end
     end
 
     specData.MetaData.TraceMode  = MetaStruct.TraceMode;
@@ -182,7 +186,7 @@ function specData = Fcn_SpecDataReader(specData, rawData, fileFormat)
 
         % Quais dados foram compactados usando GZIP? "ByteStream" ou versão 
         % "uint8" do vetor de níveis?
-        byteStreamFlag = ismember(fileFormat, {'RFlookBin v.2/1', 'RFlookBin v.2/2'});
+        byteStreamMode = ismember(fileFormat, {'RFlookBin v.2/1', 'RFlookBin v.2/2'});
 
         errorIndex     = [];
     
@@ -197,7 +201,7 @@ function specData = Fcn_SpecDataReader(specData, rawData, fileFormat)
                 end
         
                 compressedArray = blockArray(blockOffset1+blockOffset2+9:end);
-                processedArray  = matlabCommunity.CompressLib.decompress(compressedArray, byteStreamFlag);
+                processedArray  = matlabCommunity.CompressLib.decompress(compressedArray, byteStreamMode);
                 newArray        = newArrayParsing(processedArray, BitsPerSample, OFFSET, DataPoints, fileFormat);
 
                 specData.Data{1}(ii)   = TimeStamp;

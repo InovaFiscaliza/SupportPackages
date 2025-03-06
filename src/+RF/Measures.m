@@ -2,7 +2,7 @@ function Measures(specData, idxThread, idxEmission, orientation, varargin)
 
     arguments
         specData    model.SpecData
-        idxThread   {mustBeInteger, mustBeNonnegative, mustBeFinite} = 1
+        idxThread   {mustBeInteger, mustBeNonnegative, mustBeFinite} =  1
         idxEmission {mustBeInteger, mustBeFinite} = -1
         orientation {mustBeMember(orientation, {'Band', 'Channel', 'Emission'})} = 'Band'
     end
@@ -45,7 +45,7 @@ function Measures(specData, idxThread, idxEmission, orientation, varargin)
 
         case 'Emission'
             % EMISSION: emissão específica
-            specData(idxThread).UserData.Emissions(idxEmission, :)
+            specData(idxThread).UserData.Emissions(idxEmission, :);
 
     end
 end
