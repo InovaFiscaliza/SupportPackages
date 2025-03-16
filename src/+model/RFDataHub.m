@@ -41,7 +41,7 @@ classdef (Abstract) RFDataHub
                         save(programDataFilePath, 'RFDataHub', 'RFDataHubLog', 'RFDataHub_info')
                     
                     catch ME
-                        programDataFilePath_old = fullfile(programDataFolder, 'RFDataHub_old.mat');        
+                        programDataFilePath_old = fullfile(programDataFolder, 'DataBase', 'RFDataHub_old.mat');        
                         if isfile(programDataFilePath_old)
                             backupPath = programDataFilePath_old;
                         else
@@ -53,9 +53,30 @@ classdef (Abstract) RFDataHub
             end
         end
 
+        %-----------------------------------------------------------------%
+        function update(appName, rootFolder, tempDir, publicLinks)
+            % Salva os arquivos PARQUET localmente...
+            websave(fullfile(tempDir, 'estacoes.parquet.gzip'), publicLinks.Table);
+            websave(fullfile(tempDir, 'log.parquet.gzip'),      publicLinks.Log);
+            websave(fullfile(tempDir, 'Release.json'),          publicLinks.Release);
+
+            % Muda o nome do arquivo antigo...
+            [~, programDataFolder] = appUtil.Path(appName, rootFolder);
+            programDataFilePath = fullfile(programDataFolder, 'DataBase', 'RFDataHub.mat');
+            if isfile(programDataFilePath)
+                movefile(programDataFilePath, fullfile(programDataFolder, 'DataBase', 'RFDataHub_old.mat'), 'f');
+            end
+
+            % Apaga as variáveis globais, lendo os novos arquivos.
+            clear global RFDataHub
+            clear global RFDataHubLog
+            clear global RFDataHub_info
+
+            model.RFDataHub.read(appName, rootFolder, tempDir)
+        end
 
         %-----------------------------------------------------------------%
-        function RFDataHub = parquet2mat(RFDataHub)
+        function obj = parquet2mat(obj)
             % Em 28/11/2023 o RFDataHub se apresentava como uma tabela formada 
             % por 979522 linhas e 29 colunas. Todas as colunas eram categóricas 
             % (inclusive as de natureza numérica, como "Frequência", por exemplo).
@@ -78,35 +99,35 @@ classdef (Abstract) RFDataHub
             % Col. 13: "Largura_Emissão(kHz)" >> "BW"        {single}
             % Col. 29: "Relatório_Canal"      >> "URL"       {categorical}
 
-            RFDataHub = model.RFDataHub.ColumnNames(RFDataHub, 'port2eng');
-            RFDataHub = convertvars(RFDataHub, [1:7, 13], 'string');
+            obj = model.RFDataHub.ColumnNames(obj, 'port2eng');
+            obj = convertvars(obj, [1:7, 13], 'string');
 
-            RFDataHub.Frequency = str2double(RFDataHub.Frequency);
-            RFDataHub.Name      = categorical(regexprep(lower(RFDataHub.Name), '(\<\w)', '${upper($1)}'));
-            RFDataHub.Fistel    = int64(str2double(RFDataHub.Fistel));
-            RFDataHub.Service   = int16(str2double(RFDataHub.Service));
-            RFDataHub.Station   = int32(str2double(RFDataHub.Station));
-            RFDataHub.Latitude  = single(str2double(RFDataHub.Latitude));
-            RFDataHub.Longitude = single(str2double(RFDataHub.Longitude));
-            RFDataHub.BW        = single(str2double(RFDataHub.BW));
-            RFDataHub.Log       = RFDataHub.Log + 1;
+            obj.Frequency = str2double(obj.Frequency);
+            obj.Name      = categorical(regexprep(lower(obj.Name), '(\<\w)', '${upper($1)}'));
+            obj.Fistel    = int64(str2double(obj.Fistel));
+            obj.Service   = int16(str2double(obj.Service));
+            obj.Station   = int32(str2double(obj.Station));
+            obj.Latitude  = single(str2double(obj.Latitude));
+            obj.Longitude = single(str2double(obj.Longitude));
+            obj.BW        = single(str2double(obj.BW));
+            obj.Log       = obj.Log + 1;
 
             % LIMITES DE FREQUÊNCIA, LATITUDE E LONGITUDE
             msgError = {};
-            if any(RFDataHub.Frequency <= 0)
+            if any(obj.Frequency <= 0)
                 msgError{end+1} = 'Frequency column should only have positive values.';
             end
             
-            if any(abs(RFDataHub.Latitude) > 90)
+            if any(abs(obj.Latitude) > 90)
                 msgError{end+1} = 'Latitude column should only have values in the range [-90, 90].';
             end
 
-            if any(abs(RFDataHub.Longitude) > 180)
+            if any(abs(obj.Longitude) > 180)
                 msgError{end+1} = 'Longitude column should only have values in the range [-180, 180].';
             end
 
             stateList = {'-1', 'AC', 'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MG', 'MS', 'MT', 'PA', 'PB', 'PE', 'PI', 'PR', 'RJ', 'RN', 'RO', 'RR', 'RS', 'SC', 'SE', 'SP', 'TO'};
-            if any(~ismember(unique(RFDataHub.State), stateList))
+            if any(~ismember(unique(obj.State), stateList))
                 msgError{end+1} = sprintf('State column should only have values in the set {%s}.', strjoin(stateList, ', '));
             end
 
@@ -115,10 +136,10 @@ classdef (Abstract) RFDataHub
             end
 
             % NAN >> -1
-            for ii = 1:width(RFDataHub)
-                if isnumeric(RFDataHub{:,ii})
-                    idx = isnan(RFDataHub{:,ii});
-                    RFDataHub{idx,ii} = -1;
+            for ii = 1:width(obj)
+                if isnumeric(obj{:,ii})
+                    idx = isnan(obj{:,ii});
+                    obj{idx,ii} = -1;
                 end
             end
         end
@@ -158,48 +179,48 @@ classdef (Abstract) RFDataHub
         end
 
         %-----------------------------------------------------------------%
-        function RFDataHub = ColumnNames(RFDataHub, Type)
+        function obj = ColumnNames(obj, Type)
             [rawColumnNames, ...
              editedColumnNames] = model.RFDataHub.ColumnNamesMapping('columnArrays');
 
             switch Type
                 case 'port2eng'
-                    RFDataHub = renamevars(RFDataHub, rawColumnNames, editedColumnNames);
+                    obj = renamevars(obj, rawColumnNames, editedColumnNames);
                 case 'eng2port'
-                    RFDataHub = renamevars(RFDataHub, editedColumnNames, rawColumnNames);
+                    obj = renamevars(obj, editedColumnNames, rawColumnNames);
             end
         end
 
 
         %-----------------------------------------------------------------%
-        function stdDescription = Description(RFDataHub, idx, addAuxiliarInfo)
+        function stdDescription = Description(obj, idx, addAuxiliarInfo)
             arguments 
-                RFDataHub
+                obj
                 idx
                 addAuxiliarInfo logical = true
             end
-            mergeCount = RFDataHub.MergeCount(idx);
+            mergeCount = obj.MergeCount(idx);
             if mergeCount == "1"; mergeNote = '';
             else;                 mergeNote = sprintf(', M=%s', mergeCount);
             end
 
-            stdDescription = sprintf('[%s] %s, %s, %s (Fistel=%d, Estação=%d%s), %s/%s', RFDataHub.Source(idx),       ...
-                                                                                         RFDataHub.Status(idx),       ...
-                                                                                         RFDataHub.StationClass(idx), ...
-                                                                                         RFDataHub.Name(idx),         ...
-                                                                                         RFDataHub.Fistel(idx),       ...
-                                                                                         RFDataHub.Station(idx),      ...
-                                                                                         mergeNote,                   ...
-                                                                                         RFDataHub.Location(idx),     ...
-                                                                                         RFDataHub.State(idx));
+            stdDescription = sprintf('[%s] %s, %s, %s (Fistel=%d, Estação=%d%s), %s/%s', obj.Source(idx),       ...
+                                                                                         obj.Status(idx),       ...
+                                                                                         obj.StationClass(idx), ...
+                                                                                         obj.Name(idx),         ...
+                                                                                         obj.Fistel(idx),       ...
+                                                                                         obj.Station(idx),      ...
+                                                                                         mergeNote,             ...
+                                                                                         obj.Location(idx),     ...
+                                                                                         obj.State(idx));
             if addAuxiliarInfo
-                stdDescription = sprintf('%s @ (ID=#%d, Latitude=%.6fº, Longitude=%.6fº)', stdDescription, idx, RFDataHub.Latitude(idx), RFDataHub.Longitude(idx));
+                stdDescription = sprintf('%s @ (Latitude=%.6fº, Longitude=%.6fº)', stdDescription, obj.Latitude(idx), obj.Longitude(idx));
             end
         end
 
 
         %-----------------------------------------------------------------%
-        function stationInfo = query(RFDataHub, stationID, latNode, longNode)            
+        function stationInfo = query(obj, stationID, latNode, longNode)
             % stationID é uma string com o número da estação real ou virtual 
             % (quando possui o caractere "#" à frente do número). latNode e 
             % longNode são as coordenadas geográficas do local onde ocorreu 
@@ -207,30 +228,40 @@ classdef (Abstract) RFDataHub
 
             if contains(stationID, '#')
                 idx = str2double(stationID(2:end));
-                if (idx < 1) || (idx > height(RFDataHub))
+                if (idx < 1) || (idx > height(obj))
                     idx = [];
                 end
             else
-                idx = find(RFDataHub.Station == str2double(stationID));
+                idx = find(obj.Station == str2double(stationID));
             end    
             
             if isempty(idx)
                 error('Estação não consta na base <i>offline</i>. Favor confirmar que foi digitado o número corretamente.')
             end
             
-            Latitude    = RFDataHub.Latitude(idx(1));
-            Longitude   = RFDataHub.Longitude(idx(1));
+            Latitude    = obj.Latitude(idx(1));
+            Longitude   = obj.Longitude(idx(1));
+            try
+                AntennaHeight = str2double(char(obj.AntennaHeight(idxRFDataHub(idxStation))));
+    
+                mustBeFinite(AntennaHeight)
+                mustBeNonnegative(AntennaHeight)
+                mustBeNonempty(AntennaHeight)             
+            catch
+                AntennaHeight = 0;
+            end
 
-            Frequency   = sprintf('%.3f, ', RFDataHub.Frequency(idx));
+            Frequency   = sprintf('%.3f, ', obj.Frequency(idx));
             Frequency   = Frequency(1:end-2);
         
             ID          = strjoin(string(idx), ', ');
-            Service     = RFDataHub.Service(idx(1));
-            Station     = RFDataHub.Station(idx(1));
-            Description = model.RFDataHub.Description(RFDataHub, idx(1));
+            Service     = obj.Service(idx(1));
+            Station     = obj.Station(idx(1));
+            Description = model.RFDataHub.Description(obj, idx(1));
+            Details     = jsonencode(obj(idx(1), setdiff(obj.Properties.VariableNames, {'Service', 'Station', 'Latitude', 'Longitude', 'AntennaHeight'})));
                         
             Distance    = deg2km(distance(latNode, longNode, Latitude, Longitude));
-            stationInfo = struct('ID', ID, 'Frequency', Frequency, 'Service', Service, 'Station', Station, 'Description', Description, 'Distance', Distance);
+            stationInfo = struct('ID', ID, 'Frequency', Frequency, 'Service', Service, 'Station', Station, 'Description', Description, 'Distance', Distance, 'Latitude', Latitude, 'Longitude', Longitude, 'AntennaHeight', AntennaHeight, 'Details', Details);
         end
 
 

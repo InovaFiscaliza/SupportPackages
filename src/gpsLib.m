@@ -13,12 +13,26 @@ classdef (Abstract) gpsLib
         end
 
         %-----------------------------------------------------------------%
+        function [IBGE, msgError] = checkIfIBGEIsGlobal()
+            global IBGE
+            msgError = '';
+
+            try
+                if isempty(IBGE)
+                    load(fullfile(gpsLib.path(), 'resources', 'IBGE.mat'), 'IBGE');
+                end
+            catch ME
+                msgError = ME.message;
+            end
+        end
+
+        %-----------------------------------------------------------------%
         function [cityName, Latitude, Longitude] = findCityCoordinates(cityName)
-            load(fullfile(gpsLib.path(), 'resources', 'IBGE.mat'), 'IBGE');
+            IBGE = gpsLib.checkIfIBGEIsGlobal();
             
             idx = find(strcmpi(IBGE.City, cityName));
             if ~isempty(idx)
-                cityName      = IBGE.City{idx};
+                cityName  = IBGE.City{idx};
                 Latitude  = IBGE.Latitude(idx);
                 Longitude = IBGE.Longitude(idx);
             else
@@ -29,34 +43,32 @@ classdef (Abstract) gpsLib
         end
 
         %-----------------------------------------------------------------%
-        function [cityName, cityDistance, cityInfo] = findNearestCity(refPoint, method, IBGE, varargin)
+        function [cityName, cityDistance, cityInfo] = findNearestCity(refPoint, method, varargin)
             arguments
                 refPoint struct % struct('Latitude', {}, 'Longitude', {})
                 method   {mustBeMember(method, {'API/IBGE', 'API', 'IBGE'})} = 'API/IBGE'
-                IBGE     table = []                
             end
 
             arguments (Repeating)
                 varargin
             end
             
-            if isempty(IBGE)
-                load(fullfile(gpsLib.path(), 'resources', 'IBGE.mat'), 'IBGE');
-            end
+            IBGE = gpsLib.checkIfIBGEIsGlobal();
         
             switch method
                 case 'API/IBGE'
-                    [cityName, cityDistance, cityInfo] = gpsLib.findNearestCity(refPoint, 'API', IBGE);
+                    [cityName, cityDistance, cityInfo] = gpsLib.findNearestCity(refPoint, 'API');
                 
                     if isempty(cityName) || (cityDistance == -1) || isempty(cityInfo)
-                        [cityName, cityDistance, cityInfo] = gpsLib.findNearestCity(refPoint, 'IBGE', IBGE, cityInfo);
+                        [cityName, cityDistance, cityInfo] = gpsLib.findNearestCity(refPoint, 'IBGE', cityInfo);
                     end
         
                 case 'API'
                     [cityName, cityDistance, cityInfo] = gpsLib.getCityFromAPI(refPoint, IBGE);
         
                 case 'IBGE'
-                    [cityName, cityDistance, cityInfo] = gpsLib.getCityFromIBGE(refPoint, IBGE, varargin{:});
+                    cityInfo = varargin{1};
+                    [cityName, cityDistance, cityInfo] = gpsLib.getCityFromIBGE(refPoint, IBGE, cityInfo);
             end
         end
 
@@ -173,10 +185,11 @@ classdef (Abstract) gpsLib
                     stdRange(kk) = 100 * sum(gpsMatrix(:,1) >= lat_min  & gpsMatrix(:,1) <= lat_max ...
                                            & gpsMatrix(:,2) >= long_min & gpsMatrix(:,2) <= long_max) / height(gpsMatrix);
                 end
-                gpsSummary.stdRange            = stdRange;
-                [cityName, ~, cityInfo] = gpsLib.findNearestCity(gpsSummary);
-                gpsSummary.Location            = cityName;
-                gpsSummary.LocationSource      = cityInfo.source;
+
+                gpsSummary.stdRange       = stdRange;
+                [cityName, ~, cityInfo]   = gpsLib.findNearestCity(gpsSummary, 'API/IBGE');
+                gpsSummary.Location       = cityName;
+                gpsSummary.LocationSource = cityInfo.source;
             end
         end
     end

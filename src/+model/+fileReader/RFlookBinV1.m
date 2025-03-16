@@ -93,7 +93,7 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileFormat, fileName)
                 end
             end
     end
-    gpsSummary = gpsLib.summary((gpsData));
+    gpsSummary = gpsLib.summary(gpsData);
 
     % Metadados secundários (incluso na tabela "RelatedFiles"), além de
     % informação acerca do mapeamento do arquivo (para fins de leitura dos

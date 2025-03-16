@@ -1,0 +1,2483 @@
+<SOAP-ENV:Envelope SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns1="Sei" xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xmime="http://www.w3.org/2005/05/xmlmime">
+   <SOAP-ENV:Body>
+      <ns1:listarSeriesResponse>
+         <parametros SOAP-ENC:arrayType="ns1:Serie[495]" xsi:type="ns1:ArrayOfSerie">
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">46</IdSerie>
+               <Nome xsi:type="xsd:string">Abaixo-Assinado</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">292</IdSerie>
+               <Nome xsi:type="xsd:string">Abertura de Procedimento Licitatório</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">8</IdSerie>
+               <Nome xsi:type="xsd:string">Acórdão</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">106</IdSerie>
+               <Nome xsi:type="xsd:string">Acordo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">439</IdSerie>
+               <Nome xsi:type="xsd:string">Acordo de Conduta Pessoal e Profissional</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">517</IdSerie>
+               <Nome xsi:type="xsd:string">Acordo de Cooperação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">231</IdSerie>
+               <Nome xsi:type="xsd:string">Acordo de Cooperação Técnica</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">95</IdSerie>
+               <Nome xsi:type="xsd:string">Agenda</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">293</IdSerie>
+               <Nome xsi:type="xsd:string">Alegações</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">48</IdSerie>
+               <Nome xsi:type="xsd:string">Alvará</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">116</IdSerie>
+               <Nome xsi:type="xsd:string">Anais</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">7</IdSerie>
+               <Nome xsi:type="xsd:string">Análise</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">352</IdSerie>
+               <Nome xsi:type="xsd:string">Análise de Aderência Regulatória</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">450</IdSerie>
+               <Nome xsi:type="xsd:string">Análise de Conformidade do Processo de Pagamento</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">342</IdSerie>
+               <Nome xsi:type="xsd:string">Análise de Reversão de Medida Acautelatória</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">220</IdSerie>
+               <Nome xsi:type="xsd:string">Análise de Riscos da Contratação de TI</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">288</IdSerie>
+               <Nome xsi:type="xsd:string">Anexo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">96</IdSerie>
+               <Nome xsi:type="xsd:string">Anotação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">117</IdSerie>
+               <Nome xsi:type="xsd:string">Anteprojeto</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">115</IdSerie>
+               <Nome xsi:type="xsd:string">Apartado Sigiloso</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">118</IdSerie>
+               <Nome xsi:type="xsd:string">Apólice</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">119</IdSerie>
+               <Nome xsi:type="xsd:string">Apostila</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">309</IdSerie>
+               <Nome xsi:type="xsd:string">Apresentação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">31</IdSerie>
+               <Nome xsi:type="xsd:string">AR</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">67</IdSerie>
+               <Nome xsi:type="xsd:string">Ata</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">187</IdSerie>
+               <Nome xsi:type="xsd:string">Ata de Circuito Deliberativo do Conselho Diretor</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">478</IdSerie>
+               <Nome xsi:type="xsd:string">Ata de Deliberação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">285</IdSerie>
+               <Nome xsi:type="xsd:string">Ata de Registro de Preços</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">229</IdSerie>
+               <Nome xsi:type="xsd:string">Ata de Reunião</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">390</IdSerie>
+               <Nome xsi:type="xsd:string">Ata de Reunião do Conselho Consultivo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">236</IdSerie>
+               <Nome xsi:type="xsd:string">Ata de Reunião do Conselho Diretor</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">291</IdSerie>
+               <Nome xsi:type="xsd:string">Ata de Sessão Pública</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">74</IdSerie>
+               <Nome xsi:type="xsd:string">Atestado</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">189</IdSerie>
+               <Nome xsi:type="xsd:string">Atestado de Capacidade Técnica</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">244</IdSerie>
+               <Nome xsi:type="xsd:string">Atesto de Documento de Cobrança</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">3</IdSerie>
+               <Nome xsi:type="xsd:string">Ato</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">52</IdSerie>
+               <Nome xsi:type="xsd:string">Áudio</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">120</IdSerie>
+               <Nome xsi:type="xsd:string">Auto</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">22</IdSerie>
+               <Nome xsi:type="xsd:string">Auto de Infração</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">297</IdSerie>
+               <Nome xsi:type="xsd:string">Autorização</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">345</IdSerie>
+               <Nome xsi:type="xsd:string">Autorização de Entrada na Anatel Extraexpediente</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">461</IdSerie>
+               <Nome xsi:type="xsd:string">Autorização de Entrada/Saída de Materiais</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">245</IdSerie>
+               <Nome xsi:type="xsd:string">Autorização de Pagamento</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">452</IdSerie>
+               <Nome xsi:type="xsd:string">Autorização de Ressarcimento</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">353</IdSerie>
+               <Nome xsi:type="xsd:string">Avaliação de Desempenho de Estagiário</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">503</IdSerie>
+               <Nome xsi:type="xsd:string">Avaliação de Legítimo Interesse - Dados Pessoais</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">354</IdSerie>
+               <Nome xsi:type="xsd:string">Avaliação Final de Estagiário</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">355</IdSerie>
+               <Nome xsi:type="xsd:string">Avaliação Final de Estágio</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">458</IdSerie>
+               <Nome xsi:type="xsd:string">Avaliação Preliminar de Impacto Regulatório</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">121</IdSerie>
+               <Nome xsi:type="xsd:string">Aviso</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">192</IdSerie>
+               <Nome xsi:type="xsd:string">Aviso de Audiência Pública</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">510</IdSerie>
+               <Nome xsi:type="xsd:string">Aviso de Dispensa Eletrônica</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">193</IdSerie>
+               <Nome xsi:type="xsd:string">Aviso de Licitação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">32</IdSerie>
+               <Nome xsi:type="xsd:string">Balancete</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">33</IdSerie>
+               <Nome xsi:type="xsd:string">Balanço</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">122</IdSerie>
+               <Nome xsi:type="xsd:string">Bilhete</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">34</IdSerie>
+               <Nome xsi:type="xsd:string">Boletim</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">294</IdSerie>
+               <Nome xsi:type="xsd:string">Boletim de Concessão de Diárias</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">97</IdSerie>
+               <Nome xsi:type="xsd:string">Boleto</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">211</IdSerie>
+               <Nome xsi:type="xsd:string">Calendário</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">296</IdSerie>
+               <Nome xsi:type="xsd:string">Canhoto</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">80</IdSerie>
+               <Nome xsi:type="xsd:string">Carta</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">472</IdSerie>
+               <Nome xsi:type="xsd:string">Carta Convite</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">310</IdSerie>
+               <Nome xsi:type="xsd:string">Carta de Preposição</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">209</IdSerie>
+               <Nome xsi:type="xsd:string">Cartão</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">123</IdSerie>
+               <Nome xsi:type="xsd:string">Cartaz</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">87</IdSerie>
+               <Nome xsi:type="xsd:string">Carteira</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">527</IdSerie>
+               <Nome xsi:type="xsd:string">Catálogo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">124</IdSerie>
+               <Nome xsi:type="xsd:string">Cédula</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">81</IdSerie>
+               <Nome xsi:type="xsd:string">Certidão</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">405</IdSerie>
+               <Nome xsi:type="xsd:string">Certidão de Admissibilidade Recursal</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">502</IdSerie>
+               <Nome xsi:type="xsd:string">Certidão de Atendimento a Pedido de Vista</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">428</IdSerie>
+               <Nome xsi:type="xsd:string">Certidão de Cancelamento</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">425</IdSerie>
+               <Nome xsi:type="xsd:string">Certidão de Cancelamento de Distribuição</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">426</IdSerie>
+               <Nome xsi:type="xsd:string">Certidão de Distribuição</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">359</IdSerie>
+               <Nome xsi:type="xsd:string">Certidão de Intimação Cumprida</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">427</IdSerie>
+               <Nome xsi:type="xsd:string">Certidão de Julgamento</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">406</IdSerie>
+               <Nome xsi:type="xsd:string">Certidão de Redistribuição</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">82</IdSerie>
+               <Nome xsi:type="xsd:string">Certificado</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">239</IdSerie>
+               <Nome xsi:type="xsd:string">Check List de Análise</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">125</IdSerie>
+               <Nome xsi:type="xsd:string">Cheque</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">476</IdSerie>
+               <Nome xsi:type="xsd:string">Citação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">338</IdSerie>
+               <Nome xsi:type="xsd:string">CNH</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">210</IdSerie>
+               <Nome xsi:type="xsd:string">CNPJ</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">521</IdSerie>
+               <Nome xsi:type="xsd:string">Compromisso Formal - Chamadas Inoportunas</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">35</IdSerie>
+               <Nome xsi:type="xsd:string">Comprovante</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">14</IdSerie>
+               <Nome xsi:type="xsd:string">Comunicado</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">184</IdSerie>
+               <Nome xsi:type="xsd:string">Comunicado de Cobrança</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">358</IdSerie>
+               <Nome xsi:type="xsd:string">Comunicado de Recesso de Estagiário</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">315</IdSerie>
+               <Nome xsi:type="xsd:string">Comunicado Público</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">298</IdSerie>
+               <Nome xsi:type="xsd:string">Confirmação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">197</IdSerie>
+               <Nome xsi:type="xsd:string">Consulta</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">18</IdSerie>
+               <Nome xsi:type="xsd:string">Consulta Interna</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">9</IdSerie>
+               <Nome xsi:type="xsd:string">Consulta Pública</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">36</IdSerie>
+               <Nome xsi:type="xsd:string">Conta</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">72</IdSerie>
+               <Nome xsi:type="xsd:string">Conteúdo de Mídia</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">126</IdSerie>
+               <Nome xsi:type="xsd:string">Contracheque</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">112</IdSerie>
+               <Nome xsi:type="xsd:string">Contrarrazões</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">37</IdSerie>
+               <Nome xsi:type="xsd:string">Contrato</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">351</IdSerie>
+               <Nome xsi:type="xsd:string">Contrato de Concessão</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">105</IdSerie>
+               <Nome xsi:type="xsd:string">Convenção</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">232</IdSerie>
+               <Nome xsi:type="xsd:string">Convênio</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">127</IdSerie>
+               <Nome xsi:type="xsd:string">Convite</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">38</IdSerie>
+               <Nome xsi:type="xsd:string">Correspondência</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">30</IdSerie>
+               <Nome xsi:type="xsd:string">Correspondência Eletrônica</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">29</IdSerie>
+               <Nome xsi:type="xsd:string">Cota</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">299</IdSerie>
+               <Nome xsi:type="xsd:string">Cotação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">88</IdSerie>
+               <Nome xsi:type="xsd:string">CPF</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">128</IdSerie>
+               <Nome xsi:type="xsd:string">Crachá</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">98</IdSerie>
+               <Nome xsi:type="xsd:string">Credencial</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">129</IdSerie>
+               <Nome xsi:type="xsd:string">Cronograma</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">39</IdSerie>
+               <Nome xsi:type="xsd:string">Croqui</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">130</IdSerie>
+               <Nome xsi:type="xsd:string">Currículo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">40</IdSerie>
+               <Nome xsi:type="xsd:string">Dacon</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">198</IdSerie>
+               <Nome xsi:type="xsd:string">Debênture</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">41</IdSerie>
+               <Nome xsi:type="xsd:string">Decisão</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">83</IdSerie>
+               <Nome xsi:type="xsd:string">Declaração</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">529</IdSerie>
+               <Nome xsi:type="xsd:string">Declaração de Disponibilidade Orçamentária</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">131</IdSerie>
+               <Nome xsi:type="xsd:string">Decreto</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">42</IdSerie>
+               <Nome xsi:type="xsd:string">Defesa</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">43</IdSerie>
+               <Nome xsi:type="xsd:string">Degravacão</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">132</IdSerie>
+               <Nome xsi:type="xsd:string">Deliberação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">44</IdSerie>
+               <Nome xsi:type="xsd:string">Demonstração</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">133</IdSerie>
+               <Nome xsi:type="xsd:string">Demonstrativo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">45</IdSerie>
+               <Nome xsi:type="xsd:string">Denúncia</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">134</IdSerie>
+               <Nome xsi:type="xsd:string">Depoimento</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">93</IdSerie>
+               <Nome xsi:type="xsd:string">Despacho</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">4</IdSerie>
+               <Nome xsi:type="xsd:string">Despacho Decisório</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">5</IdSerie>
+               <Nome xsi:type="xsd:string">Despacho Ordinatório</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">374</IdSerie>
+               <Nome xsi:type="xsd:string">Despacho Ordinatório de Encerramento</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">6</IdSerie>
+               <Nome xsi:type="xsd:string">Despacho Ordinatório de Instauração</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">335</IdSerie>
+               <Nome xsi:type="xsd:string">Diagnóstico</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">135</IdSerie>
+               <Nome xsi:type="xsd:string">Diário</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">77</IdSerie>
+               <Nome xsi:type="xsd:string">Diploma</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">199</IdSerie>
+               <Nome xsi:type="xsd:string">Diretriz</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">136</IdSerie>
+               <Nome xsi:type="xsd:string">Dissertação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">47</IdSerie>
+               <Nome xsi:type="xsd:string">Documento</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">369</IdSerie>
+               <Nome xsi:type="xsd:string">Documento de Formalização de Demanda (DFD)</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">216</IdSerie>
+               <Nome xsi:type="xsd:string">Documento de Oficialização de Demanda de TI (DOD)</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">392</IdSerie>
+               <Nome xsi:type="xsd:string">Documento de Planejamento de Contratação (DPC)</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">137</IdSerie>
+               <Nome xsi:type="xsd:string">Dossiê</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">276</IdSerie>
+               <Nome xsi:type="xsd:string">E-mail</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">68</IdSerie>
+               <Nome xsi:type="xsd:string">Edital</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">429</IdSerie>
+               <Nome xsi:type="xsd:string">Edital de Cancelamento</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">346</IdSerie>
+               <Nome xsi:type="xsd:string">Edital de Ciência de Eliminação de Documentos</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">237</IdSerie>
+               <Nome xsi:type="xsd:string">Edital de Convocação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">185</IdSerie>
+               <Nome xsi:type="xsd:string">Edital de Intimação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">496</IdSerie>
+               <Nome xsi:type="xsd:string">Edital de Seleção</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">138</IdSerie>
+               <Nome xsi:type="xsd:string">Embargos</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">139</IdSerie>
+               <Nome xsi:type="xsd:string">Emenda</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">140</IdSerie>
+               <Nome xsi:type="xsd:string">Escala</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">108</IdSerie>
+               <Nome xsi:type="xsd:string">Esclarecimento</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">141</IdSerie>
+               <Nome xsi:type="xsd:string">Escritura</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">49</IdSerie>
+               <Nome xsi:type="xsd:string">Escrituração</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">50</IdSerie>
+               <Nome xsi:type="xsd:string">Estatuto</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">339</IdSerie>
+               <Nome xsi:type="xsd:string">Estratégia</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">340</IdSerie>
+               <Nome xsi:type="xsd:string">Estudo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">370</IdSerie>
+               <Nome xsi:type="xsd:string">Estudo Preliminar da Contratação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">219</IdSerie>
+               <Nome xsi:type="xsd:string">Estudo Técnico Preliminar da Contratação de TI</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">336</IdSerie>
+               <Nome xsi:type="xsd:string">Exame</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">142</IdSerie>
+               <Nome xsi:type="xsd:string">Exposição</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">51</IdSerie>
+               <Nome xsi:type="xsd:string">Extrato</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">84</IdSerie>
+               <Nome xsi:type="xsd:string">Fatura</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">143</IdSerie>
+               <Nome xsi:type="xsd:string">Ficha</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">144</IdSerie>
+               <Nome xsi:type="xsd:string">Fluxograma</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">200</IdSerie>
+               <Nome xsi:type="xsd:string">Folder</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">99</IdSerie>
+               <Nome xsi:type="xsd:string">Folha</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">356</IdSerie>
+               <Nome xsi:type="xsd:string">Folha de Ponto Mensal</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">289</IdSerie>
+               <Nome xsi:type="xsd:string">Folheto</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">304</IdSerie>
+               <Nome xsi:type="xsd:string">Formulário de Cadastro e Habilitação no SIAFI</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">455</IdSerie>
+               <Nome xsi:type="xsd:string">Formulário de Cadastro e Responsabilidade no SCDP</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">431</IdSerie>
+               <Nome xsi:type="xsd:string">Formulário de Comunicado de Plano de Serviço</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">378</IdSerie>
+               <Nome xsi:type="xsd:string">Formulário de Demanda de Infraestrutura</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">512</IdSerie>
+               <Nome xsi:type="xsd:string">Formulário de Inspeção</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">430</IdSerie>
+               <Nome xsi:type="xsd:string">Formulário de Novo Plano de Serviço</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">86</IdSerie>
+               <Nome xsi:type="xsd:string">Formulário de Ouvidoria</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">456</IdSerie>
+               <Nome xsi:type="xsd:string">Formulário de Solicitação de Viagem</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">201</IdSerie>
+               <Nome xsi:type="xsd:string">Grade Curricular</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">146</IdSerie>
+               <Nome xsi:type="xsd:string">Guia</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">256</IdSerie>
+               <Nome xsi:type="xsd:string">Guia de Recebimento de Malote</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">255</IdSerie>
+               <Nome xsi:type="xsd:string">Guia de Remessa de Malote</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">79</IdSerie>
+               <Nome xsi:type="xsd:string">Histórico</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">453</IdSerie>
+               <Nome xsi:type="xsd:string">Histórico Processual</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">109</IdSerie>
+               <Nome xsi:type="xsd:string">Impugnação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">372</IdSerie>
+               <Nome xsi:type="xsd:string">Inclusão em Lista Permanente para Acesso na Anatel</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">202</IdSerie>
+               <Nome xsi:type="xsd:string">Indicação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">217</IdSerie>
+               <Nome xsi:type="xsd:string">Indicação de Integrante Técnico</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">365</IdSerie>
+               <Nome xsi:type="xsd:string">Indicação para Receber Intimações Eletrônicas</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">92</IdSerie>
+               <Nome xsi:type="xsd:string">Informação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">334</IdSerie>
+               <Nome xsi:type="xsd:string">Informação em Mandado de Segurança</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">16</IdSerie>
+               <Nome xsi:type="xsd:string">Informe</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">300</IdSerie>
+               <Nome xsi:type="xsd:string">Inscrição</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">218</IdSerie>
+               <Nome xsi:type="xsd:string">Instituição da Equipe de Planej. da Contratação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">203</IdSerie>
+               <Nome xsi:type="xsd:string">Instrução</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">495</IdSerie>
+               <Nome xsi:type="xsd:string">Instrução Normativa</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">110</IdSerie>
+               <Nome xsi:type="xsd:string">Intenção</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">477</IdSerie>
+               <Nome xsi:type="xsd:string">Intimação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">147</IdSerie>
+               <Nome xsi:type="xsd:string">Inventário</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">246</IdSerie>
+               <Nome xsi:type="xsd:string">Lançamento de Pagamento</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">54</IdSerie>
+               <Nome xsi:type="xsd:string">Laudo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">443</IdSerie>
+               <Nome xsi:type="xsd:string">Laudo Ambiental</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">26</IdSerie>
+               <Nome xsi:type="xsd:string">Laudo de Vistoria</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">148</IdSerie>
+               <Nome xsi:type="xsd:string">Lei</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">55</IdSerie>
+               <Nome xsi:type="xsd:string">Licença</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">364</IdSerie>
+               <Nome xsi:type="xsd:string">Licença para Funcionamento de Estação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">100</IdSerie>
+               <Nome xsi:type="xsd:string">Lista</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">266</IdSerie>
+               <Nome xsi:type="xsd:string">Lista de Matérias para Sorteio ao Conselho Diretor</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">375</IdSerie>
+               <Nome xsi:type="xsd:string">Lista de Matérias Sorteadas ao Conselho Diretor</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">287</IdSerie>
+               <Nome xsi:type="xsd:string">Listagem</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">347</IdSerie>
+               <Nome xsi:type="xsd:string">Listagem de Eliminação de Documentos</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">56</IdSerie>
+               <Nome xsi:type="xsd:string">Livro</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">454</IdSerie>
+               <Nome xsi:type="xsd:string">Logomarca</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">69</IdSerie>
+               <Nome xsi:type="xsd:string">Mandado</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">149</IdSerie>
+               <Nome xsi:type="xsd:string">Manifesto</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">113</IdSerie>
+               <Nome xsi:type="xsd:string">Manual</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">150</IdSerie>
+               <Nome xsi:type="xsd:string">Mapa</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">371</IdSerie>
+               <Nome xsi:type="xsd:string">Mapa de Riscos da Contratação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">212</IdSerie>
+               <Nome xsi:type="xsd:string">Matéria</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">17</IdSerie>
+               <Nome xsi:type="xsd:string">Matéria para Apreciação do Conselho Diretor</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">78</IdSerie>
+               <Nome xsi:type="xsd:string">Material</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">151</IdSerie>
+               <Nome xsi:type="xsd:string">Medida Provisória</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">12</IdSerie>
+               <Nome xsi:type="xsd:string">Memorando</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">13</IdSerie>
+               <Nome xsi:type="xsd:string">Memorando-Circular</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">57</IdSerie>
+               <Nome xsi:type="xsd:string">Memória</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">152</IdSerie>
+               <Nome xsi:type="xsd:string">Memorial</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">153</IdSerie>
+               <Nome xsi:type="xsd:string">Mensagem</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">362</IdSerie>
+               <Nome xsi:type="xsd:string">Metodologia</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">204</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">518</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Acordo de Cooperação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">269</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Acordo de Cooperação Técnica</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">284</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Ata de Registro de Preços</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">314</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Ato</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">511</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Aviso de Dispensa Eletrônica</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">471</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Carta Convite</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">524</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Consulta Interna</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">308</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Consulta Pública</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">270</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Contrato</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">468</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Contrato de Concessão</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">271</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Convênio</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">469</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Despacho Decisório</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">272</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Edital</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">508</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Estudo Preliminar da Contratação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">509</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Estudo Preliminar da Contratação de TI</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">494</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Instrução Normativa</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">324</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Ordem de Serviço/Fornecimento de Bens</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">235</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Portaria</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">467</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Portaria de Pessoal</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">283</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Projeto Básico</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">238</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Resolução</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">462</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Resolução Conjunta</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">464</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Resolução Interna</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">317</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Súmula</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">273</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Termo Aditivo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">520</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Termo Aditivo de TAC</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">438</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Termo de Aceite de Nota de Empenho</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">377</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Termo de Adesão</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">323</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Termo de Ajustamento de Conduta</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">329</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Termo de Autorização</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">326</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Termo de Cessão de Uso</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">486</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Termo de Compartilhamento</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">368</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Termo de Doação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">319</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Termo de Execução Descentralizada</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">441</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Termo de Garantia</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">282</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Termo de Referência</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">489</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Termo de Referencia Internacional</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">274</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Termo de Rescisão Amigável</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">414</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Termo de Rescisão Bilateral</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">275</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Termo de Rescisão Unilateral</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">523</IdSerie>
+               <Nome xsi:type="xsd:string">Minuta de Tomada de Subsídios</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">154</IdSerie>
+               <Nome xsi:type="xsd:string">Moção</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">213</IdSerie>
+               <Nome xsi:type="xsd:string">Movimentação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">58</IdSerie>
+               <Nome xsi:type="xsd:string">Norma</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">91</IdSerie>
+               <Nome xsi:type="xsd:string">Nota</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">526</IdSerie>
+               <Nome xsi:type="xsd:string">Nota de Auditoria</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">15</IdSerie>
+               <Nome xsi:type="xsd:string">Nota Técnica</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">59</IdSerie>
+               <Nome xsi:type="xsd:string">Notificação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">186</IdSerie>
+               <Nome xsi:type="xsd:string">Notificação de Lançamento</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">475</IdSerie>
+               <Nome xsi:type="xsd:string">Notificação Prévia</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">11</IdSerie>
+               <Nome xsi:type="xsd:string">Ofício</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">447</IdSerie>
+               <Nome xsi:type="xsd:string">Ofício Sapiens</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">205</IdSerie>
+               <Nome xsi:type="xsd:string">Ofício-Circular</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">206</IdSerie>
+               <Nome xsi:type="xsd:string">Orçamento</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">207</IdSerie>
+               <Nome xsi:type="xsd:string">Ordem</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">222</IdSerie>
+               <Nome xsi:type="xsd:string">Ordem de Serviço/Fornecimento de Bens</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">155</IdSerie>
+               <Nome xsi:type="xsd:string">Organograma</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">156</IdSerie>
+               <Nome xsi:type="xsd:string">Orientação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">337</IdSerie>
+               <Nome xsi:type="xsd:string">Página</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">157</IdSerie>
+               <Nome xsi:type="xsd:string">Panfleto</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">191</IdSerie>
+               <Nome xsi:type="xsd:string">Parecer</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">158</IdSerie>
+               <Nome xsi:type="xsd:string">Passaporte</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">159</IdSerie>
+               <Nome xsi:type="xsd:string">Pauta</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">188</IdSerie>
+               <Nome xsi:type="xsd:string">Pauta de Circuito Deliberativo do Conselho Diretor</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">432</IdSerie>
+               <Nome xsi:type="xsd:string">Pauta de Reunião</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">389</IdSerie>
+               <Nome xsi:type="xsd:string">Pauta de Reunião do Conselho Consultivo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">264</IdSerie>
+               <Nome xsi:type="xsd:string">Pauta de Reunião do Conselho Diretor</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">388</IdSerie>
+               <Nome xsi:type="xsd:string">Pauta de Reunião Técnica do Conselho Diretor</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">107</IdSerie>
+               <Nome xsi:type="xsd:string">Pedido</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">160</IdSerie>
+               <Nome xsi:type="xsd:string">Petição</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">259</IdSerie>
+               <Nome xsi:type="xsd:string">Planejamento de Atividade de Auditoria</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">104</IdSerie>
+               <Nome xsi:type="xsd:string">Planilha</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">73</IdSerie>
+               <Nome xsi:type="xsd:string">Plano</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">391</IdSerie>
+               <Nome xsi:type="xsd:string">Plano de Ação de Fiscalização</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">223</IdSerie>
+               <Nome xsi:type="xsd:string">Plano de Fiscalização de Contrato</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">249</IdSerie>
+               <Nome xsi:type="xsd:string">Plano de Gerenciamento de Projeto (PGP)</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">221</IdSerie>
+               <Nome xsi:type="xsd:string">Plano de Inserção de Contratada</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">305</IdSerie>
+               <Nome xsi:type="xsd:string">Plano de Trabalho</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">522</IdSerie>
+               <Nome xsi:type="xsd:string">Plano de Trabalho para Estagiário</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">161</IdSerie>
+               <Nome xsi:type="xsd:string">Planta</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">10</IdSerie>
+               <Nome xsi:type="xsd:string">Portaria</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">466</IdSerie>
+               <Nome xsi:type="xsd:string">Portaria de Pessoal</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">473</IdSerie>
+               <Nome xsi:type="xsd:string">Portaria Disciplinar</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">162</IdSerie>
+               <Nome xsi:type="xsd:string">Precatório</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">281</IdSerie>
+               <Nome xsi:type="xsd:string">Prestação de Contas de Suprimento de Fundos</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">341</IdSerie>
+               <Nome xsi:type="xsd:string">Processo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">60</IdSerie>
+               <Nome xsi:type="xsd:string">Procuração</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">420</IdSerie>
+               <Nome xsi:type="xsd:string">Procuração Eletrônica Especial</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">440</IdSerie>
+               <Nome xsi:type="xsd:string">Procuração Eletrônica Simples</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">163</IdSerie>
+               <Nome xsi:type="xsd:string">Programa</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">101</IdSerie>
+               <Nome xsi:type="xsd:string">Projeto</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">215</IdSerie>
+               <Nome xsi:type="xsd:string">Projeto Básico</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">75</IdSerie>
+               <Nome xsi:type="xsd:string">Prontuário</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">208</IdSerie>
+               <Nome xsi:type="xsd:string">Pronunciamento</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">85</IdSerie>
+               <Nome xsi:type="xsd:string">Proposta</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">254</IdSerie>
+               <Nome xsi:type="xsd:string">Proposta de Composição de Delegação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">279</IdSerie>
+               <Nome xsi:type="xsd:string">Proposta de Concessão de Suprimento de Fundos</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">257</IdSerie>
+               <Nome xsi:type="xsd:string">Proposta de Contribuições Brasileiras</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">416</IdSerie>
+               <Nome xsi:type="xsd:string">Proposta de Cooperação ou de Aditivo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">164</IdSerie>
+               <Nome xsi:type="xsd:string">Prospecto</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">165</IdSerie>
+               <Nome xsi:type="xsd:string">Protocolo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">166</IdSerie>
+               <Nome xsi:type="xsd:string">Prova</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">103</IdSerie>
+               <Nome xsi:type="xsd:string">Publicação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">167</IdSerie>
+               <Nome xsi:type="xsd:string">Questionário</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">168</IdSerie>
+               <Nome xsi:type="xsd:string">Receita</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">169</IdSerie>
+               <Nome xsi:type="xsd:string">Recibo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">328</IdSerie>
+               <Nome xsi:type="xsd:string">Recibo Eletrônico de Protocolo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">61</IdSerie>
+               <Nome xsi:type="xsd:string">Reclamação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">295</IdSerie>
+               <Nome xsi:type="xsd:string">Reconhecimento e Ratificação de Dispensa</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">286</IdSerie>
+               <Nome xsi:type="xsd:string">Reconhecimento e Ratificação de Inexigibilidade</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">111</IdSerie>
+               <Nome xsi:type="xsd:string">Recurso</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">27</IdSerie>
+               <Nome xsi:type="xsd:string">Referendo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">170</IdSerie>
+               <Nome xsi:type="xsd:string">Regimento</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">62</IdSerie>
+               <Nome xsi:type="xsd:string">Registro</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">230</IdSerie>
+               <Nome xsi:type="xsd:string">Registro de Reunião</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">171</IdSerie>
+               <Nome xsi:type="xsd:string">Regulamento</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">102</IdSerie>
+               <Nome xsi:type="xsd:string">Relação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">63</IdSerie>
+               <Nome xsi:type="xsd:string">Relatório</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">361</IdSerie>
+               <Nome xsi:type="xsd:string">Relatório Anual de Atividades</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">380</IdSerie>
+               <Nome xsi:type="xsd:string">Relatório de Acompanhamento da Execução Contratual</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">457</IdSerie>
+               <Nome xsi:type="xsd:string">Relatório de Análise de Impacto Regulatório</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">525</IdSerie>
+               <Nome xsi:type="xsd:string">Relatório de Análise de Resultado Regulatório</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">306</IdSerie>
+               <Nome xsi:type="xsd:string">Relatório de Atividades</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">312</IdSerie>
+               <Nome xsi:type="xsd:string">Relatório de Auditoria</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">247</IdSerie>
+               <Nome xsi:type="xsd:string">Relatório de Concessão de Suprimento de Fundos</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">251</IdSerie>
+               <Nome xsi:type="xsd:string">Relatório de Correição</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">253</IdSerie>
+               <Nome xsi:type="xsd:string">Relatório de Delegação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">19</IdSerie>
+               <Nome xsi:type="xsd:string">Relatório de Fiscalização</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">470</IdSerie>
+               <Nome xsi:type="xsd:string">Relatório de Impacto à Proteção de Dados Pessoais</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">252</IdSerie>
+               <Nome xsi:type="xsd:string">Relatório de Viagem a Serviço</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">250</IdSerie>
+               <Nome xsi:type="xsd:string">Relatório Final</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">445</IdSerie>
+               <Nome xsi:type="xsd:string">Relatório Fiscalização de Mão de Obra</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">488</IdSerie>
+               <Nome xsi:type="xsd:string">Relatório Fotográfico</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">172</IdSerie>
+               <Nome xsi:type="xsd:string">Release</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">422</IdSerie>
+               <Nome xsi:type="xsd:string">Renúncia de Procuração Eletrônica</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">173</IdSerie>
+               <Nome xsi:type="xsd:string">Representação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">64</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">403</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento Alteração Escopo Laboratório</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">402</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento Alteração Escopo OCD ou Especialista</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">487</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento de Auto Homologação de Produto</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">500</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento de Autocadastramento de Estações</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">401</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento de Autorização de Ensaios</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">400</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento de Autorização para Teste Piloto</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">397</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento de Avaliação de Normas Técnicas</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">434</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento de Coleta de Dados</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">399</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento de Designação de OCD</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">493</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento de Direito de Exploração de Satélite</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">70</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento de Gestão de Pessoas</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">398</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento de Habilitação de Laboratório</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">516</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento de Homologação de Drone</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">20</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento de Informações</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">404</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento de Informações sobre Homologação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">330</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento de Outorga e Licenciamento</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">451</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento de Passaporte Oficial e Visto</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">483</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento de Programa de Gestão</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">333</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento de Restituição-Compensação de Crédito</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">437</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento de Retificação de Valores do FUST</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">501</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento de Serviço Aux. de Radiodifusão</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">331</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento de Serviços de Telecomunicações</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">366</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento de Servidor para Fiscalização On-line</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">499</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento do Serviço de Radioamador</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">498</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento do Serviço Limitado Móvel Aeronáutico</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">497</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento do Serviço Limitado Móvel Marítimo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">505</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento para Cadastro E-Submission</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">506</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento para Registro no Copuos</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">504</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento para Submissão de Filings</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">393</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento sobre Alteração de Ato Constitutivo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">396</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento sobre Selo de Bateria e Carregador</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">394</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento sobre Transferência de Controle</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">395</IdSerie>
+               <Nome xsi:type="xsd:string">Requerimento sobre Transferência de Outorga</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">65</IdSerie>
+               <Nome xsi:type="xsd:string">Requisição</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">21</IdSerie>
+               <Nome xsi:type="xsd:string">Requisição de Informações</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">1</IdSerie>
+               <Nome xsi:type="xsd:string">Resolução</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">463</IdSerie>
+               <Nome xsi:type="xsd:string">Resolução Conjunta</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">465</IdSerie>
+               <Nome xsi:type="xsd:string">Resolução Interna</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">515</IdSerie>
+               <Nome xsi:type="xsd:string">Restabelecimento de Procuração Eletrônica</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">424</IdSerie>
+               <Nome xsi:type="xsd:string">Restabelecimento de Vinculação a Pessoa Jurídica</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">76</IdSerie>
+               <Nome xsi:type="xsd:string">Resultado</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">174</IdSerie>
+               <Nome xsi:type="xsd:string">Resumo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">421</IdSerie>
+               <Nome xsi:type="xsd:string">Revogação de Procuração Eletrônica</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">89</IdSerie>
+               <Nome xsi:type="xsd:string">RG</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">175</IdSerie>
+               <Nome xsi:type="xsd:string">Roteiro</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">176</IdSerie>
+               <Nome xsi:type="xsd:string">Sentença</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">177</IdSerie>
+               <Nome xsi:type="xsd:string">Sinopse</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">178</IdSerie>
+               <Nome xsi:type="xsd:string">Solicitação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">267</IdSerie>
+               <Nome xsi:type="xsd:string">Solicitação de Abertura de Circuito Deliberativo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">363</IdSerie>
+               <Nome xsi:type="xsd:string">Solicitação de Apoio a Eventos Institucionais</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">302</IdSerie>
+               <Nome xsi:type="xsd:string">Solicitação de Auditoria</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">492</IdSerie>
+               <Nome xsi:type="xsd:string">Solicitação de Auditoria Circular</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">280</IdSerie>
+               <Nome xsi:type="xsd:string">Solicitação de Despesas por Suprimento de Fundos</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">459</IdSerie>
+               <Nome xsi:type="xsd:string">Solicitação de Manutenção de Sistema de TI (SMTI)</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">460</IdSerie>
+               <Nome xsi:type="xsd:string">Solicitação de Solução de Dados (SS-Dados)</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">313</IdSerie>
+               <Nome xsi:type="xsd:string">Solicitação de Solução de TI (SSTI)</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">258</IdSerie>
+               <Nome xsi:type="xsd:string">Sumário</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">2</IdSerie>
+               <Nome xsi:type="xsd:string">Súmula</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">514</IdSerie>
+               <Nome xsi:type="xsd:string">Suspensão de Procuração Eletrônica</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">423</IdSerie>
+               <Nome xsi:type="xsd:string">Suspensão de Vinculação a Pessoa Jurídica</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">179</IdSerie>
+               <Nome xsi:type="xsd:string">Tabela</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">180</IdSerie>
+               <Nome xsi:type="xsd:string">Telegrama</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">90</IdSerie>
+               <Nome xsi:type="xsd:string">Termo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">260</IdSerie>
+               <Nome xsi:type="xsd:string">Termo Aditivo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">519</IdSerie>
+               <Nome xsi:type="xsd:string">Termo Aditivo de TAC</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">248</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Abertura de Projeto (TAP)</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">320</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Aceite de Nota de Empenho</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">376</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Adesão</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">444</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Adesão Anatel Consumidor / Comparador</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">484</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Ajustamento de Conduta</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">322</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Ajustamento de Conduta (TAC)</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">261</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Apostilamento</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">66</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Apresentação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">321</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Atesto de Movimentação Patrimonial</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">379</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Atesto de Recebimento de Material</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">311</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Autorização</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">242</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Cancelamento de Documento</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">325</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Cessão de Uso</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">225</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Ciência de Manutenção de Sigilo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">485</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Compartilhamento</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">224</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Comprom. Manutenção de Sigilo em Contrato</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">446</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Compromisso</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">507</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Compromisso Formal - Telemarketing</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">528</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Compromisso para Uso de Dados Pessoais</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">436</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Conclusão de Apuração Simplificada</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">480</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Depoimento</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">241</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Desanexacão de Processo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">418</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Devolução de Bem Não Patrimoniado</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">474</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Devolução de Garantias</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">367</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Doação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">348</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Eliminação de Documentos</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">228</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Encerramento da Execução Contratual</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">349</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Encerramento de Projeto (TEP)</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">240</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Encerramento de Trâmite Físico-Documento</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">114</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Encerramento de Trâmite Físico-Processo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">327</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Entrada e Saída de Bem ou Produto</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">318</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Execução Descentralizada</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">24</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Fiscalização</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">442</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Garantia</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">23</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Identificação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">479</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Indiciação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">435</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Instauração de Apuração Simplificada</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">481</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Interrogatório</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">25</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Lacração, Apreensão e Interrupção</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">350</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Mudança de Projeto (TMP)</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">343</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Posse</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">513</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Qualificação</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">417</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Recebimento de Bem Não Patrimoniado</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">227</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Recebimento Definitivo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">226</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Recebimento Provisório</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">214</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Referência</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">490</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Referência Internacional</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">262</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Rescisão Amigável</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">415</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Rescisão Bilateral</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">263</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Rescisão Unilateral</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">433</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Responsabilidade</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">344</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Responsabilidade de OCD</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">290</IdSerie>
+               <Nome xsi:type="xsd:string">Termo de Responsabilidade para Acesso à TI-Anatel</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">357</IdSerie>
+               <Nome xsi:type="xsd:string">Termo Final de Estágio</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">373</IdSerie>
+               <Nome xsi:type="xsd:string">Termo para Disponibilização de Trabalho Acadêmico</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">181</IdSerie>
+               <Nome xsi:type="xsd:string">Tese</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">182</IdSerie>
+               <Nome xsi:type="xsd:string">Testamento</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">183</IdSerie>
+               <Nome xsi:type="xsd:string">Título</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">491</IdSerie>
+               <Nome xsi:type="xsd:string">Tomada de Subsídios</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">53</IdSerie>
+               <Nome xsi:type="xsd:string">Vídeo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">419</IdSerie>
+               <Nome xsi:type="xsd:string">Vinculação de Responsável Legal a Pessoa Jurídica</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">71</IdSerie>
+               <Nome xsi:type="xsd:string">Volume de Processo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">94</IdSerie>
+               <Nome xsi:type="xsd:string">Voto</Nome>
+               <Aplicabilidade xsi:type="xsd:string">T</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">307</IdSerie>
+               <Nome xsi:type="xsd:string">Voto em Circuito Deliberativo</Nome>
+               <Aplicabilidade xsi:type="xsd:string">I</Aplicabilidade>
+            </item>
+            <item xsi:type="ns1:Serie">
+               <IdSerie xsi:type="xsd:string">301</IdSerie>
+               <Nome xsi:type="xsd:string">Voucher</Nome>
+               <Aplicabilidade xsi:type="xsd:string">E</Aplicabilidade>
+            </item>
+         </parametros>
+      </ns1:listarSeriesResponse>
+   </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

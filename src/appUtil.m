@@ -394,8 +394,14 @@ classdef (Abstract) appUtil
             if ~isempty(fields2Remove)
                 appGeneral = rmfield(appGeneral, fields2Remove);
             end
-
             appGeneral.fileFolder.tempPath = '';
+
+            switch appName
+                case 'appAnalise'
+                    appGeneral.Plot.ClearWrite.Visible = 'on';
+                otherwise
+                    % ...
+            end
         
             [~, ...
              programDataFolder] = appUtil.Path(appName, rootFolder);

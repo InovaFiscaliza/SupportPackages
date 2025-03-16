@@ -119,11 +119,8 @@ classdef tabGroupGraphicMenu < handle
 
                     else
                         obj.MenuGrid.ColumnWidth(end-1:end) = {0, 0};
-
                         clickedButton.Value = false;
-                        obj.Components.btnRefHandle(idx).Value = true;
-                        openModule(obj, obj.Components.btnRefHandle(idx), false, appGeneral)
-
+                        
                         if appGeneral.operationMode.Debug
                             obj.Components.appHandle{idx} = FileHandle_MLAPP(varargin{:});
                         else

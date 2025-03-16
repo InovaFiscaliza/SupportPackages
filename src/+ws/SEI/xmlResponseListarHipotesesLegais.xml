@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SOAP-ENV:Envelope SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns1="Sei" xmlns:xmlmime="http://www.w3.org/2004/11/xmlmime" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<SOAP-ENV:Body>
+		<ns1:listarHipotesesLegaisResponse>
+			<parametros SOAP-ENC:arrayType="ns1:HipoteseLegal[26]" xsi:type="ns1:ArrayOfHipoteseLegal">
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">40</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Controle Interno</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 26, § 3º, da Lei nº 10.180/2001</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">1</NivelAcesso>
+				</item>
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">45</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Direito Autoral</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 24, III, da Lei nº 9.610/1998</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">1</NivelAcesso>
+				</item>
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">33</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Documento Preparatório</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 7º, § 3º, da Lei nº 12.527/2011</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">1</NivelAcesso>
+				</item>
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">35</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Fiscalização / Investigação da Anatel</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 174 da Lei nº 9.472/1997</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">1</NivelAcesso>
+				</item>
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">34</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Informação Pessoal</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 31 da Lei nº 12.527/2011</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">1</NivelAcesso>
+				</item>
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">39</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Informações Contábeis de Empresa</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 39, parágrafo único, da Lei nº 9.472/1997</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">1</NivelAcesso>
+				</item>
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">38</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Informações Econômico-Financeiras de Empresa</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 39, parágrafo único, da Lei nº 9.472/1997</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">1</NivelAcesso>
+				</item>
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">37</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Informações Operacionais de Empresa</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 39, parágrafo único, da Lei nº 9.472/1997</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">1</NivelAcesso>
+				</item>
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">46</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Informações Privilegiadas de Sociedades Anônimas</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 155, § 2º, da Lei nº 6.404/1976</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">1</NivelAcesso>
+				</item>
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">36</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Informações Técnicas de Empresa</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 39, parágrafo único, da Lei nº 9.472/1997</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">1</NivelAcesso>
+				</item>
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">41</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Interceptação de Comunicações Telefônicas</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 8º, caput, da Lei nº 9.296/1996</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">1</NivelAcesso>
+				</item>
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">31</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Investigação de Responsabilidade de Servidor</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 150 da Lei nº 8.112/1990</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">1</NivelAcesso>
+				</item>
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">47</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Livros e Registros Contábeis Empresariais</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 1.190 do Código Civil</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">1</NivelAcesso>
+				</item>
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">48</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Operações Bancárias</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 1º da Lei Complementar nº 105/2001</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">1</NivelAcesso>
+				</item>
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">57</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Processo com Documento Preparatório</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 7º, § 3º, da Lei nº 12.527/2011</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">2</NivelAcesso>
+				</item>
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">56</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Processo com Informação Pessoal</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 31 da Lei nº 12.527/2011</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">2</NivelAcesso>
+				</item>
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">44</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Processo de Responsabilidade de Servidor</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 150 da Lei nº 8.112/1990</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">2</NivelAcesso>
+				</item>
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">49</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Proteção da Propriedade Intelectual de Software</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 2º da Lei nº 9.609/1998</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">1</NivelAcesso>
+				</item>
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">43</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Protocolo -Pendente Análise de Restrição de Acesso</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 6º, III, da Lei nº 12.527/2011</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">1</NivelAcesso>
+				</item>
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">50</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Segredo de Justiça no Processo Civil</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 189 do Código de Processo Civil</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">1</NivelAcesso>
+				</item>
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">51</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Segredo de Justiça no Processo Penal</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 201, § 6º, do Código de Processo Penal</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">1</NivelAcesso>
+				</item>
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">52</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Segredo Industrial</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 195, XIV, Lei nº 9.279/1996</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">1</NivelAcesso>
+				</item>
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">53</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Sigilo das Comunicações</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 3º, V, da Lei nº 9.472/1997</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">1</NivelAcesso>
+				</item>
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">54</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Sigilo de Empresa em Situação Falimentar</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 169 da Lei nº 11.101/2005</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">1</NivelAcesso>
+				</item>
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">55</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Sigilo do Inquérito Policial</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 20 do Código de Processo Penal</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">1</NivelAcesso>
+				</item>
+				<item xsi:type="ns1:HipoteseLegal">
+					<IdHipoteseLegal xsi:type="xsd:string">42</IdHipoteseLegal>
+					<Nome xsi:type="xsd:string">Situação Econômico-Financeira de Sujeito Passivo</Nome>
+					<BaseLegal xsi:type="xsd:string">Art. 198, caput, da Lei nº 5.172/1966 - CTN</BaseLegal>
+					<NivelAcesso xsi:type="xsd:string">1</NivelAcesso>
+				</item>
+			</parametros>
+		</ns1:listarHipotesesLegaisResponse>
+	</SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

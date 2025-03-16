@@ -22,12 +22,12 @@ function [chPower, chPowerUnit, PowerSpectralDensity] = ChannelPower(specData, i
     idx2 = round((chLimits(2) - bCoef)/aCoef);
 
     switch specData(idxThread).MetaData.LevelUnit
-        case {'dBm', 'dBµV/m'}
+        case {'dBm', 'dBµV', 'dBµV/m'}
             chPowerUnit = specData(idxThread).MetaData.LevelUnit;
             yData = specData(idxThread).Data{2};
-        case 'dBµV'
-            chPowerUnit = 'dBm';
-            yData = specData(idxThread).Data{2} - 107; % 'dBµV' >> 'dBm' (50 Ohm system)
+        % case 'dBµV'
+        %     chPowerUnit = 'dBm';
+        %     yData = specData(idxThread).Data{2} - 107; % 'dBµV' >> 'dBm' (50 Ohm system)
         otherwise
             error('RF:ChannelPower:UnexpectedLevelUnit', 'Unexpected level unit')
     end
@@ -39,7 +39,7 @@ function [chPower, chPowerUnit, PowerSpectralDensity] = ChannelPower(specData, i
         switch chPowerUnit
             case 'dBm'
                 chPower = pow2db((trapz(xData_ch, db2pow(yData_ch), 1)/RBW))';
-            case 'dBµV/m'
+            case {'dBµV', 'dBµV/m'}
                 chPower = mag2db((trapz(xData_ch, db2mag(yData_ch), 1)/RBW))';
         end
     else

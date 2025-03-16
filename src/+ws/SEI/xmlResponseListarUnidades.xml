@@ -1,0 +1,2344 @@
+<SOAP-ENV:Envelope SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns1="Sei" xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xmime="http://www.w3.org/2005/05/xmlmime">
+   <SOAP-ENV:Body>
+      <ns1:listarUnidadesResponse>
+         <parametros SOAP-ENC:arrayType="ns1:Unidade[292]" xsi:type="ns1:ArrayOfUnidade">
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001285</IdUnidade>
+               <Sigla xsi:type="xsd:string">AC</Sigla>
+               <Descricao xsi:type="xsd:string">Gabinete do Conselheiro Artur Coimbra de Oliveira</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001287</IdUnidade>
+               <Sigla xsi:type="xsd:string">AF</Sigla>
+               <Descricao xsi:type="xsd:string">Gabinete do Conselheiro Alexandre Reis Siqueira Freire</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000885</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFCA</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência de Aquisições e Contratos</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000886</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFCA1</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Planejamento de Contratação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000887</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFCA2</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Governança de Contratações</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000888</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFCA3</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Seleção de Fornecedores</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000889</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFCA4</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Alterações Contratuais</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000890</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFCA5</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Execução de Contratos</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000891</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFCA6</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Prorrogações e Reajustes Contratuais</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000892</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFFO</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência de Finanças, Orçamento e Arrecadação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000893</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFFO1</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Orçamento</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000894</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFFO2</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Execução Financeira</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000895</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFFO3</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Contabilidade</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000896</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFFO4</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Arrecadação e Cobrança</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000897</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFFO5</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Acompanhamento e Avaliação da Arrecadação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000898</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFFO6</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Processo Administrativo Fiscal</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000899</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFIS</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência de Infraestrutura, Serviços e Segurança Institucional</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000900</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFIS1</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Material e Patrimônio</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000904</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFIS5</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Passagens e Transportes</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000905</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFPE</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência de Administração e Desenvolvimento de Pessoas</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001278</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFPE-BORA</Sigla>
+               <Descricao xsi:type="xsd:string">Oportunidades de Remanejamento</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001259</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFPE-TR</Sigla>
+               <Descricao xsi:type="xsd:string">Trânsito</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000906</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFPE1</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Análise de Dados de Pessoal</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000907</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFPE2</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Cadastro e Pagamento</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000908</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFPE3</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Direito, Benefícios e Vantagens</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000909</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFPE4</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Ingresso e Desligamento</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000910</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFPE5</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Saúde</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000911</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFPE6</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Capacitação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000912</IdUnidade>
+               <Sigla xsi:type="xsd:string">AFPE7</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Projetos e Inovações</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000850</IdUnidade>
+               <Sigla xsi:type="xsd:string">AIN</Sigla>
+               <Descricao xsi:type="xsd:string">Assessoria Internacional</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000855</IdUnidade>
+               <Sigla xsi:type="xsd:string">APC</Sigla>
+               <Descricao xsi:type="xsd:string">Assessoria Parlamentar e de Comunicação Social</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000856</IdUnidade>
+               <Sigla xsi:type="xsd:string">ARI</Sigla>
+               <Descricao xsi:type="xsd:string">Assessoria de Relações Institucionais</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001182</IdUnidade>
+               <Sigla xsi:type="xsd:string">Arquivo.RJ</Sigla>
+               <Descricao xsi:type="xsd:string">Arquivo do Rio de Janeiro</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">S</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000838</IdUnidade>
+               <Sigla xsi:type="xsd:string">ArquivoGeral.Sede</Sigla>
+               <Descricao xsi:type="xsd:string">Arquivo Geral da Sede</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">S</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000858</IdUnidade>
+               <Sigla xsi:type="xsd:string">ARU</Sigla>
+               <Descricao xsi:type="xsd:string">Assessoria de Relações com os Usuários</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000859</IdUnidade>
+               <Sigla xsi:type="xsd:string">ATC</Sigla>
+               <Descricao xsi:type="xsd:string">Assessoria Técnica</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000860</IdUnidade>
+               <Sigla xsi:type="xsd:string">AUD</Sigla>
+               <Descricao xsi:type="xsd:string">Auditoria Interna</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001279</IdUnidade>
+               <Sigla xsi:type="xsd:string">C-INT</Sigla>
+               <Descricao xsi:type="xsd:string">Comitê de Infraestrutura de Telecomunicações</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001280</IdUnidade>
+               <Sigla xsi:type="xsd:string">CAD</Sigla>
+               <Descricao xsi:type="xsd:string">Comissão de Acompanhamento da Avaliação de Desempenho Institucional</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001242</IdUnidade>
+               <Sigla xsi:type="xsd:string">CAED</Sigla>
+               <Descricao xsi:type="xsd:string">Comissão de Avaliação Especial de Desempenho</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001243</IdUnidade>
+               <Sigla xsi:type="xsd:string">CAI</Sigla>
+               <Descricao xsi:type="xsd:string">Comissão de Arbitragem em Interconexão</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001241</IdUnidade>
+               <Sigla xsi:type="xsd:string">CAID</Sigla>
+               <Descricao xsi:type="xsd:string">Comissão de Avaliação Individual de Desempenho</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001244</IdUnidade>
+               <Sigla xsi:type="xsd:string">CAT</Sigla>
+               <Descricao xsi:type="xsd:string">Comissão de Assessoramento Técnico da CAI</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001235</IdUnidade>
+               <Sigla xsi:type="xsd:string">CBC1</Sigla>
+               <Descricao xsi:type="xsd:string">Comissão de Governança e Regimes Internacionais</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001236</IdUnidade>
+               <Sigla xsi:type="xsd:string">CBC2</Sigla>
+               <Descricao xsi:type="xsd:string">Comissão de Radiocomunicações</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001237</IdUnidade>
+               <Sigla xsi:type="xsd:string">CBC3</Sigla>
+               <Descricao xsi:type="xsd:string">Comissão de Normalização de Telecomunicações</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001238</IdUnidade>
+               <Sigla xsi:type="xsd:string">CBC4</Sigla>
+               <Descricao xsi:type="xsd:string">Comissão de Desenvolvimento das Telecomunicações</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000862</IdUnidade>
+               <Sigla xsi:type="xsd:string">CC</Sigla>
+               <Descricao xsi:type="xsd:string">Conselho Consultivo</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001260</IdUnidade>
+               <Sigla xsi:type="xsd:string">CD</Sigla>
+               <Descricao xsi:type="xsd:string">Conselho Diretor</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001248</IdUnidade>
+               <Sigla xsi:type="xsd:string">CDUST</Sigla>
+               <Descricao xsi:type="xsd:string">Comitê de Defesa dos Usuários de Serviços de Telecomunicações</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001240</IdUnidade>
+               <Sigla xsi:type="xsd:string">CEA</Sigla>
+               <Descricao xsi:type="xsd:string">Comissão de Ética da Anatel</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001251</IdUnidade>
+               <Sigla xsi:type="xsd:string">CEAD</Sigla>
+               <Descricao xsi:type="xsd:string">Comissão Especial de Avaliação do Programa de Gestão por Desempenho</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001256</IdUnidade>
+               <Sigla xsi:type="xsd:string">CEATEL</Sigla>
+               <Descricao xsi:type="xsd:string">Centro de Altos Estudos em Telecomunicações</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001245</IdUnidade>
+               <Sigla xsi:type="xsd:string">CEL.RF</Sigla>
+               <Descricao xsi:type="xsd:string">Comissão Especial de Licitação para Outorga de Uso de Radiofrequências</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001249</IdUnidade>
+               <Sigla xsi:type="xsd:string">CEO</Sigla>
+               <Descricao xsi:type="xsd:string">Comitê de Uso do Espectro e de Órbita</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001282</IdUnidade>
+               <Sigla xsi:type="xsd:string">CGE</Sigla>
+               <Descricao xsi:type="xsd:string">Comissão de Gestão Executiva</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001267</IdUnidade>
+               <Sigla xsi:type="xsd:string">CIG</Sigla>
+               <Descricao xsi:type="xsd:string">Comitê Interno de Governança</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000914</IdUnidade>
+               <Sigla xsi:type="xsd:string">CODI</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência de Controle de Obrigações de Direitos dos Consumidores</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000923</IdUnidade>
+               <Sigla xsi:type="xsd:string">COGE</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência de Controle de Obrigações Gerais</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000932</IdUnidade>
+               <Sigla xsi:type="xsd:string">COQL</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência de Controle de Obrigações de Qualidade</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000941</IdUnidade>
+               <Sigla xsi:type="xsd:string">COUN</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência de Controle de Obrigações de Universalização e de Ampliação do Acesso</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000951</IdUnidade>
+               <Sigla xsi:type="xsd:string">CPAE</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência de Acompanhamento Econômico da Prestação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001254</IdUnidade>
+               <Sigla xsi:type="xsd:string">CPDI-PADOS</Sigla>
+               <Descricao xsi:type="xsd:string">Comissão Permanente de Distribuição e Instrução de PADOS</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000957</IdUnidade>
+               <Sigla xsi:type="xsd:string">CPOE</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência de Acompanhamento Societário e da Ordem Econômica</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001255</IdUnidade>
+               <Sigla xsi:type="xsd:string">CPPP</Sigla>
+               <Descricao xsi:type="xsd:string">Comitê das Prestadoras de Pequeno Porte</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000961</IdUnidade>
+               <Sigla xsi:type="xsd:string">CPRP</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência de Monitoramento das Relações entre Prestadoras</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001247</IdUnidade>
+               <Sigla xsi:type="xsd:string">CRCA</Sigla>
+               <Descricao xsi:type="xsd:string">Comissão de Resolução de Conflitos das Agências Reguladoras</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000861</IdUnidade>
+               <Sigla xsi:type="xsd:string">CRG</Sigla>
+               <Descricao xsi:type="xsd:string">Corregedoria</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001252</IdUnidade>
+               <Sigla xsi:type="xsd:string">CSIC</Sigla>
+               <Descricao xsi:type="xsd:string">Comissão de Segurança da Informação e Comunicações da Anatel</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000966</IdUnidade>
+               <Sigla xsi:type="xsd:string">FIGF</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência de Fiscalização</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000967</IdUnidade>
+               <Sigla xsi:type="xsd:string">FIGF1</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Planejamento de Fiscalização e Alinhamento Estratégico</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000968</IdUnidade>
+               <Sigla xsi:type="xsd:string">FIGF2</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização de Recursos à Prestação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000969</IdUnidade>
+               <Sigla xsi:type="xsd:string">FIGF3</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização de Aspectos Gerais da Prestação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000970</IdUnidade>
+               <Sigla xsi:type="xsd:string">FIGF4</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Inteligência Regulatória, Inovação e Projetos Estratégicos</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000971</IdUnidade>
+               <Sigla xsi:type="xsd:string">FIGF5</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização de Arrecadação de Tributos e de Aspectos Econômicos da Prestação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000972</IdUnidade>
+               <Sigla xsi:type="xsd:string">FIGF6</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Governança</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000973</IdUnidade>
+               <Sigla xsi:type="xsd:string">FISF</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência de Suporte à Fiscalização</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000974</IdUnidade>
+               <Sigla xsi:type="xsd:string">FISF1</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Normas e Padrões para Fiscalização</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000975</IdUnidade>
+               <Sigla xsi:type="xsd:string">FISF2</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Equipamentos para Fiscalização</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000976</IdUnidade>
+               <Sigla xsi:type="xsd:string">FISF3</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Sistemas de Fiscalização</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000977</IdUnidade>
+               <Sigla xsi:type="xsd:string">FISF4</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Sistemas de Gestão da Fiscalização</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001268</IdUnidade>
+               <Sigla xsi:type="xsd:string">FISF5</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Gestão de Recursos de Fiscalização</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001283</IdUnidade>
+               <Sigla xsi:type="xsd:string">GAISPI</Sigla>
+               <Descricao xsi:type="xsd:string">Grupo de Acompanhamento da Implantação das Soluções para os Problemas de Interferência na faixa de 3.625 a 3.700 MHz</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001284</IdUnidade>
+               <Sigla xsi:type="xsd:string">GAPE</Sigla>
+               <Descricao xsi:type="xsd:string">Grupo de Acompanhamento do Custeio à Projetos de Conectividade de Escolas</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001234</IdUnidade>
+               <Sigla xsi:type="xsd:string">GC-CBC</Sigla>
+               <Descricao xsi:type="xsd:string">Grupo de Coordenação das Comissões Brasileiras de Comunicação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001292</IdUnidade>
+               <Sigla xsi:type="xsd:string">GGNC1</Sigla>
+               <Descricao xsi:type="xsd:string">UNIDADE GGNC1</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001293</IdUnidade>
+               <Sigla xsi:type="xsd:string">GGNC2</Sigla>
+               <Descricao xsi:type="xsd:string">UNIDADE GGNC2</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001294</IdUnidade>
+               <Sigla xsi:type="xsd:string">GGNC3</Sigla>
+               <Descricao xsi:type="xsd:string">Agência Nacional de Telecomunicações 3</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000978</IdUnidade>
+               <Sigla xsi:type="xsd:string">GIDS</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência de Planejamento, Desenvolvimento e Segurança de Sistemas</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000837</IdUnidade>
+               <Sigla xsi:type="xsd:string">GIIB</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência de Informações e Biblioteca</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000990</IdUnidade>
+               <Sigla xsi:type="xsd:string">GIMR</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência de Planejamento, Operação e Manutenção de Redes</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001269</IdUnidade>
+               <Sigla xsi:type="xsd:string">GIMR6</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Infraestrutura e Operações de TIC - Segurança</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000841</IdUnidade>
+               <Sigla xsi:type="xsd:string">GPR</Sigla>
+               <Descricao xsi:type="xsd:string">Gabinete da Presidência</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000996</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR01</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência Regional no Estado de São Paulo</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000997</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR01AF</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Administração e Finanças</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000998</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR01AT</Sigla>
+               <Descricao xsi:type="xsd:string">Assessoria Técnica da Gerência Regional</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000999</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR01CO</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Apuração de Descumprimento de Obrigações</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001000</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR01FI1</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 1</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001001</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR01FI2</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 2</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001002</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR01FI3</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 3</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001003</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR01FI4</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 4</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001004</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR01GI</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Gestão Interna da Informação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001005</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR01OR</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Outorga e Recursos à Prestação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001006</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR01RC</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Relacionamento com os Consumidores</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001007</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR02</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência Regional nos Estados do Rio de Janeiro e Espírito Santo</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001008</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR02AF</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Administração e Finanças</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001009</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR02AT</Sigla>
+               <Descricao xsi:type="xsd:string">Assessoria Técnica da Gerência Regional</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001010</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR02CO</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Apuração de Descumprimento de Obrigações</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001011</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR02FI1</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 1</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001012</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR02FI2</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 2</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001013</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR02FI3</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 3</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001014</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR02GI</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Gestão Interna da Informação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001015</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR02OR</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Outorga e Recursos à Prestação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001016</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR02RC</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Relacionamento com os Consumidores</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001017</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR03</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência Regional nos Estados do Paraná e Santa Catarina</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001018</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR03AF</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Administração e Finanças</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001019</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR03AT</Sigla>
+               <Descricao xsi:type="xsd:string">Assessoria Técnica da Gerência Regional</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001020</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR03CO</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Apuração de Descumprimento de Obrigações</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001021</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR03FI1</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 1</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001022</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR03FI2</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 2</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001023</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR03GI</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Gestão Interna da Informação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001024</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR03OR</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Outorga e Recursos à Prestação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001025</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR03RC</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Relacionamento com os Consumidores</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001026</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR04</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência Regional no Estado de Minas Gerais</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001027</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR04AF</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Administração e Finanças</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001028</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR04AT</Sigla>
+               <Descricao xsi:type="xsd:string">Assessoria Técnica da Gerência Regional</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001029</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR04CO</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Apuração de Descumprimento de Obrigações</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001030</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR04FI1</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 1</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001031</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR04FI2</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 2</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001032</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR04FI3</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 3</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001033</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR04GI</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Gestão Interna da Informação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001034</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR04OR</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Outorga e Recursos à Prestação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001035</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR04RC</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Relacionamento com os Consumidores</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001036</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR05</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência Regional no Estado do Rio Grande do Sul</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001037</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR05AF</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Administração e Finanças</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001038</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR05AT</Sigla>
+               <Descricao xsi:type="xsd:string">Assessoria Técnica da Gerência Regional</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001039</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR05CO</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Apuração de Descumprimento de Obrigações</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001040</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR05FI1</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 1</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001041</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR05FI2</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 2</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001042</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR05GI</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Gestão Interna da Informação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001043</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR05OR</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Outorga e Recursos à Prestação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001044</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR05RC</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Relacionamento com os Consumidores</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001045</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR06</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência Regional nos Estados de Pernambuco, Paraíba e Alagoas</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001046</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR06AF</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Administração e Finanças</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001047</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR06AT</Sigla>
+               <Descricao xsi:type="xsd:string">Assessoria Técnica da Gerência Regional</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001048</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR06CO</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Apuração de Descumprimento de Obrigações</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001049</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR06FI1</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 1</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001050</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR06FI2</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 2</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001051</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR06GI</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Gestão Interna da Informação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001052</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR06OR</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Outorga e Recursos à Prestação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001053</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR06RC</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Relacionamento com os Consumidores</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001054</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR07</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência Regional nos Estados de Goiás, Mato Grosso, Mato Grosso do Sul e Tocantins</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001055</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR07AF</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Administração e Finanças</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001056</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR07AT</Sigla>
+               <Descricao xsi:type="xsd:string">Assessoria Técnica da Gerência Regional</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001057</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR07CO</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Apuração de Descumprimento de Obrigações</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001058</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR07FI1</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 1</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001059</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR07FI2</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 2</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001060</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR07GI</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Gestão Interna da Informação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001061</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR07OR</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Outorga e Recursos à Prestação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001062</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR07RC</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Relacionamento com os Consumidores</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001063</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR08</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência Regional nos Estados da Bahia e Sergipe</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001064</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR08AF</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Administração e Finanças</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001065</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR08AT</Sigla>
+               <Descricao xsi:type="xsd:string">Assessoria Técnica da Gerência Regional</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001066</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR08CO</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Apuração de Descumprimento de Obrigações</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001067</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR08FI1</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 1</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001068</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR08FI2</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 2</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001069</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR08GI</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Gestão Interna da Informação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001070</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR08OR</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Outorga e Recursos à Prestação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001071</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR08RC</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Relacionamento com os Consumidores</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001072</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR09</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência Regional nos Estados do Ceará, Rio Grande do Norte e Piauí</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001073</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR09AF</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Administração e Finanças</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001074</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR09AT</Sigla>
+               <Descricao xsi:type="xsd:string">Assessoria Técnica da Gerência Regional</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001075</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR09CO</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Apuração de Descumprimento de Obrigações</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001076</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR09FI1</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 1</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001077</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR09FI2</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 2</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001078</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR09GI</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Gestão Interna da Informação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001079</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR09OR</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Outorga e Recursos à Prestação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001080</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR09RC</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Relacionamento com os Consumidores</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001081</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR10</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência Regional nos Estados do Pará, Maranhão e Amapá</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001082</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR10AF</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Administração e Finanças</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001083</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR10AT</Sigla>
+               <Descricao xsi:type="xsd:string">Assessoria Técnica da Gerência Regional</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001084</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR10CO</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Apuração de Descumprimento de Obrigações</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001085</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR10FI1</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 1</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001086</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR10FI2</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 2</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001087</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR10GI</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Gestão Interna da Informação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001088</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR10OR</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Outorga e Recursos à Prestação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001089</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR10RC</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Relacionamento com os Consumidores</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001090</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR11</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência Regional nos Estados do Amazonas, Acre, Rondônia e Roraima</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001091</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR11AF</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Administração e Finanças</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001092</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR11AT</Sigla>
+               <Descricao xsi:type="xsd:string">Assessoria Técnica da Gerência Regional</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001093</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR11CO</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Apuração de Descumprimento de Obrigações</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001094</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR11FI1</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 1</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001095</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR11FI2</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização 2</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001096</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR11GI</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Gestão Interna da Informação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001097</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR11OR</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Outorga e Recursos à Prestação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001098</IdUnidade>
+               <Sigla xsi:type="xsd:string">GR11RC</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Relacionamento com os Consumidores</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001281</IdUnidade>
+               <Sigla xsi:type="xsd:string">GT-Ciber</Sigla>
+               <Descricao xsi:type="xsd:string">Grupo Técnico de Segurança Cibernética e Gestão de Riscos de Infraestrutura Crítica</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001288</IdUnidade>
+               <Sigla xsi:type="xsd:string">GT-RCOM</Sigla>
+               <Descricao xsi:type="xsd:string">Grupo de Trabalho de Redes Comunitárias</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001239</IdUnidade>
+               <Sigla xsi:type="xsd:string">MCOM.Protocolo</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo do Ministério das Comunicações</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001257</IdUnidade>
+               <Sigla xsi:type="xsd:string">MM</Sigla>
+               <Descricao xsi:type="xsd:string">Gabinete do Conselheiro Moisés Queiroz Moreira</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001100</IdUnidade>
+               <Sigla xsi:type="xsd:string">ORCN</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência de Certificação e Numeração</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001105</IdUnidade>
+               <Sigla xsi:type="xsd:string">ORER</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência de Espectro, Órbita e Radiodifusão</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001106</IdUnidade>
+               <Sigla xsi:type="xsd:string">ORER1</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Exploração de Satélites</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001107</IdUnidade>
+               <Sigla xsi:type="xsd:string">ORER2</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Sistemas e Modelos de Gestão da Radiodifusão</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001108</IdUnidade>
+               <Sigla xsi:type="xsd:string">ORER3</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Administração de Planos Básicos de Radiodifusão</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001109</IdUnidade>
+               <Sigla xsi:type="xsd:string">ORER4</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Engenharia do Espectro</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001110</IdUnidade>
+               <Sigla xsi:type="xsd:string">ORER5</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Planejamento do Espectro</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001111</IdUnidade>
+               <Sigla xsi:type="xsd:string">ORER6</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Espectro Futuro e Internacional</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001112</IdUnidade>
+               <Sigla xsi:type="xsd:string">ORER7</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Integração Órbita e Espectro</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001113</IdUnidade>
+               <Sigla xsi:type="xsd:string">ORLE</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência de Outorga e Licenciamento de Estações</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001121</IdUnidade>
+               <Sigla xsi:type="xsd:string">ORLE8</Sigla>
+               <Descricao xsi:type="xsd:string">Processo  de Gestão e Administração</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000863</IdUnidade>
+               <Sigla xsi:type="xsd:string">OV</Sigla>
+               <Descricao xsi:type="xsd:string">Ouvidoria</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">S</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000867</IdUnidade>
+               <Sigla xsi:type="xsd:string">PFE</Sigla>
+               <Descricao xsi:type="xsd:string">Procuradoria Federal Especializada junto à Anatel</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000876</IdUnidade>
+               <Sigla xsi:type="xsd:string">PFE-AT</Sigla>
+               <Descricao xsi:type="xsd:string">Assessoria Técnica</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000877</IdUnidade>
+               <Sigla xsi:type="xsd:string">PFE-CA</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Contencioso Administrativo</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000878</IdUnidade>
+               <Sigla xsi:type="xsd:string">PFE-CO</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Contencioso Judicial</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000879</IdUnidade>
+               <Sigla xsi:type="xsd:string">PFE-DA</Sigla>
+               <Descricao xsi:type="xsd:string">Divisão de Gestão Administrativa</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000880</IdUnidade>
+               <Sigla xsi:type="xsd:string">PFE-PA</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Procedimentos Administrativos</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000881</IdUnidade>
+               <Sigla xsi:type="xsd:string">PFE-PF</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Procedimentos Fiscais</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000882</IdUnidade>
+               <Sigla xsi:type="xsd:string">PFE-PR</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Procedimentos Regulatórios</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000869</IdUnidade>
+               <Sigla xsi:type="xsd:string">PFE02</Sigla>
+               <Descricao xsi:type="xsd:string">Unidade Regional da 2ª Região da PFE-Anatel (RJ)</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000872</IdUnidade>
+               <Sigla xsi:type="xsd:string">PFE07</Sigla>
+               <Descricao xsi:type="xsd:string">Unidade Regional da 7ª Região da PFE-Anatel (GO)</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000873</IdUnidade>
+               <Sigla xsi:type="xsd:string">PFE08</Sigla>
+               <Descricao xsi:type="xsd:string">Unidade Regional da 8ª Região da PFE-Anatel (AL)</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000840</IdUnidade>
+               <Sigla xsi:type="xsd:string">PR</Sigla>
+               <Descricao xsi:type="xsd:string">Presidência Executiva</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001229</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.AC</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo do Acre</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001197</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.AL</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo de Alagoas</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001225</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.AM</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo do Amazonas</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001223</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.AP</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo do Amapá</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001209</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.BA</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo da Bahia</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001145</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.Callcenter</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo do Callcenter</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001213</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.CE</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo do Ceará</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001185</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.ES</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo do Espírito Santo</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001201</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.GO</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo de Goiás</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001221</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.MA</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo do Maranhão</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001191</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.MG</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo de Minas Gerais</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001205</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.MS</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo de Mato Grosso do Sul</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001203</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.MT</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo de Mato Grosso</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001219</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.PA</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo do Pará</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001199</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.PB</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo da Paraíba</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001195</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.PE</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo de Pernambuco</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001217</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.PI</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo do Piauí</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001187</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.PR</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo do Paraná</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001183</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.RJ</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo do Rio de Janeiro</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001215</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.RN</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo do Rio Grande do Norte</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001227</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.RO</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo de Rondônia</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001231</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.RR</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo de Roraima</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001193</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.RS</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo do Rio Grande do Sul</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001189</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.SC</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo de Santa Catarina</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001211</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.SE</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo de Sergipe</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000839</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.Sede</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo da Sede</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001181</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.SP</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo de São Paulo</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001207</IdUnidade>
+               <Sigla xsi:type="xsd:string">Protocolo.TO</Sigla>
+               <Descricao xsi:type="xsd:string">Protocolo de Tocantins</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001124</IdUnidade>
+               <Sigla xsi:type="xsd:string">PRPE</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência de Planejamento Estratégico</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001128</IdUnidade>
+               <Sigla xsi:type="xsd:string">PRRE</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência de Regulamentação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001134</IdUnidade>
+               <Sigla xsi:type="xsd:string">PRUV</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência de Universalização e Ampliação do Acesso</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001139</IdUnidade>
+               <Sigla xsi:type="xsd:string">RCIC</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência de Interações Institucionais, Satisfação e Educação para o Consumo</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001143</IdUnidade>
+               <Sigla xsi:type="xsd:string">RCRC</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência de Canais de Relacionamento com os Consumidores</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001147</IdUnidade>
+               <Sigla xsi:type="xsd:string">RCTS</Sigla>
+               <Descricao xsi:type="xsd:string">Gerência de Tratamento de Solicitações de Consumidores</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000884</IdUnidade>
+               <Sigla xsi:type="xsd:string">SAF</Sigla>
+               <Descricao xsi:type="xsd:string">Superintendência de Administração e Finanças</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000842</IdUnidade>
+               <Sigla xsi:type="xsd:string">SCD</Sigla>
+               <Descricao xsi:type="xsd:string">Secretaria do Conselho Diretor</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000913</IdUnidade>
+               <Sigla xsi:type="xsd:string">SCO</Sigla>
+               <Descricao xsi:type="xsd:string">Superintendência de Controle de Obrigações</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000950</IdUnidade>
+               <Sigla xsi:type="xsd:string">SCP</Sigla>
+               <Descricao xsi:type="xsd:string">Superintendência de Competição</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000965</IdUnidade>
+               <Sigla xsi:type="xsd:string">SFI</Sigla>
+               <Descricao xsi:type="xsd:string">Superintendência de Fiscalização</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000836</IdUnidade>
+               <Sigla xsi:type="xsd:string">SGI</Sigla>
+               <Descricao xsi:type="xsd:string">Superintendência de Gestão Interna da Informação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001099</IdUnidade>
+               <Sigla xsi:type="xsd:string">SOR</Sigla>
+               <Descricao xsi:type="xsd:string">Superintendência de Outorga e Recursos à Prestação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001123</IdUnidade>
+               <Sigla xsi:type="xsd:string">SPR</Sigla>
+               <Descricao xsi:type="xsd:string">Superintendência de Planejamento e Regulamentação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001138</IdUnidade>
+               <Sigla xsi:type="xsd:string">SRC</Sigla>
+               <Descricao xsi:type="xsd:string">Superintendência de Relações com Consumidores</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000883</IdUnidade>
+               <Sigla xsi:type="xsd:string">SUE</Sigla>
+               <Descricao xsi:type="xsd:string">Superintendente Executivo</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110000834</IdUnidade>
+               <Sigla xsi:type="xsd:string">TESTE</Sigla>
+               <Descricao xsi:type="xsd:string">Unidade de Teste</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001289</IdUnidade>
+               <Sigla xsi:type="xsd:string">Tramita.GOV.BR</Sigla>
+               <Descricao xsi:type="xsd:string">Processo recebido via Tramita.GOV.BR</Descricao>
+               <SinProtocolo xsi:type="xsd:string">S</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001151</IdUnidade>
+               <Sigla xsi:type="xsd:string">UO001</Sigla>
+               <Descricao xsi:type="xsd:string">Unidade Operacional do Distrito Federal</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001154</IdUnidade>
+               <Sigla xsi:type="xsd:string">UO021</Sigla>
+               <Descricao xsi:type="xsd:string">Unidade Operacional no Estado do Espírito Santo</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001155</IdUnidade>
+               <Sigla xsi:type="xsd:string">UO021FI</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001157</IdUnidade>
+               <Sigla xsi:type="xsd:string">UO031</Sigla>
+               <Descricao xsi:type="xsd:string">Unidade Operacional no Estado de Santa Catarina</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001158</IdUnidade>
+               <Sigla xsi:type="xsd:string">UO031FI</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001159</IdUnidade>
+               <Sigla xsi:type="xsd:string">UO031OR</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Outorga</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001160</IdUnidade>
+               <Sigla xsi:type="xsd:string">UO061</Sigla>
+               <Descricao xsi:type="xsd:string">Unidade Operacional no Estado de Alagoas</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001161</IdUnidade>
+               <Sigla xsi:type="xsd:string">UO062</Sigla>
+               <Descricao xsi:type="xsd:string">Unidade Operacional no Estado da Paraíba</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001162</IdUnidade>
+               <Sigla xsi:type="xsd:string">UO071</Sigla>
+               <Descricao xsi:type="xsd:string">Unidade Operacional no Estado de Mato Grosso</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001163</IdUnidade>
+               <Sigla xsi:type="xsd:string">UO072</Sigla>
+               <Descricao xsi:type="xsd:string">Unidade Operacional no Estado de Mato Grosso do Sul</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001164</IdUnidade>
+               <Sigla xsi:type="xsd:string">UO072FI</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Fiscalização</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001165</IdUnidade>
+               <Sigla xsi:type="xsd:string">UO072OR</Sigla>
+               <Descricao xsi:type="xsd:string">Processo de Outorga e Recursos à Prestação</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001166</IdUnidade>
+               <Sigla xsi:type="xsd:string">UO073</Sigla>
+               <Descricao xsi:type="xsd:string">Unidade Operacional no Estado de Tocantins</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001167</IdUnidade>
+               <Sigla xsi:type="xsd:string">UO081</Sigla>
+               <Descricao xsi:type="xsd:string">Unidade Operacional no Estado de Sergipe</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001168</IdUnidade>
+               <Sigla xsi:type="xsd:string">UO091</Sigla>
+               <Descricao xsi:type="xsd:string">Unidade Operacional no Estado do Rio Grande do Norte</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001169</IdUnidade>
+               <Sigla xsi:type="xsd:string">UO092</Sigla>
+               <Descricao xsi:type="xsd:string">Unidade Operacional no Estado do Piauí</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001170</IdUnidade>
+               <Sigla xsi:type="xsd:string">UO101</Sigla>
+               <Descricao xsi:type="xsd:string">Unidade Operacional no Estado do Maranhão</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001171</IdUnidade>
+               <Sigla xsi:type="xsd:string">UO102</Sigla>
+               <Descricao xsi:type="xsd:string">Unidade Operacional no Estado do Amapá</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001172</IdUnidade>
+               <Sigla xsi:type="xsd:string">UO111</Sigla>
+               <Descricao xsi:type="xsd:string">Unidade Operacional no Estado de Rondônia</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001173</IdUnidade>
+               <Sigla xsi:type="xsd:string">UO112</Sigla>
+               <Descricao xsi:type="xsd:string">Unidade Operacional no Estado do Acre</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001174</IdUnidade>
+               <Sigla xsi:type="xsd:string">UO113</Sigla>
+               <Descricao xsi:type="xsd:string">Unidade Operacional no Estado de Roraima</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+            <item xsi:type="ns1:Unidade">
+               <IdUnidade xsi:type="xsd:string">110001258</IdUnidade>
+               <Sigla xsi:type="xsd:string">VA</Sigla>
+               <Descricao xsi:type="xsd:string">Gabinete do Conselheiro Vicente Bandeira de Aquino Neto</Descricao>
+               <SinProtocolo xsi:type="xsd:string">N</SinProtocolo>
+               <SinArquivamento xsi:type="xsd:string">N</SinArquivamento>
+               <SinOuvidoria xsi:type="xsd:string">N</SinOuvidoria>
+            </item>
+         </parametros>
+      </ns1:listarUnidadesResponse>
+   </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
