@@ -55,6 +55,23 @@ classdef (Abstract) structUtil
         end
 
         %-----------------------------------------------------------------%
+        function outStruct = delEmptyFields(inStruct, fieldsToRemove)
+            arguments
+                inStruct  struct
+                fieldsToRemove cell = {}
+            end
+
+            outStruct  = rmfield(inStruct, fieldsToRemove);
+            fieldNames = fieldnames(outStruct);
+
+            for ii = 1:numel(fieldNames)
+                if isempty(outStruct.(fieldNames{ii}))
+                    outStruct = rmfield(outStruct, fieldNames{ii});
+                end
+            end
+        end
+
+        %-----------------------------------------------------------------%
         function outCell = struct2cellWithFields(inStruct)
             % inStruct = struct('field1', value1, 'field2', value2)
             % outCell  = {'field1', value2, 'field2', value2}

@@ -159,9 +159,9 @@ classdef (Abstract) gpsLib
             % Organizando informação de GPS proveniente de mais de um arquivo
             % (aplicável para os arquivos MAT gerados no appAnalise, por exemplo)
             % em uma única variável.
-            gpsStatus = arrayfun(@(x) x.Status, gpsData);
+            gpsStatus = double(arrayfun(@(x) x.Status, gpsData));
             idxStatusValid = gpsStatus ~= 0;
-            gpsMatrix = vertcat(gpsData(idxStatusValid).Matrix);
+            gpsMatrix = double(vertcat(gpsData(idxStatusValid).Matrix));
         
             % Sumarizando a informação... essa estrutura de GPS é diferente da
             % estrutura usada na v. 1.35 do appAnalise, inserindo os campos
