@@ -11,7 +11,7 @@ function MAT(fileName, fileType, prj_specData, prj_Info, fields2remove)
     % uma estrutura com os campos "Type", "Version", "Source", "specData" e 
     % "prjInfo".
 
-    % MAT v.2 (LEGADO)
+    % MAT v.2 (INCOMPATÍVEL)
     % Data...: 15/09/2021
     % Versões: appAnaliseV1 (v.1.04 a 1.39)
     % Informação organizada em 7 variáveis no arquivo .MAT - 'prj_Type', 

@@ -29,20 +29,9 @@ classdef projectLib < dynamicprops
             switch class(callingApp)
                 case {'winAppAnalise', 'winAppAnalise_exported'}
                     obj.defaultFilePreffix = 'appAnalise';
-                    obj.customProperties   = {'peaksTable', 'exceptionList', 'externalFiles'};
+                    obj.customProperties   = {'externalFiles'};
 
-                    addprop(obj, 'peaksTable');
-                    addprop(obj, 'exceptionList');
-                    addprop(obj, 'externalFiles');                    
-
-                    obj.peaksTable    = table('Size',          [0, 23],                                                                                                                                                                                                ...
-                                              'VariableTypes', {'cell', 'single', 'single', 'uint16', 'double', 'single', 'double', 'cell', 'cell', 'cell', 'cell', 'cell', 'cell', 'cell', 'int16', 'int32', 'cell', 'cell', 'cell', 'cell', 'cell', 'cell', 'cell'}, ...
-                                              'VariableNames', {'Tag', 'Latitude', 'Longitude', 'Index', 'Frequency', 'Truncated', 'BW', 'minLevel', 'meanLevel', 'maxLevel', 'meanOCC', 'maxOCC', 'Type', 'Regulatory', 'Service', 'Station', 'Description', 'Distance', 'Irregular', 'RiskLevel', 'occMethod', 'Detection', 'Classification'});
-
-                    obj.exceptionList = table('Size',          [0, 10],                                                                              ...
-                                              'VariableTypes', {'cell', 'double', 'cell', 'cell', 'int16', 'int32', 'cell', 'cell', 'cell', 'cell'}, ...
-                                              'VariableNames', {'Tag', 'Frequency', 'Type', 'Regulatory', 'Service', 'Station', 'Description', 'Distance', 'Irregular', 'RiskLevel'});
-
+                    addprop(obj, 'externalFiles');
                     obj.externalFiles = table('Size',          [0, 4],                           ...
                                               'VariableTypes', {'cell', 'cell', 'cell', 'int8'}, ...
                                               'VariableNames', {'Type', 'Tag', 'Filename', 'ID'});

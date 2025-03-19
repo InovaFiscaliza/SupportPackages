@@ -169,10 +169,10 @@ classdef (Abstract) gpsLib
             if any(gpsStatus) && ~isempty(gpsMatrix)
                 gpsSummary.Status        = max(gpsStatus);
                 gpsSummary.Count         = height(gpsMatrix);
-                gpsSummary.Latitude      = mean(gpsMatrix(:,1));
-                gpsSummary.Longitude     = mean(gpsMatrix(:,2));
-                gpsSummary.Latitude_std  = std(gpsMatrix(:,1), 1);
-                gpsSummary.Longitude_std = std(gpsMatrix(:,2), 1);
+                gpsSummary.Latitude      = round(mean(gpsMatrix(:,1)),   6);
+                gpsSummary.Longitude     = round(mean(gpsMatrix(:,2)),   6);
+                gpsSummary.Latitude_std  = round(std(gpsMatrix(:,1), 1), 6);
+                gpsSummary.Longitude_std = round(std(gpsMatrix(:,2), 1), 6);
                 gpsSummary.Matrix        = gpsMatrix;
         
                 stdRange = ones(1,3);

@@ -408,7 +408,7 @@ classdef (Abstract) appUtil
             programDataFilePath = fullfile(programDataFolder, 'GeneralSettings.json');
         
             try
-                writematrix(jsonencode(appGeneral, 'PrettyPrint', true), programDataFilePath, "FileType", "text", "QuoteStrings", "none", "WriteMode", "overwrite")
+                writematrix(jsonencode(appGeneral, 'PrettyPrint', true, 'ConvertInfAndNaN', false), programDataFilePath, "FileType", "text", "QuoteStrings", "none", "WriteMode", "overwrite")
             catch
             end
         end
