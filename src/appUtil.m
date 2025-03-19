@@ -394,7 +394,9 @@ classdef (Abstract) appUtil
             if ~isempty(fields2Remove)
                 appGeneral = rmfield(appGeneral, fields2Remove);
             end
-            appGeneral.fileFolder.tempPath = '';
+
+            appGeneral.fileFolder.MFilePath = '';
+            appGeneral.fileFolder.tempPath  = '';
 
             switch appName
                 case 'appAnalise'
