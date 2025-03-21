@@ -29,6 +29,10 @@ end
 %-------------------------------------------------------------------------%
 function specData = Fcn_MetaDataReader(fileName)
     load(fileName, '-mat', 'prj_metaData')
+
+    if isa(prj_metaData, 'class.specData')
+        prj_metaData = compatibilitityAdapter(prj_metaData, 'MetaData');
+    end
     
     specData = prj_metaData;
     checkIfMissingMetaData(specData)
@@ -37,11 +41,16 @@ end
 %-------------------------------------------------------------------------%
 function [specData, prjInfo] = Fcn_SpecDataReader(fileName)
     load(fileName, '-mat', 'prj_specData', 'prj_Info')
-    
+
     specData = prj_specData;
-    checkIfMissingMetaData(specData)
+    prjInfo  = prj_Info;
     
-    prjInfo  = prj_Info;    
+    if isa(prj_specData, 'class.specData')
+        specData = compatibilitityAdapter(prj_specData, 'SpecData',    prj_Info);
+        prjInfo  = compatibilitityAdapter(prj_specData, 'ProjectInfo', prj_Info);
+    end
+
+    checkIfMissingMetaData(specData)
 end
 
 %-------------------------------------------------------------------------%
