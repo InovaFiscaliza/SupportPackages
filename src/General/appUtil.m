@@ -169,6 +169,11 @@ classdef (Abstract) appUtil
                     varargout{1} = dlg;
 
                 case 'uiconfirm'
+                    % O uiconfirm trava a execução, aguardando retorno do
+                    % usuário. Diferente do uialert, por exemplo, em que
+                    % continua a execução. A validação abaixo garante a
+                    % emulação do uiconfirm como uialert, com a vantagem de
+                    % travar a execução, caso seja esse o objetivo.
                     if isscalar(varargin{1})
                         Icon = 'warning';
                     else

@@ -4,7 +4,7 @@ classdef (Abstract) DataBinning
         %-----------------------------------------------------------------%
         function [specRawTable, ChannelPowerUnit] = RawTableCreation(specData, idxThread, chAssigned)
             arguments
-                specData   model.SpecDataBase
+                specData
                 idxThread  double {mustBeInteger, mustBePositive, mustBeFinite}
                 chAssigned struct
             end

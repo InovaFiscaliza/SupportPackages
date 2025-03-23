@@ -1,5 +1,5 @@
 # List of folder to ignore:
 
 # List of untracked files to ignore:
-src/+ws/Fiscaliza.m
-src/+ws/SEI.m
+src/Anatel/+ws/Fiscaliza.m
+src/Anatel/+ws/SEI.m

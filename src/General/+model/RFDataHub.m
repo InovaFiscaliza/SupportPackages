@@ -221,10 +221,20 @@ classdef (Abstract) RFDataHub
 
         %-----------------------------------------------------------------%
         function stationInfo = query(obj, stationID, latNode, longNode)
+            arguments
+                obj 
+                stationID string
+                latNode   double
+                longNode  double
+            end
+
             % stationID é uma string com o número da estação real ou virtual 
-            % (quando possui o caractere "#" à frente do número). latNode e 
-            % longNode são as coordenadas geográficas do local onde ocorreu 
-            % a monitoração.
+            % (quando possui o caractere "#" à frente do número).  Em sendo 
+            % passado como número, a validação feita no bloco arguments 
+            % converte automaticamente para string
+            % 
+            % latNode e longNode são as coordenadas geográficas do local onde 
+            % ocorreu a monitoração.
 
             if contains(stationID, '#')
                 idx = str2double(stationID(2:end));
@@ -242,7 +252,7 @@ classdef (Abstract) RFDataHub
             Latitude    = obj.Latitude(idx(1));
             Longitude   = obj.Longitude(idx(1));
             try
-                AntennaHeight = str2double(char(obj.AntennaHeight(idxRFDataHub(idxStation))));
+                AntennaHeight = str2double(char(obj.AntennaHeight(idx(1))));
     
                 mustBeFinite(AntennaHeight)
                 mustBeNonnegative(AntennaHeight)
