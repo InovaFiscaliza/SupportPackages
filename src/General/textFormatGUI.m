@@ -101,7 +101,7 @@ classdef (Abstract) textFormatGUI
                 d = [];
             end
             
-            htmlCode = sprintf('<p style="font-family: Helvetica, Arial, sans-serif; font-size: %s; text-align: justify; line-height: 12px; margin: 5px; word-break: break-all;">', fontSize);
+            htmlCode = sprintf('<p style="font-family: Helvetica, Arial, sans-serif; font-size: %s; text-align: justify; line-height: 12px; margin: 10px; word-break: break-all;">', fontSize);
             for ii = 1:numel(dataStruct)
                 dataGroup = dataStruct(ii).group;
                 if ~isempty(d) && isKey(d, dataGroup)
