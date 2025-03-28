@@ -11,9 +11,13 @@ classdef Elevation < handle
 
     properties (Access = private, Constant)
         %-----------------------------------------------------------------%
-        cacheFile = 'cacheMapping.xlsx'
-        URL = "https://api.open-elevation.com/api/v1/lookup?locations="
-        floatTol = 1e-5
+        cacheFile    = 'cacheMapping.xlsx'
+        
+        URL1         = "https://api.open-elevation.com/api/v1/lookup?locations="
+        URL2         = "http://rhfisnspdex02.anatel.gov.br/api/v1/lookup?locations="
+        URLMaxSize   = 2048
+
+        floatDiffTol = 1e-5
     end
 
 
@@ -59,17 +63,67 @@ classdef Elevation < handle
     methods (Access = private)
         %-----------------------------------------------------------------%
         function [wayPoints3D, msgWarning] = WebRequest(obj, Server, wayPoints2D)
+            arguments
+                obj
+                Server      char {mustBeMember(Server, {'Open-Elevation', 'MathWorks WMS Server'})}
+                wayPoints2D
+            end
+
             wayPoints3D = [];
             
             try
                 switch Server
                     case 'Open-Elevation'
+                        % Uma alternativa ao Open-Elevation é serviço implantado
+                        % na ANATEL, o qual possui as seguintes limitações:
+                        % - Elevação apenas do território nacional;
+                        % - Usuário precisa estar na rede interna, ou logado
+                        %   através da VPN.
+
+                        % Outra limitação é o tamanho da URL, o qual é limitado
+                        % em 2048 caracteres. Para diminuir ainda mais o risco,
+                        % aplica-se um fator de 85% a esse limite, de forma
+                        % que as requisições terão no máximo cerca de 1740
+                        % caracteres.
+
+                        % Exemplos:
                         % https://api.open-elevation.com/api/v1/lookup?locations=41.161758,-8.583933|-12.5,-38.5
-                        APIRequest  = obj.URL + strjoin(string(wayPoints2D(:,1)) + "," + string(wayPoints2D(:,2)), '|');
-                        APIAnswer   = webread(APIRequest, weboptions('Timeout', 10));
+                        % http://rhfisnspdex02.anatel.gov.br/api/v1/lookup?locations=41.161758,-8.583933|-12.5,-38.5
+
+                        nPoints   = height(wayPoints2D);
+                        
+                        strPoints = cellstr(string(wayPoints2D));
+                        strPoints = strcat(strPoints(:,1), ',', strPoints(:,2));
+                        
+                        numURLChars    = .85 * obj.URLMaxSize - max(numel(obj.URL1), numel(obj.URL2));
+                        numPointsChars = cellfun(@(x) numel(x), strPoints);
+                        
+                        kk = 1;
+                        APIResults = {};
+
+                        while kk <= nPoints
+                            accSumNumChars     = cumsum(numPointsChars(kk:end));                            
+                            numCharsValidation = find(numURLChars > accSumNumChars);                            
+                            idxLastPoint       = kk + numCharsValidation(end) - 1;
+                            APIBaseRequest     = strjoin(strPoints(kk:idxLastPoint), '|');
+
+                            try
+                                APIAnswer      = webread(obj.URL1 + APIBaseRequest, weboptions('Timeout', 10));
+                            catch secundaryME
+                                try
+                                    APIAnswer  = webread(obj.URL2 + APIBaseRequest, weboptions('Timeout', 10));
+                                catch
+                                    rethrow(secundaryME)
+                                end
+                            end
+
+                            kk = kk + numCharsValidation(end);
+                            APIResults = [APIResults; APIAnswer.results];
+                        end
+                        APIResults     = vertcat(APIResults{:});
                 
-                        wayPoints3D = cell2mat(cellfun(@(x) [x.latitude, x.longitude x.elevation], APIAnswer.results, 'UniformOutput', false));
-                        msgWarning  = add2Cache(obj, Server, wayPoints2D, wayPoints3D);
+                        wayPoints3D    = cell2mat(arrayfun(@(x) [[x.latitude], [x.longitude] [x.elevation]], APIResults, 'UniformOutput', false));
+                        msgWarning     = add2Cache(obj, Server, wayPoints2D, wayPoints3D);
                 
                     case 'MathWorks WMS Server'
                         WMSLayerObject = wmsfind('mathworks', 'SearchField', 'serverurl');
@@ -164,10 +218,10 @@ classdef Elevation < handle
             % Não identificando a informação requerida, procura-se no rol de
             % informações obtidas em 'MathWorks WMS Server'.
             cacheValidation1 = strcmp(obj.cacheMapping.Server, 'Open-Elevation');
-            cacheValidation2 = abs(obj.cacheMapping.Lat1  - Lat1)  <= obj.floatTol & ...
-                               abs(obj.cacheMapping.Lat2  - Lat2)  <= obj.floatTol & ...
-                               abs(obj.cacheMapping.Long1 - Long1) <= obj.floatTol & ...
-                               abs(obj.cacheMapping.Long2 - Long2) <= obj.floatTol;            
+            cacheValidation2 = abs(obj.cacheMapping.Lat1  - Lat1)  <= obj.floatDiffTol & ...
+                               abs(obj.cacheMapping.Lat2  - Lat2)  <= obj.floatDiffTol & ...
+                               abs(obj.cacheMapping.Long1 - Long1) <= obj.floatDiffTol & ...
+                               abs(obj.cacheMapping.Long2 - Long2) <= obj.floatDiffTol;            
             idxCache = find(cacheValidation1 & cacheValidation2);
 
             if isempty(idxCache)

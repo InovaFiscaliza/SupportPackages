@@ -3,3 +3,4 @@
 # List of untracked files to ignore:
 src/Anatel/+ws/Fiscaliza.m
 src/Anatel/+ws/SEI.m
+src/Anatel/+ws/Elevation.m

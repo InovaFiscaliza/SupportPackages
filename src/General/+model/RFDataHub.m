@@ -242,7 +242,7 @@ classdef (Abstract) RFDataHub
             % ocorreu a monitoração.
 
             if contains(stationID, '#')
-                idx = str2double(stationID(2:end));
+                idx = str2double(extractAfter(stationID, '#'));
                 if (idx < 1) || (idx > height(obj))
                     idx = [];
                 end
