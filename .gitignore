@@ -4,3 +4,4 @@
 src/Anatel/+ws/Fiscaliza.m
 src/Anatel/+ws/SEI.m
 src/Anatel/+ws/Elevation.m
+src/Anatel/+ws/Google.m

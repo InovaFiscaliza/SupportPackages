@@ -72,6 +72,29 @@ classdef (Abstract) structUtil
         end
 
         %-----------------------------------------------------------------%
+        function status = hasMatchingFields(inStruct1, inStruct2, fieldsToCompare)
+            arguments
+                inStruct1       struct {mustBeNonempty, mustBeScalarOrEmpty}
+                inStruct2       struct {mustBeNonempty, mustBeScalarOrEmpty}
+                fieldsToCompare cell   {mustBeNonempty, mustBeText}
+            end
+
+            if any(~ismember(fieldsToCompare, fields(inStruct1))) || any(~ismember(fieldsToCompare, fields(inStruct2)))
+                error('BothStructsMustContainAllFieldsForComparison')
+            end
+
+            status = true;
+            for ii = 1:numel(fieldsToCompare)
+                fieldToCompare = fieldsToCompare{ii};
+
+                if ~isequal(inStruct1.(fieldToCompare), inStruct2.(fieldToCompare))
+                    status = false;
+                    return
+                end
+            end
+        end
+
+        %-----------------------------------------------------------------%
         function outCell = struct2cellWithFields(inStruct)
             % inStruct = struct('field1', value1, 'field2', value2)
             % outCell  = {'field1', value2, 'field2', value2}
