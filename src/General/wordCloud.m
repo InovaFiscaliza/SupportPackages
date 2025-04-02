@@ -7,6 +7,7 @@ classdef wordCloud < handle
         Table
     end
 
+    
     methods
         %-----------------------------------------------------------------%
         function obj = wordCloud(parentPanel, executionMode)
@@ -32,12 +33,19 @@ classdef wordCloud < handle
             end
         end
 
+        %-----------------------------------------------------------------%
+        function set.Table(obj, value)
+            TableUpdate(obj, value)
+            obj.Table = value;
+        end
+    end
 
+
+    methods (Access = protected)
         %-----------------------------------------------------------------%
         function path = Path(obj)
             path = fileparts(mfilename('fullpath'));
         end
-
 
         %-----------------------------------------------------------------%
         function emptyTable = EmptyTable(obj)
@@ -45,13 +53,6 @@ classdef wordCloud < handle
                                'VariableTypes', {'string', 'double'}, ...
                                'VariableNames', {'Word', 'Count'});
         end
-
-
-        %-----------------------------------------------------------------%
-        function set.Table(obj, value)
-            TableUpdate(obj, value)            
-        end
-
 
         %-----------------------------------------------------------------%
         function TableUpdate(obj, Table)
