@@ -1108,7 +1108,7 @@ classdef fiscalizaGUI < fiscalizaLib
             
             if isempty(id2nameTable)
                 MFilePath    = fileparts(mfilename('fullpath'));
-                fileName     = fullfile(MFilePath, 'fiscalizaGUI', 'serviceMapping.xlsx');
+                fileName     = fullfile(MFilePath, 'resources', 'fiscalizaGUI', 'serviceMapping.xlsx');
                 id2nameTable = readtable(fileName, 'VariableNamingRule', 'preserve');
                 id2nameTable.ID = int16(id2nameTable.ID);
             end
