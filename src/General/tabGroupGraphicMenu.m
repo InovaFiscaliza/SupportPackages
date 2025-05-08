@@ -134,30 +134,38 @@ classdef tabGroupGraphicMenu < handle
         end
 
         %-----------------------------------------------------------------%
-        function closeModule(obj, auxAppTag, appGeneral)
+        function closeModule(obj, auxAppTags, appGeneral)
+            arguments
+                obj 
+                auxAppTags string
+                appGeneral struct
+            end
+
             obj.progressDialog.Visible = 'visible';
 
-            [~, idx]  = ismember(auxAppTag, obj.Components.Tag);
-            btnHandle = obj.Components.btnHandle(idx);
-
-            if obj.Components.btnStatus(idx) == "On/Off"
-                btnHandle.Enable = 0;
-            end
+            for ii = 1:numel(auxAppTags)
+                [~, idx]  = ismember(auxAppTags(ii), obj.Components.Tag);
+                btnHandle = obj.Components.btnHandle(idx);
     
-            if btnHandle.Value
-                btnRefHandle = obj.Components.btnRefHandle(idx);
-
-                if ~btnRefHandle.Enable
-                    [~, idxRefButton]  = find(obj.Components.tabIndex == 1, 1);
-                    btnRefHandle = obj.Components.btnHandle(idxRefButton);
+                if obj.Components.btnStatus(idx) == "On/Off"
+                    btnHandle.Enable = 0;
                 end
-
-                btnRefHandle.Value = 1;
-                openModule(obj, btnRefHandle, false, appGeneral)
-            end
+        
+                if btnHandle.Value
+                    btnRefHandle = obj.Components.btnRefHandle(idx);
     
-            delete(obj.Components.appHandle{idx})
-            obj.Components.appHandle{idx} = [];
+                    if ~btnRefHandle.Enable
+                        [~, idxRefButton]  = find(obj.Components.tabIndex == 1, 1);
+                        btnRefHandle = obj.Components.btnHandle(idxRefButton);
+                    end
+    
+                    btnRefHandle.Value = 1;
+                    openModule(obj, btnRefHandle, false, appGeneral)
+                end
+        
+                delete(obj.Components.appHandle{idx})
+                obj.Components.appHandle{idx} = [];
+            end
 
             obj.progressDialog.Visible = 'hidden';
         end

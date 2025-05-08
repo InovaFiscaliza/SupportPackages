@@ -27,6 +27,11 @@ function MAT(fileName, fileType, prj_specData, prj_Info, fields2remove)
     % arquivo .MAT, com a diferença que 'prj_metaData' e 'prj_specData' não 
     % são estruturas, mas instâncias da classe "class.specData", seguindo a 
     % nova organização da variável app.specData.
+
+    % Em 08/05/2024, identificado que os arquivos "User data" estavam grandes, 
+    % apesar da única informação consumível hoje ser a tabela de emissões.
+    % Para lidar com isso, esse tipo de arquivo será restrito às emissões e
+    % será comprimido.
     
     % VARIÁVEIS:
     % (1) prj_Version      {double}                                = 2 | 3
@@ -54,16 +59,21 @@ function MAT(fileName, fileType, prj_specData, prj_Info, fields2remove)
         case 'SpectralData'
             prj_Type = {'Spectral data'};
             prj_specData = copy(prj_specData, fields2remove);
+            compressedFlag = {'-nocompression'};
 
         case 'ProjectData'
             prj_Type = {'Project data'};
             prj_specData = copy(prj_specData, fields2remove);
+            compressedFlag = {'-nocompression'};
 
         case 'UserData'
             prj_Type = {'User data'};
             prj_specData = copy(prj_specData, fields2remove);
+            prj_specData.UserData = struct('Emissions', prj_specData.UserData.Emissions);
+            compressedFlag = {};
     end
-    save(fileName, 'prj_Type', 'prj_Version', 'prj_Source', 'prj_RelatedFiles', 'prj_metaData', 'prj_specData', 'prj_Info', '-v7.3', '-nocompression')
+    options = [{'prj_Type', 'prj_Version', 'prj_Source', 'prj_RelatedFiles', 'prj_metaData', 'prj_specData', 'prj_Info', '-v7.3'}, compressedFlag];
+    save(fileName, options{:})
 end
 
 

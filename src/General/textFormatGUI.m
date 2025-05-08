@@ -72,11 +72,12 @@ classdef (Abstract) textFormatGUI
         end
 
         %-----------------------------------------------------------------%
-        function htmlCode = struct2PrettyPrintList(dataStruct, invalidStatus, fontSize)
+        function htmlCode = struct2PrettyPrintList(dataStruct, invalidStatus, freeInitialText, outputFormat)
             arguments
-                dataStruct    struct
-                invalidStatus char {mustBeMember(invalidStatus, {'print -1', 'delete'})} = 'print -1'
-                fontSize      char {mustBeMember(fontSize, {'10px', '11px', '12px'})}    = '11px'
+                dataStruct      struct
+                invalidStatus   char {mustBeMember(invalidStatus, {'print -1', 'delete'})} = 'print -1'
+                freeInitialText char = ''
+                outputFormat    char {mustBeMember(outputFormat, {'popup', 'textview'})} = 'textview'
             end
 
             % dataStruct é uma estrutura com os campos "group" e "value". O
@@ -100,8 +101,15 @@ classdef (Abstract) textFormatGUI
             catch
                 d = [];
             end
+
+            switch outputFormat
+                case 'textview'
+                    inlineStyle = 'padding: 10px;';
+                case 'popup'
+                    inlineStyle = 'user-select: text; font-family: &quot;Helvetica Neue&quot;, Helvetica, Arial, sans-serif; font-size: 11px; font-weight: normal; font-style: normal; color: rgb(0, 0, 0); text-align: justify;';
+            end
             
-            htmlCode = sprintf('<p style="font-family: Helvetica, Arial, sans-serif; font-size: %s; text-align: justify; line-height: 12px; margin: 10px; word-break: break-all;">', fontSize);
+            htmlCode = sprintf('<p style="%s">%s', inlineStyle, freeInitialText);
             for ii = 1:numel(dataStruct)
                 dataGroup = dataStruct(ii).group;
                 if ~isempty(d) && isKey(d, dataGroup)
@@ -116,7 +124,9 @@ classdef (Abstract) textFormatGUI
                     htmlCode = sprintf('%s\n%s', htmlCode, dataStruct(ii).value);
                 end
 
-                htmlCode = sprintf('%s\n\n', htmlCode);
+                if ii ~= numel(dataStruct)
+                    htmlCode = sprintf('%s\n\n', htmlCode);
+                end
             end
             htmlCode = replace(sprintf('%s</p>', strtrim(htmlCode)), newline, '<br>');
         end        

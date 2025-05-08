@@ -1,5 +1,8 @@
 classdef ProgressDialog < handle
 
+    % ToDo: 
+    % Migrar para ui.ProgressDialog...
+
     properties (Access = private)
         %-----------------------------------------------------------------%
         hFigure

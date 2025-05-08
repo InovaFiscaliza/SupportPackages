@@ -10,15 +10,15 @@ classdef (Abstract, AllowedSubclasses={?ws.eFiscaliza, ?ws.Fiscaliza, ?ws.SEI}) 
                 body   = ''
             end
 
-            try
-                if ~isempty(header)
-                    header = matlab.net.http.field.GenericField(header{:});
-                end
+            if ~isempty(header)
+                header = matlab.net.http.field.GenericField(header{:});
+            end
 
-                request  = matlab.net.http.RequestMessage(method, header, body);
-                response = request.send(url);
-            catch ME
-                response = ME.message;
+            request  = matlab.net.http.RequestMessage(method, header, body);
+            response = request.send(url);
+
+            if ~isa(response, 'matlab.net.http.ResponseMessage')
+                error('Unexpected response type')
             end
         end
     end

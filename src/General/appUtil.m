@@ -142,7 +142,7 @@ classdef (Abstract) appUtil
         function varargout = modalWindow(hFigure, type, msg, varargin)
             arguments
                 hFigure matlab.ui.Figure
-                type    {mustBeMember(type, {'error', 'warning', 'info', 'progressdlg', 'uiconfirm', 'uigetfile', 'uiputfile'})}
+                type    {mustBeMember(type, {'error', 'warning', 'info', 'success', 'progressdlg', 'uiconfirm', 'uigetfile', 'uiputfile'})}
                 msg     {mustBeTextScalar} = ''
             end
         
@@ -155,11 +155,12 @@ classdef (Abstract) appUtil
             end
 
             switch type
-                case {'error', 'warning', 'info'}
+                case {'error', 'warning', 'info', 'success'}
                     switch type
                         case 'error';   uialert(hFigure, msg, '', 'Interpreter', 'html', 'Icon', 'error',   varargin{:})
                         case 'warning'; uialert(hFigure, msg, '', 'Interpreter', 'html', 'Icon', 'warning', varargin{:})
                         case 'info';    uialert(hFigure, msg, '', 'Interpreter', 'html', 'Icon', 'info',    varargin{:})
+                        case 'success'; uialert(hFigure, msg, '', 'Interpreter', 'html', 'Icon', 'success', varargin{:})
                     end
                     varargout = {[]};
                     beep
@@ -445,7 +446,6 @@ classdef (Abstract) appUtil
                 
                 if isfolder(oldFullPath)
                     newFullPath = fullfile(newPath, cfgFiles(ii).name);
-                    mkdir(newFullPath)
                 end
 
                 switch operationType

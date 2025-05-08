@@ -1,4 +1,263 @@
 function setup(htmlComponent) {
+    /*---------------------------------------------------------------------------------*/
+    function consoleLog(msg) {
+        const now      = new Date();
+        const hours    = String(now.getHours()).padStart(2, '0');
+        const minutes  = String(now.getMinutes()).padStart(2, '0');
+        const seconds  = String(now.getSeconds()).padStart(2, '0');
+        const millisec = String(now.getMilliseconds()).padStart(3, '0');
+
+        console.log(`${hours}:${minutes}:${seconds}.${millisec} jsBackDoor: ${msg}`);
+    }
+
+    /*---------------------------------------------------------------------------------*/
+    function onRenderComplete(callback) {
+        window.requestAnimationFrame(() => {
+            window.parent.requestAnimationFrame(callback);
+        });
+    }
+    
+    /*---------------------------------------------------------------------------------*/
+    function findComponentHandle(dataTag) {
+        return window.parent.document.querySelector(`div[data-tag="${dataTag}"]`);
+    }
+
+    /*---------------------------------------------------------------------------------*/
+    function injectCustomStyle() {
+        let styleElement = window.parent.document.getElementById('MATLAB-ccTools');
+        if (styleElement) {
+            return;
+        }
+
+        const cssText = `/*
+  ## Customizações gerais (MATLAB Built-in Components) ##
+*/
+body {
+    --tabButton-border-color: rgb(255, 255, 255) !important;
+    --tabContainer-border-color: rgb(255, 255, 255) !important;   
+}
+
+.mw-theme-light {
+    --mw-backgroundColor-dataWidget-selected: rgba(180, 222, 255, 0.45) !important;
+    --mw-backgroundColor-selected: rgba(180, 222, 255, 0.45) !important;
+    --mw-backgroundColor-selectedFocus: rgba(180, 222, 255, 0.45) !important;
+    --mw-backgroundColor-list-hover: rgb(191, 191, 191) !important;
+    --mw-backgroundColor-tab: rgb(255, 255, 255) !important;
+}
+
+.treenode.selected {
+    background-image: linear-gradient(rgba(180, 222, 255, 0.45), rgba(180, 222, 255, 0.45)) !important;
+}
+
+.mw-tree .mw-tree-scroll-component.focused.hoverable .treeNode.selected.mw-tree-node-hover {
+    background-image: linear-gradient(rgb(191, 191, 191), rgb(191, 191, 191)) !important;
+}
+
+.mw-default-header-cell {
+    font-size: 10px !important; 
+    white-space: pre-wrap !important; 
+    margin-bottom: 5px !important;
+}
+
+.gbtTabGroupBorder {
+    border: none !important;
+}
+
+.gbtWidget.gbtPanel {
+    background-color: transparent !important;
+}
+
+/*
+  ## ui.TextView ##
+*/
+.textview {
+    border: 1px solid rgb(125, 125, 125);
+    overflow: hidden auto;
+    word-break: break-all;
+    user-select: text;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 11px;
+    font-weight: normal;
+    font-style: normal;
+    color: rgb(0, 0, 0);
+    text-align: center;
+}
+
+.textview::selection,
+.textview *::selection {
+    background: #0078d4;
+    color: white;
+}
+
+.textview--from-uiimage {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/*
+  ## ProgressDialog ##
+*/
+:root {
+    --sk-size: 40px;
+    --sk-color: rgb(217, 83, 25);
+}
+
+.sk-chase { width: var(--sk-size); height: var(--sk-size); position: relative; animation: sk-chase 2.5s infinite linear both; }
+.sk-chase-dot { width: 100%; height: 100%; position: absolute; left: 0; top: 0;  animation: sk-chase-dot 2.0s infinite ease-in-out both; }
+.sk-chase-dot:before { content: ""; display: block; width: 25%; height: 25%; background-color: var(--sk-color); border-radius: 100%; animation: sk-chase-dot-before 2.0s infinite ease-in-out both; }
+.sk-chase-dot:nth-child(1) { animation-delay: -1.1s; }
+.sk-chase-dot:nth-child(2) { animation-delay: -1.0s; }
+.sk-chase-dot:nth-child(3) { animation-delay: -0.9s; }
+.sk-chase-dot:nth-child(4) { animation-delay: -0.8s; }
+.sk-chase-dot:nth-child(5) { animation-delay: -0.7s; }
+.sk-chase-dot:nth-child(6) { animation-delay: -0.6s; }
+.sk-chase-dot:nth-child(1):before { animation-delay: -1.1s; }
+.sk-chase-dot:nth-child(2):before { animation-delay: -1.0s; }
+.sk-chase-dot:nth-child(3):before { animation-delay: -0.9s; }
+.sk-chase-dot:nth-child(4):before { animation-delay: -0.8s; }
+.sk-chase-dot:nth-child(5):before { animation-delay: -0.7s; }
+.sk-chase-dot:nth-child(6):before { animation-delay: -0.6s; }
+@keyframes sk-chase { 100% { transform: rotate(360deg); } }
+@keyframes sk-chase-dot { 80%, 100% { transform: rotate(360deg); } }
+@keyframes sk-chase-dot-before { 50% { transform: scale(0.4); } 100%, 0% { transform: scale(1); } }
+
+/*
+  ## CustomForm ##
+*/
+.custom-form-entry {
+    overflow: hidden;
+    padding-left: 4px;
+    font-size: 11px;
+    border: 1px solid #7d7d7d;
+}
+
+.custom-form-entry:focus {
+    border-color: #268cdd;
+    outline: none;
+}`;
+        
+        styleElement = window.parent.document.createElement("style");
+        styleElement.type = "text/css";
+        styleElement.id = "MATLAB-ccTools";
+        styleElement.innerHTML = `${cssText}`;
+
+        window.parent.document.head.appendChild(styleElement);
+    }
+
+    /*---------------------------------------------------------------------------------*/
+    htmlComponent.addEventListener("initializeStyle", () => {
+        injectCustomStyle();        
+    });
+
+    /*---------------------------------------------------------------------------------*/
+    htmlComponent.addEventListener("initializeComponents", function (customEvent) {
+        const components   = customEvent.Data;
+        const maxAttempts  = 100;
+        let modifyAttempts = 0;
+        let dataTags       = '';
+
+        const modifyInterval = setInterval(() => {
+            modifyAttempts++;
+
+            components.forEach((el, index) => {
+                consoleLog(JSON.stringify(el));
+
+                let handle = findComponentHandle(el.dataTag);
+                if (el.generation === 1) {
+                    handle = handle?.children?.[0];
+                } else if (el.generation === 2) {
+                    handle = handle?.children?.[0].children?.[0];
+                } else if (el.selector) {
+                    handle = handle?.querySelector(`${el.selector}`);
+                }
+
+                if (handle) {
+                    let modifyStatus = true;
+
+                    if (el.style) {
+                        Object.assign(handle.style, el.style);
+                        handle.offsetHeight;
+                    }
+
+                    if (el.class) {
+                        let classList = el.class;
+                        if (!Array.isArray(classList)) {
+                            classList = [classList];
+                        }
+
+                        classList.forEach(classElement => {
+                            injectCustomStyle();
+                            handle.classList.add(classElement);
+
+                            modifyStatus = !!handle.classList.contains(classElement);
+                            if (!modifyStatus) {
+                                consoleLog(`Error: the class "${classElement}" could not be applied to the element ${el.dataTag}`);
+                            }
+                        })
+                        handle.offsetHeight;
+                    }
+
+                    if (el.listener) {
+                        const compName = el.listener.componentName;
+                        const keyEvents = el.listener.keyEvents;
+    
+                        if (!handle.dataset.keydownListener) {
+                            handle.dataset.keydownListener = 'on';
+                            
+                            handle.addEventListener('keydown', (event) => {
+                                if (keyEvents.includes(event.key)) {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    htmlComponent.sendEventToMATLAB(compName, event.key);
+                                }
+                            });
+                        }
+                    }
+
+                    if (el.child) {
+                        let child = handle.querySelector(`div[data-tag="${el.child.dataTag}"]`);
+                        
+                        if (child) {
+                            child.innerHTML   = el.child.innerHTML;
+                        } else {
+                            child = window.parent.document.createElement('div');
+                            child.dataset.tag = el.child.dataTag;
+                            child.innerHTML   = el.child.innerHTML;
+                            handle.appendChild(child);
+                        }
+                    }
+
+                    if (modifyStatus) {
+                        components.splice(index, 1);
+                    }
+                }
+            });
+
+            if (modifyAttempts >= maxAttempts) {
+                dataTags = components.map(component => component.dataTag).join(', ');
+                consoleLog(`Error: failed to apply class to the following components after ${maxAttempts} attempts: ${dataTags}`);
+            }
+    
+            if (!components.length || modifyAttempts >= maxAttempts) {
+                clearInterval(modifyInterval);
+            }
+        }, 1000);
+    });
+
+    /*---------------------------------------------------------------------------------*/
+    htmlComponent.addEventListener("addStyle", function(customEvent) {
+        let handle  = findComponentHandle(customEvent.Data.dataTag);
+        const style   = customEvent.Data.style;
+
+        if (customEvent.Data.selector) {
+            handle = handle?.querySelector(`${customEvent.Data.selector}`);
+        }
+        
+        Object.assign(handle.style, style);
+    });
+
+    /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("delProgressDialog", function() {
         try {
             window.top.document.getElementsByClassName("mw-busyIndicator")[0].remove();
@@ -7,74 +266,46 @@ function setup(htmlComponent) {
         }
     });
 
+    /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("getURL", function() {
-        try {
-            let URL = window.top.location.href;
-            htmlComponent.sendEventToMATLAB("getURL", URL);
-        } catch (ME) {
-            // console.log(ME)
-        }
+        htmlComponent.sendEventToMATLAB("getURL", window.top.location.href);
     });
 
+    /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("getNavigatorBasicInformation", function() {
-        try {
-            let navigatorBasicInformation = {
-                "userAgent": navigator.userAgent,
-                "platform": navigator.userAgentData.platform,
-                "mobile": navigator.userAgentData.mobile
-            }
-
-            htmlComponent.sendEventToMATLAB("getNavigatorBasicInformation", navigatorBasicInformation);
-        } catch (ME) {
-            // console.log(ME)
+        let navigatorBasicInformation = {
+            "userAgent": navigator.userAgent,
+            "platform": navigator.userAgentData.platform,
+            "mobile": navigator.userAgentData.mobile
         }
+
+        htmlComponent.sendEventToMATLAB("getNavigatorBasicInformation", navigatorBasicInformation);
     });
 
-    htmlComponent.addEventListener("addKeyDownListener", function(customEvent) {
-        let objDataName = customEvent.Data.componentName.toString();
-        let objDataTag  = customEvent.Data.componentDataTag.toString();
-        let keyEvents   = customEvent.Data.keyEvents;
-
-        const interval = setInterval(function() {
-            let objHandle = window.parent.document.querySelector(`div[data-tag="${objDataTag}"]`);
-        
-            if (objHandle !== null) {
-                clearInterval(interval);
-        
-                objHandle.addEventListener("keydown", function(event) {
-                    if (keyEvents.includes(event.key)) {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        htmlComponent.sendEventToMATLAB(objDataName, event.key);
-                    }
-                });
-            }
-        }, 100);
-    });
-
+    /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("setFocus", function(customEvent) {
-        let objDataName  = customEvent.Data.componentName.toString();
-        let objDataTag   = customEvent.Data.componentDataTag.toString();
-        let objHandle    = window.parent.document.querySelector(`div[data-tag="${objDataTag}"]`).querySelector("input");
+        let dataTag = customEvent.Data.dataTag;
+        let handle  = findComponentHandle(dataTag).querySelector("input");
 
         try {
-            objHandle.focus();
-            objHandle.setSelectionRange(objHandle.value.length, objHandle.value.length);
+            handle.focus();
+            handle.setSelectionRange(handle.value.length, handle.value.length);
         } catch (ME) {
             // console.log(ME)
         }
     });
 
+    /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("turningBackgroundColorInvisible", function(customEvent) {
         let objDataName = customEvent.Data.componentName.toString();
         let objDataTag  = customEvent.Data.componentDataTag.toString();
-        let objHandle   = window.parent.document.querySelector(`div[data-tag="${objDataTag}"]`);
+        let handle   = findComponentHandle(objDataTag);
 
         try {
             let opacityValue = 1.0;
             let intervalId = setInterval(() => {
                 opacityValue -= 0.02;
-                objHandle.style.opacity = opacityValue;
+                handle.style.opacity = opacityValue;
 
                 if (opacityValue <= 0.02) {
                     clearInterval(intervalId);
@@ -86,60 +317,50 @@ function setup(htmlComponent) {
         }
     });
 
+    /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("htmlClassCustomization", function(customEvent) {
         try {
-            var className       = customEvent.Data.className.toString();
-            var classAttributes = customEvent.Data.classAttributes.toString();
+            const className       = customEvent.Data.className.toString();
+            const classAttributes = customEvent.Data.classAttributes.toString();
     
-            var s = document.createElement("style");
-            s.type = "text/css";
-            s.appendChild(document.createTextNode(className + " { " + classAttributes + " }"));
-            window.parent.document.head.appendChild(s);
+            const styleElement = document.createElement("style");
+            styleElement.type = "text/css";
+            styleElement.appendChild(document.createTextNode(`${className} { ${classAttributes} }`));
+            window.parent.document.head.appendChild(styleElement);
         } catch (ME) {
-            // console.log(ME)
+            console.warn(`CSS injection failed: ${className}`)
         }
     });
 
-    // ## MATLAB-STYLE PANEL DIALOG
+    /*-----------------------------------------------------------------------------------
+        ## MATLAB-STYLE PANEL DIALOG ##
+    -----------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("panelDialog", function(customEvent) {
         let objDataTag = customEvent.Data.componentDataTag.toString();
-        let objHandle  = window.parent.document.querySelector(`div[data-tag="${objDataTag}"]`);
+        let handle  = findComponentHandle(objDataTag);
 
-        if (objHandle) {
-            objHandle.style.borderRadius             = "5px";
-            objHandle.style.boxShadow                = "0 2px 5px 1px var(--mw-boxShadowColor,#a6a6a6)";
-            objHandle.children[0].style.borderRadius = "5px";
-            objHandle.children[0].style.borderColor  = "var(--mw-borderColor-secondary,#bfbfbf)";
+        if (handle) {
+            handle.style.borderRadius             = "5px";
+            handle.style.boxShadow                = "0 2px 5px 1px var(--mw-boxShadowColor,#a6a6a6)";
+            handle.children[0].style.borderRadius = "5px";
+            handle.children[0].style.borderColor  = "var(--mw-borderColor-secondary,#bfbfbf)";
         }
     });
 
-    // ## CUSTOM FORM
+    /*-----------------------------------------------------------------------------------
+        ## CUSTOM FORM ##
+    -----------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("customForm", function(customEvent) {
         try {
-            let UUID    = customEvent.Data.UUID.toString();
-            let Fields  = customEvent.Data.Fields;
-            Fields      = Array.isArray(Fields) ? Fields : [Fields];
-            let zIndex  = 1000;
+            const UUID    = customEvent.Data.UUID;
+            let Fields    = customEvent.Data.Fields;
+            Fields        = Array.isArray(Fields) ? Fields : [Fields];
+            const zIndex  = 1000;
 
             let nFields = Fields.length;
             let Height  = nFields <= 3 ? 165 : 95+20*nFields+5*(nFields-1);
 
-            // Style
-            var s = document.createElement("style");
-            s.type = "text/css";
-            s.innerHTML = `
-                .ccToolsEditField {
-                    overflow: hidden;
-                    padding-left: 4px;
-                    font-size: 11px;
-                    border: 1px solid #7d7d7d;
-                }
-
-                .ccToolsEditField:focus {
-                    border-color: #268cdd;
-                    outline: none;
-                }
-            `;
+            injectCustomStyle();
 
             // Background layer
             var u = document.createElement("div");
@@ -173,9 +394,8 @@ function setup(htmlComponent) {
                 </div>
             `;
 
-            window.parent.document.head.appendChild(s);
+            u.appendChild(w);
             window.parent.document.body.appendChild(u);
-            window.parent.document.body.appendChild(w);
 
             // Form generation
             let formContainer = document.createElement("form");
@@ -190,7 +410,7 @@ function setup(htmlComponent) {
                 // Input field
                 let input = document.createElement("input");
                 input.type = field.type;
-                input.className = "ccToolsEditField";
+                input.className = "custom-form-entry";
                 input.style.cssText = "height: 18px;";
                 input.setAttribute("data-tag", UUID + "_" + field.id);
                 formContainer.appendChild(input);
@@ -255,9 +475,7 @@ function setup(htmlComponent) {
             }
 
             btnClose.addEventListener("click", function() {
-                s.remove();
                 u.remove();
-                w.remove();
             });
 
             btnOK.addEventListener("click", function() {
@@ -275,34 +493,36 @@ function setup(htmlComponent) {
                     return;
                 }
 
+                formData.uuid = UUID;
                 htmlComponent.sendEventToMATLAB("customForm", formData);
 
-                s.remove();
                 u.remove();
-                w.remove();
             });
 
-            w.addEventListener("keydown", function(event) {
-                if (event.key == "Tab") {
-                    switch (window.parent.document.activeElement) {
-                        case btnClose:
-                            if (event.shiftKey) {
-                                btnOK.focus();
-                                event.preventDefault();
-                            }
-                            break;
+            const focusElements = Array.from(w.querySelectorAll('button, input, select, [contenteditable]')).filter(el => !el.disabled && el.tabIndex !== -1);
 
-                        case btnOK:
-                            if (!event.shiftKey) {
-                                btnClose.focus();
-                                event.preventDefault();
-                            }
-                            break;
-                    }                    
-                }
+            w.addEventListener("keydown", function(event) {                
+                    if (focusElements.length === 0) return;
+                
+                    if (event.key === 'Tab') {
+                        const activeElement = window.parent.document.activeElement;
+                        let currentIndex = focusElements.indexOf(activeElement);
+                        currentIndex = (currentIndex === -1) ? 0 : currentIndex;
+            
+                        event.preventDefault();
+            
+                        let nextIndex;
+                        if (event.shiftKey) {
+                            nextIndex = (currentIndex - 1 + focusElements.length) % focusElements.length;
+                        } else {
+                            nextIndex = (currentIndex + 1) % focusElements.length;
+                        }
+            
+                        focusElements[nextIndex].focus();
+                    }
             });
 
-            let firstInput = window.parent.document.querySelector(`input[data-tag="${UUID}_${Fields[0].id}"]`);
+            const firstInput = window.parent.document.querySelector(`input[data-tag="${UUID}_${Fields[0].id}"]`);
             firstInput.focus();
 
         } catch (ME) {
@@ -310,110 +530,49 @@ function setup(htmlComponent) {
         }
     });
 
-    // ## PROGRESS DIALOG
+    /*-----------------------------------------------------------------------------------
+        ## PROGRESS DIALOG ##
+    -----------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("progressDialog", function(customEvent) {
         const Type = customEvent.Data.Type.toString();
         const UUID = customEvent.Data.UUID.toString();
 
-        let objHandle = window.parent.document.body.querySelectorAll(`div[data-tag="${UUID}"]`);
-        if ((Type === "Creation") || (objHandle.length === 0)) {
+        let handle = window.parent.document.body.querySelectorAll(`div[data-tag="${UUID}"]`);
+        if ((Type === "Creation") || (handle.length === 0)) {
             const zIndex = 1000;
 
             if ("Size" in customEvent.Data) {
                 Size = customEvent.Data.Size.toString();
-            } else if (sessionStorage.getItem("ProgressDialog") !== null) {
-                Size = JSON.parse(sessionStorage.getItem("ProgressDialog")).Size;
+            } else if (window.parent.sessionStorage.getItem("ProgressDialog") !== null) {
+                Size = JSON.parse(window.parent.sessionStorage.getItem("ProgressDialog")).Size;
             } else {
                 Size = "40px";
             }
 
             if ("Color" in customEvent.Data) {
                 Color = customEvent.Data.Color.toString();
-            } else if (sessionStorage.getItem("ProgressDialog") !== null) {
-                Color = JSON.parse(sessionStorage.getItem("ProgressDialog")).Color;
+            } else if (window.parent.sessionStorage.getItem("ProgressDialog") !== null) {
+                Color = JSON.parse(window.parent.sessionStorage.getItem("ProgressDialog")).Color;
             } else {
                 Color = "#d95319";
             }
 
-            if (sessionStorage.getItem("ProgressDialog") === null) {
-                sessionStorage.setItem("ProgressDialog", JSON.stringify({"Type": Type, "UUID": UUID, "Size": Size, "Color": Color}))
+            if (window.parent.sessionStorage.getItem("ProgressDialog") === null) {
+                window.parent.sessionStorage.setItem("ProgressDialog", JSON.stringify({"Type": Type, "UUID": UUID, "Size": Size, "Color": Color}))
             }
 
             try {
-                // Style
-                var s = document.createElement("style");
-                s.type = "text/css";                    
-                s.innerHTML = `
-                    :root {
-                        --sk-size: ${Size};
-                        --sk-color: ${Color};
-                    }
-                    
-                    .sk-chase {
-                        width: var(--sk-size);
-                        height: var(--sk-size);
-                        position: relative;
-                        animation: sk-chase 2.5s infinite linear both; 
-                    }
-                    
-                    .sk-chase-dot {
-                        width: 100%;
-                        height: 100%;
-                        position: absolute;
-                        left: 0;
-                        top: 0; 
-                        animation: sk-chase-dot 2.0s infinite ease-in-out both; 
-                    }
-                    
-                    .sk-chase-dot:before {
-                        content: "";
-                        display: block;
-                        width: 25%;
-                        height: 25%;
-                        background-color: var(--sk-color);
-                        border-radius: 100%;
-                        animation: sk-chase-dot-before 2.0s infinite ease-in-out both; 
-                    }
-                    
-                    .sk-chase-dot:nth-child(1) { animation-delay: -1.1s; }
-                    .sk-chase-dot:nth-child(2) { animation-delay: -1.0s; }
-                    .sk-chase-dot:nth-child(3) { animation-delay: -0.9s; }
-                    .sk-chase-dot:nth-child(4) { animation-delay: -0.8s; }
-                    .sk-chase-dot:nth-child(5) { animation-delay: -0.7s; }
-                    .sk-chase-dot:nth-child(6) { animation-delay: -0.6s; }
-                    .sk-chase-dot:nth-child(1):before { animation-delay: -1.1s; }
-                    .sk-chase-dot:nth-child(2):before { animation-delay: -1.0s; }
-                    .sk-chase-dot:nth-child(3):before { animation-delay: -0.9s; }
-                    .sk-chase-dot:nth-child(4):before { animation-delay: -0.8s; }
-                    .sk-chase-dot:nth-child(5):before { animation-delay: -0.7s; }
-                    .sk-chase-dot:nth-child(6):before { animation-delay: -0.6s; }
-                    
-                    @keyframes sk-chase {
-                        100% { transform: rotate(360deg); } 
-                    }
-                    
-                    @keyframes sk-chase-dot {
-                        80%, 100% { transform: rotate(360deg); } 
-                    }
-                    
-                    @keyframes sk-chase-dot-before {
-                        50% {
-                            transform: scale(0.4); 
-                        } 100%, 0% {
-                            transform: scale(1.0); 
-                        } 
-                    }
-                `;
+                injectCustomStyle();
         
                 // Background layer
-                var u = document.createElement("div");
+                var u = window.parent.document.createElement("div");
                 u.setAttribute("data-tag", UUID);
-                u.style.cssText = "visibility: hidden; position: absolute; left: 0%; top: 0%; width: 100%; height: 100%; background-color: rgba(255, 255, 255, 0.65); z-index: " + (zIndex + 1) + ";";
+                u.style.cssText = `visibility: hidden; position: absolute; left: 0%; top: 0%; width: 100%; height: 100%; background-color: rgba(255, 255, 255, 0.65); z-index: ${zIndex+1};`;
         
                 // Progress dialog
-                var w = document.createElement("div");
+                var w = window.parent.document.createElement("div");
                 w.setAttribute("data-tag", UUID);
-                w.style.cssText = "visibility: hidden; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: " + (zIndex + 2) + ";";
+                w.style.cssText = `visibility: hidden; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: ${zIndex+2};`;
                 w.innerHTML     = `
                     <div class="sk-chase">
                         <div class="sk-chase-dot"></div>
@@ -425,9 +584,8 @@ function setup(htmlComponent) {
                     </div>
                 `;
                 
-                window.parent.document.head.appendChild(s);
+                u.appendChild(w);
                 window.parent.document.body.appendChild(u);
-                window.parent.document.body.appendChild(w);
             } catch (ME) {
                 console.log(ME)
             }
@@ -436,7 +594,7 @@ function setup(htmlComponent) {
         switch (Type) {
             case "changeVisibility":
                 const newVisibility = customEvent.Data.Visibility.toString();
-                objHandle.forEach(element => {
+                handle.forEach(element => {
                     element.style.visibility = newVisibility;
                 });
                 break;
@@ -452,147 +610,11 @@ function setup(htmlComponent) {
                 break;
         };
     });
-        
-    htmlComponent.addEventListener("compCustomization", function(customEvent) {
-        let objClass    = customEvent.Data.Class.toString();
-        let objDataTag  = customEvent.Data.DataTag.toString();
-        let objProperty = customEvent.Data.Property.toString();
-        let objValue    = customEvent.Data.Value.toString();
 
-        const interval = setInterval(function() {
-            let objHandle = window.parent.document.querySelector(`div[data-tag="${objDataTag}"]`);
-        
-            if (objHandle !== null) {
-                clearInterval(interval);
-        
-                try {
-                    let elements = null;
-        
-                    switch (objClass) {
-                        case "matlab.ui.container.ButtonGroup":
-                        case "matlab.ui.container.CheckBoxTree":
-                        case "matlab.ui.container.Tree":
-                        case "matlab.ui.container.Label":
-                            objHandle.style[objProperty] = objValue;
-                            objHandle.children[0].style[objProperty] = objValue;
-                            break;
-                            
-                        case "matlab.ui.container.GridLayout":
-                        case "matlab.ui.container.Panel":
-                            objHandle.style[objProperty] = objValue;
-                            break;
-                            
-                        case "matlab.ui.container.TabGroup":
-                            switch (objProperty) {
-                                case "backgroundColor":
-                                    // Pendente!
-                                    return;                         
-                                case "backgroundHeaderColor":
-                                    objHandle.style.backgroundColor = "transparent";
-                                    objHandle.children[1].style.backgroundColor = objValue;
-                                    break;
-                                case "transparentHeader":
-                                    objHandle.style.border = "none";
-                                    objHandle.style.backgroundColor = "transparent";
-                                    
-                                    objHandle.children[1].style.border = "none";
-                                    objHandle.children[1].style.backgroundColor = "transparent";                            
-        
-                                    var childElements = objHandle.children[1].querySelectorAll("*");
-        
-                                    childElements.forEach(function(child) {
-                                        child.style.border = "none";
-                                        child.style.backgroundColor = "transparent";                                
-                                    });
-                                    break;
-                                case "borderRadius":
-                                case "borderWidth":
-                                case "borderColor":
-                                    objHandle.style[objProperty] = objValue;
-                                    break;
-                                case "fontFamily":
-                                case "fontStyle":
-                                case "fontWeight":
-                                case "fontSize":
-                                case "color":
-                                    elements = objHandle.getElementsByClassName("mwTabLabel");                            
-                                    for (let ii = 0; ii < elements.length; ii++) {
-                                        elements[ii].style[objProperty] = objValue;
-                                    }
-                                    break;
-                            }
-                        
-                        case "matlab.ui.control.Button":
-                        case "matlab.ui.control.DropDown":
-                        case "matlab.ui.control.EditField":
-                        case "matlab.ui.control.ListBox":
-                        case "matlab.ui.control.NumericEditField":
-                        case "matlab.ui.control.StateButton":
-                            objHandle.children[0].style[objProperty] = objValue;
-                            break;
-                            
-                        case "matlab.ui.control.TextArea":
-                            switch (objProperty) {
-                                case "backgroundColor":
-                                    objHandle.style.backgroundColor = "transparent";
-                                    objHandle.children[0].style.backgroundColor = objValue;
-                                    break;                            
-                                case "textAlign":
-                                    objHandle.getElementsByTagName("textarea")[0].style.textAlign = objValue;
-                                    break;                            
-                                default:
-                                    objHandle.children[0].style[objProperty] = objValue;
-                                    break;
-                            }
-                            
-                        case "matlab.ui.control.CheckBox":
-                            objHandle.getElementsByClassName("mwCheckBoxRadioIconNode")[0].style[objProperty] = objValue;
-                            break;
-        
-                        case "matlab.ui.control.Table":
-                            switch (objProperty) {
-                                case "backgroundColor":
-                                    objHandle.children[0].style.backgroundColor = "transparent";
-                                    objHandle.children[0].children[0].style.backgroundColor = objValue;
-                                    break;    
-                                case "backgroundHeaderColor":
-                                    objHandle.children[0].children[0].children[0].style.backgroundColor = objValue;
-                                    break;    
-                                case "borderRadius":
-                                    objHandle.children[0].style.borderRadius = objValue;
-                                    objHandle.children[0].children[0].style.borderRadius = objValue;
-                                    break;    
-                                case "borderWidth":
-                                case "borderColor":
-                                    objHandle.children[0].children[0].style[objProperty] = objValue;
-                                    break;
-                                case "textAlign":
-                                case "paddingTop":
-                                    elements = objHandle.getElementsByClassName("mw-table-header-row")[0].children;                      
-                                    for (let ii = 0; ii < elements.length; ii++) {
-                                        elements[ii].style[objProperty] = objValue;
-                                    }
-                                    break;
-                                case "fontFamily":
-                                case "fontStyle":
-                                case "fontWeight":
-                                case "fontSize":
-                                case "color":
-                                    elements = objHandle.getElementsByClassName("mw-default-header-cell");
-                                    for (let ii = 0; ii < elements.length; ii++) {
-                                        elements[ii].style[objProperty] = objValue;
-                                    }
-                                    break;
-                            }
-        
-                        default:
-                            objHandle.style[objProperty] = objValue;
-                            break;
-                    }
-                } catch (ME) {
-                    // console.log(ME)
-                }
-            }
-        }, 100);
-    });
+    /*---------------------------------------------------------------------------------*/
+    onRenderComplete(() => {
+        const msg = 'DOM render cycle finished';
+        consoleLog(msg);
+        htmlComponent.sendEventToMATLAB('renderer', msg);
+    });    
 }
