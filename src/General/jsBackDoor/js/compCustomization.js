@@ -1,4 +1,10 @@
 function setup(htmlComponent) {
+    window.top.app = {
+        executionMode: null,
+        matlabBackDoor: htmlComponent,
+        ui: []
+    };
+
     /*---------------------------------------------------------------------------------*/
     function consoleLog(msg) {
         const now      = new Date();
@@ -7,14 +13,7 @@ function setup(htmlComponent) {
         const seconds  = String(now.getSeconds()).padStart(2, '0');
         const millisec = String(now.getMilliseconds()).padStart(3, '0');
 
-        console.log(`${hours}:${minutes}:${seconds}.${millisec} jsBackDoor: ${msg}`);
-    }
-
-    /*---------------------------------------------------------------------------------*/
-    function onRenderComplete(callback) {
-        window.requestAnimationFrame(() => {
-            window.parent.requestAnimationFrame(callback);
-        });
+        console.log(`${hours}:${minutes}:${seconds}.${millisec} [MATLAB-ccTools] ${msg}`);
     }
     
     /*---------------------------------------------------------------------------------*/
@@ -146,8 +145,20 @@ body {
     }
 
     /*---------------------------------------------------------------------------------*/
-    htmlComponent.addEventListener("initializeStyle", () => {
-        injectCustomStyle();        
+    htmlComponent.addEventListener("startup", function(customEvent) {
+        const executionMode = customEvent.Data;
+        window.top.app.executionMode = executionMode;        
+
+        if (executionMode === "webApp") {
+            window.top.addEventListener("beforeunload", (event) => {
+                event.preventDefault();
+                event.returnValue = '';
+                
+                htmlComponent.sendEventToMATLAB("beforeonload");
+            });
+        }
+
+        injectCustomStyle();
     });
 
     /*---------------------------------------------------------------------------------*/
@@ -157,11 +168,13 @@ body {
         let modifyAttempts = 0;
         let dataTags       = '';
 
+        window.top.app.ui.push(...components);
+
         const modifyInterval = setInterval(() => {
             modifyAttempts++;
 
             components.forEach((el, index) => {
-                consoleLog(JSON.stringify(el));
+                //consoleLog(`Attempt ${modifyAttempts}: Customizing element ${JSON.stringify(el)}`);
 
                 let handle = findComponentHandle(el.dataTag);
                 if (el.generation === 1) {
@@ -612,7 +625,7 @@ body {
     });
 
     /*---------------------------------------------------------------------------------*/
-    onRenderComplete(() => {
+    window.requestAnimationFrame(() => {
         const msg = 'DOM render cycle finished';
         consoleLog(msg);
         htmlComponent.sendEventToMATLAB('renderer', msg);
