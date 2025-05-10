@@ -144,7 +144,17 @@ body {
         window.parent.document.head.appendChild(styleElement);
     }
 
-    /*---------------------------------------------------------------------------------*/
+    /*-----------------------------------------------------------------------------------
+        No webapp, ao tentar fechar a aba, o evento "beforeunload" desconecta o websocket, 
+        tornando o app inoperante, independente da resposta à confirmação de fechamento do
+        webapp apresentada no navegador. 
+        
+        Para evitar isso, remove-se esse listener do arquivo "bundle.469.js" e usa-se um 
+        substituto que não interage com o websocket. Se o usuário confirmar o fechamento, 
+        o evento "unload" é disparado e aciona a função MATLAB closeFcn(app, event), que 
+        realiza algumas operações, inclusive fechando a instância do MATLAB Runtime que 
+        suporte o webapp
+    -----------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("startup", function(customEvent) {
         const executionMode = customEvent.Data;
         window.top.app.executionMode = executionMode;        
@@ -153,8 +163,10 @@ body {
             window.top.addEventListener("beforeunload", (event) => {
                 event.preventDefault();
                 event.returnValue = '';
-                
-                htmlComponent.sendEventToMATLAB("beforeonload");
+            });
+
+            window.top.addEventListener("unload", () => {
+                htmlComponent.sendEventToMATLAB("unload");
             });
         }
 
@@ -327,36 +339,6 @@ body {
             }, 25);
         } catch (ME) {
             // console.log(ME)
-        }
-    });
-
-    /*---------------------------------------------------------------------------------*/
-    htmlComponent.addEventListener("htmlClassCustomization", function(customEvent) {
-        try {
-            const className       = customEvent.Data.className.toString();
-            const classAttributes = customEvent.Data.classAttributes.toString();
-    
-            const styleElement = document.createElement("style");
-            styleElement.type = "text/css";
-            styleElement.appendChild(document.createTextNode(`${className} { ${classAttributes} }`));
-            window.parent.document.head.appendChild(styleElement);
-        } catch (ME) {
-            console.warn(`CSS injection failed: ${className}`)
-        }
-    });
-
-    /*-----------------------------------------------------------------------------------
-        ## MATLAB-STYLE PANEL DIALOG ##
-    -----------------------------------------------------------------------------------*/
-    htmlComponent.addEventListener("panelDialog", function(customEvent) {
-        let objDataTag = customEvent.Data.componentDataTag.toString();
-        let handle  = findComponentHandle(objDataTag);
-
-        if (handle) {
-            handle.style.borderRadius             = "5px";
-            handle.style.boxShadow                = "0 2px 5px 1px var(--mw-boxShadowColor,#a6a6a6)";
-            handle.children[0].style.borderRadius = "5px";
-            handle.children[0].style.borderColor  = "var(--mw-borderColor-secondary,#bfbfbf)";
         }
     });
 
