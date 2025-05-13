@@ -248,7 +248,17 @@ classdef (Abstract) RFDataHub
                 end
             else
                 idx = find(obj.Station == str2double(stationID));
-            end    
+
+                % Para contemplar os casos em que é inserido um número de uma
+                % estação que foi sumarizada (SMP, por exemplo), busca-se no 
+                % LOG da sumarização.
+                if isempty(idx)
+                    global RFDataHubLog
+    
+                    pattern = "(?<=[\[,\s])" + string(stationID) + "(?=[,\]\s])";
+                    idx = find(~cellfun(@isempty, regexp(RFDataHubLog, pattern)), 1);    
+                end
+            end
             
             if isempty(idx)
                 error('Estação não consta na base <i>offline</i>. Favor confirmar que foi digitado o número corretamente.')
