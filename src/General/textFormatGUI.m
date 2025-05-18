@@ -72,12 +72,13 @@ classdef (Abstract) textFormatGUI
         end
 
         %-----------------------------------------------------------------%
-        function htmlCode = struct2PrettyPrintList(dataStruct, invalidStatus, freeInitialText, outputFormat)
+        function htmlCode = struct2PrettyPrintList(dataStruct, invalidStatus, freeInitialText, outputFormat, dataGroupStyle)
             arguments
                 dataStruct      struct
                 invalidStatus   char {mustBeMember(invalidStatus, {'print -1', 'delete'})} = 'print -1'
                 freeInitialText char = ''
                 outputFormat    char {mustBeMember(outputFormat, {'popup', 'textview'})} = 'textview'
+                dataGroupStyle  char {mustBeMember(dataGroupStyle, {'upper', 'normal+gray'})} = 'upper'
             end
 
             % dataStruct é uma estrutura com os campos "group" e "value". O
@@ -116,10 +117,20 @@ classdef (Abstract) textFormatGUI
                     dataGroup = d(dataGroup);
                 end
 
-                htmlCode  = sprintf('%s<font style="font-size: 10px;">%s</font>', htmlCode, upper(dataGroup));
+                switch dataGroupStyle
+                    case 'upper'                        
+                        dataGroup = upper(dataGroup);
+                        dataGroupColor = '';
+                    case 'normal+gray'
+                        dataGroupColor = 'color: gray; ';
+                end
+
+                htmlCode  = sprintf('%s<font style="%sfont-size: 10px;">%s</font>', htmlCode, dataGroupColor, dataGroup);
 
                 if isstruct(dataStruct(ii).value)
                     htmlCode = textFormatGUI.structParser(htmlCode, dataStruct(ii).value, 1, invalidStatus);
+                elseif iscellstr(dataStruct(ii).value)
+                    htmlCode = sprintf('%s\n%s', htmlCode, strjoin(dataStruct(ii).value, '\n'));
                 else
                     htmlCode = sprintf('%s\n%s', htmlCode, dataStruct(ii).value);
                 end

@@ -76,10 +76,15 @@ classdef (Abstract) TextView
         end
 
         %-----------------------------------------------------------------%
-        function update(baseComponent, textContent)
+        function update(baseComponent, textContent, userData, varargin)
             arguments
                 baseComponent
                 textContent char
+                userData = []
+            end
+
+            arguments (Repeating)
+                varargin
             end
 
             classComponent = ui.TextView.checkBaseComponentClass(baseComponent);
@@ -88,12 +93,25 @@ classdef (Abstract) TextView
                 case 'matlab.ui.control.Label'
                     baseComponent.Text = textContent;
 
+                    if ~isempty(varargin)
+                        baseComponentBackgroundImage = varargin{1};
+                        if isempty(textContent)
+                            baseComponentBackgroundImage.Visible = 1;
+                        else
+                            baseComponentBackgroundImage.Visible = 0;
+                        end
+                    end
+
                 case 'matlab.ui.control.Image'
                     sendEventToHTMLSource(jsBackDoor, 'initializeComponents', {                  ...
                         struct('dataTag', baseComponent.UserData.id,                             ...
                                'child',   struct('dataTag', [baseComponent.UserData.id '_text'], ...
                                                  'innerHTML', textContent))                      ...
                     });
+            end
+
+            if ~isempty(userData)
+                baseComponent.UserData = userData;
             end
         end
     end
