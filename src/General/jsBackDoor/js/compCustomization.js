@@ -82,6 +82,7 @@ body {
     text-align: center;
 }
 
+.mwDialog *::selection,
 .textview::selection,
 .textview *::selection {
     background: #0078d4;
@@ -228,7 +229,7 @@ body {
                         const keyEvents = el.listener.keyEvents;
     
                         if (!handle.dataset.keydownListener) {
-                            handle.dataset.keydownListener = 'on';
+                            handle.dataset.keydownListener = keyEvents.join('-');
                             
                             handle.addEventListener('keydown', (event) => {
                                 if (keyEvents.includes(event.key)) {

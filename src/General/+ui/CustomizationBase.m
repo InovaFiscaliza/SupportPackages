@@ -29,6 +29,9 @@ classdef (Abstract) CustomizationBase
 
                 try
                     elDataTag = cellfun(@(x) fcnHandle(x), elToModify, 'UniformOutput', false);
+                    for ii = 1:numel(elToModify)
+                        elToModify{ii}.UserData.id = elDataTag{ii};
+                    end
                     break
                 catch
                 end
