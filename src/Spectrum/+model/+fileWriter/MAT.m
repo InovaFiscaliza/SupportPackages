@@ -69,7 +69,9 @@ function MAT(fileName, fileType, prj_specData, prj_Info, fields2remove)
         case 'UserData'
             prj_Type = {'User data'};
             prj_specData = copy(prj_specData, fields2remove);
-            prj_specData.UserData = struct('Emissions', prj_specData.UserData.Emissions);
+            for ii = 1:numel(prj_specData)
+                prj_specData(ii).UserData = struct('Emissions', prj_specData(ii).UserData.Emissions);
+            end
             compressedFlag = {};
     end
     options = [{'prj_Type', 'prj_Version', 'prj_Source', 'prj_RelatedFiles', 'prj_metaData', 'prj_specData', 'prj_Info', '-v7.3'}, compressedFlag];
