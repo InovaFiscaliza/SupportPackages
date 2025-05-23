@@ -1,44 +1,52 @@
 function setup(htmlComponent) {
-    const canvas = createCanvas();
-    let words = [];
+    if (!window.top.app) {
+        window.top.app = {};
+    }
 
-    htmlComponent.addEventListener("drawWordCloud", function(event) {
-        const wordsArray   = event.Data.words;
-        const weightsArray = event.Data.weights;
-        
-        words = wordsArray.map((word, ii) => {
+    let canvas = window.document.getElementById('wordcloudCanvas');
+    if (!canvas) {
+        canvas = window.document.createElement('canvas');
+        canvas.id = 'wordcloudCanvas';
+        canvas.style.display = "none";
+        canvas.getContext('2d', { willReadFrequently: true });
+
+        window.document.body.appendChild(canvas);
+    }
+
+    let currentWords = [];
+    htmlComponent.addEventListener("drawWordCloud", (event) => {
+        const { words, weights } = event.Data;        
+        currentWords = words.map((word, index) => {
             return {
                 text: word,
-                size: weightsArray[ii]
+                size: weights[index]
             };
         });
 
-        drawCloud(words);
+        drawCloud(currentWords);
+        window.top.app.wordcloud.data = currentWords;
     });
 
-    htmlComponent.addEventListener("eraseWordCloud", function() {
-        erase();
+    htmlComponent.addEventListener("eraseWordCloud", () => erase);
+
+    /*
+    let resizeTimeout;
+    window.addEventListener("resize", () => {
+        clearTimeout(resizeTimeout);
+
+        resizeTimeout = setTimeout(() => {
+            if (currentWords.length > 0) {
+                drawCloud(currentWords);
+            }
+        }, 200);
     });
-
-    // window.addEventListener("resize", () => drawCloud(words));
-
-    function createCanvas() {
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d', { willReadFrequently: true });
-        return canvas;
-    }
+    */
 
     function drawCloud(words) {
-        const width  = window.innerWidth;
-        const height = window.innerHeight;
+        erase();
 
-        const maxSize = d3.max(words, d => d.size);
-        const minSize = d3.min(words, d => d.size);
-
-        const scale = d3.scalePow().exponent(0.5)
-            .domain([minSize, maxSize])
-            .range([10, Math.min(width, height) / 3]);
-
+        const { innerWidth: width, innerHeight: height } = window;        
+        const scale = getFontScale(words, width, height);
         const layout = d3.layout.cloud()
             .size([width, height])
             .words(words.map(d => ({text: d.text, size: scale(d.size)})))
@@ -52,8 +60,6 @@ function setup(htmlComponent) {
         layout.start();
 
         function draw(words) {
-            erase();
-
             const svg = d3.select("#wordcloud").append("svg")
                 .attr("width", width)
                 .attr("height", height)
@@ -65,18 +71,36 @@ function setup(htmlComponent) {
             const topWords = words.slice(0, 3).map(d => d.text);
 
             svg.selectAll("text")
-                .data(words)
-                .enter().append("text")
-                .style("font-family", "Helvetica")
+                .data(words, d => d.text)
+                .join(
+                    enter => enter.append("text")
+                        .attr("text-anchor", "middle")
+                        .style("font-family", "Helvetica")
+                        .style("fill", d => topWords.includes(d.text) ? "#d95319" : "black")
+                        .text(d => d.text),
+                    update => update,
+                    exit => exit.remove()
+                )
                 .style("font-size", d => d.size + "px")
-                .style("fill", d => topWords.includes(d.text) ? "#d95319" : "black")
-                .attr("text-anchor", "middle")
-                .attr("transform", d => "translate(" + [d.x, d.y] + ")rotate(0)")
-                .text(d => d.text);
+                .attr("transform", d => `translate(${d.x},${d.y})rotate(0)`);
         }
+    }
+
+    function getFontScale(words, width, height) {
+        const maxSize = d3.max(words, d => d.size);
+        const minSize = d3.min(words, d => d.size);
+
+        return d3.scalePow().exponent(0.5).domain([minSize, maxSize]).range([10, Math.min(width, height) / 3]);
     }
 
     function erase() {
         d3.select("#wordcloud").selectAll("*").remove();
     }
+
+    window.top.app.wordcloud = { 
+        canvas, 
+        drawCloud, 
+        erase, 
+        data: null 
+    };
 }

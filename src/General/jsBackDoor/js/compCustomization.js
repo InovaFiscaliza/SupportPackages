@@ -1,9 +1,11 @@
 function setup(htmlComponent) {
-    window.top.app = {
-        executionMode: null,
-        matlabBackDoor: htmlComponent,
-        ui: []
-    };
+    if (!window.top.app) {
+        window.top.app = {};
+    }
+
+    window.top.app.executionMode  = null;
+    window.top.app.matlabBackDoor = htmlComponent;
+    window.top.app.ui             = [];
 
     /*---------------------------------------------------------------------------------*/
     function consoleLog(msg) {

@@ -127,7 +127,7 @@ classdef (Abstract) appUtil
             arguments
                 filePath char
                 Prefix   string
-                Suffix   string = ''
+                Suffix   string = ""
             end
 
             fileName = sprintf('%s_%s', Prefix, datestr(now, 'yyyy.mm.dd_THH.MM.SS'));
