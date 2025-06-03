@@ -23,4 +23,19 @@ classdef (Abstract, AllowedSubclasses={?ws.eFiscaliza, ?ws.Fiscaliza, ?ws.SEI}) 
         end
     end
 
+
+    methods
+        %-----------------------------------------------------------------%
+        function encodedString = base64encode(obj, inputString)
+            byteArray = unicode2native(inputString, 'UTF-8');
+            encodedString = matlab.net.base64encode(byteArray);
+        end
+
+        %-----------------------------------------------------------------%
+        function decodedString = base64decode(obj, encodedString)
+            byteArray = matlab.net.base64decode(encodedString);
+            decodedString = native2unicode(byteArray, 'UTF-8');
+        end
+    end
+
 end
