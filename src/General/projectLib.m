@@ -5,6 +5,7 @@ classdef projectLib < dynamicprops
         name  (1,:) char   = ''
         file  (1,:) char   = ''
         issue (1,1) double = -1
+        unit  (1,:) char   = ''
 
         documentType {mustBeMember(documentType, {'Relatório de Atividades', 'Relatório de Fiscalização', 'Informe'})} = 'Relatório de Atividades'
         documentModel      = ''
@@ -103,6 +104,8 @@ classdef projectLib < dynamicprops
             obj.name           = '';
             obj.file           = '';
             obj.issue          = -1;
+            obj.unit           = '';
+
             obj.documentType   = 'Relatório de Atividades';
             obj.documentModel  = '';
             obj.documentScript = [];
