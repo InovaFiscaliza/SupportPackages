@@ -64,6 +64,28 @@ body {
     border: none !important;
 }
 
+.mwTabLabel {
+    position: relative !important;
+    font-size: 10px !important;
+    text-decoration: none !important;
+    cursor: pointer !important;
+}
+
+.tab:hover {
+    background: rgba(230, 230, 230, 0.35) !important;
+    border-bottom: 2px solid rgb(51, 51, 51, 0.1) !important;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    cursor: pointer !important;
+}
+
+.checkedTab {
+    background: rgb(230, 230, 230) !important;
+    border-bottom: 2px solid rgb(51, 51, 51) !important;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+}
+
 .gbtWidget.gbtPanel {
     background-color: transparent !important;
 }

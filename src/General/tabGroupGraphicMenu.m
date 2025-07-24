@@ -7,10 +7,14 @@ classdef tabGroupGraphicMenu < handle
     % - O Grid que contém os botões de estado deve possuir, nas suas duas
     %   últimas colunas, imagem que possibilitam fechar um app auxiliar
     %   (caso aberto no modo DOCK) ou mudar o modo de visualização do app
-    %   auxiliar em evidência de DOCK para UNDOCK.
+    %   auxiliar em evidência de DOCK para UNDOCK. Opcionalmente, esses
+    %   imagens podem estar em um grid auxiliar com TAG "MenuSubGrid".
+
     % - Cada botão de estado deve possuir um único TAG.
+    
     % - Os arquivos .MLAPP dos apps auxiliares devem ser exportados em arquivos
     %   .M, seguindo métrica estabelecida em "mlapp2m.m".
+    
     % - A primeira aba do TabGroup deve conter um módulo construído
     %   diretamente no app principal. Dessa forma, essa primeira aba não
     %   pode ser container para um app secundário.
@@ -26,6 +30,7 @@ classdef tabGroupGraphicMenu < handle
     properties (Access = private)
         %-----------------------------------------------------------------%
         MenuGrid      matlab.ui.container.GridLayout
+        MenuSubGrid       matlab.ui.container.GridLayout
         TabGroup      matlab.ui.container.TabGroup
         progressDialog
         executionMode        
@@ -43,6 +48,11 @@ classdef tabGroupGraphicMenu < handle
             obj.progressDialog  = progressDialog;
             obj.jsCustomFcn     = jsCustomFcn;
             obj.layoutCustomFcn = layoutCustomFcn;
+
+            obj.MenuSubGrid     = findobj(menuGrid.Children, 'Tag', 'MenuSubGrid');
+            if isempty(obj.MenuSubGrid)
+                obj.MenuSubGrid = menuGrid;
+            end
 
             % Delimitar os valores que são aceitos em algumas das colunas.
             obj.Components.Type = categorical(obj.Components.Type, {'Built-in', 'External'});
@@ -118,7 +128,7 @@ classdef tabGroupGraphicMenu < handle
                         switchingMode(obj, clickedButton, nonClickedButtons, tabIndex, 20)
 
                     else
-                        obj.MenuGrid.ColumnWidth(end-1:end) = {0, 0};
+                        obj.MenuSubGrid.ColumnWidth(end-1:end) = {0, 0};
                         clickedButton.Value = false;
                         
                         if appGeneral.operationMode.Debug
@@ -197,9 +207,9 @@ classdef tabGroupGraphicMenu < handle
             
             switch obj.executionMode
                 case 'webApp'
-                    obj.MenuGrid.ColumnWidth(end-1:end) = {0, dockControlWidth};
+                    obj.MenuSubGrid.ColumnWidth(end-1:end) = {0, dockControlWidth};
                 otherwise
-                    obj.MenuGrid.ColumnWidth(end-1:end) = {dockControlWidth, dockControlWidth};
+                    obj.MenuSubGrid.ColumnWidth(end-1:end) = {dockControlWidth, dockControlWidth};
             end
         end
 
