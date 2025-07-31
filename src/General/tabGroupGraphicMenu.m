@@ -30,7 +30,7 @@ classdef tabGroupGraphicMenu < handle
     properties (Access = private)
         %-----------------------------------------------------------------%
         MenuGrid      matlab.ui.container.GridLayout
-        MenuSubGrid       matlab.ui.container.GridLayout
+        MenuSubGrid
         TabGroup      matlab.ui.container.TabGroup
         progressDialog
         executionMode        

@@ -37,6 +37,37 @@ classdef (Abstract) CustomizationBase
                 end
             end
         end
+
+        %-----------------------------------------------------------------%
+        function propName = getPropertyName(elHandle, auxAppTag)
+            arguments
+                elHandle
+                auxAppTag string = ""
+            end
+
+            fig = ancestor(elHandle, 'figure');
+            app = fig.RunningAppInstance;
+            propName = ui.CustomizationBase.findMatchingProperty(elHandle, app);
+
+            if isempty(propName) && isprop(app, 'tabGroupController')
+                idxAuxApp = app.tabGroupController.Components.Tag == auxAppTag;
+                hAuxApp   = app.tabGroupController.Components.appHandle{idxAuxApp};
+                propName  = ui.CustomizationBase.findMatchingProperty(elHandle, hAuxApp);
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function propName = findMatchingProperty(elHandle, app)
+            props = properties(app);
+            propName = '';            
+            
+            for ii = 1:numel(props)
+                if isequal(app.(props{ii}), elHandle)
+                    propName = props{ii};
+                    return;
+                end
+            end
+        end
     end
 
 end

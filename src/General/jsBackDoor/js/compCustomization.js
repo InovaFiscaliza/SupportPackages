@@ -169,6 +169,65 @@ body {
         window.parent.document.head.appendChild(styleElement);
     }
 
+    /*---------------------------------------------------------------------------------*/
+    htmlComponent.addEventListener("getCssPropertyValue", function(customEvent) {
+        const auxAppTag     = customEvent.Data.auxAppTag;
+        const componentName = customEvent.Data.componentName;
+        const dataTag       = customEvent.Data.dataTag
+        const childClass    = customEvent.Data.childClass;
+        const propertyName  = customEvent.Data.propertyName;
+
+        let handle = findComponentHandle(dataTag);
+        if (!handle) return;
+        
+        if (childClass) {
+            const child = handle.getElementsByClassName(childClass)[0];
+            if (child) {
+                handle = child;
+            }
+        }
+        
+        const propertyValue = window.getComputedStyle(handle).getPropertyValue(propertyName);
+        htmlComponent.sendEventToMATLAB("getCssPropertyValue", { auxAppTag, componentName, propertyName, propertyValue });
+    });
+
+    /*---------------------------------------------------------------------------------*/
+    htmlComponent.addEventListener("changeTableRowHeight", function(customEvent) {
+        let styleElement = window.parent.document.getElementById('MATLAB-ccTools-uitable');
+        if (styleElement) {
+            styleElement.remove();
+        }
+
+        const rowHeight = customEvent.Data;
+        if (rowHeight == "default") {
+            return
+        }
+
+        const cssText = `/*
+  ## Customizações gerais (MATLAB Built-in uitable) ##
+*/
+.mw-table-row-header-cell {
+    height: ${rowHeight}px !important;
+    max-height: ${rowHeight}px !important;
+}
+
+.mw-table-row {
+    height: ${rowHeight}px !important;
+}
+
+.mw-table-cell {
+    height: 100% !important;
+    white-space: pre-line !important;
+}`;
+        
+        styleElement = window.parent.document.createElement("style");
+        styleElement.type = "text/css";
+        styleElement.id = "MATLAB-ccTools-uitable";
+        styleElement.innerHTML = `${cssText}`;
+
+        window.parent.document.head.appendChild(styleElement);
+    });
+
     /*-----------------------------------------------------------------------------------
         No webapp, ao tentar fechar a aba, o evento "beforeunload" desconecta o websocket, 
         tornando o app inoperante, independente da resposta à confirmação de fechamento do
@@ -298,7 +357,7 @@ body {
     /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("addStyle", function(customEvent) {
         let handle  = findComponentHandle(customEvent.Data.dataTag);
-        const style   = customEvent.Data.style;
+        const style = customEvent.Data.style;
 
         if (customEvent.Data.selector) {
             handle = handle?.querySelector(`${customEvent.Data.selector}`);
