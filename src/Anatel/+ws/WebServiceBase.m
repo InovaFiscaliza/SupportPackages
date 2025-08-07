@@ -1,4 +1,4 @@
-classdef (Abstract, AllowedSubclasses={?ws.eFiscaliza, ?ws.Fiscaliza, ?ws.SEI}) WebServiceBase
+classdef (Abstract, AllowedSubclasses={?ws.eFiscaliza, ?ws.Fiscaliza, ?ws.SEI, ?ws.ReceitaFederal}) WebServiceBase
 
     methods (Static = true)
         %-----------------------------------------------------------------%
