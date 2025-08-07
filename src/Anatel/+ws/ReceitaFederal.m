@@ -27,7 +27,7 @@ classdef ReceitaFederal < ws.WebServiceBase
             % - consultar_situacao_ecd(NIRE, sha1_hash)
             arguments
                 obj
-                operation char {mustBeMember(operation, {'fileType', 'EFDC', 'EFDI'})}
+                operation char {mustBeMember(operation, {'ECD', 'EFDC', 'EFDI'})}
             end
 
             arguments (Repeating)
@@ -66,11 +66,15 @@ classdef ReceitaFederal < ws.WebServiceBase
 
                         response = ws.WebServiceBase.request(endPoint, 'POST', header, body);
         
-                        switch response.status
-                            case '200'
+                        switch response.StatusCode
+                            case 'OK'
+                                % Precisa parsear a resposta. Talvez precise gerar uma estrutura a partir do
+                                % KML. MATLAB tem essa função.
+                                % response.Body.show
+                                
                                 msg  = 'Documento consta na base da Receita Federal';
                             otherwise
-                                msg  = 'Erro na solicitação... ';
+                                msg  = 'Erro na requisição... ';
                         end
 
                     case 'EFDC'
