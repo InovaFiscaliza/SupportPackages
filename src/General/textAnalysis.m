@@ -4,7 +4,7 @@ classdef (Abstract) textAnalysis
         %-----------------------------------------------------------------%
         stopWords    = {'a', 'as', 'e', 'o', 'os', 'da', 'das', 'de', 'do', 'dos', 'em', 'um', 'uma', 'para', 'com', 'que', 'na', 'nas', 'no', 'nos', 'mas'}
         
-        specialChars = {'ç', 'ã', 'á', 'à', 'â', 'ê', 'é', 'í', 'î', 'ì', 'ó', 'ò', 'ô', 'õ', 'ú', 'ù', 'û', 'ü', '´', '`'}
+        specialChars = {'ç', 'ã', 'á', 'à', 'â', 'ê', 'é', 'í', 'î', 'ì', 'ó', 'ò', 'ô', 'õ', 'ú', 'ù', 'û', 'ü'}
         replaceChars = {'c', 'a', 'a', 'a', 'a', 'e', 'e', 'i', 'i', 'i', 'o', 'o', 'o', 'o', 'u', 'u', 'u', 'u'}
 
         decodeChars  = {'ç', '~', '^', '´', '`'}
@@ -61,7 +61,7 @@ classdef (Abstract) textAnalysis
             rawContent = fread(fileID, [1, inf], 'uint8=>uint8');
             fclose(fileID);
 
-            specialChars = strjoin(textAnalysis.decodeChars, '');
+            decodeChars  = strjoin(textAnalysis.decodeChars, '');
             encodingInfo = struct('name', encodingList, 'count', 0);
 
             if numel(encodingList) > 1
@@ -71,7 +71,7 @@ classdef (Abstract) textAnalysis
                         rawDecoded = strjoin(regexp(rawDecoded, regexPattern, 'match', 'lineanchors'), '');
                     end
     
-                    encodingInfo(ii).count = numel(regexp(rawDecoded, ['[' specialChars ']'], 'match', 'ignorecase'));
+                    encodingInfo(ii).count = numel(regexp(rawDecoded, ['[' decodeChars ']'], 'match', 'ignorecase'));
                 end
             end
             
