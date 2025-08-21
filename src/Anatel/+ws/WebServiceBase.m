@@ -11,7 +11,8 @@ classdef (Abstract, AllowedSubclasses={?ws.eFiscaliza, ?ws.Fiscaliza, ?ws.SEI, ?
             end
 
             if ~isempty(header)
-                header = matlab.net.http.field.GenericField(header{:});
+                header = matlab.net.http.HeaderField(header{:});
+                % header = matlab.net.http.field.GenericField(header{:});
             end
 
             request  = matlab.net.http.RequestMessage(method, header, body);

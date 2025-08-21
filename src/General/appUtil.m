@@ -15,28 +15,22 @@ classdef (Abstract) appUtil
 
         %-----------------------------------------------------------------%
         function executionMode = ExecutionMode(hFigure)
-            % No MATLAB R2024, os containeres das versões desktop e webapp
-            % de um app são os arquivos "cefComponentContainer.html" e 
+            % No MATLAB, os containeres das versões desktop e webapp de 
+            % um app são os arquivos "cefComponentContainer.html" e 
             % "webAppsComponentContainer.html", respectivamente.
 
-            % >> struct(struct(hFigure).Controller).PeerModelInfo.URL
-            % 'https://127.0.0.1:31517/toolbox/matlab/uitools/uifigureappjs/cefComponentContainer.html?channel=/uifigure/45562d91-459d-4a9e-bafc-4f51c6940e09&websocket=on&syncMode=MF0ViewModel&snc=FV5YKZ' (MATLAB)
-            % 'https://127.0.0.1:31517/toolbox/matlab/uitools/uifigureappjs/cefComponentContainer.html?channel=/uifigure/04fb3193-a2cb-405a-9eac-8e3e38486454&websocket=on&syncMode=MF0ViewModel&snc=JOZ8GB' (MATLAB Runtime)
-            % 'http://df6963612dtn:9988/services/static/24.1/toolbox/compiler/mdwas/client/session/webAppContainer.html?MDWAS-Connection-Id=5d9ffe85-3824-419b-bedb-1ad678c5ac4b'                            (MATLAB WebServer - DEPLOY)
-            % 'https://fiscalizacao.anatel.gov.br/services/static/24.1/toolbox/compiler/mdwas/client/session/webAppContainer.html?MDWAS-Connection-Id=2240b1cf-15c0-4894-9ee0-6b52508f1b44'                  (MATLAB WebServer)
-
             % >> struct(struct(struct(hFigure).Controller).PlatformHost).ReleaseHTMLFile
-            % 'cefComponentContainer.html'     (MATLAB, e MATLAB Runtime)
-            % 'webAppsComponentContainer.html' (MATLAB WebServer)
+            % 'cefComponentContainer.html'     (MATLAB R2024a e MATLAB Runtime)
+            % 'webAppsComponentContainer.html' (MATLAB R2025a e MATLAB WebServer)
             
-            htmlAppContainer = struct(struct(struct(hFigure).Controller).PlatformHost).ReleaseHTMLFile;
-            if contains(htmlAppContainer, 'webApp', 'IgnoreCase', true)
-                executionMode = 'webApp';
+            if ~isdeployed()
+                executionMode = 'MATLABEnvironment';
             else
-                if isdeployed
-                    executionMode = 'desktopStandaloneApp';
+                htmlContainer = struct(struct(struct(hFigure).Controller).PlatformHost).ReleaseHTMLFile;
+                if contains(htmlContainer, 'webapp', 'IgnoreCase', true)
+                    executionMode = 'webApp';
                 else
-                    executionMode = 'MATLABEnvironment';
+                    executionMode = 'desktopStandaloneApp';
                 end
             end
         end
