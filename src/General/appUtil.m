@@ -125,8 +125,9 @@ classdef (Abstract) appUtil
             end
 
             fileName = sprintf('%s_%s', Prefix, datestr(now, 'yyyy.mm.dd_THH.MM.SS'));
-            if Suffix ~= "-1"
-                fileName = sprintf('%s_%s', fileName, Suffix);
+            if ~ismember(Suffix, ["", "-1"])
+                Suffix = "_" + Suffix;
+                fileName = sprintf('%s%s', fileName, Suffix);
             end
 
             fileFullName = fullfile(filePath, fileName);
