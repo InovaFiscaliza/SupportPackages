@@ -39,6 +39,32 @@ classdef (Abstract) CustomizationBase
         end
 
         %-----------------------------------------------------------------%
+        function propHandle = getPropertyHandle(app, propName, auxAppTag)
+            arguments
+                app
+                propName
+                auxAppTag string = ""
+            end
+
+            propHandle = [];
+
+            if ~isempty(auxAppTag)
+                if isprop(app, 'tabGroupController')
+                    idxAuxApp  = app.tabGroupController.Components.Tag == auxAppTag;
+                    hAuxApp    = app.tabGroupController.Components.appHandle{idxAuxApp};
+    
+                    if isprop(hAuxApp, propName)
+                        propHandle = hAuxApp.(propName);
+                    end
+                end
+            end
+
+            if isempty(propHandle) && isprop(app, propName)
+                propHandle = app.(propName);
+            end
+        end
+
+        %-----------------------------------------------------------------%
         function propName = getPropertyName(elHandle, auxAppTag)
             arguments
                 elHandle
