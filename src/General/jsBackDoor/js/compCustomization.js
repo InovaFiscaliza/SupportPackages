@@ -404,9 +404,10 @@ body {
     /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("getNavigatorBasicInformation", function() {
         let navigatorBasicInformation = {
-            "userAgent": navigator.userAgent,
             "platform": navigator.userAgentData.platform,
-            "mobile": navigator.userAgentData.mobile
+            "mobile": navigator.userAgentData.mobile,
+            "userAgent": navigator.userAgent,
+            "vendor": navigator.vendor
         }
 
         htmlComponent.sendEventToMATLAB("getNavigatorBasicInformation", navigatorBasicInformation);
