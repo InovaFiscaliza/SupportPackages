@@ -48,11 +48,7 @@ classdef tabGroupGraphicMenu < handle
             obj.progressDialog  = progressDialog;
             obj.jsCustomFcn     = jsCustomFcn;
             obj.layoutCustomFcn = layoutCustomFcn;
-
             obj.MenuSubGrid     = findobj(menuGrid.Children, 'Tag', 'MenuSubGrid');
-            if isempty(obj.MenuSubGrid)
-                obj.MenuSubGrid = menuGrid;
-            end
 
             % Delimitar os valores que são aceitos em algumas das colunas.
             obj.Components.Type = categorical(obj.Components.Type, {'Built-in', 'External'});
@@ -128,7 +124,9 @@ classdef tabGroupGraphicMenu < handle
                         switchingMode(obj, clickedButton, nonClickedButtons, tabIndex, 20)
 
                     else
-                        obj.MenuSubGrid.ColumnWidth(end-1:end) = {0, 0};
+                        if ~isempty(obj.MenuSubGrid)
+                            obj.MenuSubGrid.ColumnWidth(end-1:end) = {0, 0};
+                        end
                         clickedButton.Value = false;
                         
                         if appGeneral.operationMode.Debug
@@ -144,11 +142,12 @@ classdef tabGroupGraphicMenu < handle
         end
 
         %-----------------------------------------------------------------%
-        function closeModule(obj, auxAppTags, appGeneral)
+        function closeModule(obj, auxAppTags, appGeneral, operationType)
             arguments
                 obj 
                 auxAppTags string
                 appGeneral struct
+                operationType char {mustBeMember(operationType, {'normal', 'undock'})} = 'normal'
             end
 
             obj.progressDialog.Visible = 'visible';
@@ -159,6 +158,10 @@ classdef tabGroupGraphicMenu < handle
     
                 if obj.Components.btnStatus(idx) == "On/Off"
                     btnHandle.Enable = 0;
+                end
+
+                if strcmp(operationType, 'undock')
+                    btnHandle.Value = 1;
                 end
         
                 if btnHandle.Value
@@ -172,12 +175,21 @@ classdef tabGroupGraphicMenu < handle
                     btnRefHandle.Value = 1;
                     openModule(obj, btnRefHandle, false, appGeneral)
                 end
-        
-                delete(obj.Components.appHandle{idx})
-                obj.Components.appHandle{idx} = [];
+
+                if strcmp(operationType, 'normal')
+                    delete(obj.Components.appHandle{idx})
+                    obj.Components.appHandle{idx} = [];
+                end
             end
 
             obj.progressDialog.Visible = 'hidden';
+        end
+
+        %-----------------------------------------------------------------%
+        function [idx, appTag, btnHandle] = getAppInfoFromHandle(obj, auxAppHandle)
+            idx       = find(cellfun(@(x) isequal(auxAppHandle, x), obj.Components.appHandle));
+            appTag    = obj.Components.Tag{idx};
+            btnHandle = obj.Components.btnHandle(idx);
         end
 
         %-----------------------------------------------------------------%
@@ -205,11 +217,13 @@ classdef tabGroupGraphicMenu < handle
             changingButtonsIcon(obj, clickedButton, nonClickedButtons)
             obj.TabGroup.SelectedTab = obj.TabGroup.Children(tabIndex);
             
-            switch obj.executionMode
-                case 'webApp'
-                    obj.MenuSubGrid.ColumnWidth(end-1:end) = {0, dockControlWidth};
-                otherwise
-                    obj.MenuSubGrid.ColumnWidth(end-1:end) = {dockControlWidth, dockControlWidth};
+            if ~isempty(obj.MenuSubGrid)
+                switch obj.executionMode
+                    case 'webApp'
+                        obj.MenuSubGrid.ColumnWidth(end-1:end) = {0, dockControlWidth};
+                    otherwise
+                        obj.MenuSubGrid.ColumnWidth(end-1:end) = {dockControlWidth, dockControlWidth};
+                end
             end
         end
 

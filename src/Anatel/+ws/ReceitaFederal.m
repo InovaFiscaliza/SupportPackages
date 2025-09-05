@@ -5,8 +5,17 @@ classdef ReceitaFederal < ws.WebServiceBase
     % - http://www.sped.fazenda.gov.br/SPEDPISCofins/WSConsulta/WSConsulta.asmx
     % - http://www.sped.fazenda.gov.br/SpedFiscalServer/WSConsultasPVA/WSConsultasPVA.asmx
 
+    properties
+        %-----------------------------------------------------------------%
+        cacheFolder
+        cacheMapping = table('Size',          [0, 4],                           ...
+                             'VariableTypes', {'cell', 'cell', 'cell', 'cell'}, ...
+                             'VariableNames', {'Type', 'Hash', 'APIResponse', 'Timestamp'});
+    end
+
     properties (Access = private, Constant)
         %-----------------------------------------------------------------%
+        cacheFile = 'cacheMapping.xlsx'
         url = struct('ECD',  'http://www.sped.fazenda.gov.br/wsconsultasituacao/wsconsultasituacao.asmx', ...
                      'EFDC', 'http://www.sped.fazenda.gov.br/SPEDPISCofins/WSConsulta/WSConsulta.asmx', ...
                      'EFDI', 'http://www.sped.fazenda.gov.br/SpedFiscalServer/WSConsultasPVA/WSConsultasPVA.asmx')
@@ -15,76 +24,136 @@ classdef ReceitaFederal < ws.WebServiceBase
 
     methods
         %-----------------------------------------------------------------%
-        function obj = ReceitaFederal()
-            % ... construtor só precisa se tiver alguma propriedade ...
+        function [obj, msgWarning] = ReceitaFederal()
+            obj.cacheFolder = fullfile(ccTools.fcn.OperationSystem('programData'), 'ANATEL', 'ReceitaFederal');
+            
+            try
+                obj.cacheMapping = readtable(fullfile(obj.cacheFolder, obj.cacheFile));
+                msgWarning = '';
+            catch ME
+                msgWarning = ME.message;
+            end
         end
 
         %-----------------------------------------------------------------%
-        function msg = run(obj, operation, varargin)
-            % Referências:
-            % - consultar_situacao_efdi(CNPJ, IE, file_id) (!! PENDENTE !!)
-            % - consultar_situacao_efdc(CNPJ, file_id)     (!! PENDENTE !!)
-            % - consultar_situacao_ecd(NIRE, sha1_hash)
+        function APIResponse = Get(obj, operationType, fileType, varargin)
             arguments
                 obj
-                operation char {mustBeMember(operation, {'ECD', 'EFDC', 'EFDI'})}
+                operationType char {mustBeMember(operationType, {'OnlyCache', 'Cache+RealTime', 'RealTime'})}
+                fileType      char {mustBeMember(fileType,      {'ECD', 'EFDC', 'EFDI'})}
             end
 
             arguments (Repeating)
                 varargin
             end
 
-            endPoint = obj.url.(operation);
+            APIResponse = [];
 
-            try
-                switch operation
-                    case 'ECD'
-                        NIRE = varargin{1};
-                        sha1_hash = varargin{2};
+            switch operationType
+                case 'OnlyCache'
+                    APIResponse = CheckCache(obj, fileType, varargin{:});
 
-                        header = { ...
-                            'Content-Type',  'text/xml; charset=utf-8', ...
-                            'Accept',        'application/soap+xml, application/dime, multipart/related, text/*', ...
-                            'User-Agent',    'Axis/1.4', ...
-                            'Host',          'www.sped.fazenda.gov.br', ...
-                            'Cache-Control', 'no-cache', ...
-                            'Pragma',        'no-cache', ...
-                            'SOAPAction',    'http://tempuri.org/SituacaoEscrituracao' ...
-                        };
+                case 'Cache+RealTime'
+                    APIResponse = CheckCache(obj, fileType, varargin{:});
+                    if isempty(APIResponse)
+                        APIResponse = WebRequest(obj, fileType, varargin{:});
+                    end
 
-                        body = sprintf([...
-                            '<?xml version="1.0" encoding="UTF-8"?>' ...
-                            '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">' ...
-                                '<soapenv:Body>' ...
-                                    '<ns1:SituacaoEscrituracao soapenv:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:ns1="http://tempuri.org/">' ...
-                                        '<ns1:NIRE xsi:type="xsd:string">%s</ns1:NIRE>' ...
-                                        '<ns1:identificacaoArquivo xsi:type="xsd:string">%s</ns1:identificacaoArquivo>' ...
-                                        '<ns1:versaoPVA xsi:type="xsd:string"></ns1:versaoPVA>' ...
-                                    '</ns1:SituacaoEscrituracao>' ...
-                                '</soapenv:Body>' ...
-                            '</soapenv:Envelope>'], NIRE, sha1_hash);
+                case 'RealTime'
+                    APIResponse = WebRequest(obj, fileType, varargin{:});
+            end
+        end
+    end
 
-                        response = ws.WebServiceBase.request(endPoint, 'POST', header, body);
-        
-                        switch response.StatusCode
-                            case 'OK'
-                                msg = parseResponse(obj, response.Body.char);
-                            otherwise
-                                error(response.StatusCode)
-                        end
+    methods (Access = private)
+        %-----------------------------------------------------------------%
+        function APIResponse = CheckCache(obj, fileType, varargin)
+            APIResponse = [];
 
-                    case 'EFDC'
-                        % ...
+            switch fileType
+                case 'ECD'
+                    Hash = varargin{1};
+                    idxCache = find(strcmp(obj.cacheMapping.Type, fileType) & strcmp(obj.cacheMapping.Hash, Hash));
+                    
+                    if ~isempty(idxCache)
+                        idxCache = idxCache(end);
+                        APIResponse = jsondecode(obj.cacheMapping.APIResponse{idxCache});                
+                    end
 
-                    case 'EFDI'
-                        % ...
+                case 'EFDC'
+                    % Migrar Python>>MATLAB
+                    % consultar_situacao_efdc(CNPJ, file_id)
+
+                case 'EFDI'
+                    % Migrar Python>>MATLAB
+                    % consultar_situacao_efdi(CNPJ, IE, file_id)
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function APIResponse = WebRequest(obj, fileType, varargin)
+            arguments
+                obj
+                fileType
+            end
+
+            arguments (Repeating)
+                varargin
+            end
+
+            APIResponse = [];
+            endPoint    = obj.url.(fileType);
+
+            switch fileType
+                case 'ECD'
+                    Hash = varargin{1};
+
+                    header = { ...
+                        'Content-Type',  'text/xml; charset=utf-8', ...
+                        'Accept',        'application/soap+xml, application/dime, multipart/related, text/*', ...
+                        'User-Agent',    'Axis/1.4', ...
+                        'Host',          'www.sped.fazenda.gov.br', ...
+                        'Cache-Control', 'no-cache', ...
+                        'Pragma',        'no-cache', ...
+                        'SOAPAction',    'http://tempuri.org/SituacaoEscrituracao' ...
+                    };
+
+                    body = sprintf([...
+                        '<?xml version="1.0" encoding="UTF-8"?>' ...
+                        '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">' ...
+                            '<soapenv:Body>' ...
+                                '<ns1:SituacaoEscrituracao soapenv:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:ns1="http://tempuri.org/">' ...
+                                    '<ns1:identificacaoArquivo xsi:type="xsd:string">%s</ns1:identificacaoArquivo>' ...
+                                    '<ns1:versaoPVA xsi:type="xsd:string"></ns1:versaoPVA>' ...
+                                '</ns1:SituacaoEscrituracao>' ...
+                            '</soapenv:Body>' ...
+                        '</soapenv:Envelope>'], Hash);
+
+                    response = ws.WebServiceBase.request(endPoint, 'POST', header, body);
     
-                    otherwise
-                        error('UnexpectedCall')
-                end
+                    switch response.StatusCode
+                        case 'OK'
+                            APIResponse = parseResponse(obj, response.Body.char);
 
-            catch ME
-                msg = ME.message;
+                            idxCache = height(obj.cacheMapping)+1;
+                            obj.cacheMapping(idxCache, :) = {fileType, Hash, jsonencode(APIResponse), datestr(now)};
+
+                            if ~isfolder(obj.cacheFolder)
+                                mkdir(obj.cacheFolder)
+                            end
+                            writetable(obj.cacheMapping(end,:), fullfile(obj.cacheFolder, obj.cacheFile), 'WriteMode', 'append', 'AutoFitWidth', false);
+
+                        otherwise
+                            error(response.StatusCode)
+                    end
+
+                case 'EFDC'
+                    % Migrar Python>>MATLAB
+                    % consultar_situacao_efdc(CNPJ, file_id)
+
+                case 'EFDI'
+                    % Migrar Python>>MATLAB
+                    % consultar_situacao_efdi(CNPJ, IE, file_id)
             end
         end
 
@@ -127,5 +196,4 @@ classdef ReceitaFederal < ws.WebServiceBase
             end
         end
     end
-
 end

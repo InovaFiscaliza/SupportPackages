@@ -1,11 +1,17 @@
 function setup(htmlComponent) {
+    if (window.top.app?.rendererStatus) {
+        return;
+    }
+
     if (!window.top.app) {
         window.top.app = {};
     }
 
     window.top.app.executionMode  = null;
+    window.top.app.rendererStatus = false;
     window.top.app.matlabBackDoor = htmlComponent;
-    window.top.app.ui             = [];
+    window.top.app.ui             = [];    
+    window.top.app.modules        = {};
 
     /*---------------------------------------------------------------------------------*/
     function consoleLog(msg) {
@@ -22,6 +28,8 @@ function setup(htmlComponent) {
     function findComponentHandle(dataTag) {
         return window.parent.document.querySelector(`div[data-tag="${dataTag}"]`);
     }
+    window.top.app.modules.findComponentHandle = findComponentHandle;
+    
 
     /*---------------------------------------------------------------------------------*/
     function injectCustomStyle() {
@@ -35,7 +43,12 @@ function setup(htmlComponent) {
 */
 body {
     --tabButton-border-color: rgb(255, 255, 255) !important;
-    --tabContainer-border-color: rgb(255, 255, 255) !important;   
+    --tabContainer-border-color: rgb(230, 230, 230) !important;
+    --ccTools-tabGroup-tab-selected-background: rgb(191, 191, 191);
+    --ccTools-tabGroup-tab-unselected-background: rgb(230, 230, 230);
+    --ccTools-tabGroup-tab-hover-background: rgba(191, 191, 191, 0.5);    
+    --ccTools-tabGroup-tab-selected-border: rgb(51, 51, 51);
+    --ccTools-tabGroup-tab-hover-border: rgba(51, 51, 51, 0.5);
 }
 
 .mw-theme-light {
@@ -46,12 +59,22 @@ body {
     --mw-backgroundColor-tab: rgb(255, 255, 255) !important;
 }
 
+.vc-widget {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.mwWidget {
+    width: 100% !important;
+    height: 100% !important;
+}
+
 .treenode.selected {
-    background-image: linear-gradient(rgba(180, 222, 255, 0.45), rgba(180, 222, 255, 0.45)) !important;
+    background-image: rgba(180, 222, 255, 0.45) !important;
 }
 
 .mw-tree .mw-tree-scroll-component.focused.hoverable .treeNode.selected.mw-tree-node-hover {
-    background-image: linear-gradient(rgb(191, 191, 191), rgb(191, 191, 191)) !important;
+    background-image: rgb(191, 191, 191) !important;
 }
 
 .mw-default-header-cell {
@@ -60,18 +83,21 @@ body {
     margin-bottom: 5px !important;
 }
 
+.gbtWidget.gbtGrid {
+    border-radius: 5px !important;
+}
+
 .gbtTabGroup {
     background-color: transparent !important;
-    border: none !important;
 }
 
 .tabBar {
-    background: transparent !important;
+    border-left: none !important;
 }
 
 .mwTabContainer {
-    border-left: none !important;
-    border-right: none !important;
+    border: 1px solid var(--ccTools-tabGroup-tab-unselected-background) !important;
+    border-radius: 5px !important;
 }
 
 .mwTabLabel {
@@ -82,25 +108,25 @@ body {
 }
 
 .tab {
-    background: transparent !important;
+    background: var(--ccTools-tabGroup-tab-unselected-background) !important;
     border-bottom: 2px solid transparent !important;
-    border-top-left-radius: 6px;
-    border-top-right-radius: 6px;
+    border-top-left-radius: 5px !important;
+    border-top-right-radius: 5px !important;
     cursor: pointer !important;
 }
 
 .tab:hover {
-    background: rgba(230, 230, 230, 0.35) !important;
-    border-bottom-color: rgb(51, 51, 51, 0.1) !important;
+    background: var(--ccTools-tabGroup-tab-hover-background) !important;
+    border-bottom-color: var(--ccTools-tabGroup-tab-hover-border) !important;
 }
 
 .tab:not(.checkedTab):hover {
-    background: rgba(230, 230, 230, 0.35) !important;
+    background: var(--ccTools-tabGroup-tab-hover-background) !important;
 }
 
 .checkedTab {
-    background: rgb(230, 230, 230) !important;
-    border-bottom-color: rgb(51, 51, 51) !important;
+    background: var(--ccTools-tabGroup-tab-selected-background) !important;
+    border-bottom-color: var(--ccTools-tabGroup-tab-selected-border) !important;
 }
 
 .gbtWidget.gbtPanel {
@@ -125,6 +151,8 @@ body {
     font-style: normal;
     color: rgb(0, 0, 0);
     text-align: center;
+    width: 100% !important;
+    height: 100% !important;
 }
 
 .mwDialog *::selection,
@@ -188,6 +216,12 @@ body {
         styleElement.innerHTML = `${cssText}`;
 
         window.parent.document.head.appendChild(styleElement);
+    }
+
+    /*---------------------------------------------------------------------------------*/
+    function isMobile() {
+        let userAgent = navigator.userAgent || "";
+        return /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
     }
 
     /*---------------------------------------------------------------------------------*/
@@ -397,26 +431,22 @@ body {
     });
 
     /*---------------------------------------------------------------------------------*/
-    htmlComponent.addEventListener("getURL", function() {
-        htmlComponent.sendEventToMATLAB("getURL", window.top.location.href);
-    });
-
-    /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("getNavigatorBasicInformation", function() {
-        let navigatorBasicInformation = {
-            "platform": navigator.userAgentData.platform,
-            "mobile": navigator.userAgentData.mobile,
-            "userAgent": navigator.userAgent,
-            "vendor": navigator.vendor
-        }
+        const navigatorBasicInformation = {
+            url: window.top.location.href,
+            platform: navigator.userAgentData?.platform || navigator.platform,
+            mobile: navigator.userAgentData?.mobile ?? isMobile(),
+            userAgent: navigator.userAgent,
+            vendor: navigator.vendor
+        };
 
         htmlComponent.sendEventToMATLAB("getNavigatorBasicInformation", navigatorBasicInformation);
     });
 
     /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("setFocus", function(customEvent) {
-        let dataTag = customEvent.Data.dataTag;
-        let handle  = findComponentHandle(dataTag).querySelector("input");
+        const dataTag = customEvent.Data.dataTag;
+        const handle  = findComponentHandle(dataTag).querySelector("input");
 
         try {
             handle.focus();
@@ -424,6 +454,13 @@ body {
         } catch (ME) {
             // console.log(ME)
         }
+    });
+
+    /*---------------------------------------------------------------------------------*/
+    htmlComponent.addEventListener("forceReflow", function(customEvent) {
+        const dataTag = customEvent.Data.dataTag;
+        const handle  = findComponentHandle(dataTag)
+        handle?.offsetHeight;
     });
 
     /*---------------------------------------------------------------------------------*/
@@ -716,6 +753,8 @@ body {
     window.requestAnimationFrame(() => {
         const msg = 'DOM render cycle finished';
         consoleLog(msg);
+
         htmlComponent.sendEventToMATLAB('renderer', msg);
-    });    
+        window.top.app.rendererStatus = true;
+    });
 }
