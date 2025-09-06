@@ -13,7 +13,9 @@ function setup(htmlComponent) {
     window.top.app.ui             = [];    
     window.top.app.modules        = {};
 
-    /*---------------------------------------------------------------------------------*/
+    /*-----------------------------------------------------------------------------------
+    FUNÇÕES
+    -----------------------------------------------------------------------------------*/
     function consoleLog(msg) {
         const now      = new Date();
         const hours    = String(now.getHours()).padStart(2, '0');
@@ -27,9 +29,7 @@ function setup(htmlComponent) {
     /*---------------------------------------------------------------------------------*/
     function findComponentHandle(dataTag) {
         return window.parent.document.querySelector(`div[data-tag="${dataTag}"]`);
-    }
-    window.top.app.modules.findComponentHandle = findComponentHandle;
-    
+    }    
 
     /*---------------------------------------------------------------------------------*/
     function injectCustomStyle() {
@@ -64,10 +64,12 @@ body {
     height: 100% !important;
 }
 
+/*
 .mwWidget {
     width: 100% !important;
     height: 100% !important;
 }
+*/
 
 .treenode.selected {
     background-image: rgba(180, 222, 255, 0.45) !important;
@@ -92,6 +94,7 @@ body {
 }
 
 .tabBar {
+    background: transparent !important;
     border-left: none !important;
 }
 
@@ -105,6 +108,7 @@ body {
     font-size: 10px !important;
     text-decoration: none !important;
     cursor: pointer !important;
+    padding-left: 0 !important;
 }
 
 .tab {
@@ -113,6 +117,7 @@ body {
     border-top-left-radius: 5px !important;
     border-top-right-radius: 5px !important;
     cursor: pointer !important;
+    text-align: center !important;
 }
 
 .tab:hover {
@@ -224,7 +229,22 @@ body {
         return /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
     }
 
-    /*---------------------------------------------------------------------------------*/
+    function camelToKebab(prop) {
+        return prop.replace(/[A-Z]/g, m => "-" + m.toLowerCase());
+    }
+
+    window.top.app.modules = {
+        consoleLog, 
+        findComponentHandle, 
+        injectCustomStyle, 
+        isMobile,
+        camelToKebab
+    }
+
+
+    /*-----------------------------------------------------------------------------------
+    LISTENERS
+    -----------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("getCssPropertyValue", function(customEvent) {
         const auxAppTag     = customEvent.Data.auxAppTag;
         const componentName = customEvent.Data.componentName;
@@ -342,6 +362,13 @@ body {
                     if (el.style) {
                         Object.assign(handle.style, el.style);
                         handle.offsetHeight;
+                    }
+
+                    if (el.styleImportant) {
+                        Object.keys(el.styleImportant).forEach(elKey => {
+                            handle.style.setProperty(camelToKebab(elKey), el.styleImportant[elKey], "important");
+                            handle.offsetHeight;
+                        })
                     }
 
                     if (el.class) {
