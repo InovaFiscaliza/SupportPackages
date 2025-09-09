@@ -1,5 +1,7 @@
 classdef (Abstract) textAnalysis
 
+    % Processamento textual orientado à LÍNGUA PORTUGUESA
+
     properties (Constant)
         %-----------------------------------------------------------------%
         stopWords    = {'a', 'as', 'e', 'o', 'os', 'da', 'das', 'de', 'do', 'dos', 'em', 'um', 'uma', 'para', 'com', 'que', 'na', 'nas', 'no', 'nos', 'mas'}
@@ -12,8 +14,24 @@ classdef (Abstract) textAnalysis
 
     methods (Static = true)
         %-----------------------------------------------------------------%
-        function editedWords = normalizeWords(rawWords)        
+        function editedWords = normalizeWords(rawWords, operationType)
+            arguments
+                rawWords
+                operationType char {mustBeMember(operationType, {'lower-version-oriented', 'capital-oriented'})} = 'lower-version-oriented'
+            end
+
+            if ~iscellstr(rawWords)
+                rawWords = cellstr(rawWords);
+            end
+
             editedWords = replace(lower(rawWords), textAnalysis.specialChars, textAnalysis.replaceChars);
+
+            if strcmp(operationType, 'capital-oriented')                    
+                for ii = 1:numel(rawWords)
+                    idxLogical = upper(rawWords{ii}) == rawWords{ii};
+                    editedWords{ii}(idxLogical) = upper(editedWords{ii}(idxLogical));
+                end
+            end
         end
 
         %-----------------------------------------------------------------%

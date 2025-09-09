@@ -460,6 +460,7 @@ body {
     /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("getNavigatorBasicInformation", function() {
         const navigatorBasicInformation = {
+            name: "BROWSER",
             url: window.top.location.href,
             platform: navigator.userAgentData?.platform || navigator.platform,
             mobile: navigator.userAgentData?.mobile ?? isMobile(),

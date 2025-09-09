@@ -1,6 +1,6 @@
 function htmlReport = Controller(reportInfo, dataOverview)
 
-    [reportInfo, dataOverview] = reportLib.inputParser(reportInfo, dataOverview);
+    reportInfo = reportLib.inputParser(reportInfo, dataOverview);
     internalFcn_counterCreation()
     
     % HTML header (style)    
@@ -81,6 +81,7 @@ function htmlReport = Controller(reportInfo, dataOverview)
                     htmlReport = [htmlReport, reportLib.sourceCode.htmlCreation(childNode, vararginArgument)];
 
                 catch ME
+                    struct2table(ME.stack)
                     msgError = extractAfter(ME.message, 'Configuration file error message: ');
 
                     if ~isempty(msgError)
@@ -107,7 +108,7 @@ function htmlReport = Controller(reportInfo, dataOverview)
                     case 'name'
                         FootnoteFieldsText{end+1} = sprintf('<b>__%s</b>', upper(FootnoteVersion.(FootnoteFields{jj})));
                     otherwise
-                        FootnoteFieldsText{end+1} = sprintf('<b>%s</b>: %s', FootnoteFields{jj}, FootnoteVersion.(FootnoteFields{jj}));
+                        FootnoteFieldsText{end+1} = sprintf('<b>%s</b>: %s', FootnoteFields{jj}, string(FootnoteVersion.(FootnoteFields{jj})));
                 end
             end
             FootnoteFieldsText = strjoin(FootnoteFieldsText, ', ');
@@ -140,12 +141,12 @@ function Text = internalFcn_FillWords(reportInfo, analyzedData, componentObj, co
     % eles podem estar sendo passados como argumentos para as funções que retornam 
     % as variáveis, executadas por EVAL.
 
-    listOfWords    = componentObj.Data(componentObjIndex).Variable;
-    if ischar(listOfWords)
-        listOfWords = {listOfWords};
+    listOfWords     = componentObj.Data(componentObjIndex).Variable;
+    if ~iscellstr(listOfWords)
+        listOfWords = cellstr(listOfWords);
     end
-    numberOfWords  = numel(listOfWords);
-    formattedWords = repmat({''}, numberOfWords, 1);
+    numberOfWords   = numel(listOfWords);
+    formattedWords  = repmat({''}, numberOfWords, 1);
 
     for ii = 1:numberOfWords
         variableName = listOfWords{ii};
@@ -156,12 +157,6 @@ function Text = internalFcn_FillWords(reportInfo, analyzedData, componentObj, co
                     variableValue = eval(reportInfo.Function.(variableName));
                 catch
                     variableValue = reportInfo.Function.(variableName);
-                end
-    
-                if isnumeric(variableValue)
-                    if isfield(listOfWords{ii}, 'Multiplier')
-                        variableValue = variableValue * listOfWords{ii}.Multiplier;
-                    end
                 end
     
             else

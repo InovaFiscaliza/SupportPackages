@@ -87,9 +87,9 @@ classdef (Abstract) sourceCode
                                                  '\t\t\t\t<p class="%s" contenteditable="%s">%s</p>\n' ...
                                                  '\t\t\t</th>'], htmlContent, value, txtClass, componentData.Settings(jj).Editable, columnName);
                     
-                            rowTemplate{jj} = sprintf(['\t\t\t<td>\n'                                        ...
-                                                       '\t\t\t\t<p class="%s" contenteditable="%s">%s</p>\n' ...
-                                                       '\t\t\t</td>'], txtClass, componentData.Settings(jj).Editable, componentData.Settings(jj).Precision);
+                            rowTemplate{jj} = sprintf(['\t\t\t<td>\n'                                         ...
+                                                       '\t\t\t\t<p class="%s" contenteditable="%s">%%s</p>\n' ...
+                                                       '\t\t\t</td>'], txtClass, componentData.Settings(jj).Editable);
                         end                    
                         htmlContent = sprintf(['%s\n'       ...
                                              '\t\t</tr>\n'  ...
@@ -153,10 +153,6 @@ classdef (Abstract) sourceCode
             componentIntro     = '';
             componentError     = '';
             componentLineBreak = 0;
-
-            if componentType == "Table" && ~isfield(componentData, 'Multiplier')
-                componentData.Multiplier = 1;
-            end
 
             if isfield(componentData, 'Intro')
                 componentIntro = componentData.Intro;
@@ -227,22 +223,34 @@ classdef (Abstract) sourceCode
         function editedCellValue = TableCellValue(cellValue, componentSettings, txtClass, recorrenceIndex)            
             editedCellValue = '';
 
-            if isnumeric(cellValue) || islogical(cellValue)
-                if recorrenceIndex == 1
-                    if isscalar(cellValue)
-                        editedCellValue = double(cellValue);
+            if islogical(cellValue)
+                editedCellValue = char(strjoin(string(cellValue), '<br>'));
 
-                        if isfield(componentSettings, 'Multiplier')
-                            editedCellValue = editedCellValue * componentSettings.Multiplier;
-                        end
-                        
-                        if isnan(editedCellValue)
-                            editedCellValue = '';
+            elseif isnumeric(cellValue)
+                editedCellValue = double(cellValue);
+                
+                if any(isnan(editedCellValue))
+                    editedCellValue = '';
+                    return
+                end
+
+                if recorrenceIndex == 1
+                    numberPrecision = componentSettings.Precision;
+                else
+                    dec = 6;
+                    tol = 10^-dec;
+    
+                    roundedCellValue = round(cellValue, dec);
+                    for kk = 0:dec                        
+                        if all(abs(10^kk * roundedCellValue - round(10^kk * roundedCellValue)) <= tol)
+                            dec = kk;
+                            break
                         end
                     end
-                else
-                    editedCellValue = num2str(cellValue);
+                    numberPrecision = sprintf('%%.%.0ff', dec);
                 end
+
+                editedCellValue = strtrim(sprintf([numberPrecision '\n'], cellValue));
 
             else                
                 cellClass = class(cellValue);

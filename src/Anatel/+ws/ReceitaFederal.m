@@ -36,7 +36,7 @@ classdef ReceitaFederal < ws.WebServiceBase
         end
 
         %-----------------------------------------------------------------%
-        function APIResponse = Get(obj, operationType, fileType, varargin)
+        function [APIResponse, Status] = Get(obj, operationType, fileType, varargin)
             arguments
                 obj
                 operationType char {mustBeMember(operationType, {'OnlyCache', 'Cache+RealTime', 'RealTime'})}
@@ -49,18 +49,39 @@ classdef ReceitaFederal < ws.WebServiceBase
 
             APIResponse = [];
 
-            switch operationType
-                case 'OnlyCache'
-                    APIResponse = CheckCache(obj, fileType, varargin{:});
-
-                case 'Cache+RealTime'
-                    APIResponse = CheckCache(obj, fileType, varargin{:});
-                    if isempty(APIResponse)
+            try
+                switch operationType
+                    case 'OnlyCache'
+                        APIResponse = CheckCache(obj, fileType, varargin{:});
+    
+                    case 'Cache+RealTime'
+                        APIResponse = CheckCache(obj, fileType, varargin{:});
+                        if isempty(APIResponse)
+                            APIResponse = WebRequest(obj, fileType, varargin{:});
+                        end
+    
+                    case 'RealTime'
                         APIResponse = WebRequest(obj, fileType, varargin{:});
-                    end
+                end
 
-                case 'RealTime'
-                    APIResponse = WebRequest(obj, fileType, varargin{:});
+                % Códigos de status (p/ controle no monitorSPED):
+                % -2 (Erro) | -1 (Diverge) | 0 (Pendente) | 1 (Coincide)
+
+                if ~isempty(APIResponse) && isstruct(APIResponse) && isfield(APIResponse, 'retVerif')
+                    if contains(APIResponse.retVerif, 'mesma', 'IgnoreCase', true)
+                        Status = 1;
+                    elseif contains(APIResponse.retVerif, 'não', 'IgnoreCase', true)
+                        Status = -1;
+                    else
+                        Status = -2;
+                    end
+                else
+                    Status = -2;
+                end
+
+            catch ME
+                Status = -2;
+                APIResponse = struct('identifier', ME.identifier, 'message', ME.message);
             end
         end
     end
