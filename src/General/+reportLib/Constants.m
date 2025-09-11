@@ -4,7 +4,7 @@ classdef (Abstract) Constants
         %-----------------------------------------------------------------%
         libName       = 'reportLib'
         libRelease    = 'R2024a'
-        libVersion    = '0.02'
+        libVersion    = '0.03'
     end
 
 

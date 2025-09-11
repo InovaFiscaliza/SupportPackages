@@ -72,7 +72,7 @@ function htmlReport = Controller(reportInfo, dataOverview)
                             vararginArgument = [];
 
                         case {'Image', 'Table'}
-                            vararginArgument = eval(sprintf('internalFcn_%s(reportInfo, analyzedData, childNode.Data)', childType));
+                            vararginArgument = eval(sprintf('internalFcn_%s(reportInfo, dataOverview, analyzedData, childNode.Data)', childType));
 
                         otherwise
                             error('Unexpected type "%s"', childType)
@@ -175,7 +175,7 @@ end
 
 
 %-------------------------------------------------------------------------%
-function imgFullPath = internalFcn_Image(reportInfo, analyzedData, imgSettings)
+function imgFullPath = internalFcn_Image(reportInfo, dataOverview, analyzedData, imgSettings)
     imgFullPath = '';
     imgOrigin   = imgSettings.Origin;
     imgSource   = imgSettings.Source;
@@ -202,12 +202,15 @@ end
 
 
 %-------------------------------------------------------------------------%
-function Table = internalFcn_Table(reportInfo, analyzedData, tableSettings)
+function Table = internalFcn_Table(reportInfo, dataOverview, analyzedData, tableSettings)
     Table        = [];
     tableOrigin  = tableSettings.Origin;
-    tableSource  = tableSettings.Source;
     tableColumns = tableSettings.Columns;
     tableError   = tableSettings.Error;
+    
+    tempSource   = strsplit(tableSettings.Source, '+');
+    tableSource  = tempSource{1};
+    tableOptArgs = tempSource(2:end);
     
     try
         switch tableOrigin
