@@ -137,7 +137,7 @@ classdef (Abstract) appUtil
         function varargout = modalWindow(hFigure, type, msg, varargin)
             arguments
                 hFigure matlab.ui.Figure
-                type    {mustBeMember(type, {'error', 'warning', 'info', 'success', 'progressdlg', 'uiconfirm', 'uigetfile', 'uiputfile'})}
+                type    {mustBeMember(type, {'error', 'warning', 'info', 'success', 'none', 'progressdlg', 'uiconfirm', 'uigetfile', 'uiputfile'})}
                 msg     {mustBeTextScalar} = ''
             end
         
@@ -150,12 +150,13 @@ classdef (Abstract) appUtil
             end
 
             switch type
-                case {'error', 'warning', 'info', 'success'}
+                case {'error', 'warning', 'info', 'success', 'none'}
                     switch type
                         case 'error';   uialert(hFigure, msg, '', 'Interpreter', 'html', 'Icon', 'error',   varargin{:})
                         case 'warning'; uialert(hFigure, msg, '', 'Interpreter', 'html', 'Icon', 'warning', varargin{:})
                         case 'info';    uialert(hFigure, msg, '', 'Interpreter', 'html', 'Icon', 'info',    varargin{:})
                         case 'success'; uialert(hFigure, msg, '', 'Interpreter', 'html', 'Icon', 'success', varargin{:})
+                        case 'none';    uialert(hFigure, msg, '', 'Interpreter', 'html', 'Icon', '',        varargin{:})
                     end
                     varargout = {[]};
                     beep

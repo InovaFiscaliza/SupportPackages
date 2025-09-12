@@ -24,7 +24,7 @@ function htmlReport = Controller(reportInfo, dataOverview)
             continue
         end
 
-        if ~isempty(parentNode.Data.Variable)
+        if isfield(parentNode.Data, 'Variable') && ~isempty(parentNode.Data.Variable)
             parentNode.Data.Text = internalFcn_FillWords(reportInfo, [], parentNode, 1);
         end
         htmlReport = [htmlReport, reportLib.sourceCode.htmlCreation(parentNode)];
@@ -108,6 +108,9 @@ function htmlReport = Controller(reportInfo, dataOverview)
                     case 'name'
                         FootnoteFieldsText{end+1} = sprintf('<b>__%s</b>', upper(FootnoteVersion.(FootnoteFields{jj})));
                     otherwise
+                        if isstruct(FootnoteVersion.(FootnoteFields{jj}))
+                            FootnoteVersion.(FootnoteFields{jj}) = jsonencode(FootnoteVersion.(FootnoteFields{jj}));
+                        end
                         FootnoteFieldsText{end+1} = sprintf('<b>%s</b>: %s', FootnoteFields{jj}, string(FootnoteVersion.(FootnoteFields{jj})));
                 end
             end
