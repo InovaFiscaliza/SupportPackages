@@ -179,32 +179,28 @@ classdef (Abstract) appUtil
                     userSelection = uiconfirm(hFigure, msg, '', 'Options', varargin{1}, 'DefaultOption', varargin{2}, 'CancelOption', varargin{3}, 'Interpreter', 'html', 'Icon', Icon);
                     varargout{1} = userSelection;
 
-                case 'uigetfile'
-                    fileFormats       = varargin{1};
-                    lastVisitedFolder = varargin{2};
-                    otherParameters   = {};
-                    if nargin == 6
-                        otherParameters = varargin{3};
+                case {'uigetfile', 'uiputfile'}
+                    switch type
+                        case 'uigetfile'
+                            fileFormats       = varargin{1};
+                            lastVisitedFolder = varargin{2};
+                            otherParameters   = {};
+                            if nargin == 6
+                                otherParameters = varargin{3};
+                            end
+                            [fileName, fileFolder] = uigetfile(fileFormats, '', lastVisitedFolder, otherParameters{:});
+
+                        otherwise
+                            nameFormatMap   = varargin{1};
+                            defaultFilename = varargin{2};
+                            [fileName, fileFolder] = uiputfile(nameFormatMap, '', defaultFilename);
+                    end
+                    
+                    executionMode = appUtil.ExecutionMode(hFigure);
+                    if ~strcmp(executionMode, 'webApp')
+                        figure(hFigure)
                     end
 
-                    [fileName, fileFolder] = uigetfile(fileFormats, '', lastVisitedFolder, otherParameters{:});
-                    figure(hFigure)
-                    if isequal(fileName, 0)
-                        varargout = {[], [], [], []};
-                        return
-                    end
-
-                    fileFullPath    = fullfile(fileFolder, fileName);
-                    [~, ~, fileExt] = fileparts(fileName);
-
-                    varargout = {fileFullPath, fileFolder, lower(fileExt), fileName};
-
-                case 'uiputfile'
-                    nameFormatMap   = varargin{1};
-                    defaultFilename = varargin{2};
-        
-                    [fileName, fileFolder] = uiputfile(nameFormatMap, '', defaultFilename);
-                    figure(hFigure)
                     if isequal(fileName, 0)
                         varargout = {[], [], [], []};
                         return

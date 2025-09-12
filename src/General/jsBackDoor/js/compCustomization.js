@@ -59,12 +59,12 @@ body {
     --mw-backgroundColor-tab: rgb(255, 255, 255) !important;
 }
 
+/*
 .vc-widget {
     width: 100% !important;
     height: 100% !important;
 }
 
-/*
 .mwWidget {
     width: 100% !important;
     height: 100% !important;
@@ -705,7 +705,7 @@ body {
 
         let handle = window.parent.document.body.querySelectorAll(`div[data-tag="${UUID}"]`);
         if ((Type === "Creation") || (handle.length === 0)) {
-            const zIndex = 1000;
+            const zIndex = 900;
 
             if ("Size" in customEvent.Data) {
                 Size = customEvent.Data.Size.toString();
