@@ -1,22 +1,22 @@
 function [chPower, chPowerUnit, PowerSpectralDensity] = ChannelPower(specData, idxThread, chLimits)
 
     FreqStart  = specData(idxThread).MetaData.FreqStart;
-    FreStop    = specData(idxThread).MetaData.FreqStop;
+    FreqStop   = specData(idxThread).MetaData.FreqStop;
     DataPoints = specData(idxThread).MetaData.DataPoints;
     RBW        = specData(idxThread).MetaData.Resolution;
     
-    if (chLimits(1) > FreStop) || (chLimits(2) < FreqStart)
+    if (chLimits(1) > FreqStop) || (chLimits(2) < FreqStart)
         error('RF:ChannelPower:OutOfRange', 'Out of range')
     end
     
     % Freq_Hz = aCoef*idx + bCoef;
-    aCoef  = (FreStop - FreqStart) ./ (DataPoints - 1);
+    aCoef  = (FreqStop - FreqStart) ./ (DataPoints - 1);
     bCoef  = FreqStart - aCoef;    
-    xData  = linspace(FreqStart, FreStop, DataPoints)';
+    xData  = linspace(FreqStart, FreqStop, DataPoints)';
 
     % Channel Limits (idx)
     chLimits(1) = max(chLimits(1), FreqStart);
-    chLimits(2) = min(chLimits(2), FreStop);
+    chLimits(2) = min(chLimits(2), FreqStop);
 
     idx1 = round((chLimits(1) - bCoef)/aCoef);
     idx2 = round((chLimits(2) - bCoef)/aCoef);
