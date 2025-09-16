@@ -59,6 +59,10 @@ classdef SpecDataBase < handle
 
         %-----------------------------------------------------------------%
         function copyObj = copy(obj, fields2remove)
+            arguments
+                obj
+                fields2remove = {}
+            end
             % A classe "model.SpecData", do appAnalise, extende a presente classe. 
             % Por essa razão, utiliza-se "eval(class(obj))" de forma que seja criada 
             % uma instância da classe sob análise ("model.SpecData" ou "model.SpecDataBase"). 

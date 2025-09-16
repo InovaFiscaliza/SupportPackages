@@ -40,6 +40,7 @@ function PopUpContainer(callingApp, appName, screenWidth, screenHeight)
                 struct('appName', appName, 'dataTag', elDataTag{2}, 'generation', 1, 'style',    struct('borderRadius', '5px', 'borderColor', '#bfbfbf')) ...
             });
         end
+        pause(1)
 
         callingApp.popupContainer = popupContainer;
     

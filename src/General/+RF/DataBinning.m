@@ -13,9 +13,21 @@ classdef (Abstract) DataBinning
             Latitude  = [];
             Longitude = [];
             for ii = 1:height(specData(idxThread).RelatedFiles)
-                Latitude  = [Latitude;  specData(idxThread).RelatedFiles.GPS{ii}.Matrix(:,1)];
-                Longitude = [Longitude; specData(idxThread).RelatedFiles.GPS{ii}.Matrix(:,2)];
+                if ~isempty(specData(idxThread).RelatedFiles.GPS{ii}.Matrix)
+                    Latitude  = [Latitude;  specData(idxThread).RelatedFiles.GPS{ii}.Matrix(:,1)];
+                    Longitude = [Longitude; specData(idxThread).RelatedFiles.GPS{ii}.Matrix(:,2)];
+                end
             end
+            
+            nCoordinates = height(Latitude);
+            if nCoordinates == 0
+                error('RF:DataBinning:RawTableCreation:ExpectedAtLeastOnePairOfLatLng', 'Expected at least one pair of [lat, lng] coordinates.')
+            end
+            
+            Frequency = chAssigned.Frequency * 1e+6; % MHz >> Hz
+            ChannelBW = chAssigned.ChannelBW * 1e+3; % kHz >> Hz
+            [ChannelPower, ...
+             ChannelPowerUnit] = RF.ChannelPower(specData, idxThread, [Frequency-ChannelBW/2, Frequency+ChannelBW/2]);
 
             % MATLAB R2024a tem um BUG que produz resultado não esperado p/
             % o método inROI quando Latitude/Longitude estão como "single". 
@@ -23,18 +35,16 @@ classdef (Abstract) DataBinning
             % isso estaria resolvido na R2024b. 
             Latitude  = double(Latitude);
             Longitude = double(Longitude);
-            
-            Frequency = chAssigned.Frequency * 1e+6; % MHz >> Hz
-            ChannelBW = chAssigned.ChannelBW * 1e+3; % kHz >> Hz
-            [ChannelPower, ...
-             ChannelPowerUnit] = RF.ChannelPower(specData, idxThread, [Frequency-ChannelBW/2, Frequency+ChannelBW/2]);
 
             % Modo de compatibilidade, interpolando os vetores de Latitude
             % e Longitude, de forma que a razão entre varreduras e coordenadas 
             % geográficas seja 1:1.
-            nSweeps = numel(Timestamp);
-            nCoordinates = height(Latitude);
-            if nSweeps ~= nCoordinates
+            nSweeps = numel(Timestamp);            
+            
+            if nCoordinates == 1
+                Latitude  = repmat(Latitude,  nSweeps, 1);
+                Longitude = repmat(Longitude, nSweeps, 1);
+            elseif nSweeps ~= nCoordinates
                 Latitude  = interp1(linspace(1, nSweeps, nCoordinates)', Latitude,  (1:nSweeps)', 'linear', 'extrap');
                 Longitude = interp1(linspace(1, nSweeps, nCoordinates)', Longitude, (1:nSweeps)', 'linear', 'extrap');
             end
