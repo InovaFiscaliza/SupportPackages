@@ -59,6 +59,10 @@ body {
     --mw-backgroundColor-tab: rgb(255, 255, 255) !important;
 }
 
+.mwDialog {
+    --mw-fontSize-dialog: 12px !important;
+}
+
 /*
 .vc-widget {
     width: 100% !important;
