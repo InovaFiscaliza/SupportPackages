@@ -59,42 +59,6 @@ classdef projectLib < dynamicprops
                     obj.listOfProducts.("Situação") = categorical(obj.listOfProducts.("Situação"), varargin{2});
                     obj.listOfProducts.("Infração") = categorical(obj.listOfProducts.("Infração"), varargin{3});
                     obj.listOfProducts.("Sanável?") = categorical(obj.listOfProducts.("Sanável?"), {'-1', 'Sim', 'Não'});
-
-                case {'winMonitorRNI', 'winMonitorRNI_exported'}
-                    obj.defaultFilePreffix = 'monitorRNI';
-                    obj.customProperties   = {'rawListOfYears', 'referenceListOfLocations', 'referenceListOfStates', 'selectedFileLocations', 'listOfLocations'};
-
-                    % A planilha de referência do PM-RNI possui uma relação
-                    % de estações de telecomunicações que deve ser avaliada.
-                    % Dessa planilha, extrai-se:
-                    % • "rawListOfYears": a lista com todos os anos da planilha 
-                    %   bruta - Coluna "Ano".
-                    
-                    % • "referenceListOfLocation": a lista com todas as localidades 
-                    %   relacionadas às estações da planilha filtrada (pelo ano sob 
-                    %   análise).
-                    
-                    % • "referenceListOfStates": a lista com todas as UFs relacionadas 
-                    %   às estações da planilha filtrada.
-
-                    % O monitorRNI identifica a localidade relacionada às coordenadas 
-                    % centrais de cada arquivo. Essa lista é apresentada nos modos 
-                    % auxiliares auxApp.winRNI e auxApp.ExternalRequest.
-                    % • "selectedFileLocations": a lista com as localidades 
-                    %   selecionadas pelo usuário em um dos modos auxiliares.
-
-                    % • "listOfLocations": a lista de localidades sob análise 
-                    %   no módulo auxApp.winRNI p/ fins de geração da planilha 
-                    %   que será submetida ao Centralizador do PM-RNI.
-
-                    addprop(obj, 'rawListOfYears');
-                    addprop(obj, 'referenceListOfLocations');
-                    addprop(obj, 'referenceListOfStates');
-                    addprop(obj, 'selectedFileLocations');
-                    addprop(obj, 'listOfLocations');
-                    
-                    obj.selectedFileLocations = {};
-                    obj.listOfLocations = struct('Manual', [], 'Automatic', []);
             end
         end
 

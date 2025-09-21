@@ -210,6 +210,7 @@ function Table = internalFcn_Table(reportInfo, dataOverview, analyzedData, table
     tableOrigin  = tableSettings.Origin;
     tableColumns = tableSettings.Columns;
     tableError   = tableSettings.Error;
+    columnNames  = {tableSettings.Settings.ColumnName};
     
     tempSource   = strsplit(tableSettings.Source, '+');
     tableSource  = tempSource{1};
@@ -220,7 +221,11 @@ function Table = internalFcn_Table(reportInfo, dataOverview, analyzedData, table
             case 'FunctionEvaluation'
                 tableIndex = any(strcmp(fields(reportInfo.Function), tableSource));
                 if tableIndex
-                    Table = eval(reportInfo.Function.(tableSource));
+                    if istable(reportInfo.Function.(tableSource))
+                        Table = reportInfo.Function.(tableSource);
+                    else
+                        Table = eval(reportInfo.Function.(tableSource));
+                    end
                     Table = Table(:, tableColumns);
                 end
     
@@ -251,6 +256,8 @@ function Table = internalFcn_Table(reportInfo, dataOverview, analyzedData, table
                     end
                 end
         end
+
+        Table.Properties.VariableNames = columnNames;
     catch
     end
 
