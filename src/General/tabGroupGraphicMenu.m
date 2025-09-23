@@ -29,6 +29,7 @@ classdef tabGroupGraphicMenu < handle
 
     properties (Access = private)
         %-----------------------------------------------------------------%
+        UIFigure      matlab.ui.Figure
         MenuGrid      matlab.ui.container.GridLayout
         MenuSubGrid
         TabGroup      matlab.ui.container.TabGroup
@@ -42,6 +43,7 @@ classdef tabGroupGraphicMenu < handle
     methods
         %-----------------------------------------------------------------%
         function obj = tabGroupGraphicMenu(menuGrid, tabGroup, progressDialog, jsCustomFcn, layoutCustomFcn)
+            obj.UIFigure        = ancestor(menuGrid, 'figure');
             obj.MenuGrid        = menuGrid;
             obj.TabGroup        = tabGroup;
             obj.executionMode   = ancestor(menuGrid, 'figure').RunningAppInstance.executionMode;
@@ -174,6 +176,11 @@ classdef tabGroupGraphicMenu < handle
     
                     btnRefHandle.Value = 1;
                     openModule(obj, btnRefHandle, false, appGeneral)
+                end
+
+                contextMenuHandle = findobj(obj.UIFigure.Children, 'Type', 'uicontextmenu', 'Tag', obj.Components.File{idx});
+                if ~isempty(contextMenuHandle)
+                    delete(contextMenuHandle)
                 end
 
                 if strcmp(operationType, 'normal')

@@ -15,14 +15,12 @@ function PopUpContainer(callingApp, appName, screenWidth, screenHeight)
         addprop(callingApp, 'popupContainer');
     end
 
-    popupContainer = callingApp.popupContainer;
+    hFig = callingApp.UIFigure;
+    popupContainer = findobj(hFig.Children, 'Type', 'uipanel', 'Tag', 'popupContainer');
 
-    if isempty(popupContainer) || ~isvalid(popupContainer)
-        hFig = callingApp.UIFigure;
-        jsBackDoor = callingApp.jsBackDoor;
-
+    if isempty(popupContainer) || ~isvalid(popupContainer)        
         popupContainerGrid = uigridlayout(hFig, [1, 1], "BackgroundColor", "white", "ColumnWidth", {'1x', screenWidth, '1x'}, "RowHeight", {'1x', screenHeight, '1x'}, "Visible", "off");
-        popupContainer = uipanel(popupContainerGrid, "Title", "");
+        popupContainer = uipanel(popupContainerGrid, "Title", "", "Tag", "popupContainer");
         popupContainer.Layout.Row = 2;
         popupContainer.Layout.Column = 2;
         drawnow
@@ -34,18 +32,17 @@ function PopUpContainer(callingApp, appName, screenWidth, screenHeight)
         elDataTag  = ui.CustomizationBase.getElementsDataTag(elToModify);
 
         if ~isempty(elDataTag)
-            sendEventToHTMLSource(jsBackDoor, 'initializeComponents', { ...
+            sendEventToHTMLSource(callingApp.jsBackDoor, 'initializeComponents', { ...
                 struct('appName', appName, 'dataTag', elDataTag{1}, 'generation', 0, 'style',    struct('backgroundColor', 'rgba(255,255,255,0.65)')), ...
                 struct('appName', appName, 'dataTag', elDataTag{2}, 'generation', 0, 'style',    struct('borderRadius', '5px', 'boxShadow', '0 2px 5px 1px #a6a6a6')), ...
                 struct('appName', appName, 'dataTag', elDataTag{2}, 'generation', 1, 'style',    struct('borderRadius', '5px', 'borderColor', '#bfbfbf')) ...
             });
         end
         pause(1)
-
-        callingApp.popupContainer = popupContainer;
     
     else
-        popupContainerGrid = popupContainer.Parent;
-        set(popupContainerGrid, "ColumnWidth", {'1x', screenWidth, '1x'}, "RowHeight", {'1x', screenHeight, '1x'})
+        set(popupContainer.Parent, "ColumnWidth", {'1x', screenWidth, '1x'}, "RowHeight", {'1x', screenHeight, '1x'})
     end
+
+    callingApp.popupContainer = popupContainer;
 end
