@@ -46,7 +46,10 @@ function htmlReport = Controller(reportInfo, dataOverview)
             % Insere uma quebra de linha, caso exista recorrência no
             % item.
             if jj > 1
-                htmlReport = [htmlReport, reportLib.sourceCode.LineBreak];
+                lineBreak  = reportLib.sourceCode.LineBreak;
+                if ~endsWith(htmlReport, lineBreak)
+                    htmlReport = [htmlReport, reportLib.sourceCode.LineBreak];
+                end
             end
 
             for kk = 1:numel(parentNode.Data.Component)
@@ -81,7 +84,6 @@ function htmlReport = Controller(reportInfo, dataOverview)
                     htmlReport = [htmlReport, reportLib.sourceCode.htmlCreation(childNode, vararginArgument)];
 
                 catch ME
-                    struct2table(ME.stack)
                     msgError = extractAfter(ME.message, 'Configuration file error message: ');
 
                     if ~isempty(msgError)
