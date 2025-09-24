@@ -15,6 +15,7 @@ function htmlReport = Controller(reportInfo, dataOverview)
     tableStyleFlag = 1;
 
     % HTML body
+    lineBreak  = reportLib.sourceCode.LineBreak;
     jsonScript = reportInfo.Model.Script;
     for ii = 1:numel(jsonScript)
         parentNode = jsonScript(ii);
@@ -22,6 +23,11 @@ function htmlReport = Controller(reportInfo, dataOverview)
 
         if parentType ~= "ItemN1"
             continue
+        end
+        
+        if endsWith(htmlReport, lineBreak)
+            numlineBreakChars = numel(lineBreak);
+            htmlReport = htmlReport(1:end-numlineBreakChars);
         end
 
         if isfield(parentNode.Data, 'Variable') && ~isempty(parentNode.Data.Variable)
@@ -46,7 +52,6 @@ function htmlReport = Controller(reportInfo, dataOverview)
             % Insere uma quebra de linha, caso exista recorrência no
             % item.
             if jj > 1
-                lineBreak  = reportLib.sourceCode.LineBreak;
                 if ~endsWith(htmlReport, lineBreak)
                     htmlReport = [htmlReport, reportLib.sourceCode.LineBreak];
                 end
@@ -120,7 +125,7 @@ function htmlReport = Controller(reportInfo, dataOverview)
             FootnoteText       = [FootnoteText, reportLib.sourceCode.htmlCreation(struct('Type', 'Footnote', 'Data', struct('Editable', 'false', 'Text', FootnoteFieldsText, 'Variable', [])))];
         end
     end
-    htmlReport = [htmlReport, reportLib.sourceCode.LineBreak, reportLib.sourceCode.Separator, FootnoteText, reportLib.sourceCode.LineBreak];
+    htmlReport = [htmlReport, lineBreak, reportLib.sourceCode.Separator, FootnoteText, lineBreak];
 
     % HTML trailer
     if strcmp(reportInfo.Model.Version, 'preview')
