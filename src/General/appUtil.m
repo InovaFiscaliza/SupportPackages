@@ -340,10 +340,24 @@ classdef (Abstract) appUtil
                     programDataFileContent = jsondecode(fileread(programDataFilePath));
         
                     if projectFileContent.version > programDataFileContent.version
-                        oldFields = fieldnames(programDataFileContent.fileFolder);
-                        for ii = 1:numel(oldFields)
-                            if isfield(projectFileContent.fileFolder, oldFields{ii})
-                                projectFileContent.fileFolder.(oldFields{ii}) = programDataFileContent.fileFolder.(oldFields{ii});
+                        fieldsToKeepInfo = {'operationMode', 'fileFolder'};
+                        for ii = 1:numel(fieldsToKeepInfo)
+                            fieldToKeep = fieldsToKeepInfo{ii};
+
+                            if ~isfield(projectFileContent, fieldToKeep)     || ...
+                               ~isstruct(projectFileContent.(fieldToKeep))   || ...
+                               ~isfield(programDataFileContent, fieldToKeep) || ...                               
+                               ~isstruct(programDataFileContent.(fieldToKeep))
+                                continue
+                            end
+
+                            subFieldsToKeepInfo = fieldnames(programDataFileContent.(fieldToKeep));
+                            for jj = 1:numel(subFieldsToKeepInfo)
+                                subFieldToKeep = subFieldsToKeepInfo{jj};
+
+                                if isfield(projectFileContent.(fieldToKeep), subFieldToKeep)
+                                    projectFileContent.(fieldToKeep).(subFieldToKeep) = programDataFileContent.(fieldToKeep).(subFieldToKeep);
+                                end
                             end
                         end
         

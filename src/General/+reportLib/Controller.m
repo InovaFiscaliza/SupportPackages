@@ -48,6 +48,7 @@ function htmlReport = Controller(reportInfo, dataOverview)
         for jj = 1:NN
             reportInfo.Function.var_Index = num2str(jj);
             analyzedData = dataOverview(jj);
+            analyzedData.Index = jj;
 
             % Insere uma quebra de linha, caso exista recorrência no
             % item.
