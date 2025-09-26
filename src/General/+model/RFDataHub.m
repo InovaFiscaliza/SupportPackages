@@ -55,6 +55,18 @@ classdef (Abstract) RFDataHub
                         load(backupPath, 'RFDataHub', 'RFDataHubLog', 'RFDataHub_info', '-mat')
                     end
                 end
+
+                % Contorna erro da função inROI, que retorna como se todos os
+                % pontos estivessem internos ao ROI, quando as coordenadas
+                % estão em float32. No float64 isso não acontece... aberto BUG
+                % na Mathworks, que indicou ter resolvido o problema. Pendente 
+                % confirmar!
+                RFDataHub.Latitude  = double(RFDataHub.Latitude);
+                RFDataHub.Longitude = double(RFDataHub.Longitude);
+
+                % Prepara dados p/ uso pelos apps:
+                RFDataHub.ID = "#" + string((1:height(RFDataHub))');
+                RFDataHub.Description = "[" + string(RFDataHub.Source) + "] " + string(RFDataHub.Status) + ", " + string(RFDataHub.StationClass) + ", " + string(RFDataHub.Name) + ", " + string(RFDataHub.Location) + "/" + string(RFDataHub.State) + " (M=" + string(RFDataHub.MergeCount) + ")";
             end
         end
 
