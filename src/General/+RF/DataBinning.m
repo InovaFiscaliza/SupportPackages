@@ -53,19 +53,20 @@ classdef (Abstract) DataBinning
         end
 
         %-----------------------------------------------------------------%
-        function [specRawTable, specFilteredTable, specBinTable, filterSpec, binningSummary] = execute(specRawTable, binningLength, binningFcn, filterSpec)
+        function [specRawTable, specFilteredTable, specBinTable, filterSpec, binningSummary] = execute(specRawTable, binningLength, binningFcn, filterSpec, columnName)
             arguments
                 % Tabela com colunas "Timestamp", "Latitude", "Longitude" e 
-                % "emissionPower".
+                % "ChannelPower".
                 specRawTable  table
         
                 % Distâncie entre quadrículas adjacentes, além da função de 
                 % sumarização.
                 binningLength double
-                binningFcn    char {mustBeMember(binningFcn, {'min', 'mean', 'median', 'rms', 'max'})}
+                binningFcn    char {mustBeMember(binningFcn, {'min', 'mean', 'median', 'rms', 'mean-linear', 'median-linear', 'rms-linear', 'max'})}
         
                 % Tabela com colunas "type", "subtype", "roi" e "enable".
                 filterSpec    table = table({}, {}, struct('handle', {}, 'specification', {}), true(0, 1), 'VariableNames', {'type', 'subtype', 'roi', 'enable'})
+                columnName    char {mustBeMember(columnName, {'ChannelPower', 'FieldValue'})} = 'ChannelPower'
             end
         
             [specRawTable,      ...
@@ -83,23 +84,26 @@ classdef (Abstract) DataBinning
             [~, specFilteredTable.BinIndex] = min(Distance, [], 2);
             
             switch binningFcn
-                case 'min';    binFcn = @min;
-                case 'mean';   binFcn = @(x) pow2db(  mean(db2pow(x)));
-                case 'median'; binFcn = @(x) pow2db(median(db2pow(x)));
-                case 'rms';    binFcn = @(x) pow2db(   rms(db2pow(x)));
-                case 'max';    binFcn = @max;
+                case 'min';           binFcn = @min;
+                case 'mean';          binFcn = @(x) pow2db(  mean(db2pow(x)));
+                case 'median';        binFcn = @(x) pow2db(median(db2pow(x)));
+                case 'rms';           binFcn = @(x) pow2db(   rms(db2pow(x)));
+                case 'mean-linear';   binFcn = @mean;
+                case 'median-linear'; binFcn = @median;
+                case 'rms-linear';    binFcn = @rms;
+                case 'max';           binFcn = @max;
             end
-            binPower = splitapply(binFcn, specFilteredTable.ChannelPower, specFilteredTable.BinIndex);
+            binPower = splitapply(binFcn, specFilteredTable.(columnName), specFilteredTable.BinIndex);
             
             specFilteredTable = removevars(specFilteredTable, {'xyLatitude', 'xyLongitude'});
-            specBinTable      = table(binLatitude, binLongitude, binPower, binMeasures, 'VariableNames', {'Latitude', 'Longitude', 'ChannelPower', 'Measures'});            
+            specBinTable      = table(binLatitude, binLongitude, binPower, binMeasures, 'VariableNames', {'Latitude', 'Longitude', columnName, 'Measures'});            
 
             % Sumário do processo:
             binningSummary = RF.DataBinning.About(specRawTable, specFilteredTable, specBinTable, binningLength, binningFcn);
         end
   
         %-------------------------------------------------------------------------%
-        function [specRawTable, specFilteredTable, filterSpec] = Filtering(specRawTable, filterSpec)
+        function [specRawTable, specFilteredTable, filterSpec] = Filtering(specRawTable, filterSpec, columnName)
             arguments
                 % Tabela com colunas "Timestamp", "Latitude", "Longitude" e 
                 % "ChannelPower".
@@ -107,6 +111,7 @@ classdef (Abstract) DataBinning
         
                 % Tabela com colunas "type", "subtype" e "roi".
                 filterSpec    table
+                columnName    char {mustBeMember(columnName, {'ChannelPower', 'FieldValue'})} = 'ChannelPower'
             end
         
             % O processo de filtragem é orientado às interações na GUI, inserindo
@@ -125,7 +130,7 @@ classdef (Abstract) DataBinning
         
             if ~isempty(idx1) & ~isempty(idx2)
                 for ii = idx1'
-                    idy1 = specRawTable.ChannelPower >= filterSpec.roi(ii).handle.Position(3);
+                    idy1 = specRawTable.(columnName) >= filterSpec.roi(ii).handle.Position(3);
                 end
 
                 idy2 = RF.DataBinning.InROI(specRawTable, filterSpec);        
@@ -133,7 +138,7 @@ classdef (Abstract) DataBinning
         
             elseif ~isempty(idx1)
                 for ii = idx1'
-                    idy1 = specRawTable.ChannelPower >= filterSpec.roi(ii).handle.Position(3);
+                    idy1 = specRawTable.(columnName) >= filterSpec.roi(ii).handle.Position(3);
                 end        
                 idy = idy1;
         

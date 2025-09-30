@@ -522,7 +522,7 @@ body {
     -----------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("customForm", function(customEvent) {
         try {
-            const UUID    = customEvent.Data.UUID;
+            const { UUID, Context } = customEvent.Data;
             let Fields    = customEvent.Data.Fields;
             Fields        = Array.isArray(Fields) ? Fields : [Fields];
             const zIndex  = 1000;
@@ -664,6 +664,7 @@ body {
                 }
 
                 formData.uuid = UUID;
+                if (Context) formData.context = Context;
                 htmlComponent.sendEventToMATLAB("customForm", formData);
 
                 u.remove();
