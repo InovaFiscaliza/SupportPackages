@@ -11,6 +11,7 @@ classdef eFiscaliza < ws.WebServiceBase
         %-----------------------------------------------------------------%
         url = struct('DS', 'https://appsnetds/eFiscaliza_API/rest/servico', ...
                      'HM', 'https://appsnethm/eFiscaliza_API/rest/servico', ...
+                     'TS', 'https://appsnetts/eFiscaliza_API/rest/servico', ...
                      'PD', 'https://appsnet/eFiscaliza_API/rest/servico')
     end
 
@@ -31,7 +32,7 @@ classdef eFiscaliza < ws.WebServiceBase
         function msg = run(obj, env, operation, issue, varargin)
             arguments
                 obj
-                env       char {mustBeMember(env, {'DS', 'HM', 'PD'})}
+                env       char {mustBeMember(env, {'DS', 'HM', 'TS', 'PD'})}
                 operation char {mustBeMember(operation, {'uploadDocument', 'uploadExternalDocument'})}
                 issue     struct
             end

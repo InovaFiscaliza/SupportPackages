@@ -31,7 +31,7 @@ function htmlReport = Controller(reportInfo, dataOverview)
         end
 
         if isfield(parentNode.Data, 'Variable') && ~isempty(parentNode.Data.Variable)
-            parentNode.Data.Text = internalFcn_FillWords(reportInfo, [], parentNode, 1);
+            parentNode.Data.Text = internalFcn_FillWords(reportInfo, dataOverview, [], parentNode, 1);
         end
         htmlReport = [htmlReport, reportLib.sourceCode.htmlCreation(parentNode)];
 
@@ -75,7 +75,7 @@ function htmlReport = Controller(reportInfo, dataOverview)
                             % Esse loop existe apenas por conta do componente do tipo "List"...
                             for ll = 1:numel(childNode.Data)
                                 if ~isempty(childNode.Data(ll).Variable)
-                                    childNode.Data(ll).Text = internalFcn_FillWords(reportInfo, analyzedData, childNode, ll);
+                                    childNode.Data(ll).Text = internalFcn_FillWords(reportInfo, dataOverview, analyzedData, childNode, ll);
                                 end
                             end
                             vararginArgument = [];
@@ -146,7 +146,7 @@ end
 
 
 %-------------------------------------------------------------------------%
-function Text = internalFcn_FillWords(reportInfo, analyzedData, componentObj, componentObjIndex)
+function Text = internalFcn_FillWords(reportInfo, dataOverview, analyzedData, componentObj, componentObjIndex)
 
     % "analyzedData" e "callingApp" devem estar como argumentos de entrada porque
     % eles podem estar sendo passados como argumentos para as funções que retornam 
