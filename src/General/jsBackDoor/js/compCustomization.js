@@ -331,6 +331,12 @@ body {
             window.top.addEventListener("unload", () => {
                 htmlComponent.sendEventToMATLAB("unload");
             });
+
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/webapps/home/service-worker.js', { scope: '/webapps/home/' })
+                .then(()  => { consoleLog('Service worker registered successfully'); })
+                .catch(ME => { consoleLog(`Service worker registration failed: ${ME.message}`)});
+            }
         }
 
         injectCustomStyle();
@@ -469,7 +475,8 @@ body {
             platform: navigator.userAgentData?.platform || navigator.platform,
             mobile: navigator.userAgentData?.mobile ?? isMobile(),
             userAgent: navigator.userAgent,
-            vendor: navigator.vendor
+            vendor: navigator.vendor,
+            screen: (screen?.width && screen?.height) ? `${screen.width} x ${screen.height} pixels` : 'unknown'
         };
 
         htmlComponent.sendEventToMATLAB("getNavigatorBasicInformation", navigatorBasicInformation);
@@ -787,7 +794,7 @@ body {
         const msg = 'DOM render cycle finished';
         consoleLog(msg);
 
-        htmlComponent.sendEventToMATLAB('renderer', msg);
+        htmlComponent.sendEventToMATLAB('renderer');
         window.top.app.rendererStatus = true;
     });
 }

@@ -56,17 +56,18 @@ classdef (Abstract) RFDataHub
                     end
                 end
 
-                % Contorna erro da função inROI, que retorna como se todos os
-                % pontos estivessem internos ao ROI, quando as coordenadas
-                % estão em float32. No float64 isso não acontece... aberto BUG
-                % na Mathworks, que indicou ter resolvido o problema. Pendente 
-                % confirmar!
-                RFDataHub.Latitude  = double(RFDataHub.Latitude);
-                RFDataHub.Longitude = double(RFDataHub.Longitude);
+                % Algumas transformações foram migradas p/ model.RFDataHub.parquet2mat
+                % mas isso terá efeito apenas quando da atualização da base
+                % (que virá numa nova versão). Cria-se validação, evitando
+                % erros.
+                if isa(RFDataHub.("Latitude"), 'single') || isa(RFDataHub.("Longitude"), 'single')
+                    RFDataHub.("Latitude")    = double(RFDataHub.("Latitude"));
+                    RFDataHub.("Longitude")   = double(RFDataHub.("Longitude"));
+                end
 
-                % Prepara dados p/ uso pelos apps:
-                RFDataHub.ID = "#" + string((1:height(RFDataHub))');
-                RFDataHub.Description = "[" + string(RFDataHub.Source) + "] " + string(RFDataHub.Status) + ", " + string(RFDataHub.StationClass) + ", " + string(RFDataHub.Name) + ", " + string(RFDataHub.Location) + "/" + string(RFDataHub.State) + " (M=" + string(RFDataHub.MergeCount) + ")";
+                if any(~ismember({'ID', 'Description', '_Name', '_Location'}, RFDataHub.Properties.VariableNames))
+                    RFDataHub = model.RFDataHub.createColumnsToGUI(RFDataHub);
+                end
             end
         end
 
@@ -124,8 +125,15 @@ classdef (Abstract) RFDataHub
             obj.Fistel    = int64(str2double(obj.Fistel));
             obj.Service   = int16(str2double(obj.Service));
             obj.Station   = int32(str2double(obj.Station));
-            obj.Latitude  = single(str2double(obj.Latitude));
-            obj.Longitude = single(str2double(obj.Longitude));
+
+            % Contorna erro da função inROI, que retorna como se todos os
+            % pontos estivessem internos ao ROI, quando as coordenadas
+            % estão em float32. No float64 isso não acontece... aberto BUG
+            % na Mathworks, que indicou ter resolvido o problema. Pendente 
+            % confirmar!
+            obj.Latitude  = str2double(obj.Latitude);
+            obj.Longitude = str2double(obj.Longitude);
+
             obj.BW        = single(str2double(obj.BW));
             obj.Log       = obj.Log + 1;
 
@@ -159,6 +167,17 @@ classdef (Abstract) RFDataHub
                     obj{idx,ii} = -1;
                 end
             end
+
+            % Criar novas colunas p/ uso pelos apps:
+            obj = model.RFDataHub.createColumnsToGUI(obj);
+        end
+
+        %-----------------------------------------------------------------%
+        function obj = createColumnsToGUI(obj)
+            obj.("ID")          = "#" + string((1:height(obj))');
+            obj.("Description") = "[" + string(obj.Source) + "] " + string(obj.Status) + ", " + string(obj.StationClass) + ", " + string(obj.Name) + ", " + string(obj.Location) + "/" + string(obj.State) + " (M=" + string(obj.MergeCount) + ")";
+            obj.("_Name")       = textAnalysis.preProcessedData(obj.("Name"),     true, false);
+            obj.("_Location")   = textAnalysis.preProcessedData(obj.("Location"), true, false);
         end
 
         %-----------------------------------------------------------------%

@@ -9,93 +9,39 @@ classdef (Abstract) textAnalysis
         specialChars = {'ç', 'ã', 'á', 'à', 'â', 'ê', 'é', 'í', 'î', 'ì', 'ó', 'ò', 'ô', 'õ', 'ú', 'ù', 'û', 'ü'}
         replaceChars = {'c', 'a', 'a', 'a', 'a', 'e', 'e', 'i', 'i', 'i', 'o', 'o', 'o', 'o', 'u', 'u', 'u', 'u'}
 
-        decodeChars  = {'ç', '~', '^', '´', '`'}
+        specialPont  = {',', ';', '.', ':', '?', '!', '"', '''', '(', ')', '[', ']', '{', '}'}
+        replacePont  = {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',  ' ', ' ', ' ', ' ', ' ', ' '}
     end
 
     methods (Static = true)
         %-----------------------------------------------------------------%
-        function editedWords = normalizeWords(rawWords, operationType)
-            arguments
-                rawWords
-                operationType char {mustBeMember(operationType, {'lower-version-oriented', 'capital-oriented'})} = 'lower-version-oriented'
-            end
-
-            if ~iscellstr(rawWords)
-                rawWords = cellstr(rawWords);
-            end
-
-            editedWords = replace(lower(rawWords), textAnalysis.specialChars, textAnalysis.replaceChars);
-
-            if strcmp(operationType, 'capital-oriented')                    
-                for ii = 1:numel(rawWords)
-                    idxLogical = upper(rawWords{ii}) == rawWords{ii};
-                    editedWords{ii}(idxLogical) = upper(editedWords{ii}(idxLogical));
-                end
-            end
+        function editedWords = normalizeWords(rawWords)
+            editedWords = strtrim(replace(lower(rawWords), [textAnalysis.specialChars, textAnalysis.specialPont], ...
+                                                           [textAnalysis.replaceChars, textAnalysis.replacePont]));
         end
 
         %-----------------------------------------------------------------%
-        function [uniqueData, referenceData] = preProcessedData(rawData)
-            classData = class(rawData);
-            switch classData
-                case 'cell'
-                    referenceData = rawData;
-                case 'categorical'
-                    referenceData = cellstr(rawData);
-                case {'char', 'string'}
-                    referenceData = char(rawData);
-                otherwise
-                    error('Unexpected datatype')
+        function [uniqueData, referenceData] = preProcessedData(rawData, listFlag, uniqueFlag)
+            arguments
+                rawData
+                listFlag   (1,1) logical = true
+                uniqueFlag (1,1) logical = true
+            end
+
+            if listFlag
+                referenceData = cellstr(rawData);
+            else
+                referenceData = char(rawData);
             end
           
             referenceData = textAnalysis.normalizeWords(referenceData);
-            referenceData = replace(referenceData, {',', ';', '.', ':', '?', '!', '"', '''', '(', ')', '[', ']', '{', '}'}, ...
-                                                   {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '});
-            referenceData = strtrim(referenceData);
-        
-            switch classData
-                case {'cell', 'categorical'}
-                    uniqueData = unique(referenceData, 'stable');
-                    uniqueData(cellfun(@(x) isempty(x), uniqueData)) = [];
-        
-                case {'char', 'string'}
-                    uniqueData = referenceData;
-            end
-        end
 
-        %-----------------------------------------------------------------%
-        function [content, encoding] = fileread(fileFullName, regexPattern, encodingList)
-            arguments
-                fileFullName char
-                regexPattern char = ''
-                encodingList cell = {'UTF-8', 'ISO-8859-1', 'windows-1251', 'windows-1252'}
+            if listFlag && uniqueFlag
+                uniqueData = unique(referenceData, 'stable');
+                uniqueData(cellfun(@(x) isempty(x), uniqueData)) = [];
+            else
+                uniqueData = referenceData;
             end
-
-            fileID = fopen(fileFullName, 'r');
-            if fileID == -1
-                error('File not found.');
-            end
-            
-            rawContent = fread(fileID, [1, inf], 'uint8=>uint8');
-            fclose(fileID);
-
-            decodeChars  = strjoin(textAnalysis.decodeChars, '');
-            encodingInfo = struct('name', encodingList, 'count', 0);
-
-            if numel(encodingList) > 1
-                for ii = 1:numel(encodingList)
-                    rawDecoded  = native2unicode(rawContent, encodingList{ii});
-                    if ~isempty(regexPattern)
-                        rawDecoded = strjoin(regexp(rawDecoded, regexPattern, 'match', 'lineanchors'), '');
-                    end
-    
-                    encodingInfo(ii).count = numel(regexp(rawDecoded, ['[' decodeChars ']'], 'match', 'ignorecase'));
-                end
-            end
-            
-            [~, idx] = max([encodingInfo.count]);
-            encoding = encodingList{idx};
-            content  = native2unicode(rawContent, encoding);
         end
     end
 

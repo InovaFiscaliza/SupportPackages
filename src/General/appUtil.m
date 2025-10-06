@@ -9,6 +9,7 @@ classdef (Abstract) appUtil
             warning('off', 'MATLAB:class:DestructorError')
             warning('off', 'MATLAB:modes:mode:InvalidPropertySet')
             warning('off', 'MATLAB:table:RowsAddedExistingVars')
+            warning('off', 'MATLAB:table:ModifiedVarnames')
             warning('off', 'MATLAB:colon:operandsNotRealScalar')
             warning('off', 'MATLAB:opengl:unableToSelectHWGL')
         end
