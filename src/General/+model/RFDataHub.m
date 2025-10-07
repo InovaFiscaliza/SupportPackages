@@ -69,6 +69,19 @@ classdef (Abstract) RFDataHub
                     RFDataHub = model.RFDataHub.createColumnsToGUI(RFDataHub);
                 end
             end
+
+            % Algumas transformações foram migradas p/ model.RFDataHub.parquet2mat
+            % mas isso terá efeito apenas quando da atualização da base
+            % (que virá numa nova versão). Cria-se validação, evitando
+            % erros.
+            if isa(RFDataHub.("Latitude"), 'single') || isa(RFDataHub.("Longitude"), 'single')
+                RFDataHub.("Latitude")  = double(RFDataHub.("Latitude"));
+                RFDataHub.("Longitude") = double(RFDataHub.("Longitude"));
+            end
+
+            if any(~ismember({'ID', 'Description', '_Name', '_Location'}, RFDataHub.Properties.VariableNames))
+                RFDataHub = model.RFDataHub.createColumnsToGUI(RFDataHub);
+            end
         end
 
         %-----------------------------------------------------------------%

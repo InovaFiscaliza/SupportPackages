@@ -132,7 +132,7 @@ classdef (Abstract) textFormatGUI
                 elseif iscellstr(dataStruct(ii).value)
                     htmlCode = sprintf('%s\n%s', htmlCode, strjoin(dataStruct(ii).value, '\n'));
                 else
-                    htmlCode = sprintf('%s\n%s', htmlCode, dataStruct(ii).value);
+                    htmlCode = sprintf('%s\n%s', htmlCode, string(dataStruct(ii).value));
                 end
 
                 if ii ~= numel(dataStruct)

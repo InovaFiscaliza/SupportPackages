@@ -5,7 +5,7 @@ classdef (Abstract) CustomizationBase
     % "data-tag" (ou "dataset.tag", via JS).
 
     % ToDo:
-    % Migrar compononentCustomization.js para essa subpasta. Organizar
+    % Migrar componentCustomization.js para essa subpasta. Organizar
     % métodos relacionados...
 
     methods (Static = true)
@@ -15,22 +15,25 @@ classdef (Abstract) CustomizationBase
         % end
 
         %-----------------------------------------------------------------%
-        function [elDataTag, attempts] = getElementsDataTag(elToModify)
-            elDataTag = {};
-            attempts  = 0;
-            
-            timeout   = 10;
+        function elDataTag = getElementsDataTag(elToModify)
             fcnHandle = @(x) struct(x).Controller.ViewModel.Id;
 
+            timeout = 10;
             tStart = tic;
             while toc(tStart) < timeout
-                attempts = attempts+1;
                 pause(0.025)
 
                 try
-                    elDataTag = cellfun(@(x) fcnHandle(x), elToModify, 'UniformOutput', false);
+                    elDataTag = {};
                     for ii = 1:numel(elToModify)
-                        elToModify{ii}.UserData.id = elDataTag{ii};
+                        if isvalid(elToModify{ii})
+                            if isempty(elToModify{ii}.UserData) || ~isfield(elToModify{ii}.UserData, 'id') && isempty(elToModify{ii}.UserData.id)
+                                elToModify{ii}.UserData.id = fcnHandle(elToModify{ii});
+                            end
+                            elDataTag{ii} = elToModify{ii}.UserData.id;
+                        else
+                            elDataTag{ii} = '';
+                        end
                     end
                     break
                 catch
