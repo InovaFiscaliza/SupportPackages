@@ -259,8 +259,8 @@ function newArray = newArrayParsing(processedArray, BitsPerSample, OFFSET, DataP
         idx21 = idx12+1;
         idx22 = numel(processedArray);
         
-        newArray(:,2) = newArrayDecompress(typecast(processedArray(idx11:idx12), 'int16'), 16, -1);
-        newArray(:,3) = newArrayDecompress(typecast(processedArray(idx21:idx22), 'int16'), 16, -1);
+        newArray(:,2) = newArrayDecompress(typecast(processedArray(idx11:idx12), 'uint16'), 16, -1);
+        newArray(:,3) = newArrayDecompress(typecast(processedArray(idx21:idx22), 'uint16'), 16, -1);
     end
 end
 
