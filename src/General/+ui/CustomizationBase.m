@@ -27,7 +27,7 @@ classdef (Abstract) CustomizationBase
                     elDataTag = {};
                     for ii = 1:numel(elToModify)
                         if isvalid(elToModify{ii})
-                            if isempty(elToModify{ii}.UserData) || ~isfield(elToModify{ii}.UserData, 'id') && isempty(elToModify{ii}.UserData.id)
+                            if isempty(elToModify{ii}.UserData) || ~isfield(elToModify{ii}.UserData, 'id') || isempty(elToModify{ii}.UserData.id)
                                 elToModify{ii}.UserData.id = fcnHandle(elToModify{ii});
                             end
                             elDataTag{ii} = elToModify{ii}.UserData.id;
