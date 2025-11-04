@@ -283,5 +283,27 @@ classdef (Abstract) textFormatGUI
             cellMatrix   = [structFields'; structValues'];
             cellArray    = cellMatrix(:)';
         end
+
+        %-----------------------------------------------------------------%
+        function editedValue = strToIndentedTree(rawValue, Delimiter)
+            arguments
+                rawValue (1,:) char
+                Delimiter char = '↳'
+            end
+
+            indent = '&emsp;';
+            parts  = strtrim(strsplit(rawValue, Delimiter));
+            tree   = {};
+
+            for ii = 1:numel(parts)
+                if ii == 1
+                    tree{end+1} = parts{ii};
+                else
+                    tree{end+1} = strcat(repmat(indent, 1, ii-1), '↳&thinsp;', parts{ii});
+                end
+            end
+            
+            editedValue = strjoin(tree, '\n');
+        end
     end
 end
