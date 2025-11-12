@@ -63,17 +63,9 @@ body {
     --mw-fontSize-dialog: 12px !important;
 }
 
-/*
-.vc-widget {
-    width: 100% !important;
-    height: 100% !important;
+.mw-table-component {
+    --mw-fontSize-table-cell: 10px !important;
 }
-
-.mwWidget {
-    width: 100% !important;
-    height: 100% !important;
-}
-*/
 
 .treenode.selected {
     background-image: rgba(180, 222, 255, 0.45) !important;
