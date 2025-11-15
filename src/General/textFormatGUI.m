@@ -292,15 +292,29 @@ classdef (Abstract) textFormatGUI
             end
 
             indent = '&emsp;';
-            parts  = strtrim(strsplit(rawValue, Delimiter));
-            tree   = {};
+            parts  = upper(strtrim(strsplit(rawValue, Delimiter)));
+            nParts = numel(parts);
 
-            for ii = 1:numel(parts)
-                if ii == 1
-                    tree{end+1} = parts{ii};
+            startGray = 220;
+            endGray   = 0;
+            
+            tree = {};
+            for ii = 1:nParts
+                if nParts == 1
+                    currentGray = uint8(endGray);
                 else
-                    tree{end+1} = strcat(repmat(indent, 1, ii-1), '↳&thinsp;', parts{ii});
+                    currentGray =     uint8(round(((endGray-startGray)/(nParts-1)) * (ii-1) + startGray));
                 end
+                
+                hexColor = sprintf('#%02X%02X%02X', currentGray, currentGray, currentGray);
+
+                if ii == 1
+                    line = parts{ii};
+                else
+                    line = strcat(repmat(indent, 1, ii-1), '↳&thinsp;', parts{ii});
+                end
+
+                tree{end+1} = sprintf('<font style="color:%s;">%s</font>', hexColor, line);
             end
             
             editedValue = strjoin(tree, '\n');
