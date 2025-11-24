@@ -6,6 +6,7 @@ classdef (Abstract) textAnalysis
         %-----------------------------------------------------------------%
         stopWords    = {'a', 'as', 'e', 'o', 'os', 'da', 'das', 'de', 'do', 'dos', 'em', 'um', 'uma', 'para', 'com', 'que', 'na', 'nas', 'no', 'nos', 'mas'}
         
+        specialMain  = {'ç', 'ã', 'á', 'é', 'í', 'ó', 'ú'}
         specialChars = {'ç', 'ã', 'á', 'à', 'â', 'ê', 'é', 'í', 'î', 'ì', 'ó', 'ò', 'ô', 'õ', 'ú', 'ù', 'û', 'ü'}
         replaceChars = {'c', 'a', 'a', 'a', 'a', 'e', 'e', 'i', 'i', 'i', 'o', 'o', 'o', 'o', 'u', 'u', 'u', 'u'}
 
