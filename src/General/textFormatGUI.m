@@ -319,5 +319,22 @@ classdef (Abstract) textFormatGUI
             
             editedValue = strjoin(tree, '\n');
         end
+
+        %-----------------------------------------------------------------%
+        function out = bytes2human(bytes)
+            arguments
+                bytes {mustBeInteger, mustBePositive}
+            end
+            
+            units = ["bytes","kB","MB","GB"];
+            base  = 1024;
+            
+            idx = floor(log(bytes) / log(base)) + 1;
+            idx = min(idx, numel(units));
+            
+            value = bytes / (base^(idx-1));
+            
+            out = sprintf('%.2f %s', value, units(idx));
+        end
     end
 end
