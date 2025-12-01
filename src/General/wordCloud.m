@@ -31,12 +31,18 @@ classdef wordCloud < handle
                                                                       'SizeVariable',    'Count',      ...
                                                                       'MaxDisplayWords', 25);
             end
+            drawnow
         end
 
         %-----------------------------------------------------------------%
         function set.Table(obj, value)
             TableUpdate(obj, value)
             obj.Table = value;
+        end
+
+        %-----------------------------------------------------------------%
+        function delete(obj)
+            delete(obj.Chart.Parent)
         end
     end
 
