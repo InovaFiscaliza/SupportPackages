@@ -27,7 +27,7 @@ function setup(htmlComponent) {
         window.top.app.wordcloud.data = currentWords;
     });
 
-    htmlComponent.addEventListener("eraseWordCloud", () => erase);
+    htmlComponent.addEventListener("eraseWordCloud", () => erase());
 
     /*
     let resizeTimeout;

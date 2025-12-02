@@ -90,8 +90,13 @@ body {
 }
 
 .tabBar {
+    height: 24px !important;
     background: transparent !important;
     border-left: none !important;
+}
+
+.topTabContentWrapper {
+    top: 24px !important;
 }
 
 .mwTabContainer {
