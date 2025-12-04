@@ -501,9 +501,10 @@ body {
 
     /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("turningBackgroundColorInvisible", function(customEvent) {
-        let objDataName = customEvent.Data.componentName.toString();
-        let objDataTag  = customEvent.Data.componentDataTag.toString();
-        let handle   = findComponentHandle(objDataTag);
+        const objDataName = customEvent.Data.componentName.toString();
+        const objDataTag  = customEvent.Data.componentDataTag.toString();
+        const interval_ms = customEvent.Data.interval_ms || 25;
+        const handle      = findComponentHandle(objDataTag);
 
         try {
             let opacityValue = 1.0;
@@ -515,7 +516,7 @@ body {
                     clearInterval(intervalId);
                     htmlComponent.sendEventToMATLAB("BackgroundColorTurnedInvisible", objDataName);
                 }
-            }, 25);
+            }, interval_ms);
         } catch (ME) {
             // console.log(ME)
         }
