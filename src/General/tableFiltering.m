@@ -2,9 +2,11 @@ classdef tableFiltering < handle
 
     properties
         %-----------------------------------------------------------------%
-        filterRules table = table('Size',          [0, 4],                              ...
-                                  'VariableTypes', {'cell', 'cell', 'cell', 'logical'}, ...
-                                  'VariableNames', {'Column', 'Operation', 'Value', 'Enable'})
+        filterRules = table( ...
+            'Size', [0, 6], ...
+            'VariableTypes', {'cell', 'cell', 'cell', 'cell', 'cell', 'logical'}, ...
+            'VariableNames', {'Hash', 'Field', 'Operators', 'Values', 'Connector', 'Enable'} ...
+        )
     end
 
 
@@ -27,61 +29,94 @@ classdef tableFiltering < handle
 
 
         %-----------------------------------------------------------------%
-        function msgWarning = addFilterRule(obj, Column, Operation, Value)
-            fHeight  = height(obj.filterRules);
-            fLogical = ones(fHeight, 3, 'logical');
-
-            fLogical(:,1) = strcmp(obj.filterRules.Column,    Column);
-            fLogical(:,2) = strcmp(obj.filterRules.Operation, Operation);
-            fLogical(:,3) = cellfun(@(x) isequal(x, Value), obj.filterRules.Value);
-
-            if (fHeight == 0) || ~any(all(fLogical, 2))
-                if ~ischar(Value)
-                    Value = {Value};
-                end
-                obj.filterRules(end+1,:) = {Column, Operation, Value, true};
-                obj.filterRules = sortrows(obj.filterRules, 'Column');
-                msgWarning = '';
-            else
-                msgWarning = 'O conjunto Coluna-Operação-Valor já consta na lista de filtros secundários.';
+        function addFilterRule(obj, Field, Operators, Values, Connector)
+            arguments
+                obj 
+                Field     (1,:) char
+                Operators (1,:) cell
+                Values    (1,:) cell
+                Connector (1,:) char
             end
+
+            Hash = Base64Hash.encode(sprintf('%s - %s - %s - %s', Field, strjoin(Operators, '+'), strjoin(cellfun(@string, Values), '+'), Connector));
+            if ismember(Hash, obj.filterRules.("Hash"))
+                error('Filter already exists')
+            end
+
+            obj.filterRules(end+1,:) = {Hash, Field, {Operators}, {Values}, Connector, true};
+            obj.filterRules = sortrows(obj.filterRules, 'Field');
         end
 
 
         %-----------------------------------------------------------------%
-        function msgWarning = removeFilterRule(obj, idx)
-            try
-                obj.filterRules(idx,:) = [];
-                msgWarning = '';
-            catch ME
-                msgWarning = ME.message;
-            end
+        function removeFilterRule(obj, idx)
+            obj.filterRules(idx, :) = [];
         end
 
 
         %-----------------------------------------------------------------%
-        function filterList = FilterList(obj, baseName)
-            configValue = {};
-            for ii = 1:height(obj.filterRules)
-                Value = obj.filterRules.Value{ii};
+        function toogleFilterRule(obj, enableArray)
+            obj.filterRules.Enable = enableArray;
+        end
 
-                if isnumeric(Value)
-                    configValue{ii,1} = sprintf('[%s]', strjoin(string(Value), ', '));
 
-                elseif iscellstr(Value)
-                    configValue{ii,1} = textAnalysis.cellstrGUIStyle(Value);
+        %-----------------------------------------------------------------%
+        function filterList = getFilterList(obj, baseName, status)
+            arguments
+                obj
+                baseName
+                status char {mustBeMember(status, {'all', 'on'})} = 'all'
+            end
+            filterList = {};
 
-                else %ischar(Value)
-                    configValue{ii,1} = sprintf('"%s"', Value);
+            switch status
+                case 'all'
+                    fRules = obj.filterRules;
+                case 'on'
+                    fRules = obj.filterRules(obj.filterRules.Enable, :);
+            end
+
+            for ii = 1:height(fRules)
+                Field     = fRules.Field{ii};
+                Operators = fRules.Operators{ii};
+                Values    = fRules.Values{ii};
+                Connector = lower(fRules.Connector{ii});
+
+                for jj = 1:numel(Operators)
+                    if jj == 1
+                        filterList{ii} = sprintf('%s.("%s") %s %s', baseName, Field, Operators{jj}, stringifyFilterValue(obj, Values{jj}));
+                    else
+                        switch Connector
+                            case 'and'
+                                operatorSymbol = '&&';
+                            case 'or'
+                                operatorSymbol = '||';
+                        end
+                        filterList{ii} = sprintf('%s %s %s.("%s") %s %s', filterList{ii}, operatorSymbol, baseName, Field, Operators{jj}, stringifyFilterValue(obj, Values{jj}));
+                    end
                 end
             end
-            
-            filterList = cellstr(string(baseName) + ".(""" + string(obj.filterRules.Column) + """) " + string(obj.filterRules.Operation) + " " + string(configValue));
         end
     end
 
 
     methods (Access = private)
+        %-----------------------------------------------------------------%
+        function value = stringifyFilterValue(obj, value)
+            if isnumeric(value)
+                if isscalar(value)
+                    value = string(value);
+                else
+                    value = sprintf('[%s]', strjoin(string(value), ', '));
+                end
+            elseif iscellstr(value)
+                value = textFormatGUI.cellstr2ListWithQuotes(value);
+            else
+                value = sprintf('"%s"', value);
+            end
+        end
+
+
         %-----------------------------------------------------------------%
         function fIndex = stringMatchFiltering(obj, varargin)
             rawTable       = varargin{1};
@@ -129,25 +164,43 @@ classdef tableFiltering < handle
 
 
         %-----------------------------------------------------------------%
-        function fLogicalIndex = rulesOrientedFiltering(obj, varargin)
-            rawTable = varargin{1};
-            
-            tHeight = height(rawTable);            
+        function fLogicalIndex = rulesOrientedFiltering(obj, rawTable)            
             fRules  = obj.filterRules(obj.filterRules.Enable, :);
-            
+            tHeight = height(rawTable);
+
             if isempty(fRules)
                 fLogicalIndex = ones(tHeight, 1, 'logical');
             
             else
-                [columnNames, ~, columnIndex] = unique(obj.filterRules.Column);
-                nColumns = numel(columnNames);
-                fLogical = zeros(tHeight, nColumns, 'logical');
+                [fieldNames, ~, fieldIndexes] = unique(fRules.Field);
+                numFields = numel(fieldNames);
+                fLogical  = zeros(tHeight, numFields, 'logical');
 
-                for ii = 1:nColumns
-                    idx = find(columnIndex == ii)';
+                for ii = 1:numFields
+                    idx = find(fieldIndexes == ii)';
+                    
                     for jj = idx
-                        Fcn = functionHandle(obj, fRules.Operation{jj}, fRules.Value{jj});
-                        fLogical(:,ii) = or(fLogical(:,ii), Fcn(rawTable{:, fRules.Column{jj}}));
+                        Field     = fRules.Field{jj};
+                        Operators = fRules.Operators{jj}; % cell
+                        Values    = fRules.Values{jj};    % cell
+                        Connector = lower(fRules.Connector{jj});
+
+                        for kk = 1:numel(Operators)
+                            Fcn = functionHandle(obj, Operators{kk}, Values{kk});
+
+                            if kk == 1
+                                fTempLogical = Fcn(rawTable{:, Field});
+                            else
+                                switch Connector
+                                    case 'and'
+                                        fTempLogical = and(fTempLogical, Fcn(rawTable{:, Field}));
+                                    case 'or'
+                                        fTempLogical =  or(fTempLogical, Fcn(rawTable{:, Field}));
+                                end
+                            end
+                        end
+
+                        fLogical(:,ii) = or(fLogical(:,ii), fTempLogical);
                     end
                 end
 
@@ -157,31 +210,57 @@ classdef tableFiltering < handle
 
 
         %-----------------------------------------------------------------%
-        function Fcn = functionHandle(obj, Operation, Value)
+        function Fcn = functionHandle(obj, Operator, Value)
             if isnumeric(Value) || isdatetime(Value)
                 floatTolerance = obj.floatDiffTolerance;
 
-                switch Operation
-                    case '=';  Fcn = @(x) abs(x - Value) < floatTolerance;
-                    case '≠';  Fcn = @(x) abs(x - Value) > floatTolerance;
-                    case '⊃';  Fcn = @(x)  ismember(x, Value);
-                    case '⊅';  Fcn = @(x) ~ismember(x, Value);
-                    case '<';  Fcn = @(x) x <  Value;
-                    case '≤';  Fcn = @(x) x <= Value;
-                    case '>';  Fcn = @(x) x >  Value;
-                    case '≥';  Fcn = @(x) x >= Value;
-                    case '><'; Fcn = @(x) (x > Value(1)) & (x < Value(2));
-                    case '<>'; Fcn = @(x) (x < Value(1)) | (x > Value(2));
+                switch Operator
+                    case '='
+                        Fcn = @(x) abs(x - Value) < floatTolerance;
+                    case '≠'
+                        Fcn = @(x) abs(x - Value) > floatTolerance;
+                    case {'⊃', 'contains'}
+                        Fcn = @(x)  ismember(x, Value);
+                    case {'⊅', 'does not contain'}
+                        Fcn = @(x) ~ismember(x, Value);
+                    case '<'
+                        Fcn = @(x) x <  Value;
+                    case '≤'
+                        Fcn = @(x) x <= Value;
+                    case '>'
+                        Fcn = @(x) x >  Value;
+                    case '≥'
+                        Fcn = @(x) x >= Value;
+                    case '><'
+                        Fcn = @(x) (x > Value(1)) & (x < Value(2));
+                    case '<>'
+                        Fcn = @(x) (x < Value(1)) | (x > Value(2));
+                    otherwise
+                        error('UnexpectedOperation')
                 end
         
             elseif ischar(Value) || isstring(Value) || iscellstr(Value)
                 Value = cellstr(Value);
 
-                switch Operation
-                    case '=';  Fcn = @(x)   strcmpi(cellstr(x), Value);
-                    case '≠';  Fcn = @(x)  ~strcmpi(cellstr(x), Value);
-                    case '⊃';  Fcn = @(x)  contains(cellstr(x), Value, 'IgnoreCase', true);
-                    case '⊅';  Fcn = @(x) ~contains(cellstr(x), Value, 'IgnoreCase', true);
+                switch Operator
+                    case '='
+                        Fcn = @(x) strcmpi(cellstr(x), Value);                    
+                    case '≠'
+                        Fcn = @(x) ~strcmpi(cellstr(x), Value);                    
+                    case {'⊃', 'contains'}
+                        Fcn = @(x) contains(cellstr(x), Value, 'IgnoreCase', true);
+                    case {'⊅', 'does not contain'}
+                        Fcn = @(x) ~contains(cellstr(x), Value, 'IgnoreCase', true);                    
+                    case 'begins with'
+                        Fcn = @(x) startsWith(cellstr(x), Value, 'IgnoreCase', true);
+                    case 'does not begin with'
+                        Fcn = @(x) ~startsWith(cellstr(x), Value, 'IgnoreCase', true);                    
+                    case 'ends with'
+                        Fcn = @(x) endsWith(cellstr(x), Value, 'IgnoreCase', true);
+                    case 'does not end with'
+                        Fcn = @(x) ~endsWith(cellstr(x), Value, 'IgnoreCase', true);
+                    otherwise
+                        error('UnexpectedOperation')
                 end
 
             else

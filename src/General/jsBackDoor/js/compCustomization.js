@@ -67,6 +67,12 @@ body {
     --mw-fontSize-table-cell: 10px !important;
 }
 
+.mw-table-row-header-cell {
+    color: var(--mw-color-secondary,#616161) !important;
+    font-weight: var(--mw-fontWeight-table-header-index) !important;
+    text-align: center !important;
+}
+
 .treenode.selected {
     background-image: rgba(180, 222, 255, 0.45) !important;
 }
