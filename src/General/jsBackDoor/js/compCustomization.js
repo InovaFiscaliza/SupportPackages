@@ -591,9 +591,17 @@ body {
                 // Input field
                 let input = document.createElement("input");
                 input.type = field.type;
+                input.value = field.defaultValue || "";
                 input.className = "custom-form-entry";
                 input.style.cssText = "height: 18px;";
                 input.setAttribute("data-tag", UUID + "_" + field.id);
+                
+                input.addEventListener("keydown", event => {
+                    if (event.key === "Enter") {
+                        event.preventDefault();
+                    }
+                });
+
                 formContainer.appendChild(input);
             });
     
