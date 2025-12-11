@@ -67,6 +67,10 @@ body {
     --mw-fontSize-table-cell: 10px !important;
 }
 
+a, a:hover {
+    text-decoration: none;
+}
+
 .mw-table-row-header-cell {
     color: var(--mw-color-secondary,#616161) !important;
     font-weight: var(--mw-fontWeight-table-header-index) !important;
