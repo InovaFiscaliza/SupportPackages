@@ -71,7 +71,7 @@ function htmlReport = Controller(reportInfo, dataOverview)
 
                 try
                     switch childType
-                        case {'ItemN2', 'ItemN3', 'Paragraph', 'List', 'Footnote'}
+                        case {'ItemN2', 'ItemN3', 'Paragraph', 'List', 'NonIndentedList', 'Footnote'}
                             % Esse loop existe apenas por conta do componente do tipo "List"...
                             for ll = 1:numel(childNode.Data)
                                 if ~isempty(childNode.Data(ll).Variable)

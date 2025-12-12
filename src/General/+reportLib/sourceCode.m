@@ -18,8 +18,14 @@ classdef (Abstract) sourceCode
                     htmlContent = sprintf('<p class="%s" contenteditable="%s"%s>%s</p>\n\n', txtClass, componentData.Editable, txtStyle, componentData.Text);        
         
                 %---------------------------------------------------------%
-                case 'List'
-                    htmlContent = '<ul style="margin-left: 80px;">';
+                case {'List', 'NonIndentedList'}
+                    switch componentType
+                        case 'List'
+                            htmlContent = '<ul style="margin-left: 80px;">';
+                        otherwise
+                            htmlContent = '<ul>';
+                    end
+
                     for ii = 1:numel(componentData)
                         htmlContent = sprintf(['%s\n'                                            ...
                                                '\t<li>\n'                                        ...
@@ -132,8 +138,8 @@ classdef (Abstract) sourceCode
     methods (Static = true)
         %-----------------------------------------------------------------%
         function ComponentTypeCheck(componentType)
-            if ~ismember(componentType, {'ItemN1', 'ItemN2', 'ItemN3', 'Paragraph', 'Footnote', 'List', 'Image', 'Table'})
-                error('report:sourceCode:ComponentTypeCheck', 'Lib supports only "ItemN1", "ItemN2", "ItemN3", "Paragraph", "Footnote", "List", "Image" and "Table" HTML components.')
+            if ~ismember(componentType, {'ItemN1', 'ItemN2', 'ItemN3', 'Paragraph', 'Footnote', 'List', 'NonIndentedList', 'Image', 'Table'})
+                error('report:sourceCode:ComponentTypeCheck', 'Lib supports only "ItemN1", "ItemN2", "ItemN3", "Paragraph", "Footnote", "List", "NonIndentedList", "Image" and "Table" HTML components.')
             end
         end
 
@@ -144,14 +150,22 @@ classdef (Abstract) sourceCode
             tableStyle = '';
 
             switch componentType
-                case 'ItemN1';    txtClass = 'Item_Nivel1';
-                case 'ItemN2';    txtClass = 'Item_Nivel2';
-                case 'ItemN3';    txtClass = 'Item_Nivel3';
-                case 'Paragraph'; txtClass = 'Texto_Justificado';
-                case 'Footnote';  txtClass = 'Tabela_Texto_8';    txtStyle = ' style="color: #808080;"';
-                case 'List';      txtClass = 'Texto_Justificado';
-                case 'Image';     txtClass = 'Tabela_Texto_8';
-                case 'Table';     txtClass = 'Tabela_Texto_8';    tableStyle = 'tabela_corpo';
+                case 'ItemN1'
+                    txtClass   = 'Item_Nivel1';
+                case 'ItemN2'
+                    txtClass   = 'Item_Nivel2';
+                case 'ItemN3'
+                    txtClass   = 'Item_Nivel3';
+                case {'Paragraph', 'List', 'NonIndentedList'}
+                    txtClass   = 'Texto_Justificado';
+                case 'Footnote'
+                    txtClass   = 'Tabela_Texto_8';
+                    txtStyle   = ' style="color: #808080;"';
+                case 'Image'
+                    txtClass   = 'Tabela_Texto_8';
+                case 'Table'
+                    txtClass   = 'Tabela_Texto_8';
+                    tableStyle = 'tabela_corpo';
             end        
         end
 
