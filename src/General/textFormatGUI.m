@@ -83,10 +83,10 @@ classdef (Abstract) textFormatGUI
 
             % dataStruct é uma estrutura com os campos "group" e "value". O
             % campo "group" registra apenas uma string com o nome do grupo.
-            % O campo "value", por outro lado, é uma estrutura cujos valores
-            % dos campos podem ser numéricos, textuais, cellstr ou estruturas 
-            % aninhadas (limitada a duas pois cada uma terá o seu próprio 
-            % marcador).
+            % O campo "value", por outro lado, é uma estrutura escalar cujos 
+            % valores dos campos podem ser numéricos, textuais, cellstr ou 
+            % estruturas aninhadas (limitada a duas pois cada uma terá o seu 
+            % próprio marcador).
             % - Nível 1: •
             % - Nível 2: ○
             % - Nível 3: □
