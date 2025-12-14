@@ -12,6 +12,7 @@ function setup(htmlComponent) {
     window.top.app.matlabBackDoor = htmlComponent;
     window.top.app.ui             = [];    
     window.top.app.modules        = {};
+    window.top.app.indexedDB      = null;
 
     /*-----------------------------------------------------------------------------------
     FUNÇÕES
@@ -241,6 +242,7 @@ a, a:hover {
         return /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
     }
 
+    /*---------------------------------------------------------------------------------*/
     function camelToKebab(prop) {
         return prop.replace(/[A-Z]/g, m => "-" + m.toLowerCase());
     }
@@ -805,6 +807,101 @@ a, a:hover {
                 break;
         };
     });
+
+    /*-----------------------------------------------------------------------------------
+        ## INDEXED DB ##
+    -----------------------------------------------------------------------------------*/
+    htmlComponent.addEventListener("indexedDB", async function(customEvent) {
+        const dbConfig = customEvent.Data;
+
+        switch (dbConfig.operation) {
+            case "openDB": {
+                try {
+                    window.top.app.indexedDB = await openDB(dbConfig.name, dbConfig.version, dbConfig.store);
+                    htmlComponent.sendEventToMATLAB("indexedDB", { operation: "openDB", status: "success" });
+                } catch (ME) {
+                    htmlComponent.sendEventToMATLAB("indexedDB", { operation: "openDB", status: "failure", message: ME.message });
+                }
+                break;
+            }
+            case "saveData": {
+                const { key, data }  = customEvent.Data;
+                try {
+                    await saveDataInDB(dbConfig.store, key, data);
+                    htmlComponent.sendEventToMATLAB("indexedDB", { operation: "updateData", status: "success" });
+                } catch (ME) {
+                    htmlComponent.sendEventToMATLAB("indexedDB", { operation: "updateData", status: "failure", message: ME.message });
+                }
+                break;
+            }
+            case "loadData": {
+                const key = customEvent.Data.key;
+                try {
+                    const data = await loadDataFromDB(dbConfig.store, key);
+                    htmlComponent.sendEventToMATLAB("indexedDB", { operation: "loadData", status: "success", data: data });
+                } catch (ME) {
+                    htmlComponent.sendEventToMATLAB("indexedDB", { operation: "loadData", status: "failure", message: ME.message });
+                }
+                break;
+            }
+            default:
+                consoleLog(`IndexedDB: unknown operation "${dbConfig.operation}"`);
+        }
+    });
+
+    /*---------------------------------------------------------------------------------*/
+    function openDB(DB_NAME, DB_VERSION, DB_STORE) {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains(DB_STORE)) {
+                    db.createObjectStore(DB_STORE, { keyPath: "key" } );
+                }
+            };
+
+            request.onsuccess = (event) => resolve(event.target.result);
+            request.onerror   = (event) => reject(event.target.error);
+        });
+    }
+
+    /*---------------------------------------------------------------------------------*/
+    function saveDataInDB(DB_STORE, key, data) {
+        const db = window.top.app.indexedDB;
+        if (!db) {
+            throw new Error("IndexedDB is not opened yet.");
+        }
+
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(DB_STORE, "readwrite");
+            const store = tx.objectStore(DB_STORE);
+            store.put({
+                key,
+                data, 
+                timestamp: Date.now()
+            });
+
+            tx.oncomplete = () => resolve(true);
+            tx.onerror    = () => reject(tx.error);
+        });
+    }
+
+    /*---------------------------------------------------------------------------------*/
+    function loadDataFromDB(DB_STORE, key) {
+        if (!window.top.app.indexedDB) {
+            throw new Error("IndexedDB is not opened yet.");
+        }
+
+        return new Promise((resolve, reject) => {
+            const tx = window.top.app.indexedDB.transaction(DB_STORE, "readonly");
+            const store = tx.objectStore(DB_STORE);
+            const request = store.get(key);
+
+            request.onsuccess = () => resolve(request.result);
+            request.onerror   = () => reject(request.error);
+        });
+    }
 
     /*---------------------------------------------------------------------------------*/
     window.requestAnimationFrame(() => {
