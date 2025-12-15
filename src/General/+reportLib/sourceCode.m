@@ -15,7 +15,7 @@ classdef (Abstract) sourceCode
             switch componentType
                 %---------------------------------------------------------%
                 case {'ItemN1', 'ItemN2', 'ItemN3', 'Paragraph', 'Footnote'}
-                    htmlContent = sprintf('<p class="%s" contenteditable="%s"%s>%s</p>\n\n', txtClass, componentData.Editable, txtStyle, componentData.Text);        
+                    htmlContent = sprintf('<p class="%s"%s%s>%s</p>\n\n', txtClass, reportLib.sourceCode.Editable(componentData.Editable), txtStyle, componentData.Text);        
         
                 %---------------------------------------------------------%
                 case {'List', 'NonIndentedList'}
@@ -29,8 +29,8 @@ classdef (Abstract) sourceCode
                     for ii = 1:numel(componentData)
                         htmlContent = sprintf(['%s\n'                                            ...
                                                '\t<li>\n'                                        ...
-                                               '\t\t<p class="%s" contenteditable="%s">%s</p>\n' ...
-                                               '\t</li>'], htmlContent, txtClass, componentData(ii).Editable, componentData(ii).Text);
+                                               '\t\t<p class="%s"%s>%s</p>\n' ...
+                                               '\t</li>'], htmlContent, txtClass, reportLib.sourceCode.Editable(componentData(ii).Editable), componentData(ii).Text);
                     end
                     htmlContent = sprintf('%s\n</ul>\n\n', htmlContent);        
         
@@ -90,8 +90,8 @@ classdef (Abstract) sourceCode
                     
                             htmlContent = sprintf(['%s\n'                                              ...
                                                  '\t\t\t<th scope="col"%s>\n'                          ...
-                                                 '\t\t\t\t<p class="%s" contenteditable="%s">%s</p>\n' ...
-                                                 '\t\t\t</th>'], htmlContent, value, txtClass, componentData.Settings(jj).Editable, columnName);
+                                                 '\t\t\t\t<p class="%s"%s>%s</p>\n' ...
+                                                 '\t\t\t</th>'], htmlContent, value, txtClass, reportLib.sourceCode.Editable(componentData.Settings(jj).Editable), columnName);
 
                             containerCustomStyle = '';
                             if isfield(componentData.Settings(jj), 'ContainerStyle')
@@ -104,8 +104,8 @@ classdef (Abstract) sourceCode
                             end
                     
                             rowTemplate{jj} = sprintf(['\t\t\t<td%s>\n'                                           ...
-                                                       '\t\t\t\t<p class="%s" contenteditable="%s"%s>%%s</p>\n' ...
-                                                       '\t\t\t</td>'], containerCustomStyle, txtClass, componentData.Settings(jj).Editable, textCustomStyle);
+                                                       '\t\t\t\t<p class="%s"%s%s>%%s</p>\n' ...
+                                                       '\t\t\t</td>'], containerCustomStyle, txtClass, reportLib.sourceCode.Editable(componentData.Settings(jj).Editable), textCustomStyle);
                         end                    
                         htmlContent = sprintf(['%s\n'       ...
                                              '\t\t</tr>\n'  ...
@@ -167,6 +167,25 @@ classdef (Abstract) sourceCode
                     txtClass   = 'Tabela_Texto_8';
                     tableStyle = 'tabela_corpo';
             end        
+        end
+
+
+        %-----------------------------------------------------------------%
+        function editable = Editable(status)
+            if isnumeric(status)
+                status = logical(status);
+            end
+
+            status = lower(string(status));
+
+            switch status
+                case "true"
+                    editable = '';
+                case "false"
+                    editable = ' contenteditable="false"';
+                otherwise
+                    error('UnexpectedEditableOption')
+            end
         end
 
 

@@ -541,6 +541,7 @@ a, a:hover {
     htmlComponent.addEventListener("customForm", function(customEvent) {
         try {
             const { UUID, Context } = customEvent.Data;
+            const labelColumnWidth  = customEvent.Data.ColumnWidth || "70px";
             let Fields    = customEvent.Data.Fields;
             Fields        = Array.isArray(Fields) ? Fields : [Fields];
             const zIndex  = 1000;
@@ -587,7 +588,7 @@ a, a:hover {
 
             // Form generation
             let formContainer = document.createElement("form");
-            formContainer.style.cssText = "display: grid; grid-template-columns: 70px auto; gap: 5px; font-size: 12px; align-items: center;";
+            formContainer.style.cssText = `display: grid; grid-template-columns: ${labelColumnWidth} auto; gap: 5px; font-size: 12px; align-items: center;`;
     
             Fields.forEach(function(field) {
                 // Label
