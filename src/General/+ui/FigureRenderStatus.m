@@ -1,4 +1,4 @@
-function status = UIFigureRenderStatus(fHandle)
+function status = FigureRenderStatus(fHandle)
 
     status = false;
     fControl = struct(fHandle).Controller;

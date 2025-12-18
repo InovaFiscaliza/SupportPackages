@@ -24,7 +24,7 @@ classdef Elevation < handle
     methods
         %-----------------------------------------------------------------%
         function [obj, msgWarning] = Elevation()
-            obj.cacheFolder  = fullfile(ccTools.fcn.OperationSystem('programData'), 'ANATEL', 'Elevation');
+            obj.cacheFolder  = fullfile(appUtil.OperationSystem('programData'), 'ANATEL', 'Elevation');
             
             try                
                 obj.cacheMapping = readtable(fullfile(obj.cacheFolder, obj.cacheFile));

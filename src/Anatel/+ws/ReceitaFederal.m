@@ -25,7 +25,7 @@ classdef ReceitaFederal < ws.WebServiceBase
     methods
         %-----------------------------------------------------------------%
         function [obj, msgWarning] = ReceitaFederal()
-            obj.cacheFolder = fullfile(ccTools.fcn.OperationSystem('programData'), 'ANATEL', 'ReceitaFederal');
+            obj.cacheFolder = fullfile(appUtil.OperationSystem('programData'), 'ANATEL', 'ReceitaFederal');
             
             try
                 obj.cacheMapping = readtable(fullfile(obj.cacheFolder, obj.cacheFile));

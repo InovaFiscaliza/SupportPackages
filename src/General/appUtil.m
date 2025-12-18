@@ -41,7 +41,7 @@ classdef (Abstract) appUtil
             rootFolder = MFilePath;
 
             if isdeployed
-                [status, executionFolder] = ccTools.fcn.OperationSystem('desktopStandaloneAppFolder', appName);            
+                [status, executionFolder] = appUtil.OperationSystem('desktopStandaloneAppFolder', appName);            
                 if status
                     rootFolder = executionFolder;
                 end
@@ -52,7 +52,7 @@ classdef (Abstract) appUtil
         function killingMATLABRuntime(executionMode)
             if ismember(executionMode, {'desktopStandaloneApp', 'webapp'})
                 pidMatlab = feature('getpid');
-                ccTools.fcn.OperationSystem('terminateProcessImmediately', pidMatlab)
+                appUtil.OperationSystem('terminateProcessImmediately', pidMatlab)
             end        
         end
 
@@ -216,60 +216,6 @@ classdef (Abstract) appUtil
         end
 
         %-----------------------------------------------------------------%
-        function hPanel = modalDockContainer(jsBackDoor, containerType, varargin)
-            arguments
-                jsBackDoor    (1,1) matlab.ui.control.HTML
-                containerType char {mustBeMember(containerType, {'Popup', 'Popup+CloseButton'})} = 'Popup'
-            end
-
-            arguments (Repeating)
-                varargin
-            end
-
-            switch containerType
-                case 'Popup'
-                    Padding   = varargin{1};
-                    winWidth  = varargin{2};
-                    winHeight = varargin{3};                    
-
-                    hFigure = ancestor(jsBackDoor, 'figure');
-                    hGrid   = uigridlayout(hFigure, ColumnWidth={'1x', winWidth, '1x'}, RowHeight={'1x', winHeight, '1x'}, Padding=Padding*[1,1,1,1], ColumnSpacing=0, RowSpacing=0);
-
-                    hPanel  = uipanel(hGrid, Title='', AutoResizeChildren='off');
-                    hPanel.Layout.Row = 2;
-                    hPanel.Layout.Column = 2;
-                    
-                    drawnow
-                    ccTools.compCustomizationV2(jsBackDoor, hGrid, 'backgroundColor', 'rgba(255,255,255,0.65)')
-
-                    hPanelDataTag = struct(hPanel).Controller.ViewModel.Id;
-                    sendEventToHTMLSource(jsBackDoor, "panelDialog", struct('componentDataTag', hPanelDataTag))
-
-                case 'Popup+CloseButton'
-                    Padding = varargin{1};
-                    
-                    hFigure = ancestor(jsBackDoor, 'figure');
-                    hGrid   = uigridlayout(hFigure, ColumnWidth={'1x', 16}, RowHeight={20, '1x'}, Padding=Padding*[1,1,1,1], ColumnSpacing=0, RowSpacing=0);
-
-                    hPanel  = uipanel(hGrid, Title='', AutoResizeChildren='off');
-                    hPanel.Layout.Row = [1,2];
-                    hPanel.Layout.Column = [1,2];                    
-                    
-                    hImage  = uiimage(hGrid, ImageSource='Delete_32Gray.png');
-                    hImage.Layout.Row = 1;
-                    hImage.Layout.Column = 2;
-                    
-                    drawnow
-                    ccTools.compCustomizationV2(jsBackDoor, hGrid, 'backgroundColor', 'rgba(255,255,255,0.65)')
-            end
-
-            hPanel.DeleteFcn = @(~,~)DeleteModalContainer();
-            function DeleteModalContainer()
-                delete(hGrid)
-            end
-        end
-
-        %-----------------------------------------------------------------%
         function [projectFolder, programDataFolder] = Path(appName, rootFolder)
             % ToDo: Quando migrar os arquivos de configuração de todos os apps
             % p/ a pasta "config", eliminar a validação abaixo.
@@ -280,12 +226,12 @@ classdef (Abstract) appUtil
                 projectFolder = fullfile(rootFolder, 'Settings');
             end
 
-            programDataFolder = fullfile(ccTools.fcn.OperationSystem('programData'), 'ANATEL', appName);
+            programDataFolder = fullfile(appUtil.OperationSystem('programData'), 'ANATEL', appName);
         end
 
         %-----------------------------------------------------------------%
         function userPaths = UserPaths(userPath)
-            userPaths = [ccTools.fcn.OperationSystem('userPath'), {userPath}];
+            userPaths = [appUtil.OperationSystem('userPath'), {userPath}];
             userPaths(~isfolder(userPaths)) = [];
         
             if isempty(userPaths)
@@ -296,6 +242,127 @@ classdef (Abstract) appUtil
 
                 userPaths  = {tempFolder};
             end        
+        end
+
+        %-----------------------------------------------------------------%
+        function varargout = OperationSystem(operationType, varargin)
+            arguments
+                operationType char {mustBeMember(operationType, {'platform',                   ...
+                                                                 'ver',                        ...
+                                                                 'userPath',                   ...
+                                                                 'programData',                ...
+                                                                 'desktopStandaloneAppFolder', ...
+                                                                 'computerName',               ...
+                                                                 'userName',                   ...
+                                                                 'pythonExecutable',           ...
+                                                                 'openFile',                   ...
+                                                                 'terminateProcessImmediately'})}
+            end
+        
+            arguments (Repeating)
+                varargin
+            end
+        
+            if ~ispc && ~ismac && ~isunix
+                error('Platform not supported')
+            end
+        
+            switch operationType
+                case 'platform'
+                    varargout{1} = computer('arch');
+        
+                case 'ver'
+                    if ispc
+                        [~, OS] = system('ver');
+                    elseif ismac
+                        [~, OS] = system('sw_vers -productVersion');
+                    elseif isunix
+                        [status, OS] = system('lsb_release -d');
+                        if status
+                            [~, OS] = system('uname -r');
+                        end
+                    end
+                    varargout{1} = strtrim(OS);
+        
+                case 'userPath'
+                    if ispc
+                        userPaths = {fullfile(getenv('USERPROFILE'), 'Documents'), ...
+                                     fullfile(getenv('USERPROFILE'), 'Downloads')};
+                    else
+                        userPaths = {fullfile(getenv('HOME'), 'Documents'),  ...
+                                     fullfile(getenv('HOME'), 'Documentos'), ...
+                                     fullfile(getenv('HOME'), 'Downloads')};
+                    end
+                    userPaths(~isfolder(userPaths)) = [];
+        
+                    varargout{1} = userPaths;
+        
+                case 'programData'
+                    if ispc
+                        programDataFolder = getenv('PROGRAMDATA');
+                    elseif ismac
+                        programDataFolder = '/Users/Shared';
+                    else % isunix
+                        programDataFolder = '/etc';
+                    end
+                    varargout{1} = programDataFolder;
+        
+                case 'desktopStandaloneAppFolder'
+                    status  = false;
+                    appName = varargin{1};
+                    if ispc
+                        [~, result]     = system('path');    
+                        executionFolder = char(regexpi(result, 'Path=(.*?);', 'tokens', 'once'));
+                        if isfile(fullfile(executionFolder, [appName '.exe']))
+                            status = true;
+                        end
+                    elseif ismac
+                        executionFolder = fileparts(fileparts(fileparts(fileparts(ctfroot))));
+                        if isfolder(fullfile(executionFolder, [appName '.app']))
+                            status = true;
+                        end
+                    else
+                        % !! PENDENTE !!
+                        error('Pendente análise de como as distribuições Linux descompactam o arquivo compilado no MATLAB. :(')
+                    end
+                    varargout = {status, executionFolder};
+        
+                case 'computerName'
+                    if ispc
+                        computerName = getenv('COMPUTERNAME');
+                    else % ismac | isunix
+                        [~, computerName] = system('hostname');
+                        computerName = strtrim(computerName);
+                    end
+                    varargout{1} = computerName;
+        
+                case 'userName'
+                    if ispc
+                        userName = getenv('USERNAME');
+                    else % ismac | isunix
+                        [~, userName] = system('whoami');
+                        userName = strtrim(userName);
+                    end
+                    varargout{1} = userName; 
+        
+                case 'openFile'
+                    fileName = varargin{1};        
+                    if ispc
+                        winopen(fileName)
+                    elseif ismac
+                        system(sprintf('open "%s" &', fileName));
+                    else
+                        system(sprintf('xdg-open "%s" &', fileName));
+                    end
+        
+                case 'terminateProcessImmediately'
+                    pidMatlab = varargin{1};        
+                    if ispc
+                        system(sprintf('taskkill /F /PID %d', pidMatlab));
+                    else
+                        system(sprintf('kill -9 %d', pidMatlab));
+                    end
+            end
         end
 
         %-----------------------------------------------------------------%

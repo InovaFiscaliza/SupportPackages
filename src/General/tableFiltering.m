@@ -38,12 +38,12 @@ classdef tableFiltering < handle
                 Connector (1,:) char
             end
 
-            Hash = Base64Hash.encode(sprintf('%s - %s - %s - %s', Field, strjoin(Operators, '+'), strjoin(cellfun(@string, Values), '+'), Connector));
-            if ismember(Hash, obj.filterRules.("Hash"))
+            hash = Hash.base64encode(sprintf('%s - %s - %s - %s', Field, strjoin(Operators, '+'), strjoin(cellfun(@string, Values), '+'), Connector));
+            if ismember(hash, obj.filterRules.("Hash"))
                 error('Filter already exists')
             end
 
-            obj.filterRules(end+1,:) = {Hash, Field, {Operators}, {Values}, Connector, true};
+            obj.filterRules(end+1,:) = {hash, Field, {Operators}, {Values}, Connector, true};
             obj.filterRules = sortrows(obj.filterRules, 'Field');
         end
 

@@ -1,4 +1,4 @@
-function [s, d] = jsonDecode(jsonStr)
+function [s, d] = jsondecode(jsonStr)
 
     s = jsondecode(jsonStr);
 

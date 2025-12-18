@@ -1,8 +1,5 @@
 classdef ProgressDialog < handle
 
-    % ToDo: 
-    % Migrar para ui.ProgressDialog...
-
     properties (Access = private)
         %-----------------------------------------------------------------%
         hFigure
@@ -21,7 +18,7 @@ classdef ProgressDialog < handle
     properties (Constant)
         %-----------------------------------------------------------------%
         UUID = char(matlab.lang.internal.uuid())
-        Type = 'ccTools.ProgressDialog'
+        Type = 'ui.ProgressDialog'
     end
 
 
@@ -42,15 +39,7 @@ classdef ProgressDialog < handle
                                                                            "UUID",  obj.UUID,   ...
                                                                            "Size",  obj.Size,   ...
                                                                            "Color", obj.Color));
-            registerInstance(obj, 'onCreation')
         end
-
-
-        %-----------------------------------------------------------------%
-        function delete(obj)
-            registerInstance(obj, 'onCleanup')
-        end
-
 
         %-----------------------------------------------------------------%
         function set.Size(obj, value)
@@ -64,7 +53,6 @@ classdef ProgressDialog < handle
             end
         end
 
-
         %-----------------------------------------------------------------%
         function set.Color(obj, value)
             if ~isequal(obj.Color, value)
@@ -76,7 +64,6 @@ classdef ProgressDialog < handle
                 changeColor(obj)
             end
         end
-
 
         %-----------------------------------------------------------------%
         function set.Visible(obj, value)
@@ -90,24 +77,11 @@ classdef ProgressDialog < handle
 
     methods (Access = private)
         %-----------------------------------------------------------------%
-        function registerInstance(obj, registerType)
-            switch registerType
-                case 'onCreation'
-                    ccTools.Object.addRegister(obj.hFigure, obj)
-
-                case 'onCleanup'
-                    ccTools.Object.delRegister(obj.hFigure)
-            end
-        end
-
-
-        %-----------------------------------------------------------------%
         function changeSize(obj)
             sendEventToHTMLSource(obj.jsBackDoor, "progressDialog", struct("Type",  'changeSize', ...
                                                                            "UUID",  obj.UUID,     ...
                                                                            "Size",  obj.Size));
         end
-
 
         %-----------------------------------------------------------------%
         function changeColor(obj)
@@ -115,7 +89,6 @@ classdef ProgressDialog < handle
                                                                            "UUID",  obj.UUID,      ...
                                                                            "Color", obj.Color));
         end
-
 
         %-----------------------------------------------------------------%
         function changeVisibility(obj)
