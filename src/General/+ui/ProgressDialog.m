@@ -9,9 +9,10 @@ classdef ProgressDialog < handle
 
     properties
         %-----------------------------------------------------------------%
-        Size         {mustBeA(Size,  {'char', 'string', 'double'})}                    = '40px'
-        Color        {mustBeA(Color, {'char', 'string', 'double', 'single', 'uint8'})} = '#d95319'
-        Visible char {mustBeMember(Visible, {'hidden', 'visible'})}                    = 'hidden'
+        Size           {mustBeA(Size,  {'char', 'string', 'double'})}                    = '40px'
+        Color          {mustBeA(Color, {'char', 'string', 'double', 'single', 'uint8'})} = '#d95319'
+        Visible        {mustBeMember(Visible, {'hidden', 'visible'})}                    = 'hidden'
+        VisibilityLock {mustBeMember(VisibilityLock, {'locked', 'unlocked'})}            = 'unlocked'
     end
 
 
@@ -72,6 +73,17 @@ classdef ProgressDialog < handle
                 changeVisibility(obj)
             end
         end
+
+        %-----------------------------------------------------------------%
+        function requestVisibilityChange(obj, visibilityValue, visibilityCallerRole)
+            if strcmp(obj.VisibilityLock, 'locked') && strcmp(visibilityCallerRole, 'unlocked')
+                return
+            elseif ~strcmp(obj.VisibilityLock, visibilityCallerRole)
+                obj.VisibilityLock = visibilityCallerRole;
+            end
+            
+            obj.Visible = visibilityValue;            
+        end
     end
 
 
@@ -92,6 +104,10 @@ classdef ProgressDialog < handle
 
         %-----------------------------------------------------------------%
         function changeVisibility(obj)
+            if strcmp(obj.VisibilityLock, 'locked') && strcmp(obj.Visible, 'hidden')
+                obj.VisibilityLock = 'unlocked';
+            end
+
             sendEventToHTMLSource(obj.jsBackDoor, "progressDialog", struct("Type",       'changeVisibility', ...
                                                                            "UUID",       obj.UUID,           ...
                                                                            "Visibility", obj.Visible));
