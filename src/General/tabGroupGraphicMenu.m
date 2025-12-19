@@ -178,11 +178,8 @@ classdef tabGroupGraphicMenu < handle
                     openModule(obj, btnRefHandle, false, appGeneral)
                 end
 
-                contextMenuHandle = findobj(obj.UIFigure.Children, 'Type', 'uicontextmenu', 'Tag', obj.Components.File{idx});
-                if ~isempty(contextMenuHandle)
-                    delete(contextMenuHandle)
-                end
-
+                deleteContextMenu(obj, obj.UIFigure, obj.Components.File{idx})
+                
                 if strcmp(operationType, 'normal')
                     delete(obj.Components.appHandle{idx})
                     obj.Components.appHandle{idx} = [];
@@ -190,6 +187,14 @@ classdef tabGroupGraphicMenu < handle
             end
 
             obj.progressDialog.Visible = 'hidden';
+        end
+
+        %-----------------------------------------------------------------%
+        function deleteContextMenu(obj, hFigure, contextMenuTag)
+            contextMenuHandle = findobj(hFigure.Children, 'Type', 'uicontextmenu', 'Tag', contextMenuTag);
+            if ~isempty(contextMenuHandle)
+                delete(contextMenuHandle)
+            end
         end
 
         %-----------------------------------------------------------------%
