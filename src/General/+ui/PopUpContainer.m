@@ -30,6 +30,7 @@ function PopUpContainer(callingApp, appName, screenWidth, screenHeight)
             popupContainer ...
         };
         elDataTag  = ui.CustomizationBase.getElementsDataTag(elToModify);
+        popupContainer.UserData.auxDockAppName = '';
 
         if ~isempty(elDataTag)
             sendEventToHTMLSource(callingApp.jsBackDoor, 'initializeComponents', { ...
