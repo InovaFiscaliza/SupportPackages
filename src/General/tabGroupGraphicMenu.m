@@ -198,6 +198,12 @@ classdef tabGroupGraphicMenu < handle
         end
 
         %-----------------------------------------------------------------%
+        function appHandle = getAppHandle(obj, auxAppTag)
+            [~, idx]  = ismember(auxAppTag, obj.Components.Tag);
+            appHandle = obj.Components.appHandle{idx};
+        end
+
+        %-----------------------------------------------------------------%
         function [idx, appTag, btnHandle] = getAppInfoFromHandle(obj, auxAppHandle)
             idx       = find(cellfun(@(x) isequal(auxAppHandle, x), obj.Components.appHandle));
             appTag    = obj.Components.Tag{idx};
@@ -206,14 +212,8 @@ classdef tabGroupGraphicMenu < handle
 
         %-----------------------------------------------------------------%
         function [status, appHandle] = checkStatusModule(obj, auxAppTag)
-            [~, idx]  = ismember(auxAppTag, obj.Components.Tag);
-            appHandle = obj.Components.appHandle{idx};
-
-            if ~isempty(appHandle) && isvalid(appHandle)
-                status = true;
-            else
-                status = false;
-            end
+            appHandle = getAppHandle(obj, auxAppTag);
+            status = ~isempty(appHandle) && isvalid(appHandle);
         end
 
         %-----------------------------------------------------------------%
