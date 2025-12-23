@@ -7,12 +7,14 @@ function setup(htmlComponent) {
         window.top.app = {};
     }
 
+    window.top.app.staticBaseURL  = new URL(".", window.document.baseURI).href;
     window.top.app.executionMode  = null;
     window.top.app.rendererStatus = false;
     window.top.app.matlabJSBridge = htmlComponent;
     window.top.app.ui             = [];    
     window.top.app.modules        = {};
     window.top.app.indexedDB      = null;
+    window.top.app.wordcloud      = null;
 
     /*-----------------------------------------------------------------------------------
     FUNÇÕES
@@ -30,7 +32,24 @@ function setup(htmlComponent) {
     /*---------------------------------------------------------------------------------*/
     function findComponentHandle(dataTag) {
         return window.parent.document.querySelector(`div[data-tag="${dataTag}"]`);
-    }    
+    }
+
+    /*---------------------------------------------------------------------------------*/
+    function injectCustomScript(parentDocument, className, fileList) {
+        const scriptElement = parentDocument.getElementsByClassName(className);
+        if (scriptElement.length > 0) {
+            return;
+        }
+
+        fileList.forEach((file) => {
+            const scriptElement = parentDocument.createElement("script");
+            scriptElement.className = className;
+            scriptElement.type = "text/javascript";
+            scriptElement.src  = new URL(file, window.top.app.staticBaseURL).href;
+
+            parentDocument.head.appendChild(scriptElement);
+        });
+    }
 
     /*---------------------------------------------------------------------------------*/
     function injectCustomStyle() {
@@ -903,6 +922,118 @@ a, a:hover {
             request.onerror   = () => reject(request.error);
         });
     }
+
+    /*-----------------------------------------------------------------------------------
+        ## WORDCLOUD ##
+    -----------------------------------------------------------------------------------*/
+    htmlComponent.addEventListener("wordcloud", () => {
+        injectCustomScript(window.document, "matlab-js-bridge-wordcloud", ["js/d3.v7.min.js", "js/d3.layout.cloud.min.js"]);
+
+        let canvas = window.document.getElementById('wordcloudCanvas');
+        if (!canvas) {
+            canvas = window.document.createElement('canvas');
+            canvas.id = 'wordcloudCanvas';
+            canvas.style.display = "none";
+            canvas.getContext('2d', { willReadFrequently: true });
+
+            window.document.body.appendChild(canvas);
+        }
+
+        let container = window.document.getElementById('wordcloud');
+        if (!container) {
+            container = window.document.createElement("div");
+            container.id = "wordcloud";
+            Object.assign(container.style, {
+                height: "100vh",
+                width: "100vw"
+            });
+
+            window.document.body.appendChild(container);
+        }
+
+        if (!window.top.app.wordcloud) {
+            window.top.app.wordcloud = { 
+                canvas, 
+                container,                
+                drawCloud, 
+                eraseCloud, 
+                data: [] 
+            };
+        }
+
+        htmlComponent.addEventListener("drawWordCloud", (event) => {
+            const { words, weights } = event.Data;        
+            const currentWords = words.map((word, index) => {
+                return {
+                    text: word,
+                    size: weights[index]
+                };
+            });
+
+            drawCloud(currentWords);
+            window.top.app.wordcloud.data = currentWords;
+        });
+
+        htmlComponent.addEventListener("eraseWordCloud", () => {
+            eraseCloud();
+            window.top.app.wordcloud.data = [];        
+        });
+
+        function drawCloud(words) {
+            eraseCloud();
+
+            const { innerWidth: width, innerHeight: height } = window;        
+            const scale = getFontScale(words, width, height);
+            const layout = d3.layout.cloud()
+                .size([width, height])
+                .words(words.map(d => ({text: d.text, size: scale(d.size)})))
+                .padding(2)
+                .rotate(0)
+                .font("Helvetica")
+                .fontSize(d => d.size)
+                .canvas(() => canvas)
+                .on("end", draw);
+
+            layout.start();
+
+            function draw(words) {
+                const svg = d3.select("#wordcloud").append("svg")
+                    .attr("width", width)
+                    .attr("height", height)
+                    .attr("viewBox", `0 0 ${width} ${height}`)
+                    .attr("preserveAspectRatio", "xMidYMid meet")
+                    .append("g")
+                    .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+
+                const topWords = words.slice(0, 3).map(d => d.text);
+
+                svg.selectAll("text")
+                    .data(words, d => d.text)
+                    .join(
+                        enter => enter.append("text")
+                            .attr("text-anchor", "middle")
+                            .style("font-family", "Helvetica")
+                            .style("fill", d => topWords.includes(d.text) ? "#d95319" : "black")
+                            .text(d => d.text),
+                        update => update,
+                        exit => exit.remove()
+                    )
+                    .style("font-size", d => d.size + "px")
+                    .attr("transform", d => `translate(${d.x},${d.y})rotate(0)`);
+            }
+
+            function getFontScale(words, width, height) {
+                const maxSize = d3.max(words, d => d.size);
+                const minSize = d3.min(words, d => d.size);
+
+                return d3.scalePow().exponent(0.5).domain([minSize, maxSize]).range([10, Math.min(width, height) / 3]);
+            }
+        }
+
+        function eraseCloud() {
+            d3.select("#wordcloud").selectAll("*").remove();
+        }
+    });
 
     /*---------------------------------------------------------------------------------*/
     window.requestAnimationFrame(() => {

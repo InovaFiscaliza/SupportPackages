@@ -1,5 +1,11 @@
 classdef WordCloud < handle
 
+    properties (Access = private)
+        %-----------------------------------------------------------------%
+        jsBackDoor
+    end
+
+
     properties
         %-----------------------------------------------------------------%
         Algorithm        
@@ -7,18 +13,28 @@ classdef WordCloud < handle
         Table
     end
 
+
+    properties (Constant)
+        %-----------------------------------------------------------------%
+        UUID = char(matlab.lang.internal.uuid())
+        Type = 'ui.WordCloud'
+    end
+
     
     methods
         %-----------------------------------------------------------------%
-        function obj = WordCloud(parentPanel, executionMode)
-            obj.Algorithm = executionMode;
+        function obj = WordCloud(jsBackDoor, parentPanel, executionMode)
+            obj.jsBackDoor = jsBackDoor;
+            obj.Algorithm  = executionMode;
 
             switch obj.Algorithm
                 case 'D3.js'
-                    htmlFile   = fullfile(Path(obj), 'wordCloud', 'Container.html');
+                    if isempty(parentPanel.UserData) || ~isstruct(parentPanel.UserData) || ~isfield(parentPanel.UserData, 'id')
+                        ui.CustomizationBase.getElementsDataTag({parentPanel});
+                    end
 
-                    parentGrid = uigridlayout(parentPanel, [1,1], 'BackgroundColor', [1,1,1]);
-                    obj.Chart  = uihtml(parentGrid, 'HTMLSource', htmlFile);
+                    sendEventToHTMLSource(obj.jsBackDoor, 'wordcloud', struct('appName', class.Constants.appName, 'dataTag', parentPanel.UserData.id))
+                    obj.Chart  = [];
 
                 case 'MATLAB built-in'
                     emptyTable = EmptyTable(obj);
@@ -65,9 +81,9 @@ classdef WordCloud < handle
             switch obj.Algorithm
                 case 'D3.js'
                     if ~isempty(Table)
-                        sendEventToHTMLSource(obj.Chart, 'drawWordCloud', struct('words', Table.Word, 'weights', Table.Count));
+                        sendEventToHTMLSource(obj.jsBackDoor, 'drawWordCloud', struct('words', Table.Word, 'weights', Table.Count));
                     else
-                        sendEventToHTMLSource(obj.Chart, 'eraseWordCloud');
+                        sendEventToHTMLSource(obj.jsBackDoor, 'eraseWordCloud');
                     end
 
                 case 'MATLAB built-in'
