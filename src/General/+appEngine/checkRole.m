@@ -10,12 +10,13 @@ function checkRole(app, role)
                 'UIFigure';             % matlab.ui.Figure
                 'GridLayout';           % matlab.ui.container.GridLayout
                 'AppName';              % matlab.ui.control.Label
+                'TabGroup';             % matlab.ui.container.TabGroup
+                'tabGroupController';   % ui.TabNavigator
                 'Tab1Button';           % matlab.ui.control.StateButton
                 'jsBackDoor';           % matlab.ui.control.HTML
                 'FigurePosition';       % matlab.ui.control.Image
                 'General';              % struct
                 'rootFolder';           % char
-                'tabGroupController';   % ui.TabNavigator
                 'renderCount';          % double
                 'executionMode';        % char {mustBeMember(executionMode, {'built-in', 'desktopApp', 'webApp'})}
                 'progressDialog';       % ui.ProgressDialog

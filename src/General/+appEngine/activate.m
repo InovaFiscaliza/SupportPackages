@@ -70,7 +70,11 @@ end
 function JSCustomizations(app)
     applyJSCustomizations(app, 0)
 
-    if isprop(app, 'TabGroup')
+    % O "mainApp" sempre terá um "TabGroup" como propriedade. Por outro lado,
+    % um "secondaryApp" pode, ou não, possuir um "SubTabGroup", a depender da
+    % sua complexidade. A validação abaixo garante a customização dos elementos 
+    % renderizados na primeira aba do uitabgroup.
+    if isprop(app, 'TabGroup') || isprop(app, 'SubTabGroup')
         applyJSCustomizations(app, 1)
     end
 
