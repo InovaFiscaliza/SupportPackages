@@ -20,7 +20,7 @@ classdef (Abstract) RFDataHub
             
             if isempty(RFDataHub) || isempty(RFDataHubLog) || isempty(RFDataHub_info)
                 [projectFolder, ...
-                 programDataFolder] = appUtil.Path(appName, rootFolder);
+                 programDataFolder] = appEngine.util.Path(appName, rootFolder);
 
                 projectFilePath     = fullfile(projectFolder,     'DataBase', 'RFDataHub.mat');
                 programDataFilePath = fullfile(programDataFolder, 'DataBase', 'RFDataHub.mat');
@@ -92,7 +92,7 @@ classdef (Abstract) RFDataHub
             websave(fullfile(tempDir, 'Release.json'),          publicLinks.Release);
 
             % Muda o nome do arquivo antigo...
-            [~, programDataFolder] = appUtil.Path(appName, rootFolder);
+            [~, programDataFolder] = appEngine.util.Path(appName, rootFolder);
             programDataFilePath = fullfile(programDataFolder, 'DataBase', 'RFDataHub.mat');
             if isfile(programDataFilePath)
                 movefile(programDataFilePath, fullfile(programDataFolder, 'DataBase', 'RFDataHub_old.mat'), 'f');

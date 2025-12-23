@@ -146,4 +146,30 @@ classdef eFiscaliza < ws.WebServiceBase
         end
     end
 
+
+    methods (Static = true)
+        %------------------------------------------------------------------%
+        function ID = serviceMapping(ID)
+            arguments
+                ID (1,1) int16
+            end
+
+            global id2nameTable
+            
+            if isempty(id2nameTable)
+                MFilePath    = fileparts(mfilename('fullpath'));
+                fileName     = fullfile(MFilePath, 'eFiscaliza', 'serviceMapping.xlsx');
+                id2nameTable = readtable(fileName, 'VariableNamingRule', 'preserve');
+                id2nameTable.ID = int16(id2nameTable.ID);
+            end
+
+            [~, idxFind] = ismember(ID, id2nameTable.ID);
+            if idxFind
+                ID = id2nameTable.("Serviço"){idxFind};
+            else
+                ID = num2str(ID);
+            end
+        end
+    end
+
 end

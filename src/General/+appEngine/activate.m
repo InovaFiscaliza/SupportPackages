@@ -54,12 +54,15 @@ function activate(app, role, varargin)
 
         case 'secondaryApp'
             drawnow
-
             JSCustomizations(app)
+
+            requestVisibilityChange(app.progressDialog, 'visible', 'unlocked')
 
             initializeAppProperties(app)
             initializeUIComponents(app)
             applyInitialLayout(app)
+
+            requestVisibilityChange(app.progressDialog, 'hidden', 'unlocked')
     end
 end
 
