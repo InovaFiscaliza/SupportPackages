@@ -18,7 +18,7 @@ classdef ChannelReport < handle
     methods
         %-----------------------------------------------------------------%
         function [obj, msgWarning] = ChannelReport()
-            obj.cacheFolder = fullfile(appUtil.OperationSystem('programData'), 'ANATEL', 'ChannelReport');
+            obj.cacheFolder = fullfile(appEngine.util.OperationSystem('programData'), 'ANATEL', 'ChannelReport');
             
             try                
                 obj.cacheMapping = readtable(fullfile(obj.cacheFolder, obj.cacheFile));
