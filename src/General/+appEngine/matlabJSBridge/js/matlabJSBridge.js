@@ -9,7 +9,7 @@ function setup(htmlComponent) {
 
     window.top.app.executionMode  = null;
     window.top.app.rendererStatus = false;
-    window.top.app.matlabBackDoor = htmlComponent;
+    window.top.app.matlabJSBridge = htmlComponent;
     window.top.app.ui             = [];    
     window.top.app.modules        = {};
     window.top.app.indexedDB      = null;
@@ -24,7 +24,7 @@ function setup(htmlComponent) {
         const seconds  = String(now.getSeconds()).padStart(2, '0');
         const millisec = String(now.getMilliseconds()).padStart(3, '0');
 
-        console.log(`${hours}:${minutes}:${seconds}.${millisec} [MATLAB-ccTools] ${msg}`);
+        console.log(`${hours}:${minutes}:${seconds}.${millisec} [matlab-js-bridge] ${msg}`);
     }
     
     /*---------------------------------------------------------------------------------*/
@@ -34,7 +34,7 @@ function setup(htmlComponent) {
 
     /*---------------------------------------------------------------------------------*/
     function injectCustomStyle() {
-        let styleElement = window.parent.document.getElementById('MATLAB-ccTools');
+        let styleElement = window.parent.document.getElementById('matlab-js-bridge');
         if (styleElement) {
             return;
         }
@@ -230,7 +230,7 @@ a, a:hover {
         
         styleElement = window.parent.document.createElement("style");
         styleElement.type = "text/css";
-        styleElement.id = "MATLAB-ccTools";
+        styleElement.id = "matlab-js-bridge";
         styleElement.innerHTML = `${cssText}`;
 
         window.parent.document.head.appendChild(styleElement);
@@ -282,7 +282,7 @@ a, a:hover {
 
     /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("changeTableRowHeight", function(customEvent) {
-        let styleElement = window.parent.document.getElementById('MATLAB-ccTools-uitable');
+        let styleElement = window.parent.document.getElementById('matlab-js-bridge-uitable');
         if (styleElement) {
             styleElement.remove();
         }
@@ -311,7 +311,7 @@ a, a:hover {
         
         styleElement = window.parent.document.createElement("style");
         styleElement.type = "text/css";
-        styleElement.id = "MATLAB-ccTools-uitable";
+        styleElement.id = "matlab-js-bridge-uitable";
         styleElement.innerHTML = `${cssText}`;
 
         window.parent.document.head.appendChild(styleElement);

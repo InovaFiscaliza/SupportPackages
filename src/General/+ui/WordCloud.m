@@ -1,4 +1,4 @@
-classdef wordCloud < handle
+classdef WordCloud < handle
 
     properties
         %-----------------------------------------------------------------%
@@ -10,7 +10,7 @@ classdef wordCloud < handle
     
     methods
         %-----------------------------------------------------------------%
-        function obj = wordCloud(parentPanel, executionMode)
+        function obj = WordCloud(parentPanel, executionMode)
             obj.Algorithm = executionMode;
 
             switch obj.Algorithm

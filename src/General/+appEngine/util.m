@@ -1,8 +1,8 @@
-classdef (Abstract) appUtil
+classdef (Abstract) util
     
     methods (Static = true)
         %-----------------------------------------------------------------%
-        function disablingWarningMessages()
+        function disableWarnings()
             warning('off', 'MATLAB:ui:javaframe:PropertyToBeRemoved')
             warning('off', 'MATLAB:subscripting:noSubscriptsSpecified')
             warning('off', 'MATLAB:structOnObject')
@@ -41,7 +41,7 @@ classdef (Abstract) appUtil
             rootFolder = MFilePath;
 
             if isdeployed
-                [status, executionFolder] = appUtil.OperationSystem('desktopStandaloneAppFolder', appName);            
+                [status, executionFolder] = appEngine.util.OperationSystem('desktopStandaloneAppFolder', appName);            
                 if status
                     rootFolder = executionFolder;
                 end
@@ -52,49 +52,18 @@ classdef (Abstract) appUtil
         function killingMATLABRuntime(executionMode)
             if ismember(executionMode, {'desktopStandaloneApp', 'webapp'})
                 pidMatlab = feature('getpid');
-                appUtil.OperationSystem('terminateProcessImmediately', pidMatlab)
+                appEngine.util.OperationSystem('terminateProcessImmediately', pidMatlab)
             end        
         end
 
         %-----------------------------------------------------------------%
-        function beforeDeleteApp(progressDialog, tempDir, tabGroupController, executionMode)
-            % TIMER
-            h = timerfindall;
-            if ~isempty(h)
-                stop(h); delete(h); clear h
-            end
-
-            % PROGRESS DIALOG
-            delete(progressDialog)
-
-            % DELETE TEMP FILES
-            if isfolder(tempDir)
-                rmdir(tempDir, 's');
-            end
-
-            % DELETE APPS
-            if isdeployed
-                delete(findall(groot, 'Type', 'Figure'))
-            else
-                delete(tabGroupController)
-            end
-
-            % MATLAB RUNTIME
-            % Ao fechar um webapp, o MATLAB WebServer demora uns 10 segundos para
-            % fechar o Runtime que suportava a sessão do webapp. Dessa forma, a 
-            % liberação do recurso, que ocorre com a inicialização de uma nova 
-            % sessão do Runtime, fica comprometida.
-            appUtil.killingMATLABRuntime(executionMode)
-        end
-
-        %-----------------------------------------------------------------%
-        function winPosition(hFigure)
-            [xPosition, yPosition] = appUtil.winXYPosition(hFigure.Position(3), hFigure.Position(4));            
+        function setWindowPosition(hFigure)
+            [xPosition, yPosition] = appEngine.util.computeWindowPosition(hFigure.Position(3), hFigure.Position(4));            
             hFigure.Position(1:2)  = [xPosition, yPosition];
         end
 
         %-----------------------------------------------------------------%
-        function [xPosition, yPosition] = winXYPosition(figWidth, figHeight)
+        function [xPosition, yPosition] = computeWindowPosition(figWidth, figHeight)
             mainMonitor = get(0, 'MonitorPositions');
             [~, idx]    = max(mainMonitor(:,3));
             mainMonitor = mainMonitor(idx,:);
@@ -104,7 +73,7 @@ classdef (Abstract) appUtil
         end
         
         %-----------------------------------------------------------------%
-        function winMinSize(hFigure, minSize)
+        function setWindowMinSize(hFigure, minSize)
             try
                 webWin = struct(struct(struct(hFigure).Controller).PlatformHost).CEF;
                 webWin.setMinSize(minSize)
@@ -114,7 +83,7 @@ classdef (Abstract) appUtil
 
         %-----------------------------------------------------------------%
         function htmlSource = jsBackDoorHTMLSource()
-            htmlSource = fullfile(fileparts(mfilename('fullpath')), 'jsBackDoor', 'Container.html');
+            htmlSource = fullfile(fileparts(mfilename('fullpath')), 'matlabJSBridge', 'matlabJSBridge.html');
         end
 
         %-----------------------------------------------------------------%
@@ -135,103 +104,14 @@ classdef (Abstract) appUtil
         end
 
         %-----------------------------------------------------------------%
-        function varargout = modalWindow(hFigure, type, msg, varargin)
-            arguments
-                hFigure matlab.ui.Figure
-                type    {mustBeMember(type, {'error', 'warning', 'info', 'success', 'none', 'progressdlg', 'uiconfirm', 'uigetfile', 'uiputfile'})}
-                msg     {mustBeTextScalar} = ''
-            end
-        
-            arguments (Repeating)
-                varargin
-            end
-            
-            if ~isempty(msg)
-                msg = textFormatGUI.HTMLParagraph(msg);
-            end
-
-            switch type
-                case {'error', 'warning', 'info', 'success', 'none'}
-                    switch type
-                        case 'error';   uialert(hFigure, msg, '', 'Interpreter', 'html', 'Icon', 'error',   varargin{:})
-                        case 'warning'; uialert(hFigure, msg, '', 'Interpreter', 'html', 'Icon', 'warning', varargin{:})
-                        case 'info';    uialert(hFigure, msg, '', 'Interpreter', 'html', 'Icon', 'info',    varargin{:})
-                        case 'success'; uialert(hFigure, msg, '', 'Interpreter', 'html', 'Icon', 'success', varargin{:})
-                        case 'none';    uialert(hFigure, msg, '', 'Interpreter', 'html', 'Icon', '',        varargin{:})
-                    end
-                    varargout = {[]};
-                    beep
-                    
-                case 'progressdlg'
-                    dlg = uiprogressdlg(hFigure, 'Indeterminate', 'on', 'Interpreter', 'html', 'Message', msg, varargin{:});
-                    varargout{1} = dlg;
-
-                case 'uiconfirm'
-                    % O uiconfirm trava a execução, aguardando retorno do
-                    % usuário. Diferente do uialert, por exemplo, em que
-                    % continua a execução. A validação abaixo garante a
-                    % emulação do uiconfirm como uialert, com a vantagem de
-                    % travar a execução, caso seja esse o objetivo.
-                    if isscalar(varargin{1})
-                        Icon = 'warning';
-                    else
-                        Icon = 'question';
-                    end
-
-                    userSelection = uiconfirm(hFigure, msg, '', 'Options', varargin{1}, 'DefaultOption', varargin{2}, 'CancelOption', varargin{3}, 'Interpreter', 'html', 'Icon', Icon);
-                    varargout{1} = userSelection;
-
-                case {'uigetfile', 'uiputfile'}
-                    switch type
-                        case 'uigetfile'
-                            fileFormats       = varargin{1};
-                            lastVisitedFolder = varargin{2};
-                            otherParameters   = {};
-                            if nargin == 6
-                                otherParameters = varargin{3};
-                            end
-                            [fileName, fileFolder] = uigetfile(fileFormats, '', lastVisitedFolder, otherParameters{:});
-
-                        otherwise
-                            nameFormatMap   = varargin{1};
-                            defaultFilename = varargin{2};
-                            [fileName, fileFolder] = uiputfile(nameFormatMap, '', defaultFilename);
-                    end
-                    
-                    executionMode = appUtil.ExecutionMode(hFigure);
-                    if ~strcmp(executionMode, 'webApp')
-                        figure(hFigure)
-                    end
-
-                    if isequal(fileName, 0)
-                        varargout = {[], [], [], []};
-                        return
-                    end
-
-                    fileFullPath    = fullfile(fileFolder, fileName);
-                    [~, ~, fileExt] = fileparts(fileName);
-
-                    varargout = {fileFullPath, fileFolder, lower(fileExt), fileName};
-            end
-        end
-
-        %-----------------------------------------------------------------%
         function [projectFolder, programDataFolder] = Path(appName, rootFolder)
-            % ToDo: Quando migrar os arquivos de configuração de todos os apps
-            % p/ a pasta "config", eliminar a validação abaixo.
-
-            if isfolder(fullfile(rootFolder, 'config'))
-                projectFolder = fullfile(rootFolder, 'config');
-            else
-                projectFolder = fullfile(rootFolder, 'Settings');
-            end
-
-            programDataFolder = fullfile(appUtil.OperationSystem('programData'), 'ANATEL', appName);
+            projectFolder     = fullfile(rootFolder, 'config');
+            programDataFolder = fullfile(appEngine.util.OperationSystem('programData'), 'ANATEL', appName);
         end
 
         %-----------------------------------------------------------------%
         function userPaths = UserPaths(userPath)
-            userPaths = [appUtil.OperationSystem('userPath'), {userPath}];
+            userPaths = [appEngine.util.OperationSystem('userPath'), {userPath}];
             userPaths(~isfolder(userPaths)) = [];
         
             if isempty(userPaths)
@@ -386,7 +266,7 @@ classdef (Abstract) appUtil
             msgWarning          = '';
         
             [projectFolder, ...
-             programDataFolder] = appUtil.Path(appName, rootFolder);
+             programDataFolder] = appEngine.util.Path(appName, rootFolder);
             projectFilePath     = fullfile(projectFolder,     'GeneralSettings.json');
             programDataFilePath = fullfile(programDataFolder, 'GeneralSettings.json');
         
@@ -402,8 +282,8 @@ classdef (Abstract) appUtil
                 end
 
                 if ~isfile(programDataFilePath)
-                    appUtil.copyConfigFiles(programDataFolder, programDataFolder_backup, files2Keep, 'move')
-                    appUtil.copyConfigFiles(projectFolder,     programDataFolder,        files2Keep, 'copy')                
+                    appEngine.util.copyConfigFiles(programDataFolder, programDataFolder_backup, files2Keep, 'move')
+                    appEngine.util.copyConfigFiles(projectFolder,     programDataFolder,        files2Keep, 'copy')                
                 else
                     programDataFileContent = jsondecode(fileread(programDataFilePath));
         
@@ -429,8 +309,8 @@ classdef (Abstract) appUtil
                             end
                         end
         
-                        appUtil.copyConfigFiles(programDataFolder, programDataFolder_backup, files2Keep, 'move')
-                        appUtil.copyConfigFiles(projectFolder,     programDataFolder,        files2Keep, 'copy')
+                        appEngine.util.copyConfigFiles(programDataFolder, programDataFolder_backup, files2Keep, 'move')
+                        appEngine.util.copyConfigFiles(projectFolder,     programDataFolder,        files2Keep, 'copy')
                         writematrix(jsonencode(projectFileContent, "PrettyPrint", true), programDataFilePath, "FileType", "text", "QuoteStrings", "none", "WriteMode", "overwrite")
                         
                         msgWarning = ['Os arquivos de configuração do app hospedado na pasta de configuração local, ' ...
@@ -486,7 +366,7 @@ classdef (Abstract) appUtil
             end
         
             [~, ...
-             programDataFolder] = appUtil.Path(appName, rootFolder);
+             programDataFolder] = appEngine.util.Path(appName, rootFolder);
             programDataFilePath = fullfile(programDataFolder, 'GeneralSettings.json');
         
             try

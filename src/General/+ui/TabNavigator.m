@@ -1,4 +1,4 @@
-classdef tabGroupGraphicMenu < handle
+classdef TabNavigator < handle
 
     % Trata-se de classe que relaciona o TabGroup principal de um app com 
     % o menu gráfico que o controla. Para que essa classe seja operacional,
@@ -42,7 +42,7 @@ classdef tabGroupGraphicMenu < handle
 
     methods
         %-----------------------------------------------------------------%
-        function obj = tabGroupGraphicMenu(menuGrid, tabGroup, progressDialog, jsCustomFcn, layoutCustomFcn)
+        function obj = TabNavigator(menuGrid, tabGroup, progressDialog, jsCustomFcn, layoutCustomFcn)
             obj.UIFigure        = ancestor(menuGrid, 'figure');
             obj.MenuGrid        = menuGrid;
             obj.TabGroup        = tabGroup;
@@ -156,8 +156,11 @@ classdef tabGroupGraphicMenu < handle
 
             for ii = 1:numel(auxAppTags)
                 [~, idx]  = ismember(auxAppTags(ii), obj.Components.Tag);
-                btnHandle = obj.Components.btnHandle(idx);
-    
+                if ~idx
+                    continue
+                end
+
+                btnHandle = obj.Components.btnHandle(idx);    
                 if obj.Components.btnStatus(idx) == "On/Off"
                     btnHandle.Enable = 0;
                 end
