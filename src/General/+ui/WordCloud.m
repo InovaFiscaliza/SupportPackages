@@ -3,13 +3,14 @@ classdef WordCloud < handle
     properties (Access = private)
         %-----------------------------------------------------------------%
         jsBackDoor
+        Panel
+        Chart
     end
 
 
     properties
         %-----------------------------------------------------------------%
-        Algorithm        
-        Chart
+        Algorithm {mustBeMember(Algorithm, {'D3.js', 'MATLAB built-in'})} = 'D3.js'
         Table
     end
 
@@ -23,42 +24,40 @@ classdef WordCloud < handle
     
     methods
         %-----------------------------------------------------------------%
-        function obj = WordCloud(jsBackDoor, parentPanel, executionMode)
+        function obj = WordCloud(jsBackDoor, parentPanel, algorithm)
             obj.jsBackDoor = jsBackDoor;
-            obj.Algorithm  = executionMode;
+            obj.Panel      = parentPanel;
+            obj.Algorithm  = algorithm;
 
-            switch obj.Algorithm
-                case 'D3.js'
-                    if isempty(parentPanel.UserData) || ~isstruct(parentPanel.UserData) || ~isfield(parentPanel.UserData, 'id')
-                        ui.CustomizationBase.getElementsDataTag({parentPanel});
-                    end
+            CreateCanvas(obj)
+        end
 
-                    sendEventToHTMLSource(obj.jsBackDoor, 'wordcloud', struct('appName', class.Constants.appName, 'dataTag', parentPanel.UserData.id))
-                    obj.Chart  = [];
+        %-----------------------------------------------------------------%
+        function onAlgorithmValueChanged(obj, algorithm)
+            if ~strcmp(obj.Algorithm, algorithm)
+                refTable = obj.Table;                
+                if ~isempty(refTable)    
+                    DeleteCanvas(obj)
+                end
 
-                case 'MATLAB built-in'
-                    emptyTable = EmptyTable(obj);
-
-                    parentGrid = tiledlayout(parentPanel, 1, 1, 'Padding', 'tight');
-                    obj.Chart  = matlab.graphics.chart.WordCloudChart('Parent',          parentGrid,   ...
-                                                                      'Title',           '',           ...
-                                                                      'SourceTable',     emptyTable,   ...
-                                                                      'WordVariable',    'Word',       ...
-                                                                      'SizeVariable',    'Count',      ...
-                                                                      'MaxDisplayWords', 25);
+                obj.Algorithm = algorithm;
+                obj.Table = [];
+                CreateCanvas(obj)
+                obj.Table = refTable;
             end
-            drawnow
         end
 
         %-----------------------------------------------------------------%
         function set.Table(obj, value)
-            TableUpdate(obj, value)
-            obj.Table = value;
+            if ~isequal(obj.Table, value)
+                TableUpdate(obj, value)
+                obj.Table = value;
+            end
         end
 
         %-----------------------------------------------------------------%
         function delete(obj)
-            delete(obj.Chart.Parent)
+            DeleteCanvas(obj)
         end
     end
 
@@ -74,6 +73,39 @@ classdef WordCloud < handle
             emptyTable = table('Size',          [0,2],                ...
                                'VariableTypes', {'string', 'double'}, ...
                                'VariableNames', {'Word', 'Count'});
+        end
+
+        %-----------------------------------------------------------------%
+        function CreateCanvas(obj)
+            switch obj.Algorithm
+                case 'D3.js'
+                    sendEventToHTMLSource(obj.jsBackDoor, 'wordcloud')
+                    obj.Chart  = [];
+
+                case 'MATLAB built-in'
+                    emptyTable = EmptyTable(obj);
+
+                    parentGrid = tiledlayout(obj.Panel, 1, 1, 'Padding', 'tight');
+                    obj.Chart  = matlab.graphics.chart.WordCloudChart('Parent',          parentGrid,   ...
+                                                                      'Title',           '',           ...
+                                                                      'SourceTable',     emptyTable,   ...
+                                                                      'WordVariable',    'Word',       ...
+                                                                      'SizeVariable',    'Count',      ...
+                                                                      'MaxDisplayWords', 25);
+            end
+            drawnow
+        end
+
+        %-----------------------------------------------------------------%
+        function DeleteCanvas(obj)
+            switch obj.Algorithm
+                case 'D3.js'
+                    sendEventToHTMLSource(obj.jsBackDoor, 'eraseWordCloud');
+                case 'MATLAB built-in'
+                    if isa(obj.Chart, 'matlab.graphics.chart.WordCloudChart') && isvalid(obj.Chart)
+                        delete(obj.Chart.Parent)
+                    end
+            end
         end
 
         %-----------------------------------------------------------------%
