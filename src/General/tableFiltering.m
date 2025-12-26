@@ -12,7 +12,7 @@ classdef tableFiltering < handle
 
     properties (Constant)
         %-----------------------------------------------------------------%
-        floatDiffTolerance  = 1e-5
+        floatDiffTolerance = 1e-5
     end
 
     
