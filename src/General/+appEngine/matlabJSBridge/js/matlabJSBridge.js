@@ -274,7 +274,6 @@ a, a:hover {
         camelToKebab
     }
 
-
     /*-----------------------------------------------------------------------------------
     LISTENERS
     -----------------------------------------------------------------------------------*/
@@ -429,7 +428,7 @@ a, a:hover {
                     }
 
                     if (el.listener) {
-                        const compName = el.listener.componentName;
+                        const htmlEventName = el.listener.componentName;
                         const keyEvents = el.listener.keyEvents;
     
                         if (!handle.dataset.keydownListener) {
@@ -439,7 +438,12 @@ a, a:hover {
                                 if (keyEvents.includes(event.key)) {
                                     event.preventDefault();
                                     event.stopPropagation();
-                                    htmlComponent.sendEventToMATLAB(compName, event.key);
+
+                                    const htmlEventData = (handle.tagName === 'INPUT') 
+                                        ? { key: event.key, value: handle.value } 
+                                        : event.key;
+
+                                    htmlComponent.sendEventToMATLAB(htmlEventName, htmlEventData);
                                 }
                             });
                         }
@@ -498,7 +502,8 @@ a, a:hover {
 
     /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("getNavigatorBasicInformation", function() {
-        const navigatorBasicInformation = {
+        const htmlEventName = "getNavigatorBasicInformation";
+        const htmlEventData = {
             name: "BROWSER",
             url: window.top.location.href,
             platform: navigator.userAgentData?.platform || navigator.platform,
@@ -508,7 +513,7 @@ a, a:hover {
             screen: (screen?.width && screen?.height) ? `${screen.width} x ${screen.height} pixels` : 'unknown'
         };
 
-        htmlComponent.sendEventToMATLAB("getNavigatorBasicInformation", navigatorBasicInformation);
+        htmlComponent.sendEventToMATLAB(htmlEventName, htmlEventData);
     });
 
     /*---------------------------------------------------------------------------------*/
@@ -529,29 +534,6 @@ a, a:hover {
         const dataTag = customEvent.Data.dataTag;
         const handle  = findComponentHandle(dataTag)
         handle?.offsetHeight;
-    });
-
-    /*---------------------------------------------------------------------------------*/
-    htmlComponent.addEventListener("turningBackgroundColorInvisible", function(customEvent) {
-        const objDataName = customEvent.Data.componentName.toString();
-        const objDataTag  = customEvent.Data.componentDataTag.toString();
-        const interval_ms = customEvent.Data.interval_ms || 25;
-        const handle      = findComponentHandle(objDataTag);
-
-        try {
-            let opacityValue = 1.0;
-            let intervalId = setInterval(() => {
-                opacityValue -= 0.02;
-                handle.style.opacity = opacityValue;
-
-                if (opacityValue <= 0.02) {
-                    clearInterval(intervalId);
-                    htmlComponent.sendEventToMATLAB("BackgroundColorTurnedInvisible", objDataName);
-                }
-            }, interval_ms);
-        } catch (ME) {
-            // console.log(ME)
-        }
     });
 
     /*-----------------------------------------------------------------------------------
