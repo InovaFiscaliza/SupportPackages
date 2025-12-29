@@ -26,7 +26,7 @@ function boot(app, role, varargin)
             app.mainApp = varargin{1};
             
             if app.isDocked
-                app.GridLayout.Padding(4)  = 30;
+                app.GridLayout.Padding(4) = 30;
                 app.DockModule.Visible = 1;
                 app.jsBackDoor = app.mainApp.jsBackDoor;
                 appEngine.activate(app, role)

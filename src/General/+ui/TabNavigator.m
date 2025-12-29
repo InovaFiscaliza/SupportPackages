@@ -34,22 +34,18 @@ classdef TabNavigator < handle
         MenuSubGrid
         TabGroup      matlab.ui.container.TabGroup
         progressDialog
-        executionMode        
-        jsCustomFcn
-        layoutCustomFcn
+        executionMode
     end
 
 
     methods
         %-----------------------------------------------------------------%
-        function obj = TabNavigator(menuGrid, tabGroup, progressDialog, jsCustomFcn, layoutCustomFcn)
+        function obj = TabNavigator(menuGrid, tabGroup, progressDialog)
             obj.UIFigure        = ancestor(menuGrid, 'figure');
             obj.MenuGrid        = menuGrid;
             obj.TabGroup        = tabGroup;
             obj.executionMode   = ancestor(menuGrid, 'figure').RunningAppInstance.executionMode;
             obj.progressDialog  = progressDialog;
-            obj.jsCustomFcn     = jsCustomFcn;
-            obj.layoutCustomFcn = layoutCustomFcn;
             obj.MenuSubGrid     = findobj(menuGrid.Children, 'Tag', 'MenuSubGrid');
 
             % Delimitar os valores que são aceitos em algumas das colunas.
@@ -105,15 +101,7 @@ classdef TabNavigator < handle
             
             switch obj.Components.Type(idx)
                 case 'Built-in'
-                    switchingMode(obj, clickedButton, nonClickedButtons, tabIndex, 0)
-
-                    if isa(obj.jsCustomFcn, 'function_handle')
-                        obj.jsCustomFcn(tabIndex)
-                    end
-
-                    if isa(obj.layoutCustomFcn, 'function_handle')
-                        obj.layoutCustomFcn(tabIndex)
-                    end                    
+                    switchingMode(obj, clickedButton, nonClickedButtons, tabIndex, 0)                  
 
                 case 'External'
                     obj.progressDialog.Visible = 'visible';

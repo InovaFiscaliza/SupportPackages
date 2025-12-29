@@ -33,7 +33,7 @@ function activate(app, role, varargin)
                 app.rootFolder = appEngine.util.RootFolder(appName, MFilePath);
         
                 % Customizações...
-                JSCustomizations(app)
+                JSCustomizations(app, role)
         
                 % Inicia módulo de operação paralelo...
                 if parpoolFlag
@@ -46,7 +46,7 @@ function activate(app, role, varargin)
                 applyInitialLayout(app)
         
             else
-                JSCustomizations(app)
+                JSCustomizations(app, role)
             end
 
             pause(.100)
@@ -54,7 +54,7 @@ function activate(app, role, varargin)
 
         case 'secondaryApp'
             drawnow
-            JSCustomizations(app)
+            JSCustomizations(app, role)
 
             requestVisibilityChange(app.progressDialog, 'visible', 'unlocked')
 
@@ -67,13 +67,33 @@ function activate(app, role, varargin)
 end
 
 %-------------------------------------------------------------------------%
-function JSCustomizations(app)
-    applyJSCustomizations(app, 0)
+function JSCustomizations(app, role)
+    switch role
+        case 'mainApp'
+            sendEventToHTMLSource(app.jsBackDoor, 'startup', app.executionMode);
 
-    % O "mainApp" sempre terá um "TabGroup" como propriedade. Por outro lado,
-    % um "secondaryApp" pode, ou não, possuir um "SubTabGroup", a depender da
-    % sua complexidade. A validação abaixo garante a customização dos elementos 
-    % renderizados na primeira aba do uitabgroup.
+        case 'secondaryApp'
+            if app.isDocked
+                app.progressDialog = app.mainApp.progressDialog;
+
+                elDataTag  = ui.CustomizationBase.getElementsDataTag({app.DockModule});
+                if ~isempty(elDataTag)
+                    sendEventToHTMLSource(app.jsBackDoor, 'initializeComponents', { ...
+                        struct('appName', class(app), 'dataTag', elDataTag{1}, 'style', struct('transition', 'opacity 2s ease', 'opacity', '0.5')) ...
+                    });
+                end
+
+            else
+                sendEventToHTMLSource(app.jsBackDoor, 'startup', app.mainApp.executionMode);
+                app.progressDialog = ui.ProgressDialog(app.jsBackDoor);                        
+            end
+    end
+
+    % O "mainApp" sempre terá um "TabGroup" como propriedade e, eventualmente,
+    % um "SubTabGroup". Por outro lado, um "secondaryApp" pode, ou não, possuir 
+    % um "SubTabGroup", a depender da sua complexidade. A validação abaixo 
+    % garante a customização dos elementos renderizados na primeira aba do 
+    % uitabgroup.
     if isprop(app, 'TabGroup') || isprop(app, 'SubTabGroup')
         applyJSCustomizations(app, 1)
     end
