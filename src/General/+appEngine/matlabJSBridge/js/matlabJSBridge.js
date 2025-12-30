@@ -360,6 +360,9 @@ a, a:hover {
         o evento "unload" é disparado e aciona a função MATLAB closeFcn(app, event), que 
         realiza algumas operações, inclusive fechando a instância do MATLAB Runtime que 
         suporte o webapp
+
+        Além disso, é ajustado o comportamento de foco do uialert, evitando que o botão
+        fique em foco quando da interação via mouse com elemento textual.
     -----------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("startup", function(customEvent) {
         const executionMode = customEvent.Data;
@@ -381,6 +384,18 @@ a, a:hover {
                 .catch(ME => { consoleLog(`Service worker registration failed: ${ME.message}`)});
             }
         }
+
+        let lastInteractionWasKeyboard = false;
+        window.top.document.addEventListener('keydown',     () => { lastInteractionWasKeyboard = true;  }, true);
+        window.top.document.addEventListener('mousedown',   () => { lastInteractionWasKeyboard = false; }, true);
+        window.top.document.addEventListener('pointerdown', () => { lastInteractionWasKeyboard = false; }, true);
+
+        window.top.document.addEventListener('focusin', (event) => {
+            const target = event.target;
+            if (!lastInteractionWasKeyboard && target.matches('.mwButton, .mwCloseNode') && target.closest('.mwAlertDialog')?.classList.contains('focused')) {
+                target.blur();
+            }
+        }, true);
 
         injectCustomStyle();
     });
