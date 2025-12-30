@@ -8,19 +8,24 @@ function activate(app, role, varargin)
         varargin
     end
 
+    drawnow
+
     switch role
         case 'mainApp'
             app.progressDialog = ui.ProgressDialog(app.jsBackDoor);
             requestVisibilityChange(app.progressDialog, 'visible', 'locked')
-            drawnow
-
+            
             if ~app.renderCount
                 MFilePath   = varargin{1};
                 parpoolFlag = varargin{2};
 
                 % Essa propriedade registra o tipo de execução da aplicação, podendo
                 % ser: 'built-in', 'desktopApp' ou 'webApp'.
-                app.executionMode  = appEngine.util.ExecutionMode(app.UIFigure);
+                app.executionMode = appEngine.util.ExecutionMode(app.UIFigure);
+
+                % Customizações...
+                JSCustomizations(app, role)
+
                 if ~strcmp(app.executionMode, 'webApp')
                     app.FigurePosition.Visible = 1;
                     appEngine.util.setWindowMinSize(app.UIFigure, class.Constants.windowMinSize)
@@ -31,9 +36,6 @@ function activate(app, role, varargin)
                 % versão executável (neste caso, o ctfroot indicará o local do .MLAPP).
                 appName = class.Constants.appName;
                 app.rootFolder = appEngine.util.RootFolder(appName, MFilePath);
-        
-                % Customizações...
-                JSCustomizations(app, role)
         
                 % Inicia módulo de operação paralelo...
                 if parpoolFlag
@@ -53,7 +55,6 @@ function activate(app, role, varargin)
             requestVisibilityChange(app.progressDialog, 'hidden', 'locked')
 
         case 'secondaryApp'
-            drawnow
             JSCustomizations(app, role)
 
             requestVisibilityChange(app.progressDialog, 'visible', 'unlocked')
@@ -94,7 +95,7 @@ function JSCustomizations(app, role)
     % um "SubTabGroup", a depender da sua complexidade. A validação abaixo 
     % garante a customização dos elementos renderizados na primeira aba do 
     % uitabgroup.
-    if isprop(app, 'TabGroup') || isprop(app, 'SubTabGroup')
+    if isprop(app, 'SubTabGroup')
         applyJSCustomizations(app, 1)
     end
 

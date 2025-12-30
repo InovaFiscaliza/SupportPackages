@@ -14,11 +14,11 @@ function boot(app, role, varargin)
     % in appEngine.checkRole.
 
     appEngine.checkRole(app, role)
+    initializeUI(app)
 
     switch role
         case 'mainApp'
-            appEngine.util.disableWarnings()
-            initializeUI(app)
+            appEngine.util.disableWarnings()            
             appEngine.util.setWindowPosition(app.UIFigure)
             waitForDOMReady(role, app)
 
@@ -47,7 +47,13 @@ end
 
 %-------------------------------------------------------------------------%
 function initializeUI(app)
-    app.AppName.Text = sprintf('%s v. %s\n<font style="font-size: 9px;">%s</font>', class.Constants.appName, class.Constants.appVersion, class.Constants.appRelease);
+    if isprop(app, 'AppName')
+        app.AppName.Text = sprintf('%s v. %s\n<font style="font-size: 9px;">%s</font>', class.Constants.appName, class.Constants.appVersion, class.Constants.appRelease);
+    end
+
+    if isprop(app, 'SubTabGroup')
+        app.SubTabGroup.UserData.isTabInitialized = false(1, numel(app.SubTabGroup.Children));
+    end
 end
 
 %-----------------------------------------------------------------%

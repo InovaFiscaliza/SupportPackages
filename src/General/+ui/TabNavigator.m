@@ -35,6 +35,8 @@ classdef TabNavigator < handle
         TabGroup      matlab.ui.container.TabGroup
         progressDialog
         executionMode
+        jsBackDoor
+        inlineSVG = false
     end
 
 
@@ -44,7 +46,7 @@ classdef TabNavigator < handle
             obj.UIFigure        = ancestor(menuGrid, 'figure');
             obj.MenuGrid        = menuGrid;
             obj.TabGroup        = tabGroup;
-            obj.executionMode   = ancestor(menuGrid, 'figure').RunningAppInstance.executionMode;
+            obj.executionMode   = obj.UIFigure.RunningAppInstance.executionMode;
             obj.progressDialog  = progressDialog;
             obj.MenuSubGrid     = findobj(menuGrid.Children, 'Tag', 'MenuSubGrid');
 
@@ -68,6 +70,23 @@ classdef TabNavigator < handle
                                                        btnRefHandle, ...
                                                        tabIndex};
             end
+        end
+
+        %-----------------------------------------------------------------%
+        function convertToInlineSVG(obj, jsBackDoor)
+            obj.inlineSVG = true;
+            obj.jsBackDoor = jsBackDoor;
+
+            listOfButtons = obj.Components.btnHandle';
+            tabConfig = struct( ...
+                'operation', 'convertToInlineSVG', ...
+                'buttons', struct('dataTag', {}, 'value', {}, 'svgContent', {}) ...
+            );
+
+            for btn = listOfButtons
+                tabConfig.buttons(end+1) = struct('dataTag', btn.UserData.id, 'value', btn.Value, 'svgContent', fileread(btn.Icon));
+            end
+            sendEventToHTMLSource(obj.jsBackDoor, 'tabNavigator', tabConfig);
         end
 
         %-----------------------------------------------------------------%
@@ -234,15 +253,31 @@ classdef TabNavigator < handle
         function changingButtonsIcon(obj, clickedButton, nonClickedButtons)
             listOfButtons = [clickedButton; nonClickedButtons]';
 
-            for btn = listOfButtons
-                [~, idx] = ismember(btn, obj.Components.btnHandle);
-                switch btn
-                    case clickedButton
-                        set(btn, 'Icon', obj.Components.btnIcon(idx).On)
-                    otherwise
-                        set(btn, 'Icon', obj.Components.btnIcon(idx).Off, 'Value', 0)
+            if obj.inlineSVG
+                tabConfig = struct( ...
+                    'operation', 'setIconColor', ...
+                    'buttons', struct('dataTag', {}, 'value', {}) ...
+                );
+    
+                for btn = listOfButtons
+                    if btn ~= clickedButton
+                        btn.Value = false;
+                    end
+                    tabConfig.buttons(end+1) = struct('dataTag', btn.UserData.id, 'value', btn.Value);
+                end    
+                sendEventToHTMLSource(obj.jsBackDoor, 'tabNavigator', tabConfig);
+
+            else
+                for btn = listOfButtons
+                    [~, idx] = ismember(btn, obj.Components.btnHandle);
+                    switch btn
+                        case clickedButton
+                            set(btn, 'Icon', obj.Components.btnIcon(idx).On)
+                        otherwise
+                            set(btn, 'Icon', obj.Components.btnIcon(idx).Off, 'Value', 0)
+                    end
                 end
-            end            
+            end
         end
     end
 end

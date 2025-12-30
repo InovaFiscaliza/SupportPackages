@@ -206,6 +206,21 @@ a, a:hover {
 }
 
 /*
+  ## Tab Navigator ##
+*/
+.tab-navigator-button {
+    cursor: pointer !important;
+}
+
+.tab-navigator-button:hover {
+    border-color: #7d7d7d !important;
+}
+
+.tab-navigator-icon:hover svg {
+    transform: scale(1.08);
+}
+
+/*
   ## ProgressDialog ##
 */
 :root {
@@ -536,6 +551,29 @@ a, a:hover {
         handle?.offsetHeight;
     });
 
+    /*---------------------------------------------------------------------------------*/
+    htmlComponent.addEventListener("setBackgroundTransparent", function(customEvent) {
+        const objDataName = customEvent.Data.componentName.toString();
+        const objDataTag  = customEvent.Data.componentDataTag.toString();
+        const interval_ms = customEvent.Data.interval_ms || 25;
+        const handle      = findComponentHandle(objDataTag);
+
+        try {
+            let opacityValue = 1.0;
+            let intervalId = setInterval(() => {
+                opacityValue -= 0.02;
+                handle.style.opacity = opacityValue;
+
+                if (opacityValue <= 0.02) {
+                    clearInterval(intervalId);
+                    htmlComponent.sendEventToMATLAB("backgroundBecameTransparent", objDataName);
+                }
+            }, interval_ms);
+        } catch (ME) {
+            // console.log(ME)
+        }
+    });
+
     /*-----------------------------------------------------------------------------------
         ## CUSTOM FORM ##
     -----------------------------------------------------------------------------------*/
@@ -726,6 +764,36 @@ a, a:hover {
 
         } catch (ME) {
             // console.log(ME)
+        }
+    });
+
+    /*-----------------------------------------------------------------------------------
+        ## TAB NAVIGATOR ##
+    -----------------------------------------------------------------------------------*/
+    htmlComponent.addEventListener("tabNavigator", function(customEvent) {
+        const tabConfig = customEvent.Data;
+
+        switch (tabConfig.operation) {
+            case "convertToInlineSVG": {
+                tabConfig.buttons.forEach(button => {
+                    const icon = findComponentHandle(button.dataTag)?.querySelector(".mwIconNode");
+                    if (!icon) return;
+                    icon.innerHTML = button.svgContent;
+                    icon.classList.add("tab-navigator-icon");
+                    icon.querySelector("svg").setAttribute('fill', button.value ? "#f0f022" : "#ffffff");
+                    icon.style.backgroundImage = "none";
+                });            
+                break;
+            }
+
+            case "setIconColor": {
+                tabConfig.buttons.forEach(button => {
+                    const svg = findComponentHandle(button.dataTag)?.querySelector(".mwIconNode svg");
+                    if (!svg) return;
+                    svg.setAttribute('fill', button.value ? "#f0f022" : "#ffffff");
+                });
+                break;
+            }
         }
     });
 
