@@ -19,7 +19,7 @@ function PopUpContainer(callingApp, appName, screenWidth, screenHeight)
     popupContainer = findobj(hFig.Children, 'Type', 'uipanel', 'Tag', 'popupContainer');
 
     if isempty(popupContainer) || ~isvalid(popupContainer)        
-        popupContainerGrid = uigridlayout(hFig, [1, 1], "BackgroundColor", "white", "ColumnWidth", {'1x', screenWidth, '1x'}, "RowHeight", {'1x', screenHeight, '1x'}, "Visible", "off");
+        popupContainerGrid = uigridlayout(hFig, [1, 1], "BackgroundColor", "white", "ColumnWidth", {'1x', screenWidth, '1x'}, "RowHeight", {'1x', screenHeight, '1x'}, "Padding", [0,0,0,0], "Visible", "off");
         popupContainer = uipanel(popupContainerGrid, "Title", "", "Tag", "popupContainer");
         popupContainer.Layout.Row = 2;
         popupContainer.Layout.Column = 2;
