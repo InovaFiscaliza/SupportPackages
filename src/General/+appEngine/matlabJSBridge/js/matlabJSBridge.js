@@ -81,7 +81,7 @@ body {
 
 .mwDialog {
     --mw-fontSize-dialog: 12px !important;
-    word-break: break-all !important;
+    word-break: break-word !important;
 }
 
 .mw-table-component {
