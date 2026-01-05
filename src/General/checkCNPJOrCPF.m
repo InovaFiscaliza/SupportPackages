@@ -1,13 +1,14 @@
-function [entityId, status, details] = checkCNPJOrCPF(entityId, searchType)
+function [entityId, status, details, msgError] = checkCNPJOrCPF(entityId, searchType)
     arguments
         entityId   (1,:) char
         searchType char {mustBeMember(searchType, {'NumberValidation', 'PublicAPI'})} = 'NumberValidation'
     end
 
-    status  = false;
-    details = '';
+    status   = false;
+    details  = '';
+    msgError = '';
 
-    try    
+    try
         entityIDNumber = regexprep(entityId, '\D', '');
         switch numel(entityIDNumber)
             case 11
@@ -27,7 +28,8 @@ function [entityId, status, details] = checkCNPJOrCPF(entityId, searchType)
                 details = rawDetails;
             end
         end
-    catch
+    catch ME
+        msgError = ME.message;
     end
 end
 
