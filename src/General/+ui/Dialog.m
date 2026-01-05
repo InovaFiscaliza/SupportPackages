@@ -36,12 +36,21 @@ function varargout = Dialog(hFigure, type, msg, varargin)
             % emulação do uiconfirm como uialert, com a vantagem de
             % travar a execução, caso seja esse o objetivo.
             if isscalar(varargin{1})
-                Icon = 'warning';
+                defaultIcon = 'warning';
             else
-                Icon = 'question';
+                defaultIcon = 'question';
+            end
+            otherParameters = {'Icon', defaultIcon};
+
+            if nargin == 7
+                if any(cellfun(@(x) isequal('Icon', x), varargin{4}))
+                    otherParameters = varargin{4};
+                else
+                    otherParameters = [otherParameters, varargin{4}];                    
+                end
             end
 
-            userSelection = uiconfirm(hFigure, msg, '', 'Options', varargin{1}, 'DefaultOption', varargin{2}, 'CancelOption', varargin{3}, 'Interpreter', 'html', 'Icon', Icon);
+            userSelection = uiconfirm(hFigure, msg, '', 'Options', varargin{1}, 'DefaultOption', varargin{2}, 'CancelOption', varargin{3}, 'Interpreter', 'html', otherParameters{:});
             varargout{1} = userSelection;
 
         case {'uigetfile', 'uiputfile'}

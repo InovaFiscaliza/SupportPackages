@@ -39,8 +39,16 @@ function boot(app, role, varargin)
             app.mainApp = varargin{1};
             app.callingApp = varargin{2};
 
-            if isprop(app, 'jsBackDoor')
+            if isprop(app, 'projectData') && isprop(app.mainApp, 'projectData')
+                app.projectData = app.mainApp.projectData;
+            end
+
+            if isprop(app, 'jsBackDoor') && isprop(app.callingApp, 'jsBackDoor')
                 app.jsBackDoor = app.callingApp.jsBackDoor;
+            end
+
+            if isprop(app, 'progressDialog') && isprop(app.callingApp, 'progressDialog')
+                app.progressDialog = app.callingApp.progressDialog;
             end
     end
 end
