@@ -905,27 +905,37 @@ a, a:hover {
                     window.top.app.indexedDB = await openDB(dbConfig.name, dbConfig.version, dbConfig.store);
                     htmlComponent.sendEventToMATLAB("indexedDB", { operation: "openDB", status: "success" });
                 } catch (ME) {
-                    htmlComponent.sendEventToMATLAB("indexedDB", { operation: "openDB", status: "failure", message: ME.message });
+                    // htmlComponent.sendEventToMATLAB("indexedDB", { operation: "openDB", status: "failure", message: ME.message });
                 }
                 break;
             }
             case "saveData": {
-                const { key, data }  = customEvent.Data;
+                const { key, data }  = dbConfig;
                 try {
                     await saveDataInDB(dbConfig.store, key, data);
-                    htmlComponent.sendEventToMATLAB("indexedDB", { operation: "updateData", status: "success" });
+                    // htmlComponent.sendEventToMATLAB("indexedDB", { operation: "saveData", status: "success" });
                 } catch (ME) {
-                    htmlComponent.sendEventToMATLAB("indexedDB", { operation: "updateData", status: "failure", message: ME.message });
+                    // htmlComponent.sendEventToMATLAB("indexedDB", { operation: "saveData", status: "failure", message: ME.message });
                 }
                 break;
             }
             case "loadData": {
-                const key = customEvent.Data.key;
+                const key = dbConfig.key;
                 try {
                     const data = await loadDataFromDB(dbConfig.store, key);
-                    htmlComponent.sendEventToMATLAB("indexedDB", { operation: "loadData", status: "success", data: data });
+                    htmlComponent.sendEventToMATLAB("indexedDB", { operation: "loadData", status: "success", data });
                 } catch (ME) {
-                    htmlComponent.sendEventToMATLAB("indexedDB", { operation: "loadData", status: "failure", message: ME.message });
+                    // htmlComponent.sendEventToMATLAB("indexedDB", { operation: "loadData", status: "failure", message: ME.message });
+                }
+                break;
+            }
+            case "deleteData": {
+                const key = dbConfig.key;
+                try {
+                    await deleteDataFromDB(dbConfig.store, key);
+                    // htmlComponent.sendEventToMATLAB("indexedDB", { operation: "deleteData", status: "success" });
+                } catch (ME) {
+                    // htmlComponent.sendEventToMATLAB("indexedDB", { operation: "deleteData", status: "failure", message: ME.message });
                 }
                 break;
             }
@@ -983,7 +993,26 @@ a, a:hover {
             const store = tx.objectStore(DB_STORE);
             const request = store.get(key);
 
-            request.onsuccess = () => resolve(request.result);
+            request.onsuccess = () => {
+                const result  = request.result;
+                resolve(result ? result.data : null);
+            };
+            request.onerror   = () => reject(request.error);
+        });
+    }
+
+    /*---------------------------------------------------------------------------------*/
+    function deleteDataFromDB(DB_STORE, key) {
+        if (!window.top.app.indexedDB) {
+            throw new Error("IndexedDB is not opened yet.");
+        }
+
+        return new Promise((resolve, reject) => {
+            const tx = window.top.app.indexedDB.transaction(DB_STORE, "readwrite");
+            const store = tx.objectStore(DB_STORE);
+            const request = store.delete(key);
+
+            request.onsuccess = () => resolve(true);
             request.onerror   = () => reject(request.error);
         });
     }
