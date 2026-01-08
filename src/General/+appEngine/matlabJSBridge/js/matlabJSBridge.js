@@ -1041,8 +1041,20 @@ a, a:hover {
                 height: "100vh",
                 width: "100vw"
             });
-
             window.document.body.appendChild(container);
+        }
+
+        let containerStyle = window.document.getElementById("wordcloud-style");
+        if (!containerStyle) {
+            containerStyle = window.document.createElement("style");
+            containerStyle.id = "wordcloud-style";
+            containerStyle.innerHTML = `
+                #wordcloud text::selection {
+                    background: #0078d4 !important;
+                    fill: white !important;
+                }
+            `;
+            window.document.head.appendChild(containerStyle);
         }
 
         if (!window.top.app.wordcloud) {
