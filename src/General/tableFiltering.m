@@ -12,21 +12,66 @@ classdef tableFiltering < handle
 
     properties (Constant)
         %-----------------------------------------------------------------%
-        floatDiffTolerance = 1e-5
+        FLOAT_COMPARISON_TOLERANCE = 1e-5
+
+        FILTER_TYPE_MAPPING = dictionary( ...
+            ["uint8", "uint16", "uint32", "uint64", "int8", "int16", "int32", "int64", "single", "double", "logical", "char", "string", "cell", "categorical", "datetime"], ...
+            [repmat("numeric", 1, 10), "logical", repmat("cellstr", 1, 3), "categorical", "datetime"] ...
+        )
+
+        FILTER_SYMBOLS = dictionary( ...
+            ["uint8", "uint16", "uint32", "uint64", "int8", "int16", "int32", "int64", "single", "double", "logical", "char", "string", "cell", "categorical", "datetime"], ...
+            [repmat("🔢", 1, 10), "🔘", repmat("🔤", 1, 3), "🏷️", "📅"] ...
+        )
+
+        FILTER_CAPABILITIES = dictionary( ...
+            ["numeric", "logical", "cellstr", "categorical", "datetime"], ...
+            [ ...
+                struct( ...
+                    'symbol', '🔢', ...
+                    'operations', {{'=', '≠', '<', '≤', '>', '≥'}} ...
+                ), ...
+                struct( ...
+                    'symbol', '🔘', ...
+                    'operations', {{'=', '≠'}} ...
+                ), ...
+                struct( ...
+                    'symbol', '🔤', ...
+                    'operations', {{ ...
+                        '=', '≠', ...
+                        'begins with', 'does not begin with', ...
+                        'ends with', 'does not end with', ...
+                        'contains', 'does not contain' ...
+                    }} ...
+                ), ...
+                struct( ...
+                    'symbol', '🏷️', ...
+                    'operations', {{ ...
+                        '=', '≠', ...
+                        'begins with', 'does not begin with', ...
+                        'ends with', 'does not end with', ...
+                        'contains', 'does not contain' ...
+                    }} ...
+                ), ...
+                struct( ...
+                    'symbol', '📅', ...
+                    'operations', {{'=', '≠', '<', '≤', '>', '≥'}} ...
+                ) ...
+            ] ...
+        )
     end
 
     
-    methods
+    methods (Access = public)
         %-----------------------------------------------------------------%
         function fIndex = run(obj, filterType, varargin)
             switch filterType
                 case 'words2Search'
-                    fIndex = stringMatchFiltering(obj, varargin{:});
+                    fIndex = tableFiltering.stringMatchFiltering(varargin{:});
                 case 'filterRules'
                     fIndex = rulesOrientedFiltering(obj, varargin{:});
             end
         end
-
 
         %-----------------------------------------------------------------%
         function addFilterRule(obj, Field, Operators, Values, Connector)
@@ -47,18 +92,15 @@ classdef tableFiltering < handle
             obj.filterRules = sortrows(obj.filterRules, 'Field');
         end
 
-
         %-----------------------------------------------------------------%
         function removeFilterRule(obj, idx)
             obj.filterRules(idx, :) = [];
         end
 
-
         %-----------------------------------------------------------------%
         function toogleFilterRule(obj, enableArray)
             obj.filterRules.Enable = enableArray;
         end
-
 
         %-----------------------------------------------------------------%
         function filterList = getFilterList(obj, baseName, status)
@@ -84,15 +126,15 @@ classdef tableFiltering < handle
 
                 for jj = 1:numel(Operators)
                     if jj == 1
-                        filterList{ii} = sprintf('%s.("%s") %s %s', baseName, Field, Operators{jj}, stringifyFilterValue(obj, Values{jj}));
+                        filterList{ii} = sprintf('%s.("%s") %s %s', baseName, Field, Operators{jj}, tableFiltering.stringifyFilterValue(Values{jj}));
                     else
                         switch Connector
-                            case 'and'
+                            case {'and', 'e'}
                                 operatorSymbol = '&&';
-                            case 'or'
+                            case {'or', 'ou'}
                                 operatorSymbol = '||';
                         end
-                        filterList{ii} = sprintf('%s %s %s.("%s") %s %s', filterList{ii}, operatorSymbol, baseName, Field, Operators{jj}, stringifyFilterValue(obj, Values{jj}));
+                        filterList{ii} = sprintf('%s %s %s.("%s") %s %s', filterList{ii}, operatorSymbol, baseName, Field, Operators{jj}, tableFiltering.stringifyFilterValue(Values{jj}));
                     end
                 end
             end
@@ -101,68 +143,6 @@ classdef tableFiltering < handle
 
 
     methods (Access = private)
-        %-----------------------------------------------------------------%
-        function value = stringifyFilterValue(obj, value)
-            if isnumeric(value)
-                if isscalar(value)
-                    value = string(value);
-                else
-                    value = sprintf('[%s]', strjoin(string(value), ', '));
-                end
-            elseif iscellstr(value)
-                value = textFormatGUI.cellstr2ListWithQuotes(value);
-            else
-                value = sprintf('"%s"', value);
-            end
-        end
-
-
-        %-----------------------------------------------------------------%
-        function fIndex = stringMatchFiltering(obj, varargin)
-            rawTable       = varargin{1};
-            columnNames    = varargin{2};
-            rawCell        = rawTable{:,columnNames};
-            
-            sortOrder      = varargin{3};
-            searchFunction = varargin{4};
-            words2Search   = varargin{5};
-            nWords2Search  = numel(words2Search);
-
-            switch sortOrder
-                case 'stable'
-                    if nWords2Search < 150
-                        switch searchFunction
-                            case 'strcmp'
-                                listOfIndex = cellfun(@(x) find(any(strcmp(rawCell, x), 2)),   words2Search, 'UniformOutput', false);
-                            case 'contains'
-                                listOfIndex = cellfun(@(x) find(any(contains(rawCell, x), 2)), words2Search, 'UniformOutput', false);
-                        end
-                        
-                    else
-                        listOfIndex = cell(1, nWords2Search);
-                        parpoolCheck()
-                        parfor ii = 1:nWords2Search
-                            switch searchFunction
-                                case 'strcmp'
-                                    listOfIndex{ii} = find(any(strcmp(rawCell,   words2Search{ii}), 2));
-                                case 'contains'
-                                    listOfIndex{ii} = find(any(contains(rawCell, words2Search{ii}), 2));
-                            end
-                        end
-                    end        
-                    fIndex = unique(vertcat(listOfIndex{:}), 'stable');
-
-                case 'unstable'
-                    switch searchFunction
-                        case 'strcmp'
-                            fIndex = find(any(ismember(rawCell, words2Search), 2));
-                        case 'contains'
-                            fIndex = find(any(contains(rawCell, words2Search), 2));
-                    end
-            end
-        end
-
-
         %-----------------------------------------------------------------%
         function fLogicalIndex = rulesOrientedFiltering(obj, rawTable)            
             fRules  = obj.filterRules(obj.filterRules.Enable, :);
@@ -186,15 +166,15 @@ classdef tableFiltering < handle
                         Connector = lower(fRules.Connector{jj});
 
                         for kk = 1:numel(Operators)
-                            Fcn = functionHandle(obj, Operators{kk}, Values{kk});
+                            Fcn = tableFiltering.functionHandle(Operators{kk}, Values{kk});
 
                             if kk == 1
                                 fTempLogical = Fcn(rawTable{:, Field});
                             else
                                 switch Connector
-                                    case 'and'
+                                    case {'and', 'e'}
                                         fTempLogical = and(fTempLogical, Fcn(rawTable{:, Field}));
-                                    case 'or'
+                                    case {'or', 'ou'}
                                         fTempLogical =  or(fTempLogical, Fcn(rawTable{:, Field}));
                                 end
                             end
@@ -207,60 +187,158 @@ classdef tableFiltering < handle
                 fLogicalIndex = all(fLogical, 2);
             end
         end
+    end
 
+
+    methods (Static = true)
+        %-----------------------------------------------------------------%
+        function symbolicNames = mergedSymbolWithColumnNames(columnNames, columnTypes)
+            if ~iscellstr(columnNames)
+                columnNames = cellstr(columnNames);
+            end
+
+            if ~iscellstr(columnTypes)
+                columnTypes = cellstr(columnTypes);
+            end
+
+            symbols = cellstr(cellfun(@(x) tableFiltering.FILTER_SYMBOLS(x), columnTypes));
+            symbolicNames = strcat(symbols, {' '}, columnNames);
+        end
 
         %-----------------------------------------------------------------%
-        function Fcn = functionHandle(obj, Operator, Value)
-            if isnumeric(Value) || isdatetime(Value)
-                floatTolerance = obj.floatDiffTolerance;
+        function pseudoClasses = getPseudoClasses(columnTypes)
+            pseudoClasses = cellstr(cellfun(@(x) tableFiltering.FILTER_TYPE_MAPPING(x), columnTypes));
+        end
 
-                switch Operator
+        %-----------------------------------------------------------------%
+        function [operations, symbol] = getFilterCapabilities(pseudoClass)
+            caps = tableFiltering.FILTER_CAPABILITIES;
+    
+            if isKey(caps, pseudoClass)
+                entry      = caps(pseudoClass);
+                operations = entry.operations;
+                symbol     = entry.symbol;                
+            else
+                error('Unsupported column class: %s', pseudoClass);
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function value = stringifyFilterValue(value)
+            if isnumeric(value) || islogical(value)
+                if isscalar(value)
+                    value = string(value);
+                else
+                    value = sprintf('[%s]', strjoin(string(value), ', '));
+                end
+            elseif iscellstr(value)
+                value = textFormatGUI.cellstr2ListWithQuotes(value);
+            else
+                value = sprintf('"%s"', value);
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function matchedRows = stringMatchFiltering(unfilteredTable, filterColumns, sortOrder, searchFunction, wordsToSearch)
+            cellData = unfilteredTable{:, filterColumns};
+            numWordsToSearch = numel(wordsToSearch);
+
+            switch sortOrder
+                case 'stable'
+                    if numWordsToSearch < 150
+                        switch searchFunction
+                            case 'strcmp'
+                                indexes = cellfun(@(x) find(any(strcmp(cellData, x), 2)),   wordsToSearch, 'UniformOutput', false);
+                            case 'contains'
+                                indexes = cellfun(@(x) find(any(contains(cellData, x), 2)), wordsToSearch, 'UniformOutput', false);
+                        end
+                        
+                    else
+                        indexes = cell(1, numWordsToSearch);
+                        parpoolCheck()
+                        parfor ii = 1:numWordsToSearch
+                            switch searchFunction
+                                case 'strcmp'
+                                    indexes{ii} = find(any(strcmp(cellData,   wordsToSearch{ii}), 2));
+                                case 'contains'
+                                    indexes{ii} = find(any(contains(cellData, wordsToSearch{ii}), 2));
+                            end
+                        end
+                    end        
+                    matchedRows = unique(vertcat(indexes{:}), 'stable');
+
+                case 'unstable'
+                    switch searchFunction
+                        case 'strcmp'
+                            matchedRows = find(any(ismember(cellData, wordsToSearch), 2));
+                        case 'contains'
+                            matchedRows = find(any(contains(cellData, wordsToSearch), 2));
+                    end
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function fcn = functionHandle(operator, value)
+            if isnumeric(value) || isdatetime(value)
+                floatTolerance = tableFiltering.FLOAT_COMPARISON_TOLERANCE;
+
+                switch operator
                     case '='
-                        Fcn = @(x) abs(x - Value) < floatTolerance;
+                        fcn = @(x) abs(x - value) < floatTolerance;
                     case '≠'
-                        Fcn = @(x) abs(x - Value) > floatTolerance;
+                        fcn = @(x) abs(x - value) > floatTolerance;
                     case {'⊃', 'contains'}
-                        Fcn = @(x)  ismember(x, Value);
+                        fcn = @(x)  ismember(x, value);
                     case {'⊅', 'does not contain'}
-                        Fcn = @(x) ~ismember(x, Value);
+                        fcn = @(x) ~ismember(x, value);
                     case '<'
-                        Fcn = @(x) x <  Value;
+                        fcn = @(x) x <  value;
                     case '≤'
-                        Fcn = @(x) x <= Value;
+                        fcn = @(x) x <= value;
                     case '>'
-                        Fcn = @(x) x >  Value;
+                        fcn = @(x) x >  value;
                     case '≥'
-                        Fcn = @(x) x >= Value;
+                        fcn = @(x) x >= value;
                     case '><'
-                        Fcn = @(x) (x > Value(1)) & (x < Value(2));
+                        fcn = @(x) (x > value(1)) & (x < value(2));
                     case '<>'
-                        Fcn = @(x) (x < Value(1)) | (x > Value(2));
+                        fcn = @(x) (x < value(1)) | (x > value(2));
                     otherwise
-                        error('UnexpectedOperation')
+                        error('Unsupported operator: %s', operator);
+                end
+
+            elseif islogical(value)
+                switch operator
+                    case '='
+                        fcn = @(x) x == value;
+                    case '≠'
+                        fcn = @(x) x ~= value;
+                    otherwise
+                        error('Unsupported operator: %s', operator);
                 end
         
-            elseif ischar(Value) || isstring(Value) || iscellstr(Value)
-                Value = cellstr(Value);
+            elseif ischar(value) || isstring(value) || iscellstr(value) || iscategorical(value)
+                value = cellstr(value);
 
-                switch Operator
+                switch operator
                     case '='
-                        Fcn = @(x) strcmpi(cellstr(x), Value);                    
+                        fcn = @(x) strcmpi(cellstr(x), value);                    
                     case '≠'
-                        Fcn = @(x) ~strcmpi(cellstr(x), Value);                    
+                        fcn = @(x) ~strcmpi(cellstr(x), value);                    
                     case {'⊃', 'contains'}
-                        Fcn = @(x) contains(cellstr(x), Value, 'IgnoreCase', true);
+                        fcn = @(x) contains(cellstr(x), value, 'IgnoreCase', true);
                     case {'⊅', 'does not contain'}
-                        Fcn = @(x) ~contains(cellstr(x), Value, 'IgnoreCase', true);                    
+                        fcn = @(x) ~contains(cellstr(x), value, 'IgnoreCase', true);                    
                     case 'begins with'
-                        Fcn = @(x) startsWith(cellstr(x), Value, 'IgnoreCase', true);
+                        fcn = @(x) startsWith(cellstr(x), value, 'IgnoreCase', true);
                     case 'does not begin with'
-                        Fcn = @(x) ~startsWith(cellstr(x), Value, 'IgnoreCase', true);                    
+                        fcn = @(x) ~startsWith(cellstr(x), value, 'IgnoreCase', true);                    
                     case 'ends with'
-                        Fcn = @(x) endsWith(cellstr(x), Value, 'IgnoreCase', true);
+                        fcn = @(x) endsWith(cellstr(x), value, 'IgnoreCase', true);
                     case 'does not end with'
-                        Fcn = @(x) ~endsWith(cellstr(x), Value, 'IgnoreCase', true);
+                        fcn = @(x) ~endsWith(cellstr(x), value, 'IgnoreCase', true);
                     otherwise
-                        error('UnexpectedOperation')
+                        error('Unsupported operator: %s', operator);
                 end
 
             else
@@ -268,4 +346,5 @@ classdef tableFiltering < handle
             end
         end
     end
+
 end

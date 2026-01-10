@@ -44,6 +44,18 @@ classdef (Abstract) textAnalysis
                 uniqueData = referenceData;
             end
         end
+
+        %-----------------------------------------------------------------%
+        function list = sort(list, direction)
+            arguments
+                list cell {mustBeText}
+                direction {mustBeMember(direction, {'ascend', 'descend'})} = 'ascend'
+            end
+
+            normalizedList = strtrim(replace(lower(list), textAnalysis.specialChars, textAnalysis.replaceChars));
+            [~, index] = sortrows(normalizedList, direction);
+            list = list(index);
+        end
     end
 
 end
