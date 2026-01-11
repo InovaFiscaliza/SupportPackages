@@ -46,14 +46,18 @@ classdef (Abstract) textAnalysis
         end
 
         %-----------------------------------------------------------------%
-        function list = sort(list, direction)
+        function [list, index] = sort(list, direction)
             arguments
-                list cell {mustBeText}
+                list
                 direction {mustBeMember(direction, {'ascend', 'descend'})} = 'ascend'
             end
 
+            if ~iscellstr(list)
+                list = cellstr(list);
+            end
+
             normalizedList = strtrim(replace(lower(list), textAnalysis.specialChars, textAnalysis.replaceChars));
-            [~, index] = sortrows(normalizedList, direction);
+            [~, index] = sort(normalizedList);
             list = list(index);
         end
     end

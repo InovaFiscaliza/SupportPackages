@@ -66,7 +66,7 @@ classdef tableFiltering < handle
         %-----------------------------------------------------------------%
         function fIndex = run(obj, filterType, varargin)
             switch filterType
-                case 'words2Search'
+                case 'wordsToSearch'
                     fIndex = tableFiltering.stringMatchFiltering(varargin{:});
                 case 'filterRules'
                     fIndex = rulesOrientedFiltering(obj, varargin{:});
