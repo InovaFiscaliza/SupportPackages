@@ -25,15 +25,15 @@ classdef (Abstract, AllowedSubclasses={?ws.eFiscaliza, ?ws.ReceitaFederal}) WebS
     end
 
 
-    methods
+    methods (Static = true)
         %-----------------------------------------------------------------%
-        function encodedString = base64encode(obj, inputString)
+        function encodedString = base64encode(inputString)
             byteArray = unicode2native(inputString, 'UTF-8');
             encodedString = matlab.net.base64encode(byteArray);
         end
 
         %-----------------------------------------------------------------%
-        function decodedString = base64decode(obj, encodedString)
+        function decodedString = base64decode(encodedString)
             byteArray = matlab.net.base64decode(encodedString);
             decodedString = native2unicode(byteArray, 'UTF-8');
         end

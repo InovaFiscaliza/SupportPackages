@@ -25,7 +25,7 @@ classdef eFiscaliza < ws.WebServiceBase
             end
 
             obj.login    = login;
-            obj.password = base64encode(obj, password);
+            obj.password = ws.WebServiceBase.base64encode(password);
         end
 
         %-----------------------------------------------------------------%
@@ -42,7 +42,7 @@ classdef eFiscaliza < ws.WebServiceBase
             end
 
             try
-                header = {'Authorization', ['Basic ' base64encode(obj, [obj.login ':' obj.password])], ...
+                header = {'Authorization', ['Basic ' ws.WebServiceBase.base64encode([obj.login ':' obj.password])], ...
                           'Content-Type', 'application/json'};
             
                 switch operation
@@ -109,7 +109,7 @@ classdef eFiscaliza < ws.WebServiceBase
                             'OBSERVACAO',       docSpec.note,          ...
                             'NIVEL_ACESSO',     docSpec.accessLevelId, ...
                             'HIPOTESE_LEGAL',   docSpec.legalBasisId,  ...
-                            'CONTEUDO',         base64encode(obj, fileread(fileName)) ...
+                            'CONTEUDO',         ws.WebServiceBase.base64encode(fileread(fileName)) ...
                         );
 
                         if strcmp(operation, 'uploadExternalDocument')

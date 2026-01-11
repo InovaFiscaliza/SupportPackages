@@ -116,10 +116,6 @@ a, a:hover {
     border-radius: 5px !important;
 }
 
-.gbtTabGroup {
-    background-color: transparent !important;
-}
-
 .tabBar {
     height: 24px !important;
     background: transparent !important;
@@ -166,11 +162,10 @@ a, a:hover {
     border-bottom-color: var(--ccTools-tabGroup-tab-selected-border) !important;
 }
 
-.gbtWidget.gbtPanel {
-    background-color: transparent !important;
-}
-
-.mwRadioButton {
+.gbtTabGroup,
+.gbtWidget.gbtPanel,
+.mwRadioButton,
+.mwDatePicker {
     background-color: transparent !important;
 }
 
