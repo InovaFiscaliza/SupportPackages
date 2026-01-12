@@ -1,0 +1,36 @@
+{
+    "version": 0.01,
+    "operationMode": {
+        "Debug": false,
+        "Dock": true,
+        "Simulation": false,
+        "DevTools": {
+            "login": "admin",
+            "password": "admin"
+        }
+    },
+    "computerName": {
+        "deskopApp": "",
+        "webServer": "WIMATLABPDIN01"
+    },
+    "fileFolder": {
+        "MFilePath": "",
+        "userPath": "",
+        "tempPath": "",
+        "pythonPath": "",
+        "DataHub_GET": "",
+        "DataHub_POST": "",
+        "lastVisited": ""
+    },
+    "tcpServer": {
+        "Status": 0,
+        "IP": "",
+        "Port": 8910,
+        "Key": "123456",
+        "ClientList": [
+            "Zabbix",
+            "Jupyter",
+            "Matlab"
+        ]
+    }
+}

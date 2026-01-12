@@ -12,6 +12,8 @@ classdef (Abstract) util
             warning('off', 'MATLAB:table:ModifiedVarnames')
             warning('off', 'MATLAB:colon:operandsNotRealScalar')
             warning('off', 'MATLAB:opengl:unableToSelectHWGL')
+            warning('off', 'MATLAB:class:DestructorError')
+            warning('off', 'transportlib:legacy:PropertyNotSupported')
         end
 
         %-----------------------------------------------------------------%
