@@ -4,12 +4,14 @@ function beforeReload(app, role)
         role {mustBeMember(role, {'mainApp'})} = 'mainApp'
     end
 
-    delete(app.progressDialog)
-
     if ~app.Tab1Button.Value
         app.Tab1Button.Value = true;                    
         navigateToTab(app, app.Tab1Button)
         drawnow
+    end
+
+    if isprop(app, 'SubTabGroup')
+        app.SubTabGroup.UserData.isTabInitialized(:) = false;
     end
 
     appTags = app.tabGroupController.Components.Tag;
@@ -18,7 +20,7 @@ function beforeReload(app, role)
         closeModule(app.tabGroupController, secondaryAppTags, app.General)
     end
 
-    if ~isempty(app.popupContainer)
+    if ~isempty(app.popupContainer) && isvalid(app.popupContainer)
         auxDockAppName = app.popupContainer.UserData.auxDockAppName;
         deleteContextMenu(app.tabGroupController, app.UIFigure, auxDockAppName)
         delete(app.popupContainer)

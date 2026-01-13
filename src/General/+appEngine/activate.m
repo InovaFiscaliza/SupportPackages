@@ -12,7 +12,9 @@ function activate(app, role, varargin)
 
     switch role
         case 'mainApp'
-            app.progressDialog = ui.ProgressDialog(app.jsBackDoor);
+            if isempty(app.progressDialog)
+                app.progressDialog = ui.ProgressDialog(app.jsBackDoor);
+            end
             requestVisibilityChange(app.progressDialog, 'visible', 'locked')
             
             if ~app.renderCount
@@ -49,6 +51,10 @@ function activate(app, role, varargin)
         
             else
                 JSCustomizations(app, role)
+            end
+
+            if app.tabGroupController.inlineSVG
+                convertToInlineSVG(app.tabGroupController, app.jsBackDoor)
             end
 
             pause(.100)

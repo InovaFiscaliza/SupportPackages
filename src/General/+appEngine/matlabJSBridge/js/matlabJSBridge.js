@@ -15,17 +15,12 @@
         possibilitando injeção de scripts da biblioteca "D3" para wordcloud.
 */
 function setup(htmlComponent) {
-    if (window.parent.app?.rendererStatus) {
-        return;
-    }
-
     if (!window.parent.app) {
         window.parent.app = {};
     }
 
     window.parent.app.staticBaseURL  = new URL(".", window.document.baseURI).href;
     window.parent.app.executionMode  = null;
-    window.parent.app.rendererStatus = false;
     window.parent.app.matlabJSBridge = htmlComponent;
     window.parent.app.ui             = [];    
     window.parent.app.modules        = {};
@@ -317,37 +312,43 @@ a, a:hover {
         fique em foco quando da interação via mouse com elemento textual.
     -----------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("startup", function(customEvent) {
-        const executionMode = customEvent.Data;
-        window.parent.app.executionMode = executionMode;        
+        const parentWindow = window.parent;
 
-        if (executionMode === "webApp") {
-            window.parent.addEventListener("beforeunload", (event) => {
-                event.preventDefault();
-                event.returnValue = '';
-            });
+        if (!parentWindow.document._customListenerInstalled) {
+            parentWindow.document._customListenerInstalled = true;
 
-            window.parent.addEventListener("unload", () => {
-                htmlComponent.sendEventToMATLAB("unload");
-            });
+            const executionMode = customEvent.Data;
+            parentWindow.app.executionMode = executionMode;        
 
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('/webapps/home/service-worker.js', { scope: '/webapps/home/' })
-                .then(()  => { consoleLog('Service worker registered successfully'); })
-                .catch(ME => { consoleLog(`Service worker registration failed: ${ME.message}`)});
+            if (executionMode === "webApp") {
+                parentWindow.addEventListener("beforeunload", (event) => {
+                    event.preventDefault();
+                    event.returnValue = '';
+                });
+
+                parentWindow.addEventListener("unload", () => {
+                    htmlComponent.sendEventToMATLAB("unload");
+                });
+
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register('/webapps/home/service-worker.js', { scope: '/webapps/home/' })
+                    .then(()  => { consoleLog('Service worker registered successfully'); })
+                    .catch(ME => { consoleLog(`Service worker registration failed: ${ME.message}`)});
+                }
             }
+
+            let lastInteractionWasKeyboard = false;
+            parentWindow.document.addEventListener('keydown',     () => { lastInteractionWasKeyboard = true;  }, true);
+            parentWindow.document.addEventListener('mousedown',   () => { lastInteractionWasKeyboard = false; }, true);
+            parentWindow.document.addEventListener('pointerdown', () => { lastInteractionWasKeyboard = false; }, true);
+
+            parentWindow.document.addEventListener('focusin', (event) => {
+                const target = event.target;
+                if (!lastInteractionWasKeyboard && target.matches('.mwButton, .mwCloseNode') && target.closest('.mwAlertDialog')?.classList.contains('focused')) {
+                    target.blur();
+                }
+            }, true);
         }
-
-        let lastInteractionWasKeyboard = false;
-        window.parent.document.addEventListener('keydown',     () => { lastInteractionWasKeyboard = true;  }, true);
-        window.parent.document.addEventListener('mousedown',   () => { lastInteractionWasKeyboard = false; }, true);
-        window.parent.document.addEventListener('pointerdown', () => { lastInteractionWasKeyboard = false; }, true);
-
-        window.parent.document.addEventListener('focusin', (event) => {
-            const target = event.target;
-            if (!lastInteractionWasKeyboard && target.matches('.mwButton, .mwCloseNode') && target.closest('.mwAlertDialog')?.classList.contains('focused')) {
-                target.blur();
-            }
-        }, true);
 
         injectCustomStyle();
     });
@@ -1163,7 +1164,6 @@ a, a:hover {
             consoleLog(msg);
 
             htmlComponent.sendEventToMATLAB('renderer');
-            window.parent.app.rendererStatus = true;
         });
     });
 }

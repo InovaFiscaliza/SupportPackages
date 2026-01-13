@@ -24,6 +24,7 @@ classdef TabNavigator < handle
         Components    table = table('Size',          [0, 9],                                                                                                ...
                                     'VariableNames', {'Tag', 'Type', 'File', 'appHandle', 'btnHandle', 'btnStatus', 'btnIcon', 'btnRefHandle', 'tabIndex'}, ...
                                     'VariableTypes', {'string', 'categorical', 'string', 'cell', 'matlab.ui.control.StateButton', 'categorical', 'struct', 'matlab.ui.control.StateButton', 'double'})
+        inlineSVG = false
     end
 
 
@@ -36,7 +37,6 @@ classdef TabNavigator < handle
         progressDialog
         executionMode
         jsBackDoor
-        inlineSVG = false
     end
 
 
