@@ -1,23 +1,39 @@
+/*
+    Função executada pelo MATLAB ao renderizar o componente uihtml, possibilitando
+    estabelecer comunicação entre MATLAB e HTML/JS. 
+
+    No webapp existem três níveis de window: 
+    - window.top (host)
+    - window.parent (iframe do app)
+    - window (iframe uihtml)
+
+    Na versão desktop, top e parent referenciam o mesmo objeto.
+
+    Em geral, todas as operações agem sobre elementos em window.parent. Exceções:
+    (a) window.top: remover progressdialog inicial do webapp e obter a URL real do app;
+    (b) window: identificar caminho estático do servidor (em relação ao uihtml), 
+        possibilitando injeção de scripts da biblioteca "D3" para wordcloud.
+*/
 function setup(htmlComponent) {
-    if (window.top.app?.rendererStatus) {
+    if (window.parent.app?.rendererStatus) {
         return;
     }
 
-    if (!window.top.app) {
-        window.top.app = {};
+    if (!window.parent.app) {
+        window.parent.app = {};
     }
 
-    window.top.app.staticBaseURL  = new URL(".", window.document.baseURI).href;
-    window.top.app.executionMode  = null;
-    window.top.app.rendererStatus = false;
-    window.top.app.matlabJSBridge = htmlComponent;
-    window.top.app.ui             = [];    
-    window.top.app.modules        = {};
-    window.top.app.indexedDB      = null;
-    window.top.app.wordcloud      = null;
+    window.parent.app.staticBaseURL  = new URL(".", window.document.baseURI).href;
+    window.parent.app.executionMode  = null;
+    window.parent.app.rendererStatus = false;
+    window.parent.app.matlabJSBridge = htmlComponent;
+    window.parent.app.ui             = [];    
+    window.parent.app.modules        = {};
+    window.parent.app.indexedDB      = null;
+    window.parent.app.wordcloud      = null;
 
     /*-----------------------------------------------------------------------------------
-    FUNÇÕES
+    ## FUNÇÕES ##
     -----------------------------------------------------------------------------------*/
     function consoleLog(msg) {
         const now      = new Date();
@@ -45,7 +61,7 @@ function setup(htmlComponent) {
             const scriptElement = parentDocument.createElement("script");
             scriptElement.className = className;
             scriptElement.type = "text/javascript";
-            scriptElement.src  = new URL(file, window.top.app.staticBaseURL).href;
+            scriptElement.src  = new URL(file, window.parent.app.staticBaseURL).href;
 
             parentDocument.head.appendChild(scriptElement);
         });
@@ -276,76 +292,17 @@ a, a:hover {
         return prop.replace(/[A-Z]/g, m => "-" + m.toLowerCase());
     }
 
-    window.top.app.modules = {
+    window.parent.app.modules = {
         consoleLog, 
         findComponentHandle, 
+        injectCustomScript,
         injectCustomStyle, 
         isMobile,
         camelToKebab
     }
 
     /*-----------------------------------------------------------------------------------
-    LISTENERS
-    -----------------------------------------------------------------------------------*/
-    htmlComponent.addEventListener("getCssPropertyValue", function(customEvent) {
-        const auxAppTag     = customEvent.Data.auxAppTag;
-        const componentName = customEvent.Data.componentName;
-        const dataTag       = customEvent.Data.dataTag
-        const childClass    = customEvent.Data.childClass;
-        const propertyName  = customEvent.Data.propertyName;
-
-        let handle = findComponentHandle(dataTag);
-        if (!handle) return;
-        
-        if (childClass) {
-            const child = handle.getElementsByClassName(childClass)[0];
-            if (child) {
-                handle = child;
-            }
-        }
-        
-        const propertyValue = window.getComputedStyle(handle).getPropertyValue(propertyName);
-        htmlComponent.sendEventToMATLAB("getCssPropertyValue", { auxAppTag, componentName, propertyName, propertyValue });
-    });
-
-    /*---------------------------------------------------------------------------------*/
-    htmlComponent.addEventListener("changeTableRowHeight", function(customEvent) {
-        let styleElement = window.parent.document.getElementById('matlab-js-bridge-uitable');
-        if (styleElement) {
-            styleElement.remove();
-        }
-
-        const rowHeight = customEvent.Data;
-        if (rowHeight == "default") {
-            return
-        }
-
-        const cssText = `/*
-  ## Customizações gerais (MATLAB Built-in uitable) ##
-*/
-.mw-table-row-header-cell {
-    height: ${rowHeight}px !important;
-    max-height: ${rowHeight}px !important;
-}
-
-.mw-table-row {
-    height: ${rowHeight}px !important;
-}
-
-.mw-table-cell {
-    height: 100% !important;
-    white-space: pre-line !important;
-}`;
-        
-        styleElement = window.parent.document.createElement("style");
-        styleElement.type = "text/css";
-        styleElement.id = "matlab-js-bridge-uitable";
-        styleElement.innerHTML = `${cssText}`;
-
-        window.parent.document.head.appendChild(styleElement);
-    });
-
-    /*-----------------------------------------------------------------------------------
+        ## LISTENERS ##
         No webapp, ao tentar fechar a aba, o evento "beforeunload" desconecta o websocket, 
         tornando o app inoperante, independente da resposta à confirmação de fechamento do
         webapp apresentada no navegador. 
@@ -361,15 +318,15 @@ a, a:hover {
     -----------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("startup", function(customEvent) {
         const executionMode = customEvent.Data;
-        window.top.app.executionMode = executionMode;        
+        window.parent.app.executionMode = executionMode;        
 
         if (executionMode === "webApp") {
-            window.top.addEventListener("beforeunload", (event) => {
+            window.parent.addEventListener("beforeunload", (event) => {
                 event.preventDefault();
                 event.returnValue = '';
             });
 
-            window.top.addEventListener("unload", () => {
+            window.parent.addEventListener("unload", () => {
                 htmlComponent.sendEventToMATLAB("unload");
             });
 
@@ -381,11 +338,11 @@ a, a:hover {
         }
 
         let lastInteractionWasKeyboard = false;
-        window.top.document.addEventListener('keydown',     () => { lastInteractionWasKeyboard = true;  }, true);
-        window.top.document.addEventListener('mousedown',   () => { lastInteractionWasKeyboard = false; }, true);
-        window.top.document.addEventListener('pointerdown', () => { lastInteractionWasKeyboard = false; }, true);
+        window.parent.document.addEventListener('keydown',     () => { lastInteractionWasKeyboard = true;  }, true);
+        window.parent.document.addEventListener('mousedown',   () => { lastInteractionWasKeyboard = false; }, true);
+        window.parent.document.addEventListener('pointerdown', () => { lastInteractionWasKeyboard = false; }, true);
 
-        window.top.document.addEventListener('focusin', (event) => {
+        window.parent.document.addEventListener('focusin', (event) => {
             const target = event.target;
             if (!lastInteractionWasKeyboard && target.matches('.mwButton, .mwCloseNode') && target.closest('.mwAlertDialog')?.classList.contains('focused')) {
                 target.blur();
@@ -402,7 +359,7 @@ a, a:hover {
         let modifyAttempts = 0;
         let dataTags       = '';
 
-        window.top.app.ui.push(...components);
+        window.parent.app.ui.push(...components);
 
         const modifyInterval = setInterval(() => {
             modifyAttempts++;
@@ -505,6 +462,65 @@ a, a:hover {
     });
 
     /*---------------------------------------------------------------------------------*/
+    htmlComponent.addEventListener("getCssPropertyValue", function(customEvent) {
+        const auxAppTag     = customEvent.Data.auxAppTag;
+        const componentName = customEvent.Data.componentName;
+        const dataTag       = customEvent.Data.dataTag
+        const childClass    = customEvent.Data.childClass;
+        const propertyName  = customEvent.Data.propertyName;
+
+        let handle = findComponentHandle(dataTag);
+        if (!handle) return;
+        
+        if (childClass) {
+            const child = handle.getElementsByClassName(childClass)[0];
+            if (child) {
+                handle = child;
+            }
+        }
+        
+        const propertyValue = window.parent.getComputedStyle(handle).getPropertyValue(propertyName);
+        htmlComponent.sendEventToMATLAB("getCssPropertyValue", { auxAppTag, componentName, propertyName, propertyValue });
+    });
+
+    /*---------------------------------------------------------------------------------*/
+    htmlComponent.addEventListener("changeTableRowHeight", function(customEvent) {
+        let styleElement = window.parent.document.getElementById('matlab-js-bridge-uitable');
+        if (styleElement) {
+            styleElement.remove();
+        }
+
+        const rowHeight = customEvent.Data;
+        if (rowHeight == "default") {
+            return
+        }
+
+        const cssText = `/*
+  ## Customizações gerais (MATLAB Built-in uitable) ##
+*/
+.mw-table-row-header-cell {
+    height: ${rowHeight}px !important;
+    max-height: ${rowHeight}px !important;
+}
+
+.mw-table-row {
+    height: ${rowHeight}px !important;
+}
+
+.mw-table-cell {
+    height: 100% !important;
+    white-space: pre-line !important;
+}`;
+        
+        styleElement = window.parent.document.createElement("style");
+        styleElement.type = "text/css";
+        styleElement.id = "matlab-js-bridge-uitable";
+        styleElement.innerHTML = `${cssText}`;
+
+        window.parent.document.head.appendChild(styleElement);
+    });
+
+    /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("addStyle", function(customEvent) {
         let handle  = findComponentHandle(customEvent.Data.dataTag);
         const style = customEvent.Data.style;
@@ -601,11 +617,11 @@ a, a:hover {
             injectCustomStyle();
 
             // Background layer
-            var u = document.createElement("div");
+            var u = window.parent.document.createElement("div");
             u.style.cssText = "visibility: visible; position: absolute; left: 0%; top: 0%; width: 100%; height: 100%; background: rgba(255,255,255,0.65); z-index: " + (zIndex + 3) + ";";
 
             // Progress dialog
-            var w = document.createElement("div");
+            var w = window.parent.document.createElement("div");
             w.setAttribute("data-tag", UUID);
             w.innerHTML = `
                 <div class="mwDialog mwAlertDialog mwModalDialog mw-theme-light mwModalDialogFg" data-tag="${UUID}_uiCustomForm" style="width: 260px; height: ${Height}px; visibility: visible; z-index: ${zIndex + 4}; color-scheme: light; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);">
@@ -636,17 +652,17 @@ a, a:hover {
             window.parent.document.body.appendChild(u);
 
             // Form generation
-            let formContainer = document.createElement("form");
+            let formContainer = window.parent.document.createElement("form");
             formContainer.style.cssText = `display: grid; grid-template-columns: ${labelColumnWidth} auto; gap: 5px; font-size: 12px; align-items: center;`;
     
             Fields.forEach(function(field) {
                 // Label
-                let label = document.createElement("label");
+                let label = window.parent.document.createElement("label");
                 label.textContent = field.label;
                 formContainer.appendChild(label);
     
                 // Input field
-                let input = document.createElement("input");
+                let input = window.parent.document.createElement("input");
                 input.type = field.type;
                 input.value = field.defaultValue || "";
                 input.className = "custom-form-entry";
@@ -890,6 +906,9 @@ a, a:hover {
 
     /*-----------------------------------------------------------------------------------
         ## INDEXED DB ##
+        No webapp e na execução direta no MATLAB, o indexedDB é persistente. Na versão desktop
+        compilada, ele existe apenas durante a sessão, pois o sandbox do MATLAB (configuração
+        do CEF) limpa o cache entre execuções do aplicativo.
     -----------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("indexedDB", async function(customEvent) {
         const dbConfig = customEvent.Data;
@@ -897,7 +916,7 @@ a, a:hover {
         switch (dbConfig.operation) {
             case "openDB": {
                 try {
-                    window.top.app.indexedDB = await openDB(dbConfig.name, dbConfig.version, dbConfig.store);
+                    window.parent.app.indexedDB = await openDB(dbConfig.name, dbConfig.version, dbConfig.store);
                     htmlComponent.sendEventToMATLAB("indexedDB", { operation: "openDB", status: "success" });
                 } catch (ME) {
                     // htmlComponent.sendEventToMATLAB("indexedDB", { operation: "openDB", status: "failure", message: ME.message });
@@ -958,7 +977,7 @@ a, a:hover {
 
     /*---------------------------------------------------------------------------------*/
     function saveDataInDB(DB_STORE, key, data) {
-        const db = window.top.app.indexedDB;
+        const db = window.parent.app.indexedDB;
         if (!db) {
             throw new Error("IndexedDB is not opened yet.");
         }
@@ -979,12 +998,12 @@ a, a:hover {
 
     /*---------------------------------------------------------------------------------*/
     function loadDataFromDB(DB_STORE, key) {
-        if (!window.top.app.indexedDB) {
+        if (!window.parent.app.indexedDB) {
             throw new Error("IndexedDB is not opened yet.");
         }
 
         return new Promise((resolve, reject) => {
-            const tx = window.top.app.indexedDB.transaction(DB_STORE, "readonly");
+            const tx = window.parent.app.indexedDB.transaction(DB_STORE, "readonly");
             const store = tx.objectStore(DB_STORE);
             const request = store.get(key);
 
@@ -998,12 +1017,12 @@ a, a:hover {
 
     /*---------------------------------------------------------------------------------*/
     function deleteDataFromDB(DB_STORE, key) {
-        if (!window.top.app.indexedDB) {
+        if (!window.parent.app.indexedDB) {
             throw new Error("IndexedDB is not opened yet.");
         }
 
         return new Promise((resolve, reject) => {
-            const tx = window.top.app.indexedDB.transaction(DB_STORE, "readwrite");
+            const tx = window.parent.app.indexedDB.transaction(DB_STORE, "readwrite");
             const store = tx.objectStore(DB_STORE);
             const request = store.delete(key);
 
@@ -1014,6 +1033,7 @@ a, a:hover {
 
     /*-----------------------------------------------------------------------------------
         ## WORDCLOUD ##
+        O wordcloud é renderizada na própria window do uihtml.
     -----------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("wordcloud", () => {
         injectCustomScript(window.document, "matlab-js-bridge-wordcloud", ["js/d3.v7.min.js", "js/d3.layout.cloud.min.js"]);
@@ -1052,8 +1072,8 @@ a, a:hover {
             window.document.head.appendChild(containerStyle);
         }
 
-        if (!window.top.app.wordcloud) {
-            window.top.app.wordcloud = { 
+        if (!window.parent.app.wordcloud) {
+            window.parent.app.wordcloud = { 
                 canvas, 
                 container,                
                 drawCloud, 
@@ -1072,12 +1092,12 @@ a, a:hover {
             });
 
             drawCloud(currentWords);
-            window.top.app.wordcloud.data = currentWords;
+            window.parent.app.wordcloud.data = currentWords;
         });
 
         htmlComponent.addEventListener("eraseWordCloud", () => {
             eraseCloud();
-            window.top.app.wordcloud.data = [];        
+            window.parent.app.wordcloud.data = [];        
         });
 
         function drawCloud(words) {
@@ -1138,10 +1158,12 @@ a, a:hover {
 
     /*---------------------------------------------------------------------------------*/
     window.requestAnimationFrame(() => {
-        const msg = 'DOM render cycle finished';
-        consoleLog(msg);
+        window.parent.requestAnimationFrame(() => {
+            const msg = 'DOM render cycle finished';
+            consoleLog(msg);
 
-        htmlComponent.sendEventToMATLAB('renderer');
-        window.top.app.rendererStatus = true;
+            htmlComponent.sendEventToMATLAB('renderer');
+            window.parent.app.rendererStatus = true;
+        });
     });
 }
