@@ -167,6 +167,7 @@ classdef TabNavigator < handle
                     continue
                 end
 
+                appHandle = obj.Components.appHandle{idx};
                 btnHandle = obj.Components.btnHandle(idx);    
                 if obj.Components.btnStatus(idx) == "On/Off"
                     btnHandle.Enable = 0;
@@ -191,12 +192,22 @@ classdef TabNavigator < handle
                 deleteContextMenu(obj, obj.UIFigure, obj.Components.File{idx})
                 
                 if strcmp(operationType, 'normal')
-                    delete(obj.Components.appHandle{idx})
+                    deletePopUpContainer(obj, appHandle)
+                    delete(appHandle)
                     obj.Components.appHandle{idx} = [];
                 end
             end
 
             obj.progressDialog.Visible = 'hidden';
+        end
+
+        %-----------------------------------------------------------------%
+        function deletePopUpContainer(obj, appHandle)
+            if ~isempty(appHandle) && isprop(appHandle, 'popupContainer') && ~isempty(appHandle.popupContainer) && isvalid(appHandle.popupContainer)
+                auxDockAppName = appHandle.popupContainer.UserData.auxDockAppName;
+                deleteContextMenu(obj, appHandle.UIFigure, auxDockAppName)
+                delete(appHandle.popupContainer.Parent)
+            end
         end
 
         %-----------------------------------------------------------------%
