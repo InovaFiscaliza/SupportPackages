@@ -23,6 +23,6 @@ function beforeReload(app, role)
     if ~isempty(app.popupContainer) && isvalid(app.popupContainer)
         auxDockAppName = app.popupContainer.UserData.auxDockAppName;
         deleteContextMenu(app.tabGroupController, app.UIFigure, auxDockAppName)
-        delete(app.popupContainer)
+        delete(app.popupContainer.Parent)
     end
 end

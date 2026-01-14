@@ -140,7 +140,6 @@ function setup(htmlComponent) {
 
         return uiBlocker;
     }
-
     
     /*---------------------------------------------------------------------------------*/
     function findComponentHandle(dataTag) {
@@ -391,10 +390,10 @@ a, a:hover {
 
     /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("initializeComponents", function (customEvent) {
-        const components   = customEvent.Data;
-        const maxAttempts  = 100;
+        const components = customEvent.Data;
+        const maxAttempts = 100;
         let modifyAttempts = 0;
-        let dataTags       = '';
+        let dataTags = '';
 
         appWindow.app.ui.push(...components);
 
@@ -465,6 +464,23 @@ a, a:hover {
                                     htmlComponent.sendEventToMATLAB(htmlEventName, htmlEventData);
                                 }
                             });
+                        }
+                    }
+
+                    if (el.stackorder && handle.parentElement) {
+                        const parent = handle.parentElement;
+
+                        if (el.stackorder === "top") {
+                            const last = parent.children[parent.children.length - 1];
+                            if (handle !== last) {
+                                parent.appendChild(handle);
+                            }
+
+                        } else if (el.stackorder === "bottom") {
+                            const first = parent.children[0];
+                            if (handle !== first) {
+                                parent.insertBefore(handle, first);
+                            }
                         }
                     }
 
