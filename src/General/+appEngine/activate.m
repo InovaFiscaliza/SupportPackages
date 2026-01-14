@@ -15,7 +15,7 @@ function activate(app, role, varargin)
             if isempty(app.progressDialog)
                 app.progressDialog = ui.ProgressDialog(app.jsBackDoor);
             end
-            requestVisibilityChange(app.progressDialog, 'visible', 'locked')
+            % requestVisibilityChange(app.progressDialog, 'visible', 'locked')
             
             if ~app.renderCount
                 MFilePath   = varargin{1};

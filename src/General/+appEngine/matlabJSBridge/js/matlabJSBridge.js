@@ -2,12 +2,9 @@
     Função executada pelo MATLAB ao renderizar o componente uihtml, possibilitando
     estabelecer comunicação entre MATLAB e HTML/JS. 
 
-    No webapp existem três níveis de window: 
-    - window.top (host)
-    - window.parent (iframe do app)
-    - window (iframe uihtml)
-
-    Na versão desktop, top e parent referenciam o mesmo objeto.
+    No webapp existem três níveis de window: window.top (host), window.parent (iframe 
+    do app) e window (iframe uihtml). Por outro lado, na versão desktop, top e parent 
+    referenciam o mesmo objeto.
 
     Em geral, todas as operações agem sobre elementos em window.parent. Exceções:
     (a) window.top: remover progressdialog inicial do webapp e obter a URL real do app;
@@ -15,17 +12,92 @@
         possibilitando injeção de scripts da biblioteca "D3" para wordcloud.
 */
 function setup(htmlComponent) {
-    if (!window.parent.app) {
-        window.parent.app = {};
+    const hostWindow = window.top;
+    const appWindow  = window.parent;
+
+    if (!appWindow.app) {
+        appWindow.app = {
+            staticBaseURL: new URL(".", window.document.baseURI).href,
+            executionMode: null,
+            matlabJSBridge: htmlComponent,
+            ui: [], 
+            modules: {
+                consoleLog, 
+                findComponentHandle, 
+                injectCustomScript,
+                injectCustomStyle,
+                isMobile,
+                camelToKebab
+            },
+            indexedDB: null,
+            wordcloud: null
+        };
     }
 
-    window.parent.app.staticBaseURL  = new URL(".", window.document.baseURI).href;
-    window.parent.app.executionMode  = null;
-    window.parent.app.matlabJSBridge = htmlComponent;
-    window.parent.app.ui             = [];    
-    window.parent.app.modules        = {};
-    window.parent.app.indexedDB      = null;
-    window.parent.app.wordcloud      = null;
+    if (!appWindow.document._blockUIInstalled) {
+        appWindow.document._blockUIInstalled = true;
+        createUIBlocker(appWindow, 'matlab-js-bridge-ui-blocker', 901);
+    }
+
+    injectCustomStyle();
+
+    /*
+        Corrige o comportamento de foco do uialert, evitando que o botão receba foco 
+        ao interagir com elementos de texto usando o mouse.
+    */
+    if (!appWindow.document._customFocusInListenerInstalled) {
+        appWindow.document._customFocusInListenerInstalled = true;
+
+        let lastInteractionWasKeyboard = false;
+        appWindow.document.addEventListener('keydown',     () => { lastInteractionWasKeyboard = true;  }, true);
+        appWindow.document.addEventListener('mousedown',   () => { lastInteractionWasKeyboard = false; }, true);
+        appWindow.document.addEventListener('pointerdown', () => { lastInteractionWasKeyboard = false; }, true);
+
+        appWindow.document.addEventListener('focusin', (event) => {
+            const target = event.target;
+            if (!lastInteractionWasKeyboard && target.matches('.mwButton, .mwCloseNode') && target.closest('.mwAlertDialog')?.classList.contains('focused')) {
+                target.blur();
+            }
+        }, true);
+    }
+
+    /*-----------------------------------------------------------------------------------
+        ## LISTENERS ##
+        No webapp, ao tentar fechar a aba, o evento "beforeunload" desconecta o websocket, 
+        tornando o app inoperante, independente da resposta à confirmação de fechamento do
+        webapp apresentada no navegador. 
+        
+        Para evitar isso, remove-se esse listener do arquivo "bundle.469.js" e usa-se um 
+        substituto que não interage com o websocket. Se o usuário confirmar o fechamento, 
+        o evento "unload" é disparado e aciona a função MATLAB closeFcn(app, event), que 
+        realiza algumas operações, inclusive fechando a instância do MATLAB Runtime que 
+        suporte o webapp
+    -----------------------------------------------------------------------------------*/  
+    htmlComponent.addEventListener("startup", function(customEvent) {
+        const executionMode = customEvent.Data;
+        appWindow.app.executionMode = executionMode;
+
+        if (!appWindow.document._customWebAppListenersInstalled) {
+            appWindow.document._customWebAppListenersInstalled = true;
+
+            if (executionMode === "webApp") {
+                appWindow.addEventListener("beforeunload", (event) => {
+                    event.preventDefault();
+                    event.returnValue = '';
+                });
+
+                appWindow.addEventListener("unload", () => {
+                    htmlComponent.sendEventToMATLAB("unload");
+                });
+
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register('/webapps/home/service-worker.js', { scope: '/webapps/home/' })
+                    .then(()  => { consoleLog('Service worker registered successfully'); })
+                    .catch(ME => { consoleLog(`Service worker registration failed: ${ME.message}`)});
+                }
+            }
+        }
+    });
 
     /*-----------------------------------------------------------------------------------
     ## FUNÇÕES ##
@@ -39,10 +111,40 @@ function setup(htmlComponent) {
 
         console.log(`${hours}:${minutes}:${seconds}.${millisec} [matlab-js-bridge] ${msg}`);
     }
+
+    /*---------------------------------------------------------------------------------*/
+    function createUIBlocker(parentWindow, id, zIndex = 900, delay = 50) {
+        const uiBlocker = parentWindow.document.createElement("div");
+        Object.assign(uiBlocker.style, {
+            visibility: 'visible',
+            position: 'fixed',
+            inset: '0',
+            background: 'rgba(255, 255, 255, 0.65)',
+            opacity: '0',
+            pointerEvents: 'auto',
+            zIndex: `${zIndex}`,
+            transition: 'opacity 2s ease'
+        });
+
+        uiBlocker.id = id;
+        uiBlocker.tabIndex = -1;
+        uiBlocker.addEventListener('keydown', evt => evt.stopPropagation(), true);
+
+        parentWindow.document.body.appendChild(uiBlocker);
+        uiBlocker.focus();
+        parentWindow.document.offsetWidth;
+
+        setTimeout(() => {
+            uiBlocker.style.opacity = '1';
+        }, delay);
+
+        return uiBlocker;
+    }
+
     
     /*---------------------------------------------------------------------------------*/
     function findComponentHandle(dataTag) {
-        return window.parent.document.querySelector(`div[data-tag="${dataTag}"]`);
+        return appWindow.document.querySelector(`div[data-tag="${dataTag}"]`);
     }
 
     /*---------------------------------------------------------------------------------*/
@@ -56,7 +158,7 @@ function setup(htmlComponent) {
             const scriptElement = parentDocument.createElement("script");
             scriptElement.className = className;
             scriptElement.type = "text/javascript";
-            scriptElement.src  = new URL(file, window.parent.app.staticBaseURL).href;
+            scriptElement.src  = new URL(file, appWindow.app.staticBaseURL).href;
 
             parentDocument.head.appendChild(scriptElement);
         });
@@ -64,7 +166,7 @@ function setup(htmlComponent) {
 
     /*---------------------------------------------------------------------------------*/
     function injectCustomStyle() {
-        let styleElement = window.parent.document.getElementById('matlab-js-bridge');
+        let styleElement = appWindow.document.getElementById('matlab-js-bridge');
         if (styleElement) {
             return;
         }
@@ -268,12 +370,12 @@ a, a:hover {
     outline: none;
 }`;
         
-        styleElement = window.parent.document.createElement("style");
+        styleElement = appWindow.document.createElement("style");
         styleElement.type = "text/css";
         styleElement.id = "matlab-js-bridge";
         styleElement.innerHTML = `${cssText}`;
 
-        window.parent.document.head.appendChild(styleElement);
+        appWindow.document.head.appendChild(styleElement);
     }
 
     /*---------------------------------------------------------------------------------*/
@@ -287,72 +389,6 @@ a, a:hover {
         return prop.replace(/[A-Z]/g, m => "-" + m.toLowerCase());
     }
 
-    window.parent.app.modules = {
-        consoleLog, 
-        findComponentHandle, 
-        injectCustomScript,
-        injectCustomStyle, 
-        isMobile,
-        camelToKebab
-    }
-
-    /*-----------------------------------------------------------------------------------
-        ## LISTENERS ##
-        No webapp, ao tentar fechar a aba, o evento "beforeunload" desconecta o websocket, 
-        tornando o app inoperante, independente da resposta à confirmação de fechamento do
-        webapp apresentada no navegador. 
-        
-        Para evitar isso, remove-se esse listener do arquivo "bundle.469.js" e usa-se um 
-        substituto que não interage com o websocket. Se o usuário confirmar o fechamento, 
-        o evento "unload" é disparado e aciona a função MATLAB closeFcn(app, event), que 
-        realiza algumas operações, inclusive fechando a instância do MATLAB Runtime que 
-        suporte o webapp
-
-        Além disso, é ajustado o comportamento de foco do uialert, evitando que o botão
-        fique em foco quando da interação via mouse com elemento textual.
-    -----------------------------------------------------------------------------------*/
-    htmlComponent.addEventListener("startup", function(customEvent) {
-        const parentWindow = window.parent;
-
-        if (!parentWindow.document._customListenerInstalled) {
-            parentWindow.document._customListenerInstalled = true;
-
-            const executionMode = customEvent.Data;
-            parentWindow.app.executionMode = executionMode;        
-
-            if (executionMode === "webApp") {
-                parentWindow.addEventListener("beforeunload", (event) => {
-                    event.preventDefault();
-                    event.returnValue = '';
-                });
-
-                parentWindow.addEventListener("unload", () => {
-                    htmlComponent.sendEventToMATLAB("unload");
-                });
-
-                if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.register('/webapps/home/service-worker.js', { scope: '/webapps/home/' })
-                    .then(()  => { consoleLog('Service worker registered successfully'); })
-                    .catch(ME => { consoleLog(`Service worker registration failed: ${ME.message}`)});
-                }
-            }
-
-            let lastInteractionWasKeyboard = false;
-            parentWindow.document.addEventListener('keydown',     () => { lastInteractionWasKeyboard = true;  }, true);
-            parentWindow.document.addEventListener('mousedown',   () => { lastInteractionWasKeyboard = false; }, true);
-            parentWindow.document.addEventListener('pointerdown', () => { lastInteractionWasKeyboard = false; }, true);
-
-            parentWindow.document.addEventListener('focusin', (event) => {
-                const target = event.target;
-                if (!lastInteractionWasKeyboard && target.matches('.mwButton, .mwCloseNode') && target.closest('.mwAlertDialog')?.classList.contains('focused')) {
-                    target.blur();
-                }
-            }, true);
-        }
-
-        injectCustomStyle();
-    });
-
     /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("initializeComponents", function (customEvent) {
         const components   = customEvent.Data;
@@ -360,7 +396,7 @@ a, a:hover {
         let modifyAttempts = 0;
         let dataTags       = '';
 
-        window.parent.app.ui.push(...components);
+        appWindow.app.ui.push(...components);
 
         const modifyInterval = setInterval(() => {
             modifyAttempts++;
@@ -438,7 +474,7 @@ a, a:hover {
                         if (child) {
                             child.innerHTML   = el.child.innerHTML;
                         } else {
-                            child = window.parent.document.createElement('div');
+                            child = appWindow.document.createElement('div');
                             child.dataset.tag = el.child.dataTag;
                             child.innerHTML   = el.child.innerHTML;
                             handle.appendChild(child);
@@ -480,13 +516,13 @@ a, a:hover {
             }
         }
         
-        const propertyValue = window.parent.getComputedStyle(handle).getPropertyValue(propertyName);
+        const propertyValue = appWindow.getComputedStyle(handle).getPropertyValue(propertyName);
         htmlComponent.sendEventToMATLAB("getCssPropertyValue", { auxAppTag, componentName, propertyName, propertyValue });
     });
 
     /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("changeTableRowHeight", function(customEvent) {
-        let styleElement = window.parent.document.getElementById('matlab-js-bridge-uitable');
+        let styleElement = appWindow.document.getElementById('matlab-js-bridge-uitable');
         if (styleElement) {
             styleElement.remove();
         }
@@ -513,12 +549,12 @@ a, a:hover {
     white-space: pre-line !important;
 }`;
         
-        styleElement = window.parent.document.createElement("style");
+        styleElement = appWindow.document.createElement("style");
         styleElement.type = "text/css";
         styleElement.id = "matlab-js-bridge-uitable";
         styleElement.innerHTML = `${cssText}`;
 
-        window.parent.document.head.appendChild(styleElement);
+        appWindow.document.head.appendChild(styleElement);
     });
 
     /*---------------------------------------------------------------------------------*/
@@ -536,9 +572,9 @@ a, a:hover {
     /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("delProgressDialog", function() {
         try {
-            window.top.document.getElementsByClassName("mw-busyIndicator")[0].remove();
+            hostWindow.document.getElementsByClassName("mw-busyIndicator")[0].remove();
         } catch (ME) {
-            // console.log(ME)
+            // console.log(ME);
         }
     });
 
@@ -547,7 +583,7 @@ a, a:hover {
         const htmlEventName = "getNavigatorBasicInformation";
         const htmlEventData = {
             name: "BROWSER",
-            url: window.top.location.href,
+            url: hostWindow.location.href,
             platform: navigator.userAgentData?.platform || navigator.platform,
             mobile: navigator.userAgentData?.mobile ?? isMobile(),
             userAgent: navigator.userAgent,
@@ -567,7 +603,7 @@ a, a:hover {
             handle.focus();
             handle.setSelectionRange(handle.value.length, handle.value.length);
         } catch (ME) {
-            // console.log(ME)
+            // console.log(ME);
         }
     });
 
@@ -597,7 +633,7 @@ a, a:hover {
                 }
             }, interval_ms);
         } catch (ME) {
-            // console.log(ME)
+            // console.log(ME);
         }
     });
 
@@ -650,7 +686,7 @@ a, a:hover {
             `;
 
             u.appendChild(w);
-            window.parent.document.body.appendChild(u);
+            appWindow.document.body.appendChild(u);
 
             // Form generation
             let formContainer = window.parent.document.createElement("form");
@@ -658,12 +694,12 @@ a, a:hover {
     
             Fields.forEach(function(field) {
                 // Label
-                let label = window.parent.document.createElement("label");
+                let label = appWindow.document.createElement("label");
                 label.textContent = field.label;
                 formContainer.appendChild(label);
     
                 // Input field
-                let input = window.parent.document.createElement("input");
+                let input = appWindow.document.createElement("input");
                 input.type = field.type;
                 input.value = field.defaultValue || "";
                 input.className = "custom-form-entry";
@@ -680,14 +716,14 @@ a, a:hover {
             });
     
             // Append form to the dialog body
-            let dialogBody = window.parent.document.getElementById("mwDialogBody");
+            let dialogBody = appWindow.document.getElementById("mwDialogBody");
             dialogBody.appendChild(formContainer);
 
             // Handles
-            let dialogBox  = window.parent.document.querySelector(`div[data-tag="${UUID}_uiCustomForm"]`);            
-            let panelTitle = window.parent.document.querySelector(`div[data-tag="${UUID}_PanelTitle"]`);            
-            let btnClose   = window.parent.document.querySelector(`button[data-tag="${UUID}_Close"]`);
-            let btnOK      = window.parent.document.querySelector(`button[data-tag="${UUID}_OK"]`);
+            let dialogBox  = appWindow.document.querySelector(`div[data-tag="${UUID}_uiCustomForm"]`);            
+            let panelTitle = appWindow.document.querySelector(`div[data-tag="${UUID}_PanelTitle"]`);            
+            let btnClose   = appWindow.document.querySelector(`button[data-tag="${UUID}_Close"]`);
+            let btnOK      = appWindow.document.querySelector(`button[data-tag="${UUID}_OK"]`);
 
             // Callbacks
             let mousePosX, mousePosY;
@@ -702,8 +738,8 @@ a, a:hover {
                 objNormTop   = dialogBox.offsetTop;
                 
                 dialogBox.style.cursor = "move";
-                window.parent.document.addEventListener("mousemove", mouseMoveCallback);
-                window.parent.document.addEventListener("mouseup", mouseUpCallback);
+                appWindow.document.addEventListener("mousemove", mouseMoveCallback);
+                appWindow.document.addEventListener("mouseup", mouseUpCallback);
             });
 
             function mouseMoveCallback(event) {
@@ -714,9 +750,9 @@ a, a:hover {
                 objNormTop  += mouseDiffY;
 
                 let minLeft  = dialogBox.offsetWidth/2;
-                let maxLeft  = window.parent.innerWidth  - dialogBox.offsetWidth/2;
+                let maxLeft  = appWindow.innerWidth  - dialogBox.offsetWidth/2;
                 let minTop   = dialogBox.offsetHeight/2;
-                let maxTop   = window.parent.innerHeight - dialogBox.offsetHeight/2;
+                let maxTop   = appWindow.innerHeight - dialogBox.offsetHeight/2;
 
                 if (objNormLeft < minLeft) objNormLeft = minLeft;
                 if (objNormLeft > maxLeft) objNormLeft = maxLeft;
@@ -724,8 +760,8 @@ a, a:hover {
                 if (objNormTop  < minTop)  objNormTop  = minTop;
                 if (objNormTop  > maxTop)  objNormTop  = maxTop;
                 
-                dialogBox.style.left = 100 * objNormLeft/window.parent.innerWidth + "%";
-                dialogBox.style.top  = 100 * objNormTop/window.parent.innerHeight + "%";
+                dialogBox.style.left = 100 * objNormLeft/appWindow.innerWidth + "%";
+                dialogBox.style.top  = 100 * objNormTop/appWindow.innerHeight + "%";
 
                 mousePosX    = event.clientX;
                 mousePosY    = event.clientY;
@@ -733,8 +769,8 @@ a, a:hover {
 
             function mouseUpCallback(event) {
                 dialogBox.style.cursor = "default";                
-                window.parent.document.removeEventListener("mousemove", mouseMoveCallback);
-                window.parent.document.removeEventListener("mouseup", mouseUpCallback);
+                appWindow.document.removeEventListener("mousemove", mouseMoveCallback);
+                appWindow.document.removeEventListener("mouseup", mouseUpCallback);
             }
 
             btnClose.addEventListener("click", function() {
@@ -744,14 +780,14 @@ a, a:hover {
             btnOK.addEventListener("click", function() {
                 let formData = {};
                 Fields.forEach(function(field) {
-                    let inputField = window.parent.document.querySelector(`input[data-tag="${UUID}_${field.id}"]`);
+                    let inputField = appWindow.document.querySelector(`input[data-tag="${UUID}_${field.id}"]`);
                     formData[field.id] = inputField.value.trim();
                 });
     
                 // Validation
                 let firstEmptyField = Object.keys(formData).find(key => formData[key] === "");
                 if (firstEmptyField) {
-                    let emptyField = window.parent.document.querySelector(`input[data-tag="${UUID}_${firstEmptyField}"]`);
+                    let emptyField = appWindow.document.querySelector(`input[data-tag="${UUID}_${firstEmptyField}"]`);
                     emptyField.focus();
                     return;
                 }
@@ -769,7 +805,7 @@ a, a:hover {
                     if (focusElements.length === 0) return;
                 
                     if (event.key === 'Tab') {
-                        const activeElement = window.parent.document.activeElement;
+                        const activeElement = appWindow.document.activeElement;
                         let currentIndex = focusElements.indexOf(activeElement);
                         currentIndex = (currentIndex === -1) ? 0 : currentIndex;
             
@@ -786,11 +822,11 @@ a, a:hover {
                     }
             });
 
-            const firstInput = window.parent.document.querySelector(`input[data-tag="${UUID}_${Fields[0].id}"]`);
+            const firstInput = appWindow.document.querySelector(`input[data-tag="${UUID}_${Fields[0].id}"]`);
             firstInput.focus();
 
         } catch (ME) {
-            // console.log(ME)
+            // console.log(ME);
         }
     });
 
@@ -828,45 +864,46 @@ a, a:hover {
         ## PROGRESS DIALOG ##
     -----------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("progressDialog", function(customEvent) {
-        const Type = customEvent.Data.Type.toString();
-        const UUID = customEvent.Data.UUID.toString();
+        const { Type, UUID } = customEvent.Data;
 
-        let handle = window.parent.document.body.querySelectorAll(`div[data-tag="${UUID}"]`);
-        if ((Type === "Creation") || (handle.length === 0)) {
-            const zIndex = 900;
+        const handle = appWindow.document.body.querySelectorAll(`div[data-tag="${UUID}"]`);
+        if ((Type == "Creation") || (handle.length === 0)) {
+            const zBaseIndex = 900;
 
             if ("Size" in customEvent.Data) {
                 Size = customEvent.Data.Size.toString();
-            } else if (window.parent.sessionStorage.getItem("ProgressDialog") !== null) {
-                Size = JSON.parse(window.parent.sessionStorage.getItem("ProgressDialog")).Size;
+            } else if (appWindow.sessionStorage.getItem("ProgressDialog") !== null) {
+                Size = JSON.parse(appWindow.sessionStorage.getItem("ProgressDialog")).Size;
             } else {
                 Size = "40px";
             }
 
             if ("Color" in customEvent.Data) {
                 Color = customEvent.Data.Color.toString();
-            } else if (window.parent.sessionStorage.getItem("ProgressDialog") !== null) {
-                Color = JSON.parse(window.parent.sessionStorage.getItem("ProgressDialog")).Color;
+            } else if (appWindow.sessionStorage.getItem("ProgressDialog") !== null) {
+                Color = JSON.parse(appWindow.sessionStorage.getItem("ProgressDialog")).Color;
             } else {
                 Color = "#d95319";
             }
 
-            if (window.parent.sessionStorage.getItem("ProgressDialog") === null) {
-                window.parent.sessionStorage.setItem("ProgressDialog", JSON.stringify({"Type": Type, "UUID": UUID, "Size": Size, "Color": Color}))
+            if (appWindow.sessionStorage.getItem("ProgressDialog") === null) {
+                appWindow.sessionStorage.setItem("ProgressDialog", JSON.stringify({ Type, UUID, Size, Color }))
             }
 
             try {
                 injectCustomStyle();
         
                 // Background layer
-                var u = window.parent.document.createElement("div");
+                let u = appWindow.document.getElementById('matlab-js-bridge-ui-blocker');
+                if (!u) {
+                    u = createUIBlocker(appWindow, 'matlab-js-bridge-ui-blocker', zBaseIndex+1);
+                };
                 u.setAttribute("data-tag", UUID);
-                u.style.cssText = `visibility: hidden; position: absolute; left: 0%; top: 0%; width: 100%; height: 100%; background-color: rgba(255, 255, 255, 0.65); z-index: ${zIndex+1};`;
         
                 // Progress dialog
-                var w = window.parent.document.createElement("div");
+                const w = appWindow.document.createElement("div");
                 w.setAttribute("data-tag", UUID);
-                w.style.cssText = `visibility: hidden; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: ${zIndex+2};`;
+                w.style.cssText = `visibility: visible; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: ${zBaseIndex+2};`;
                 w.innerHTML     = `
                     <div class="sk-chase">
                         <div class="sk-chase-dot"></div>
@@ -879,28 +916,27 @@ a, a:hover {
                 `;
                 
                 u.appendChild(w);
-                window.parent.document.body.appendChild(u);
             } catch (ME) {
-                console.log(ME)
+                // console.log(ME);
             }
         }
         
         switch (Type) {
             case "changeVisibility":
-                const newVisibility = customEvent.Data.Visibility.toString();
+                const newVisibility = customEvent.Data.Visibility;
                 handle.forEach(element => {
                     element.style.visibility = newVisibility;
                 });
                 break;
 
             case "changeColor":
-                const newColor = customEvent.Data.Color.toString();
-                window.parent.document.documentElement.style.setProperty("--sk-color", newColor);
+                const newColor = customEvent.Data.Color;
+                appWindow.document.documentElement.style.setProperty("--sk-color", newColor);
                 break;
 
             case "changeSize":
-                const newSize = customEvent.Data.Size.toString();
-                window.parent.document.documentElement.style.setProperty("--sk-size", newSize);
+                const newSize = customEvent.Data.Size;
+                appWindow.document.documentElement.style.setProperty("--sk-size", newSize);
                 break;
         };
     });
@@ -917,7 +953,7 @@ a, a:hover {
         switch (dbConfig.operation) {
             case "openDB": {
                 try {
-                    window.parent.app.indexedDB = await openDB(dbConfig.name, dbConfig.version, dbConfig.store);
+                    appWindow.app.indexedDB = await openDB(dbConfig.name, dbConfig.version, dbConfig.store);
                     htmlComponent.sendEventToMATLAB("indexedDB", { operation: "openDB", status: "success" });
                 } catch (ME) {
                     // htmlComponent.sendEventToMATLAB("indexedDB", { operation: "openDB", status: "failure", message: ME.message });
@@ -978,7 +1014,7 @@ a, a:hover {
 
     /*---------------------------------------------------------------------------------*/
     function saveDataInDB(DB_STORE, key, data) {
-        const db = window.parent.app.indexedDB;
+        const db = appWindow.app.indexedDB;
         if (!db) {
             throw new Error("IndexedDB is not opened yet.");
         }
@@ -999,12 +1035,12 @@ a, a:hover {
 
     /*---------------------------------------------------------------------------------*/
     function loadDataFromDB(DB_STORE, key) {
-        if (!window.parent.app.indexedDB) {
+        if (!appWindow.app.indexedDB) {
             throw new Error("IndexedDB is not opened yet.");
         }
 
         return new Promise((resolve, reject) => {
-            const tx = window.parent.app.indexedDB.transaction(DB_STORE, "readonly");
+            const tx = appWindow.app.indexedDB.transaction(DB_STORE, "readonly");
             const store = tx.objectStore(DB_STORE);
             const request = store.get(key);
 
@@ -1018,12 +1054,12 @@ a, a:hover {
 
     /*---------------------------------------------------------------------------------*/
     function deleteDataFromDB(DB_STORE, key) {
-        if (!window.parent.app.indexedDB) {
+        if (!appWindow.app.indexedDB) {
             throw new Error("IndexedDB is not opened yet.");
         }
 
         return new Promise((resolve, reject) => {
-            const tx = window.parent.app.indexedDB.transaction(DB_STORE, "readwrite");
+            const tx = appWindow.app.indexedDB.transaction(DB_STORE, "readwrite");
             const store = tx.objectStore(DB_STORE);
             const request = store.delete(key);
 
@@ -1073,8 +1109,8 @@ a, a:hover {
             window.document.head.appendChild(containerStyle);
         }
 
-        if (!window.parent.app.wordcloud) {
-            window.parent.app.wordcloud = { 
+        if (!appWindow.app.wordcloud) {
+            appWindow.app.wordcloud = { 
                 canvas, 
                 container,                
                 drawCloud, 
@@ -1093,12 +1129,12 @@ a, a:hover {
             });
 
             drawCloud(currentWords);
-            window.parent.app.wordcloud.data = currentWords;
+            appWindow.app.wordcloud.data = currentWords;
         });
 
         htmlComponent.addEventListener("eraseWordCloud", () => {
             eraseCloud();
-            window.parent.app.wordcloud.data = [];        
+            appWindow.app.wordcloud.data = [];        
         });
 
         function drawCloud(words) {
@@ -1159,7 +1195,7 @@ a, a:hover {
 
     /*---------------------------------------------------------------------------------*/
     window.requestAnimationFrame(() => {
-        window.parent.requestAnimationFrame(() => {
+        appWindow.requestAnimationFrame(() => {
             const msg = 'DOM render cycle finished';
             consoleLog(msg);
 

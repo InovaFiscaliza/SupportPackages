@@ -11,7 +11,7 @@ classdef ProgressDialog < handle
         %-----------------------------------------------------------------%
         Size           {mustBeA(Size,  {'char', 'string', 'double'})}                    = '40px'
         Color          {mustBeA(Color, {'char', 'string', 'double', 'single', 'uint8'})} = '#d95319'
-        Visible        {mustBeMember(Visible, {'hidden', 'visible'})}                    = 'hidden'
+        Visible        {mustBeMember(Visible, {'hidden', 'visible'})}                    = 'visible'
         VisibilityLock {mustBeMember(VisibilityLock, {'locked', 'unlocked'})}            = 'unlocked'
     end
 
