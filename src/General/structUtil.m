@@ -105,6 +105,13 @@ classdef (Abstract) structUtil
             outCell = [fieldnames(inStruct)'; struct2cell(inStruct)'];
             outCell = outCell(:)';
         end
+
+        %-----------------------------------------------------------------%
+        function outStruct = createStructFromCell(inCellArray)
+            for ii = 1:numel(inCellArray)
+                outStruct.(inCellArray{ii}) = [];
+            end
+        end
     end
 
 end

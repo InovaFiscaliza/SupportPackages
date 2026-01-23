@@ -24,8 +24,11 @@ function [entityId, status, details, msgError] = checkCNPJOrCPF(entityId, search
     
         if strcmp(searchType, 'PublicAPI') && strcmp(digitType, 'CNPJ') && status
             rawDetails = webread(sprintf('https://www.receitaws.com.br/v1/cnpj/%s', entityIDNumber), weboptions('ContentType', 'json'));
-            if isfield(rawDetails, 'status') && ~strcmp(rawDetails.status, 'ERROR')
+            if isstruct(rawDetails) && isfield(rawDetails, 'status') && ~strcmp(rawDetails.status, 'ERROR')
                 details = rawDetails;
+                if isfield(details, 'billing')
+                    details = rmfield(details, 'billing');
+                end
             end
         end
     catch ME

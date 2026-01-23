@@ -14,6 +14,13 @@ classdef (Abstract) Compatibility
             else
                 variableTypes = varfun(@class, t, 'OutputFormat', 'cell');
             end
+
+            cellColumnIndexes = find(strcmp(variableTypes, 'cell'));
+            for columnIndex = cellColumnIndexes
+                if iscellstr(t{:, columnIndex})
+                    variableTypes{columnIndex} = 'cellstr';
+                end
+            end
         end
     end
 

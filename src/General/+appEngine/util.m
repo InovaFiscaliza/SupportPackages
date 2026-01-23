@@ -14,6 +14,7 @@ classdef (Abstract) util
             warning('off', 'MATLAB:opengl:unableToSelectHWGL')
             warning('off', 'MATLAB:class:DestructorError')
             warning('off', 'transportlib:legacy:PropertyNotSupported')
+             warning('off', 'MATLAB:uitable:ColumnFormatNotSupported')
         end
 
         %-----------------------------------------------------------------%

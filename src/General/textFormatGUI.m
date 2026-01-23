@@ -159,7 +159,7 @@ classdef (Abstract) textFormatGUI
                 fieldValue = dataStruct.(fieldName);
         
                 try
-                    if isempty(fieldValue)
+                    if isempty(fieldValue) || (isstruct(fieldValue) && isempty(fieldnames(fieldValue)))
                         if strcmp(invalidStatus, 'delete')
                             continue
                         end
@@ -183,7 +183,10 @@ classdef (Abstract) textFormatGUI
                         fieldValue = strjoin(fieldValue, ', ');
             
                     elseif ismember(recurrenceLevel, [1, 2])
-                        if isstruct(fieldValue) || istable(fieldValue)
+                        if iscell(fieldValue) && all(cellfun(@(x) isstruct(x), fieldValue))
+                            fieldValue = strjoin(cellfun(@(x) textFormatGUI.structParser('', x, recurrenceLevel+1, invalidStatus), fieldValue, 'UniformOutput', false));
+
+                        elseif isstruct(fieldValue) || istable(fieldValue)
                             fieldValue = textFormatGUI.array2scalar(fieldValue);
                             fieldValue = textFormatGUI.structParser('', fieldValue, recurrenceLevel+1, invalidStatus);
 
@@ -194,19 +197,18 @@ classdef (Abstract) textFormatGUI
                             continue
                         end
                     end
+
+                    if ~isempty(d) && isKey(d, fieldName)
+                        fieldName = d(fieldName);
+                    end
+    
+                    switch recurrenceLevel
+                        case 1; htmlCode = sprintf('%s\n•&thinsp;<font style="color: gray; font-size: 10px;">%s:</font> %s',                                 htmlCode, fieldName, fieldValue);
+                        case 2; htmlCode = sprintf('%s\n&thinsp;&thinsp;○&thinsp;<font style="color: gray; font-size: 10px;">%s:</font> %s',                 htmlCode, fieldName, fieldValue);
+                        case 3; htmlCode = sprintf('%s\n&thinsp;&thinsp;&thinsp;&thinsp;□&thinsp;<font style="color: gray; font-size: 10px;">%s:</font> %s', htmlCode, fieldName, fieldValue);
+                    end
                     
                 catch
-                    continue
-                end
-        
-                if ~isempty(d) && isKey(d, fieldName)
-                    fieldName = d(fieldName);
-                end
-                
-                switch recurrenceLevel
-                    case 1; htmlCode = sprintf('%s\n•&thinsp;<font style="color: gray; font-size: 10px;">%s:</font> %s',                                 htmlCode, fieldName, fieldValue);
-                    case 2; htmlCode = sprintf('%s\n&thinsp;&thinsp;○&thinsp;<font style="color: gray; font-size: 10px;">%s:</font> %s',                 htmlCode, fieldName, fieldValue);
-                    case 3; htmlCode = sprintf('%s\n&thinsp;&thinsp;&thinsp;&thinsp;□&thinsp;<font style="color: gray; font-size: 10px;">%s:</font> %s', htmlCode, fieldName, fieldValue);
                 end
             end
         end
