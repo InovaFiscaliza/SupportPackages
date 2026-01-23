@@ -55,7 +55,7 @@ function setup(htmlComponent) {
 
         appWindow.document.addEventListener('focusin', (event) => {
             const target = event.target;
-            if (!lastInteractionWasKeyboard && target.matches('.mwButton, .mwCloseNode') && target.closest('.mwAlertDialog')?.classList.contains('focused')) {
+            if (!lastInteractionWasKeyboard && target.matches('.mwButton, .mwCloseNode') && target.closest('.mwDialog')?.classList.contains('focused')) {
                 target.blur();
             }
         }, true);
@@ -658,7 +658,7 @@ a, a:hover {
     -----------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("customForm", function(customEvent) {
         try {
-            const { UUID, Context } = customEvent.Data;
+            const { UUID, Context, Varargin } = customEvent.Data;
             const labelColumnWidth  = customEvent.Data.ColumnWidth || "70px";
             let Fields    = customEvent.Data.Fields;
             Fields        = Array.isArray(Fields) ? Fields : [Fields];
@@ -810,6 +810,7 @@ a, a:hover {
 
                 formData.uuid = UUID;
                 if (Context) formData.context = Context;
+                if (Varargin) formData.varargin = Varargin;
                 htmlComponent.sendEventToMATLAB("customForm", formData);
 
                 u.remove();
