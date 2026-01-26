@@ -217,11 +217,11 @@ function specData = Fcn_DataOrganization(specData, gpsData, fileFullPath, rawDat
             case 0; levelUnit = 'dBm';
             case 1; levelUnit = 'dBµV/m';
         end
-        specData(ii).MetaData.LevelUnit = levelUnit;
-
+        
         traceMode = '';
         if ismember(specData(ii).MetaData.DataType, [8, 62, 65, 69])
             traceMode = 'OCC';
+            levelUnit = '%';
         else
             switch specData(ii).MetaData.TraceMode
                 case 0; traceMode = 'SingleMeasurement';
@@ -230,10 +230,13 @@ function specData = Fcn_DataOrganization(specData, gpsData, fileFullPath, rawDat
                 case 3; traceMode = 'Minimum';
             end
         end
+        
+        specData(ii).MetaData.LevelUnit = levelUnit;
         specData(ii).MetaData.TraceMode = traceMode;
 
-        if specData(ii).MetaData.Antenna; antennaInfo = struct('SwitchMode', 'manual', 'Port', specData(ii).MetaData.Antenna);
-        else;                             antennaInfo = struct('SwitchMode', 'auto');
+        antennaInfo = struct('SwitchMode', 'auto');
+        if ismember(specData(ii).MetaData.Antenna, 1:4)
+            antennaInfo = struct('SwitchMode', 'manual', 'Port', specData(ii).MetaData.Antenna);
         end
         specData(ii).MetaData.Antenna = antennaInfo;
          
@@ -273,7 +276,7 @@ function [specData, idx] = Fcn_BinInfo(specData, ThreadID, DataType, Description
     
     idx = numel(specData)+1;
     for ii = 1:numel(specData)
-        if ~isempty(specData(ii).RelatedFiles) && (specData(ii).RelatedFiles.ID == ThreadID) && strcmp(specData(ii).RelatedFiles.Description, Description) && isequal(specData(ii).MetaData, Bin)
+        if ~isempty(specData(ii).RelatedFiles) && (specData(ii).RelatedFiles.ID == ThreadID) && strcmp(specData(ii).RelatedFiles.Description, Description) && isequal(rmfield(specData(ii).MetaData, 'Antenna'), rmfield(Bin, 'Antenna'))
             idx = ii;
             break
         end
