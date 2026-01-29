@@ -115,8 +115,6 @@ function setup(htmlComponent) {
             modifyAttempts++;
 
             components.forEach((el, index) => {
-                //consoleLog(`Attempt ${modifyAttempts}: Customizing element ${JSON.stringify(el)}`);
-
                 let handle = findComponentHandle(el.dataTag);
                 if (el.generation === 1) {
                     handle = handle?.children?.[0];
@@ -932,14 +930,13 @@ function setup(htmlComponent) {
     /*-----------------------------------------------------------------------------------
         ## TOOLTIP ##
     -----------------------------------------------------------------------------------*/
-    function createTooltip(target, text, defaultPosition = "top") {
+    function createTooltip(target, textContent, defaultPosition = "top") {
         let tooltip;
         const tooltipColor = getComputedStyle(appWindow.document.documentElement).getPropertyValue('--tooltip-backgroundColor').trim();
 
-        if (!target.dataset.tooltipId) {
-            target.dataset.tooltipId    = uuid();
+        if (target.dataset.tooltipText != textContent ) {
+            target.dataset.tooltipText  = textContent;
             target.dataset.tooltipState = 'hidden';
-            target.dataset.tooltipText  = text;
         }
 
         target.addEventListener('mouseenter', () => tooltip = tooltipShow(tooltip, target, defaultPosition));
@@ -970,7 +967,6 @@ function setup(htmlComponent) {
             let tooltip, tooltipArrow;
     
             tooltip = appWindow.document.createElement('div');
-            tooltip.id = target.dataset.tooltipId;
             tooltip.className = 'tooltip-container';
             tooltip.innerHTML = target.dataset.tooltipText;;
     
@@ -1013,15 +1009,13 @@ function setup(htmlComponent) {
                 }
             }
     
-            const arrowOffset = centerX - left - 6;
-    
             Object.assign(tooltip.style, {
                 left: `${left}px`,
                 top: `${top}px`
             });
     
             Object.assign(tooltipArrow.style, {
-                left: `${arrowOffset}px`,
+                left: `${centerX-left-6}px`,
                 top: showAbove ? 'unset' : '-6px',
                 bottom: showAbove ? '-6px' : 'unset',
                 borderTop: showAbove ? `6px solid ${tooltipColor}` : 'none',
