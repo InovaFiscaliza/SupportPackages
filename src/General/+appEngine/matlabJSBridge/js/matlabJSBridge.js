@@ -23,9 +23,12 @@ function setup(htmlComponent) {
             ui: [], 
             modules: {
                 consoleLog, 
-                findComponentHandle, 
-                injectCustomScript,
-                injectCustomStyle,
+                uuid,
+                createUIBlocker,
+                findComponentHandle,
+                injectBaseStyles,
+                injectStyle,
+                injectScript,                
                 isMobile,
                 camelToKebab
             },
@@ -39,7 +42,7 @@ function setup(htmlComponent) {
         createUIBlocker(appWindow, 'matlab-js-bridge-ui-blocker', 901);
     }
 
-    injectCustomStyle();
+    injectBaseStyles();
 
     /*
         Corrige o comportamento de foco do uialert, evitando que o botão receba foco 
@@ -99,295 +102,6 @@ function setup(htmlComponent) {
         }
     });
 
-    /*-----------------------------------------------------------------------------------
-    ## FUNÇÕES ##
-    -----------------------------------------------------------------------------------*/
-    function consoleLog(msg) {
-        const now      = new Date();
-        const hours    = String(now.getHours()).padStart(2, '0');
-        const minutes  = String(now.getMinutes()).padStart(2, '0');
-        const seconds  = String(now.getSeconds()).padStart(2, '0');
-        const millisec = String(now.getMilliseconds()).padStart(3, '0');
-
-        console.log(`${hours}:${minutes}:${seconds}.${millisec} [matlab-js-bridge] ${msg}`);
-    }
-
-    /*---------------------------------------------------------------------------------*/
-    function createUIBlocker(parentWindow, id, zIndex = 900, delay = 50) {
-        const uiBlocker = parentWindow.document.createElement("div");
-        Object.assign(uiBlocker.style, {
-            visibility: 'visible',
-            position: 'fixed',
-            inset: '0',
-            background: 'rgba(255, 255, 255, 0.65)',
-            opacity: '0',
-            pointerEvents: 'auto',
-            zIndex: `${zIndex}`,
-            transition: 'opacity 2s ease'
-        });
-
-        uiBlocker.id = id;
-        uiBlocker.tabIndex = -1;
-        uiBlocker.addEventListener('keydown', evt => evt.stopPropagation(), true);
-
-        parentWindow.document.body.appendChild(uiBlocker);
-        uiBlocker.focus();
-        parentWindow.document.offsetWidth;
-
-        setTimeout(() => {
-            uiBlocker.style.opacity = '1';
-        }, delay);
-
-        return uiBlocker;
-    }
-    
-    /*---------------------------------------------------------------------------------*/
-    function findComponentHandle(dataTag) {
-        return appWindow.document.querySelector(`div[data-tag="${dataTag}"]`);
-    }
-
-    /*---------------------------------------------------------------------------------*/
-    function injectCustomScript(parentDocument, className, fileList) {
-        const scriptElement = parentDocument.getElementsByClassName(className);
-        if (scriptElement.length > 0) {
-            return;
-        }
-
-        fileList.forEach((file) => {
-            const scriptElement = parentDocument.createElement("script");
-            scriptElement.className = className;
-            scriptElement.type = "text/javascript";
-            scriptElement.src  = new URL(file, appWindow.app.staticBaseURL).href;
-
-            parentDocument.head.appendChild(scriptElement);
-        });
-    }
-
-    /*---------------------------------------------------------------------------------*/
-    function injectCustomStyle() {
-        let styleElement = appWindow.document.getElementById('matlab-js-bridge');
-        if (styleElement) {
-            return;
-        }
-
-        const cssText = `/*
-  ## Customizações gerais (MATLAB Built-in Components) ##
-*/
-body {
-    --tabButton-border-color: rgb(255, 255, 255) !important;
-    --tabContainer-border-color: rgb(230, 230, 230) !important;
-    --ccTools-tabGroup-tab-selected-background: rgb(191, 191, 191);
-    --ccTools-tabGroup-tab-unselected-background: rgb(230, 230, 230);
-    --ccTools-tabGroup-tab-hover-background: rgba(191, 191, 191, 0.5);    
-    --ccTools-tabGroup-tab-selected-border: rgb(51, 51, 51);
-    --ccTools-tabGroup-tab-hover-border: rgba(51, 51, 51, 0.5);
-}
-
-.mw-theme-light {
-    --mw-backgroundColor-dataWidget-selected: rgba(180, 222, 255, 0.45) !important;
-    --mw-backgroundColor-selected: rgba(180, 222, 255, 0.45) !important;
-    --mw-backgroundColor-selectedFocus: rgba(180, 222, 255, 0.45) !important;
-    --mw-backgroundColor-list-hover: rgb(191, 191, 191) !important;
-    --mw-backgroundColor-tab: rgb(255, 255, 255) !important;
-}
-
-.mwDialog {
-    --mw-fontSize-dialog: 12px !important;
-    word-break: break-word !important;
-}
-
-.mw-table-component {
-    --mw-fontSize-table-cell: 10px !important;
-}
-
-a, a:hover {
-    text-decoration: none;
-}
-
-.mw-table-row-header-cell {
-    color: var(--mw-color-secondary,#616161) !important;
-    font-weight: var(--mw-fontWeight-table-header-index) !important;
-    text-align: center !important;
-}
-
-.treenode.selected {
-    background-image: rgba(180, 222, 255, 0.45) !important;
-}
-
-.mw-tree .mw-tree-scroll-component.focused.hoverable .treeNode.selected.mw-tree-node-hover {
-    background-image: rgb(191, 191, 191) !important;
-}
-
-.mw-default-header-cell {
-    font-size: 10px !important; 
-    white-space: pre-wrap !important; 
-    margin-bottom: 5px !important;
-}
-
-.gbtWidget.gbtGrid {
-    border-radius: 5px !important;
-}
-
-.tabBar {
-    height: 24px !important;
-    background: transparent !important;
-    border-left: none !important;
-}
-
-.topTabContentWrapper {
-    top: 24px !important;
-}
-
-.mwTabContainer {
-    border: 1px solid var(--ccTools-tabGroup-tab-unselected-background) !important;
-    border-radius: 5px !important;
-}
-
-.mwTabLabel {
-    position: relative !important;
-    font-size: 10px !important;
-    text-decoration: none !important;
-    cursor: pointer !important;
-    padding-left: 0 !important;
-}
-
-.tab {
-    background: var(--ccTools-tabGroup-tab-unselected-background) !important;
-    border-bottom: 2px solid transparent !important;
-    border-top-left-radius: 5px !important;
-    border-top-right-radius: 5px !important;
-    cursor: pointer !important;
-    text-align: center !important;
-}
-
-.tab:hover {
-    background: var(--ccTools-tabGroup-tab-hover-background) !important;
-    border-bottom-color: var(--ccTools-tabGroup-tab-hover-border) !important;
-}
-
-.tab:not(.checkedTab):hover {
-    background: var(--ccTools-tabGroup-tab-hover-background) !important;
-}
-
-.checkedTab {
-    background: var(--ccTools-tabGroup-tab-selected-background) !important;
-    border-bottom-color: var(--ccTools-tabGroup-tab-selected-border) !important;
-}
-
-.gbtTabGroup,
-.gbtWidget.gbtPanel,
-.mwRadioButton,
-.mwDatePicker {
-    background-color: transparent !important;
-}
-
-/*
-  ## ui.TextView ##
-*/
-.textview {
-    border: 1px solid rgb(125, 125, 125);
-    overflow: hidden auto;
-    word-break: break-all;
-    user-select: text;
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-    font-size: 11px;
-    font-weight: normal;
-    font-style: normal;
-    color: rgb(0, 0, 0);
-    text-align: center;
-    width: 100% !important;
-    height: 100% !important;
-}
-
-.mwDialog *::selection,
-.textview::selection,
-.textview *::selection {
-    background: #0078d4;
-    color: white;
-}
-
-.textview--from-uiimage {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-/*
-  ## Tab Navigator ##
-*/
-.tab-navigator-button {
-    cursor: pointer !important;
-}
-
-.tab-navigator-button:hover {
-    border-color: #7d7d7d !important;
-}
-
-.tab-navigator-icon:hover svg {
-    transform: scale(1.08);
-}
-
-/*
-  ## ProgressDialog ##
-*/
-:root {
-    --sk-size: 40px;
-    --sk-color: rgb(217, 83, 25);
-}
-
-.sk-chase { width: var(--sk-size); height: var(--sk-size); position: relative; animation: sk-chase 2.5s infinite linear both; }
-.sk-chase-dot { width: 100%; height: 100%; position: absolute; left: 0; top: 0;  animation: sk-chase-dot 2.0s infinite ease-in-out both; }
-.sk-chase-dot:before { content: ""; display: block; width: 25%; height: 25%; background-color: var(--sk-color); border-radius: 100%; animation: sk-chase-dot-before 2.0s infinite ease-in-out both; }
-.sk-chase-dot:nth-child(1) { animation-delay: -1.1s; }
-.sk-chase-dot:nth-child(2) { animation-delay: -1.0s; }
-.sk-chase-dot:nth-child(3) { animation-delay: -0.9s; }
-.sk-chase-dot:nth-child(4) { animation-delay: -0.8s; }
-.sk-chase-dot:nth-child(5) { animation-delay: -0.7s; }
-.sk-chase-dot:nth-child(6) { animation-delay: -0.6s; }
-.sk-chase-dot:nth-child(1):before { animation-delay: -1.1s; }
-.sk-chase-dot:nth-child(2):before { animation-delay: -1.0s; }
-.sk-chase-dot:nth-child(3):before { animation-delay: -0.9s; }
-.sk-chase-dot:nth-child(4):before { animation-delay: -0.8s; }
-.sk-chase-dot:nth-child(5):before { animation-delay: -0.7s; }
-.sk-chase-dot:nth-child(6):before { animation-delay: -0.6s; }
-@keyframes sk-chase { 100% { transform: rotate(360deg); } }
-@keyframes sk-chase-dot { 80%, 100% { transform: rotate(360deg); } }
-@keyframes sk-chase-dot-before { 50% { transform: scale(0.4); } 100%, 0% { transform: scale(1); } }
-
-/*
-  ## CustomForm ##
-*/
-.custom-form-entry {
-    overflow: hidden;
-    padding-left: 4px;
-    font-size: 11px;
-    border: 1px solid #7d7d7d;
-}
-
-.custom-form-entry:focus {
-    border-color: #268cdd;
-    outline: none;
-}`;
-        
-        styleElement = appWindow.document.createElement("style");
-        styleElement.type = "text/css";
-        styleElement.id = "matlab-js-bridge";
-        styleElement.innerHTML = `${cssText}`;
-
-        appWindow.document.head.appendChild(styleElement);
-    }
-
-    /*---------------------------------------------------------------------------------*/
-    function isMobile() {
-        let userAgent = navigator.userAgent || "";
-        return /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
-    }
-
-    /*---------------------------------------------------------------------------------*/
-    function camelToKebab(prop) {
-        return prop.replace(/[A-Z]/g, m => "-" + m.toLowerCase());
-    }
-
     /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("initializeComponents", function (customEvent) {
         const components = customEvent.Data;
@@ -434,7 +148,7 @@ a, a:hover {
                         }
 
                         classList.forEach(classElement => {
-                            injectCustomStyle();
+                            injectBaseStyles();
                             handle.classList.add(classElement);
 
                             modifyStatus = !!handle.classList.contains(classElement);
@@ -465,6 +179,11 @@ a, a:hover {
                                 }
                             });
                         }
+                    }
+
+                    if (el.tooltip) {
+                        const {textContent, defaultPosition} = el.tooltip;
+                        createTooltip(handle, textContent, defaultPosition);
                     }
 
                     if (el.stackorder && handle.parentElement) {
@@ -667,7 +386,7 @@ a, a:hover {
             let nFields = Fields.length;
             let Height  = nFields <= 3 ? 165 : 95+20*nFields+5*(nFields-1);
 
-            injectCustomStyle();
+            injectBaseStyles();
 
             // Background layer
             var u = window.parent.document.createElement("div");
@@ -908,7 +627,7 @@ a, a:hover {
             }
 
             try {
-                injectCustomStyle();
+                injectBaseStyles();
         
                 // Background layer
                 let u = appWindow.document.getElementById('matlab-js-bridge-ui-blocker');
@@ -922,13 +641,13 @@ a, a:hover {
                 w.setAttribute("data-tag", UUID);
                 w.style.cssText = `visibility: visible; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: ${zBaseIndex+2};`;
                 w.innerHTML     = `
-                    <div class="sk-chase">
-                        <div class="sk-chase-dot"></div>
-                        <div class="sk-chase-dot"></div>
-                        <div class="sk-chase-dot"></div>
-                        <div class="sk-chase-dot"></div>
-                        <div class="sk-chase-dot"></div>
-                        <div class="sk-chase-dot"></div>
+                    <div class="progress-dialog-chase">
+                        <div class="progress-dialog-chase-dot"></div>
+                        <div class="progress-dialog-chase-dot"></div>
+                        <div class="progress-dialog-chase-dot"></div>
+                        <div class="progress-dialog-chase-dot"></div>
+                        <div class="progress-dialog-chase-dot"></div>
+                        <div class="progress-dialog-chase-dot"></div>
                     </div>
                 `;
                 
@@ -948,12 +667,12 @@ a, a:hover {
 
             case "changeColor":
                 const newColor = customEvent.Data.Color;
-                appWindow.document.documentElement.style.setProperty("--sk-color", newColor);
+                appWindow.document.documentElement.style.setProperty("--progress-dialog-color", newColor);
                 break;
 
             case "changeSize":
                 const newSize = customEvent.Data.Size;
-                appWindow.document.documentElement.style.setProperty("--sk-size", newSize);
+                appWindow.document.documentElement.style.setProperty("--progress-dialog-size", newSize);
                 break;
         };
     });
@@ -1090,7 +809,7 @@ a, a:hover {
         O wordcloud é renderizada na própria window do uihtml.
     -----------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("wordcloud", () => {
-        injectCustomScript(window.document, "matlab-js-bridge-wordcloud", ["js/d3.v7.min.js", "js/d3.layout.cloud.min.js"]);
+        injectScript(window.document, "matlab-js-bridge-wordcloud", ["js/d3.v7.min.js", "js/d3.layout.cloud.min.js"]);
 
         let canvas = window.document.getElementById('wordcloudCanvas');
         if (!canvas) {
@@ -1209,6 +928,432 @@ a, a:hover {
             d3.select("#wordcloud").selectAll("*").remove();
         }
     });
+
+    /*-----------------------------------------------------------------------------------
+        ## TOOLTIP ##
+    -----------------------------------------------------------------------------------*/
+    function createTooltip(target, text, defaultPosition = "top") {
+        let tooltip;
+        const tooltipColor = getComputedStyle(appWindow.document.documentElement).getPropertyValue('--tooltip-backgroundColor').trim();
+
+        if (!target.dataset.tooltipId) {
+            target.dataset.tooltipId    = uuid();
+            target.dataset.tooltipState = 'hidden';
+            target.dataset.tooltipText  = text;
+        }
+
+        target.addEventListener('mouseenter', () => tooltip = tooltipShow(tooltip, target, defaultPosition));
+        target.addEventListener('mouseleave', () => tooltipHide(tooltip, target));
+
+        /*-----------------------------------------------------------------------------*/
+        function tooltipShow(tooltip, target, defaultPosition) {
+            if (!tooltip || target.dataset.tooltipState === 'hidden') {
+                tooltip = tooltipRender(target, defaultPosition);
+                target.dataset.tooltipState = 'hover';
+            }
+
+            return tooltip;
+        }
+
+        /*-----------------------------------------------------------------------------*/
+        function tooltipHide(tooltip, target) {
+            if (tooltip && target.dataset.tooltipState === 'hover') {
+                tooltip.remove();
+                tooltip = null;
+
+                target.dataset.tooltipState = 'hidden';
+            }
+        }
+
+        /*-----------------------------------------------------------------------------*/
+        function tooltipRender(target, defaultPosition) {
+            let tooltip, tooltipArrow;
+    
+            tooltip = appWindow.document.createElement('div');
+            tooltip.id = target.dataset.tooltipId;
+            tooltip.className = 'tooltip-container';
+            tooltip.innerHTML = target.dataset.tooltipText;;
+    
+            tooltipArrow = appWindow.document.createElement('div');
+            tooltipArrow.className = 'tooltip-arrow';
+    
+            tooltip.appendChild(tooltipArrow);
+            appWindow.document.body.appendChild(tooltip);
+    
+            const rect = target.getBoundingClientRect();
+            const scrollX  = appWindow.scrollX;
+            const scrollY  = appWindow.scrollY;
+            const centerX  = rect.left + scrollX + rect.width / 2;
+            const maxRight = scrollX + appWindow.innerWidth - 4;
+    
+            const tooltipWidth  = tooltip.offsetWidth;
+            const tooltipHeight = tooltip.offsetHeight;    
+            
+            let left = centerX - tooltipWidth / 2;
+            if (left < 4) { left = 4; }
+            if (left + tooltipWidth > maxRight) { left = maxRight - tooltipWidth; }
+    
+            let top, showAbove;
+            
+            if (defaultPosition === 'bottom') {
+                top = rect.bottom + scrollY + 8;
+                showAbove = false;
+
+                if (top + tooltipHeight > scrollY + appWindow.innerHeight - 4) {
+                    top = rect.top + scrollY - tooltipHeight - 8;
+                    showAbove = true;
+                }
+            } else {
+                top = rect.top + scrollY - tooltipHeight - 8
+                showAbove = true;
+
+                if (top < scrollY + 4) {
+                    top = rect.bottom + scrollY + 8;
+                    showAbove = false;
+                }
+            }
+    
+            const arrowOffset = centerX - left - 6;
+    
+            Object.assign(tooltip.style, {
+                left: `${left}px`,
+                top: `${top}px`
+            });
+    
+            Object.assign(tooltipArrow.style, {
+                left: `${arrowOffset}px`,
+                top: showAbove ? 'unset' : '-6px',
+                bottom: showAbove ? '-6px' : 'unset',
+                borderTop: showAbove ? `6px solid ${tooltipColor}` : 'none',
+                borderBottom: showAbove ? 'none' : `6px solid ${tooltipColor}`
+            });
+    
+            return tooltip;
+        }
+    }
+
+    /*-----------------------------------------------------------------------------------
+        ## FUNÇÕES ##
+    -----------------------------------------------------------------------------------*/
+    function consoleLog(msg) {
+        const now      = new Date();
+        const hours    = String(now.getHours()).padStart(2, '0');
+        const minutes  = String(now.getMinutes()).padStart(2, '0');
+        const seconds  = String(now.getSeconds()).padStart(2, '0');
+        const millisec = String(now.getMilliseconds()).padStart(3, '0');
+
+        console.log(`${hours}:${minutes}:${seconds}.${millisec} [matlab-js-bridge] ${msg}`);
+    }
+
+    /*---------------------------------------------------------------------------------*/
+    function uuid() {
+        return (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') 
+            ? crypto.randomUUID()
+            : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+    }
+
+    /*---------------------------------------------------------------------------------*/
+    function createUIBlocker(parentWindow, id, zIndex = 900, delay = 50) {
+        const uiBlocker = parentWindow.document.createElement("div");
+        Object.assign(uiBlocker.style, {
+            visibility: 'visible',
+            position: 'fixed',
+            inset: '0',
+            background: 'rgba(255, 255, 255, 0.65)',
+            opacity: '0',
+            pointerEvents: 'auto',
+            zIndex: `${zIndex}`,
+            transition: 'opacity 2s ease'
+        });
+
+        uiBlocker.id = id;
+        uiBlocker.tabIndex = -1;
+        uiBlocker.addEventListener('keydown', evt => evt.stopPropagation(), true);
+
+        parentWindow.document.body.appendChild(uiBlocker);
+        uiBlocker.focus();
+        parentWindow.document.offsetWidth;
+
+        setTimeout(() => {
+            uiBlocker.style.opacity = '1';
+        }, delay);
+
+        return uiBlocker;
+    }
+    
+    /*---------------------------------------------------------------------------------*/
+    function findComponentHandle(dataTag) {
+        return appWindow.document.querySelector(`div[data-tag="${dataTag}"]`);
+    }
+
+    /*---------------------------------------------------------------------------------*/
+    function injectBaseStyles() {
+        let styleElement = appWindow.document.getElementById('matlab-js-bridge');
+        if (styleElement) {
+            return;
+        }
+
+        const cssText = `/*
+  ## Customizações gerais (MATLAB Built-in Components) ##
+*/
+:root {
+    --tabButton-border-color: rgb(255, 255, 255) !important;
+    --tabContainer-border-color: rgb(230, 230, 230) !important;
+    --tabGroup-tab-selected-background: rgb(191, 191, 191);
+    --tabGroup-tab-unselected-background: rgb(230, 230, 230);
+    --tabGroup-tab-hover-background: rgba(191, 191, 191, 0.5);
+    --tabGroup-tab-selected-border: rgb(51, 51, 51);
+    --tabGroup-tab-hover-border: rgba(51, 51, 51, 0.5);
+    --tooltip-backgroundColor: rgb(51, 51, 51);
+    --tooltip-borderColor: rgba(255, 255, 255, 0.25);
+    --tooltip-fontColor: rgb(255, 255, 255);
+}
+
+.mw-theme-light {
+    --mw-backgroundColor-dataWidget-selected: rgba(180, 222, 255, 0.45) !important;
+    --mw-backgroundColor-selected: rgba(180, 222, 255, 0.45) !important;
+    --mw-backgroundColor-selectedFocus: rgba(180, 222, 255, 0.45) !important;
+    --mw-backgroundColor-list-hover: rgb(191, 191, 191) !important;
+    --mw-backgroundColor-tab: rgb(255, 255, 255) !important;
+}
+
+.mwDialog {
+    --mw-fontSize-dialog: 12px !important;
+    word-break: break-word !important;
+}
+
+.mw-table-component {
+    --mw-fontSize-table-cell: 10px !important;
+}
+
+a, a:hover {
+    text-decoration: none;
+}
+
+.mw-table-row-header-cell {
+    color: var(--mw-color-secondary,#616161) !important;
+    font-weight: var(--mw-fontWeight-table-header-index) !important;
+    text-align: center !important;
+}
+
+.treenode.selected {
+    background-image: rgba(180, 222, 255, 0.45) !important;
+}
+
+.mw-tree .mw-tree-scroll-component.focused.hoverable .treeNode.selected.mw-tree-node-hover {
+    background-image: rgb(191, 191, 191) !important;
+}
+
+.mw-default-header-cell {
+    font-size: 10px !important; 
+    white-space: pre-wrap !important; 
+    margin-bottom: 5px !important;
+}
+
+.gbtWidget.gbtGrid {
+    border-radius: 5px !important;
+}
+
+.tabBar {
+    height: 24px !important;
+    background: transparent !important;
+    border-left: none !important;
+}
+
+.topTabContentWrapper {
+    top: 24px !important;
+}
+
+.mwTabContainer {
+    border: 1px solid var(--tabGroup-tab-unselected-background) !important;
+    border-radius: 5px !important;
+}
+
+.mwTabLabel {
+    position: relative !important;
+    font-size: 10px !important;
+    text-decoration: none !important;
+    cursor: pointer !important;
+    padding-left: 0 !important;
+}
+
+.tab {
+    background: var(--tabGroup-tab-unselected-background) !important;
+    border-bottom: 2px solid transparent !important;
+    border-top-left-radius: 5px !important;
+    border-top-right-radius: 5px !important;
+    cursor: pointer !important;
+    text-align: center !important;
+}
+
+.tab:hover {
+    background: var(--tabGroup-tab-hover-background) !important;
+    border-bottom-color: var(--tabGroup-tab-hover-border) !important;
+}
+
+.tab:not(.checkedTab):hover {
+    background: var(--tabGroup-tab-hover-background) !important;
+}
+
+.checkedTab {
+    background: var(--tabGroup-tab-selected-background) !important;
+    border-bottom-color: var(--tabGroup-tab-selected-border) !important;
+}
+
+.gbtTabGroup,
+.gbtWidget.gbtPanel,
+.mwRadioButton,
+.mwDatePicker {
+    background-color: transparent !important;
+}
+
+/*
+  ## Tooltip ##
+*/
+.tooltip-container {
+    position: absolute;
+    background: var(--tooltip-backgroundColor);
+    opacity: 0.95;
+    border: 1px solid var(--tooltip-borderColor);
+    box-shadow: none;
+    color: var(--tooltip-fontColor);
+    padding: 6px 10px;
+    border-radius: 3px;
+    font-size: 12px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 800;
+}
+
+.tooltip-arrow {
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+}
+
+/*
+  ## ui.TextView ##
+*/
+.textview {
+    border: 1px solid rgb(125, 125, 125);
+    overflow: hidden auto;
+    word-break: break-all;
+    user-select: text;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 11px;
+    color: rgb(0, 0, 0);
+    text-align: center;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.mwDialog *::selection,
+.textview::selection,
+.textview *::selection { background: #0078d4; color: white; }
+
+.textview-from-uiimage { display: flex; flex-direction: column; gap: 10px;}
+
+/*
+  ## Tab Navigator ##
+*/
+.tab-navigator-button { cursor: pointer !important; }
+.tab-navigator-button:hover { border-color: #7d7d7d !important; }
+.tab-navigator-icon:hover svg { transform: scale(1.08); }
+
+/*
+  ## ProgressDialog ##
+*/
+:root {
+    --progress-dialog-size: 40px;
+    --progress-dialog-color: rgb(217, 83, 25);
+}
+
+.progress-dialog-chase { width: var(--progress-dialog-size); height: var(--progress-dialog-size); position: relative; animation: progress-dialog-chase 2.5s infinite linear both; }
+.progress-dialog-chase-dot { width: 100%; height: 100%; position: absolute; left: 0; top: 0;  animation: progress-dialog-chase-dot 2.0s infinite ease-in-out both; }
+.progress-dialog-chase-dot:before { content: ""; display: block; width: 25%; height: 25%; background-color: var(--progress-dialog-color); border-radius: 100%; animation: progress-dialog-chase-dot-before 2.0s infinite ease-in-out both; }
+
+.progress-dialog-chase-dot:nth-child(1),
+.progress-dialog-chase-dot:nth-child(1):before { animation-delay: -1.1s; }
+.progress-dialog-chase-dot:nth-child(2),
+.progress-dialog-chase-dot:nth-child(2):before { animation-delay: -1.0s; }
+.progress-dialog-chase-dot:nth-child(3),
+.progress-dialog-chase-dot:nth-child(3):before { animation-delay: -0.9s; }
+.progress-dialog-chase-dot:nth-child(4),
+.progress-dialog-chase-dot:nth-child(4):before { animation-delay: -0.8s; }
+.progress-dialog-chase-dot:nth-child(5),
+.progress-dialog-chase-dot:nth-child(5):before { animation-delay: -0.7s; }
+.progress-dialog-chase-dot:nth-child(6),
+.progress-dialog-chase-dot:nth-child(6):before { animation-delay: -0.6s; }
+
+@keyframes progress-dialog-chase { 100% { transform: rotate(360deg); } }
+@keyframes progress-dialog-chase-dot { 80%, 100% { transform: rotate(360deg); } }
+@keyframes progress-dialog-chase-dot-before { 50% { transform: scale(0.4); } 100%, 0% { transform: scale(1); } }
+
+/*
+  ## CustomForm ##
+*/
+.custom-form-entry { overflow: hidden; padding-left: 4px; font-size: 11px; border: 1px solid #7d7d7d;}
+.custom-form-entry:focus { border-color: #268cdd; outline: none; }`;
+        
+        styleElement = appWindow.document.createElement("style");
+        styleElement.type = "text/css";
+        styleElement.id = "matlab-js-bridge";
+        styleElement.innerHTML = `${cssText}`;
+
+        appWindow.document.head.appendChild(styleElement);
+    }
+
+    /*---------------------------------------------------------------------------------*/
+    function injectStyle(parentDocument, className, fileList) {
+        const styleElement = parentDocument.getElementsByClassName(className);
+        if (styleElement.length > 0) {
+            return;
+        }
+
+        fileList.forEach((file) => {
+            const linkElement = parentDocument.createElement("link");
+            linkElement.className = className;
+            linkElement.rel  = "stylesheet";
+            linkElement.type = "text/css";
+            linkElement.href = new URL(file, appWindow.app.staticBaseURL).href;
+
+            parentDocument.head.appendChild(linkElement);
+        });
+    }
+
+    /*---------------------------------------------------------------------------------*/
+    function injectScript(parentDocument, className, fileList) {
+        const scriptElement = parentDocument.getElementsByClassName(className);
+        if (scriptElement.length > 0) {
+            return;
+        }
+
+        fileList.forEach((file) => {
+            const scriptElement = parentDocument.createElement("script");
+            scriptElement.className = className;
+            scriptElement.type = "text/javascript";
+            scriptElement.src  = new URL(file, appWindow.app.staticBaseURL).href;
+
+            parentDocument.head.appendChild(scriptElement);
+        });
+    }
+
+    /*---------------------------------------------------------------------------------*/
+    function isMobile() {
+        let userAgent = navigator.userAgent || "";
+        return /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+    }
+
+    /*---------------------------------------------------------------------------------*/
+    function camelToKebab(prop) {
+        return prop.replace(/[A-Z]/g, m => "-" + m.toLowerCase());
+    }
 
     /*---------------------------------------------------------------------------------*/
     window.requestAnimationFrame(() => {

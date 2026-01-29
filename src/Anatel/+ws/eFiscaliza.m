@@ -144,11 +144,16 @@ classdef eFiscaliza < ws.WebServiceBase
                 msg  = ME.message;
             end
         end
+
+        %-----------------------------------------------------------------%
+        function login = getLogin(obj)
+            login = obj.login;
+        end
     end
 
 
     methods (Static = true)
-        %------------------------------------------------------------------%
+        %-----------------------------------------------------------------%
         function ID = serviceMapping(ID)
             arguments
                 ID (1,1) int16
