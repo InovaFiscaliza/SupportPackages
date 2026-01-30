@@ -1105,6 +1105,8 @@ function setup(htmlComponent) {
     --tooltip-backgroundColor: rgb(51, 51, 51);
     --tooltip-borderColor: rgba(255, 255, 255, 0.25);
     --tooltip-fontColor: rgb(255, 255, 255);
+    --progress-dialog-size: 40px;
+    --progress-dialog-color: rgb(217, 83, 25);
 }
 
 .mw-theme-light {
@@ -1263,11 +1265,6 @@ a, a:hover {
 /*
   ## ProgressDialog ##
 */
-:root {
-    --progress-dialog-size: 40px;
-    --progress-dialog-color: rgb(217, 83, 25);
-}
-
 .progress-dialog-chase { width: var(--progress-dialog-size); height: var(--progress-dialog-size); position: relative; animation: progress-dialog-chase 2.5s infinite linear both; }
 .progress-dialog-chase-dot { width: 100%; height: 100%; position: absolute; left: 0; top: 0;  animation: progress-dialog-chase-dot 2.0s infinite ease-in-out both; }
 .progress-dialog-chase-dot:before { content: ""; display: block; width: 25%; height: 25%; background-color: var(--progress-dialog-color); border-radius: 100%; animation: progress-dialog-chase-dot-before 2.0s infinite ease-in-out both; }
