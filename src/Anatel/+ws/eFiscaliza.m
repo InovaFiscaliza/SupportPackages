@@ -41,21 +41,28 @@ classdef eFiscaliza < ws.WebServiceBase
                 varargin
             end
 
+            if strcmp(env, 'DS')
+                operation = [operation '-DS'];
+            end
+
             try
                 header = {'Authorization', ['Basic ' ws.WebServiceBase.base64encode([obj.login ':' obj.password])], ...
                           'Content-Type', 'application/json'};
             
                 switch operation
-                    case 'queryIssue'
+                    %-----------------------------------------------------%
+                    % ## eFiscaliza HM/TS/PD/DS ##
+                    %-----------------------------------------------------%
+                    case {'queryIssue', 'queryIssue-DS'}
                         if ~strcmp(issue.type, 'ATIVIDADE DE INSPEÇÃO')
-                            error('Unexpected issue type %s', issue.type)
+                            error('ws:eFiscaliza:UnexpectedIssueType', 'Unexpected issue type "%s"', issue.type)
                         end
 
                         endPoint = sprintf('%s/atividadesInspecao?IdAtividadeInspecao=%s', obj.url.(env), string(issue.id));
                         response = ws.WebServiceBase.request(endPoint, 'GET', header);
         
                         if ~isfield(response.Body.Data, 'AtividadeInspecaoList')
-                            error(response.show)
+                            error('ws:eFiscaliza:RequestFailed', response.show)
                         end
         
                         msg = struct( ...
@@ -78,12 +85,17 @@ classdef eFiscaliza < ws.WebServiceBase
 
                     case {'uploadDocument', 'uploadExternalDocument'}
                         if ~ismember(issue.type, {'AÇÃO DE INSPEÇÃO', 'ATIVIDADE DE INSPEÇÃO'})
-                            error('Unexpected issue type %s', issue.type)
+                            error('ws:eFiscaliza:UnexpectedIssueType', 'Unexpected issue type "%s"', issue.type)
                         end
 
                         unit     = varargin{1};
                         docSpec  = varargin{2};
                         fileName = varargin{3};
+
+                        fileId = fopen(fileName);
+                        byteArray = fread(fileId, [1, inf], 'uint8=>uint8');
+                        fclose(fileId);
+                        fileContent = matlab.net.base64encode(byteArray);
 
                         switch issue.type
                             case 'AÇÃO DE INSPEÇÃO'
@@ -91,14 +103,6 @@ classdef eFiscaliza < ws.WebServiceBase
                             case 'ATIVIDADE DE INSPEÇÃO'
                                 issueTypeFieldName = 'ID_INSPEC_ATIVIDADE';
                         end
-
-                        % Interessados
-                        
-                        % Sigla: Sigla do interessado
-                        % Nome: Nome do interessado
-                        % IdContato: Identificador interno do interessado
-                        % Cpf: CPF do interessado
-                        % Cnpj: CNPJ do interessado
 
                         body = struct( ...
                             issueTypeFieldName, issue.id,              ...
@@ -109,7 +113,7 @@ classdef eFiscaliza < ws.WebServiceBase
                             'OBSERVACAO',       docSpec.note,          ...
                             'NIVEL_ACESSO',     docSpec.accessLevelId, ...
                             'HIPOTESE_LEGAL',   docSpec.legalBasisId,  ...
-                            'CONTEUDO',         ws.WebServiceBase.base64encode(fileread(fileName)) ...
+                            'CONTEUDO',         fileContent            ...
                         );
 
                         if strcmp(operation, 'uploadExternalDocument')
@@ -123,7 +127,7 @@ classdef eFiscaliza < ws.WebServiceBase
                         response = ws.WebServiceBase.request(endPoint, 'POST', header, body);
         
                         if ~isfield(response.Body.Data, 'StrRetornoInclusaoDocumento')
-                            error(response.show)
+                            error('ws:eFiscaliza:RequestFailed', response.show)
                         end
         
                         sei  = response.Body.Data.StrRetornoInclusaoDocumento.DocumentoFormatado;
@@ -135,9 +139,69 @@ classdef eFiscaliza < ws.WebServiceBase
                             link, ...
                             sei ...
                         );
+
+                    %-----------------------------------------------------%
+                    % ## eFiscaliza DS ##
+                    %-----------------------------------------------------%
+                    case {'uploadDocument-DS', 'uploadExternalDocument-DS'}
+                        if ~ismember(issue.type, {'ATIVIDADE DE INSPEÇÃO'})
+                            error('ws:eFiscaliza:UnexpectedIssueType', 'Unexpected issue type "%s"', issue.type)
+                        end
+
+                        unit     = varargin{1};
+                        docSpec  = varargin{2};
+                        fileName = varargin{3};
+
+                        fileId = fopen(fileName);
+                        byteArray = fread(fileId, [1, inf], 'uint8=>uint8');
+                        fclose(fileId);
+                        fileContent = matlab.net.base64encode(byteArray);
+
+                        body = struct( ...
+                            'conteudo', fileContent, ...
+                            'tipo', docSpec.originId, ...
+                            'tipologia', docSpec.typeId, ...
+                            'descricao', docSpec.description, ...
+                            'observacao', docSpec.note, ...
+                            'nivelAcesso', docSpec.accessLevelId, ...
+                            'hipoteseLegal', docSpec.legalBasisId, ...
+                            'unidadeGeradora', unit ...
+                        );
+
+                        if isfield(docSpec, 'interessados')
+                            body.interessados = docSpec.interessados;
+                        end
+
+                        if isfield(docSpec, 'nomeArvore')
+                            body.nomeArvore = docSpec.nomeArvore;
+                        end
+
+                        if strcmp(operation, 'uploadExternalDocument-DS')
+                            [~, name, ext] = fileparts(fileName);
+
+                            body.data = datestr(now, 'dd/mm/yyyy');
+                            body.nomeArquivo = [name, ext];
+                        end
+
+                        endPoint = sprintf('%s/atividades/%d/documento-SEI', obj.url.(env), issue.id);
+                        response = ws.WebServiceBase.request(endPoint, 'POST', header, body);
+        
+                        if ~isstruct(response.Body.Data) || ~isfield(response.Body.Data, 'successo') || ~response.Body.Data.successo
+                            error('ws:eFiscaliza:RequestFailed', response.show)
+                        end
+        
+                        sei  = response.Body.Data.documentoFormatado;
+                        link = response.Body.Data.linkAcesso;
+                        msg  = sprintf( ...
+                            '<b>%s: %s</b>\nDocumento cadastrado no SEI sob o nº <a href="%s" target="_blank">%s</a>', ...
+                            response.StatusCode, ...
+                            response.StatusLine, ...
+                            link, ...
+                            sei ...
+                        );
     
                     otherwise
-                        error('UnexpectedCall')
+                        error('ws:eFiscaliza:UnexpectedOperation', 'Unexpected operation "%s"', operation)
                 end
 
             catch ME
