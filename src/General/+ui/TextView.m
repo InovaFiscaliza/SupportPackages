@@ -115,6 +115,23 @@ classdef (Abstract) TextView
                 baseComponent.UserData = userData;
             end
         end
+
+        %-----------------------------------------------------------------%
+        % O MATLAB pode apresentar lentidão caso seja atualizado de forma 
+        % frequente a propriedade "Text" de um uilabel. Para evitar isso, 
+        % manipula-se o DOM diretamente, alterando o seu "innerHTML". Esse
+        % approach pode ser adotado apenas se a propriedade "Text" não for 
+        % essencial. 
+        % 
+        % Por exemplo, via "Text", 12409742 de caracteres são renderizados 
+        % em 55 seg. Esse valor é reduzido para 8 seg quando atualização via
+        % jsBackDoor.
+        %-----------------------------------------------------------------%
+        function setLabelInnerHTMLBypassingText(jsBackDoor, baseComponent, innerHTML)
+            sendEventToHTMLSource(jsBackDoor, 'changeTextViewContent', ...
+                struct('dataTag', baseComponent.UserData.id, 'innerHTML', innerHTML) ...
+            );
+        end
     end
 
 end

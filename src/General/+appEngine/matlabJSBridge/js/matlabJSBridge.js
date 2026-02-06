@@ -291,6 +291,14 @@ function setup(htmlComponent) {
     });
 
     /*---------------------------------------------------------------------------------*/
+    htmlComponent.addEventListener("changeTextViewContent", function(customEvent) {
+        const handle = findComponentHandle(customEvent.Data.dataTag)?.children?.[0]?.children?.[0];
+        if (handle) {
+            handle.innerHTML = customEvent.Data.innerHTML;
+        }
+    });
+
+    /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("addStyle", function(customEvent) {
         let handle  = findComponentHandle(customEvent.Data.dataTag);
         const style = customEvent.Data.style;
