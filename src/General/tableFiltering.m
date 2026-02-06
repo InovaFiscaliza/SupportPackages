@@ -83,7 +83,7 @@ classdef tableFiltering < handle
                 Connector (1,:) char
             end
 
-            hash = Hash.base64encode(sprintf('%s - %s - %s - %s', Field, strjoin(Operators, '+'), strjoin(cellfun(@string, Values), '+'), Connector));
+            hash = Hash.sha1(sprintf('%s - %s - %s - %s', Field, strjoin(Operators, '+'), strjoin(cellfun(@string, Values), '+'), Connector));
             if ismember(hash, obj.filterRules.("Hash"))
                 error('Filter already exists')
             end

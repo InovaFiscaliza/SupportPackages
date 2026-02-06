@@ -2,9 +2,10 @@ classdef (Abstract) Compatibility
 
     methods (Static = true)
         %-----------------------------------------------------------------%
-        function variableTypes = resolveTableVariableTypes(t)
+        function variableTypes = resolveTableVariableTypes(t, detectCellstr)
             arguments
                 t table
+                detectCellstr = true
             end
             
             props = t.Properties;
@@ -15,10 +16,12 @@ classdef (Abstract) Compatibility
                 variableTypes = varfun(@class, t, 'OutputFormat', 'cell');
             end
 
-            cellColumnIndexes = find(strcmp(variableTypes, 'cell'));
-            for columnIndex = cellColumnIndexes
-                if iscellstr(t{:, columnIndex})
-                    variableTypes{columnIndex} = 'cellstr';
+            if detectCellstr
+                cellColumnIndexes = find(strcmp(variableTypes, 'cell'));
+                for columnIndex = cellColumnIndexes
+                    if iscellstr(t{:, columnIndex})
+                        variableTypes{columnIndex} = 'cellstr';
+                    end
                 end
             end
         end
