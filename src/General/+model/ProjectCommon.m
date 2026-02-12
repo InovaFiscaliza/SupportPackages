@@ -19,7 +19,8 @@ classdef ProjectCommon < handle
     % PRIVATE
     %   ├── readReportTemplatesFile
     %   ├── getIssueDetailsFromCache
-    %   ├── getEntityDetailsFromCache
+    %   └── getEntityDetailsFromCache
+    % PROTECTED
     %   ├── IndexedDBStatus
     %   └── IndexedDBTimer
     % STATIC
@@ -39,7 +40,7 @@ classdef ProjectCommon < handle
     end
 
     
-    properties (Access = private)
+    properties (Access = protected)
         %-----------------------------------------------------------------%
         mainApp
         rootFolder
@@ -337,26 +338,29 @@ classdef ProjectCommon < handle
                 details = '';      
             end
         end
+    end
 
+
+    methods (Access = protected)
         %-----------------------------------------------------------------%
         function status = IndexedDBStatus(obj)
-            status = ~strcmp(obj.mainApp.executionMode, 'desktopStandaloneApp') && obj.mainApp.General.Report.indexedDBCache.status;
+            status = ~strcmp(obj.mainApp.executionMode, 'desktopStandaloneApp') && obj.mainApp.General.reportLib.indexedDBCache.status;
         end
 
         %-----------------------------------------------------------------%
-        function IndexedDBTimer(obj)
+        function IndexedDBTimer(obj, timerFcnHandle)
             if ~IndexedDBStatus(obj)
                 return
             end
 
-            timerInterval = 60* obj.mainApp.General.Report.indexedDBCache.intervalMinutes; % minutes >> seconds
+            timerInterval = 60* obj.mainApp.General.reportLib.indexedDBCache.intervalMinutes; % minutes >> seconds
             
             obj.indexedDB.syncTimer = timer( ...
                 "ExecutionMode", "fixedSpacing", ...
                 "BusyMode", "drop", ...
                 "StartDelay", timerInterval, ...
                 "Period", timerInterval, ...
-                "TimerFcn", @(~,~) IndexedDBCache(obj) ...
+                "TimerFcn", timerFcnHandle ...
             );
 
             start(obj.indexedDB.syncTimer)
