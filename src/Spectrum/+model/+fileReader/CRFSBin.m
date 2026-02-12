@@ -235,7 +235,7 @@ function specData = Fcn_DataOrganization(specData, gpsData, fileFullPath, rawDat
         specData(ii).MetaData.TraceMode = traceMode;
 
         antennaInfo = struct('SwitchMode', 'auto');
-        if ismember(specData(ii).MetaData.Antenna, 1:4)
+        if isnumeric(specData(ii).MetaData.Antenna) && ismember(specData(ii).MetaData.Antenna, 1:4)
             antennaInfo = struct('SwitchMode', 'manual', 'Port', specData(ii).MetaData.Antenna);
         end
         specData(ii).MetaData.Antenna = antennaInfo;

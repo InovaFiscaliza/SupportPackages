@@ -843,11 +843,11 @@ function setup(htmlComponent) {
             containerStyle = window.document.createElement("style");
             containerStyle.id = "wordcloud-style";
             containerStyle.innerHTML = `
-                #wordcloud text::selection {
-                    background: #0078d4 !important;
-                    fill: white !important;
-                }
-            `;
+#wordcloud text::selection {
+    background: #0078d4 !important;
+    fill: white !important;
+    color: white !important;
+}`;
             window.document.head.appendChild(containerStyle);
         }
 

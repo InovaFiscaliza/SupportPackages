@@ -62,4 +62,44 @@ classdef KML < handle
             obj.LayerNames = map.internal.io.getLayerNames(kmlFile)';
         end
     end
+
+
+    methods (Static = true)
+        %-----------------------------------------------------------------%
+        function [status, msgError] = generateKML(fileName, fileType, measTable, varargin)
+            arguments
+                fileName
+                fileType {mustBeMember(fileType, {'measures', 'route'})}
+                measTable
+            end
+
+            arguments (Repeating)
+                varargin
+            end
+        
+            status = true;
+            msgError = '';
+            
+            try    
+                switch fileType
+                    case 'measures'
+                        measValueColumnName = varargin{1};
+                        measPlotHandle = varargin{2};
+
+                        description  = arrayfun(@(x,y) sprintf('%s\n%.1f V/m', x, y), measTable.Timestamp, measTable.(measValueColumnName), 'UniformOutput', false);
+                        geoTableMeas = table2geotable(measTable);
+                        rgbMapping   = imageUtil.getRGB(measPlotHandle);
+                        kmlwrite(fileName, geoTableMeas, 'Name', string(1:height(geoTableMeas))', 'Description', description, 'Color', rgbMapping)
+            
+                    case 'route'
+                        description  = sprintf('%s - %s', char(measTable.Timestamp(1)), char(measTable.Timestamp(end)));
+                        kmlwriteline(fileName, measTable.Latitude, measTable.Longitude, 'Name', 'Route', 'Description', description', 'Color', 'red', 'LineWidth', 3)
+                end
+        
+            catch ME
+                status = false;
+                msgError = ME.message;
+            end
+        end
+    end
 end
