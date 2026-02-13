@@ -290,7 +290,7 @@ classdef ProjectCommon < handle
     end
 
 
-    methods (Access = private)
+    methods
         %-----------------------------------------------------------------%
         function readReportTemplatesFile(obj, rootFolder)
             [projectFolder, ...
