@@ -198,6 +198,7 @@ classdef TabNavigator < handle
                 end
             end
 
+            sendEventToHTMLSource(obj.jsBackDoor, 'removeTooltips');
             obj.progressDialog.Visible = 'hidden';
         end
 

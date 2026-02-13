@@ -181,7 +181,7 @@ function setup(htmlComponent) {
 
                     if (el.tooltip) {
                         const {textContent, defaultPosition} = el.tooltip;
-                        createTooltip(handle, textContent, defaultPosition);
+                        createTooltip(handle, el.dataTag, textContent, defaultPosition);
                     }
 
                     if (el.stackorder && handle.parentElement) {
@@ -938,7 +938,7 @@ function setup(htmlComponent) {
     /*-----------------------------------------------------------------------------------
         ## TOOLTIP ##
     -----------------------------------------------------------------------------------*/
-    function createTooltip(target, textContent, defaultPosition = "top") {
+    function createTooltip(target, targetDataTag, textContent, defaultPosition = "top") {
         let tooltip;
         const tooltipColor = getComputedStyle(appWindow.document.documentElement).getPropertyValue('--tooltip-backgroundColor').trim();
 
@@ -947,13 +947,13 @@ function setup(htmlComponent) {
             target.dataset.tooltipState = 'hidden';
         }
 
-        target.addEventListener('mouseenter', () => tooltip = tooltipShow(tooltip, target, defaultPosition));
+        target.addEventListener('mouseenter', () => tooltip = tooltipShow(tooltip, target, targetDataTag, defaultPosition));
         target.addEventListener('mouseleave', () => tooltipHide(tooltip, target));
 
         /*-----------------------------------------------------------------------------*/
-        function tooltipShow(tooltip, target, defaultPosition) {
+        function tooltipShow(tooltip, target, targetDataTag, defaultPosition) {
             if (!tooltip || target.dataset.tooltipState === 'hidden') {
-                tooltip = tooltipRender(target, defaultPosition);
+                tooltip = tooltipRender(target, targetDataTag, defaultPosition);
                 target.dataset.tooltipState = 'hover';
             }
 
@@ -971,11 +971,12 @@ function setup(htmlComponent) {
         }
 
         /*-----------------------------------------------------------------------------*/
-        function tooltipRender(target, defaultPosition) {
+        function tooltipRender(target, targetDataTag, defaultPosition) {
             let tooltip, tooltipArrow;
     
             tooltip = appWindow.document.createElement('div');
             tooltip.className = 'tooltip-container';
+            tooltip.dataset.targetDataTag = targetDataTag;
             tooltip.innerHTML = target.dataset.tooltipText;;
     
             tooltipArrow = appWindow.document.createElement('div');
@@ -1033,6 +1034,24 @@ function setup(htmlComponent) {
             return tooltip;
         }
     }
+
+    /*---------------------------------------------------------------------------------*/
+    htmlComponent.addEventListener("removeTooltips", () => {
+        const tooltips = appWindow.document.querySelectorAll('.tooltip-container');
+        tooltips.forEach(el => {
+            const targetDataTag = el.dataset?.targetDataTag;
+            
+            if (targetDataTag) {
+                const target = findComponentHandle(targetDataTag);
+
+                if (target?.dataset) {
+                    target.dataset.tooltipState = 'hidden';
+                }
+            }
+
+            el.remove();
+        });
+    });
 
     /*-----------------------------------------------------------------------------------
         ## FUNÇÕES ##
