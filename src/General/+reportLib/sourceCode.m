@@ -229,11 +229,17 @@ classdef (Abstract) sourceCode
                     (isnumeric(controlRawData) && (~controlRawData || ~isvector(controlRawData)))
                 return
             end
+
+            htmlComponentEditable = 'false';
         
             switch controlType
                 case {'Introduction', 'Error'}
                     if ~isempty(controlRawData)
-                        controlStruct     = jsondecode(controlRawData);
+                        controlStruct = jsondecode(controlRawData);
+
+                        if isfield(controlStruct, 'Editable')
+                            htmlComponentEditable = controlStruct.Editable;
+                        end
         
                         htmlComponentType = controlStruct.Type;
                         htmlComponentText = controlStruct.Text;
@@ -246,7 +252,7 @@ classdef (Abstract) sourceCode
                     end
             end
         
-            htmlContent = sprintf('%s%s', htmlContent, reportLib.sourceCode.htmlCreation(struct('Type', htmlComponentType, 'Data', struct('Editable', 'false', 'Text', htmlComponentText, 'Variable', []))));
+            htmlContent = sprintf('%s%s', htmlContent, reportLib.sourceCode.htmlCreation(struct('Type', htmlComponentType, 'Data', struct('Editable', htmlComponentEditable, 'Text', htmlComponentText, 'Variable', []))));
         end
 
 
@@ -302,7 +308,12 @@ classdef (Abstract) sourceCode
                         editedCellValue = strjoin(cellstr(cellValue), '<br>');
 
                     case 'datetime'
-                        editedCellValue = strjoin(cellstr(datestr(cellValue, 'dd/mm/yyyy HH:MM:SS')), '<br>');
+                        if hour(cellValue) == 0 && minute(cellValue) == 0 && second(cellValue) == 0
+                            outputFormat = 'dd/mm/yyyy';
+                        else
+                            outputFormat = 'dd/mm/yyyy HH:MM:SS';
+                        end
+                        editedCellValue = strjoin(cellstr(datestr(cellValue, outputFormat)), '<br>');
 
                     case 'cell'
                         for ii = 1:numel(cellValue)

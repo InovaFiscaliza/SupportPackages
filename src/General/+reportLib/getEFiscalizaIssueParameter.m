@@ -1,13 +1,16 @@
 function fieldValue = getEFiscalizaIssueParameter(reportInfo, fieldName, varargin)
     arguments
         reportInfo
-        fieldName {mustBeMember(fieldName, {'Solicitação de Inspeção', ...
+        fieldName {mustBeMember(fieldName, {'Informação Bruta', ...
+                                            'Solicitação de Inspeção', ...
                                             'Ação de Inspeção', ...
                                             'Atividade de Inspeção', ...
                                             'Nome do Demandante', ...
                                             'Nome da Unidade Executante', ...
                                             'Sede da Unidade Executante', ...
                                             'Período Previsto da Fiscalização', ...
+                                            'Lista de Entidades', ...
+                                            'Lista de Serviços', ...
                                             'Lista de Fiscais'})}
     end
 
@@ -30,6 +33,9 @@ function fieldValue = getEFiscalizaIssueParameter(reportInfo, fieldName, varargi
         end
 
         switch fieldName
+            case 'Informação Bruta'
+                fieldValue = jsonencode(issueDetails);
+
             case 'Solicitação de Inspeção'
                 switch fieldSubName
                     case {'id', 'codigo', 'descricao', 'status', 'entidades', 'servicos'}
@@ -94,6 +100,23 @@ function fieldValue = getEFiscalizaIssueParameter(reportInfo, fieldName, varargi
                     datetime(reportLib.getEFiscalizaIssueParameter(reportInfo, 'Ação de Inspeção', 'fim'),    'InputFormat', 'yyyy-MM-dd', 'Format', 'dd/MM/yyyy') ...
                 );
 
+            case 'Lista de Entidades'
+                entidades = reportLib.getEFiscalizaIssueParameter(reportInfo, 'Solicitação de Inspeção', 'entidades');
+                entidades = arrayfun(@(x) sprintf('%s (%s)', x.nome, x.id), entidades, 'UniformOutput', false);
+                if isscalar(entidades)
+                    fieldValue = char(entidades);
+                else
+                    fieldValue = strjoin([{strjoin(entidades(1:end-1), ', ')}, entidades(end)], ' e ');
+                end
+
+            case 'Lista de Serviços'
+                servicos = reportLib.getEFiscalizaIssueParameter(reportInfo, 'Solicitação de Inspeção', 'servicos');
+                if isscalar(servicos)
+                    fieldValue = char(servicos);
+                else
+                    fieldValue = strjoin([{strjoin(servicos(1:end-1), ', ')}, servicos(end)], ' e ');
+                end
+
             case 'Lista de Fiscais'
                 fiscais = reportLib.getEFiscalizaIssueParameter(reportInfo, 'Atividade de Inspeção', 'equipe');
                 if isscalar(fiscais)
@@ -103,7 +126,11 @@ function fieldValue = getEFiscalizaIssueParameter(reportInfo, fieldName, varargi
                 end
         end
 
-        if isempty(fieldSubName) || ~ismember(fieldSubName, {'inicio', 'fim', 'demandante', 'unidade', 'equipe'})
+        if isnumeric(fieldValue)
+            fieldValue = num2str(fieldValue);
+        end
+
+        if isempty(fieldSubName) || ~ismember(fieldSubName, {'inicio', 'fim', 'demandante', 'unidade', 'entidades', 'servicos', 'equipe'})
             fieldValue = highlightIssueParameterInDev(fieldValue);
         end
     end
