@@ -115,15 +115,6 @@ classdef eFiscaliza < ws.WebServiceBase
 
                         endPoint = sprintf('%s/atividades/%d/documento-SEI', obj.url.(env), issue.id);
                         response = ws.WebServiceBase.request(endPoint, 'POST', header, body);
-
-                        % <ELIMINAR ESSE TRECHO>
-                        if isstruct(response.Body.Data) && all(isfield(response.Body.Data, {'documentoFormatado', 'linkAcesso'})) && ~isempty(response.Body.Data.documentoFormatado)
-                            response.Body.Data.sei = struct( ...
-                                'documentoFormatado', response.Body.Data.documentoFormatado, ...
-                                'linkAcesso', response.Body.Data.linkAcesso ...
-                            );
-                        end
-                        % </ELIMINAR ESSE TRECHO>
         
                         if ~isstruct(response.Body.Data) || ~isfield(response.Body.Data, 'sei') || ~isstruct(response.Body.Data.sei) || any(~isfield(response.Body.Data.sei, {'documentoFormatado', 'linkAcesso'})) || isempty(response.Body.Data.sei.documentoFormatado)
                             error('ws:eFiscaliza:RequestFailed', '%s\n%s', response.show, jsonencode(response.Body.Data))

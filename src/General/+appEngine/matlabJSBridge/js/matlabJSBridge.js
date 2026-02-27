@@ -28,6 +28,7 @@ function setup(htmlComponent) {
                 findComponentHandle,
                 injectBaseStyles,
                 injectStyle,
+                injectStyleForDropDown,
                 injectScript,                
                 isMobile,
                 camelToKebab
@@ -137,6 +138,10 @@ function setup(htmlComponent) {
                             handle.style.setProperty(camelToKebab(elKey), el.styleImportant[elKey], "important");
                             handle.offsetHeight;
                         })
+                    }
+
+                    if (el.dropDownBackgroundColor) {
+                        injectStyleForDropDown(appWindow.document, el.dataTag, el.dropDownBackgroundColor);
                     }
 
                     if (el.class) {
@@ -1228,10 +1233,24 @@ a, a:hover {
 }
 
 .gbtTabGroup,
-.gbtWidget.gbtPanel,
 .mwRadioButton,
 .mwDatePicker {
     background-color: transparent !important;
+}
+
+/*
+  ## DropDown ##
+*/
+.mwWidgetPopup.dijitPopup {
+    border: 1px solid #268cdd !important;
+    border-radius: 5px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25) !important;
+}
+
+.dropDownWhiteArrow {
+    border-top: 8px solid white !important;
+    border-left: 4px solid transparent !important;
+    border-right: 4px solid transparent !important;
 }
 
 /*
@@ -1274,6 +1293,10 @@ a, a:hover {
     text-align: center;
     width: 100% !important;
     height: 100% !important;
+}
+
+.textview--borderless {
+    border: none;
 }
 
 .mwDialog *::selection,
@@ -1343,6 +1366,40 @@ a, a:hover {
 
             parentDocument.head.appendChild(linkElement);
         });
+    }
+
+    /*---------------------------------------------------------------------------------*/
+    function injectStyleForDropDown(parentDocument, dataTag, backgroundColor) {
+        const componentHandle = findComponentHandle(dataTag);
+        if (!componentHandle) {
+            return;
+        }
+
+        componentHandle.querySelector(".mwArrowNode")?.classList.add('dropDownWhiteArrow');
+
+        const elementId = componentHandle.children[0]?.id;
+        if (!elementId) {
+            return;
+        }
+
+        const styleId = `${elementId}_style`;
+        if (parentDocument.getElementById(styleId)) {
+            return;
+        }
+
+        const styleElement = parentDocument.createElement("style");
+        styleElement.id = styleId;
+        styleElement.type = "text/css";
+        styleElement.textContent = `
+#${elementId}_dropdown .mwMenuItem {
+    background: ${backgroundColor} !important;
+}
+
+#${elementId}_dropdown .mwComboBoxSelectedMenuItem {
+    background: #6c0404 !important;
+}`;
+
+        parentDocument.head.appendChild(styleElement);
     }
 
     /*---------------------------------------------------------------------------------*/
