@@ -25,6 +25,8 @@ function setup(htmlComponent) {
                 consoleLog, 
                 uuid,
                 createUIBlocker,
+                createModalContainer,
+                createTooltip,
                 findComponentHandle,
                 injectBaseStyles,
                 injectStyle,
@@ -384,197 +386,121 @@ function setup(htmlComponent) {
     });
 
     /*-----------------------------------------------------------------------------------
-        ## CUSTOM FORM ##
+        ## DOCK CONTAINER & CUSTOM FORM ##
     -----------------------------------------------------------------------------------*/
+    htmlComponent.addEventListener("dockContainer", function(customEvent) {
+        const { dataTag, width, height, zIndex, context, auxDockAppName } = customEvent.Data;
+        
+        const dockAppHandle = findComponentHandle(dataTag);
+        if (!dockAppHandle) return;
+
+        const { content } = createModalContainer({ dataTag, width, height, zIndex, context, auxDockAppName });
+
+        dockAppHandle.style.position = "inherit";
+        const dockAppCanvas = dockAppHandle.querySelector(".canvasNode");
+        if (dockAppCanvas) dockAppCanvas.style.display = "none";
+
+        content.appendChild(dockAppHandle);
+    });
+
+    /*---------------------------------------------------------------------------------*/
+    htmlComponent.addEventListener("closePopupAppRequest", function(customEvent) {
+        const { dataTag } = customEvent.Data;
+        const closeBtn = appWindow.document.querySelector(`[data-tag="${dataTag}_overlay"]`)?.querySelector(".mwCloseNode");
+        if (closeBtn) closeBtn.click();
+    });
+
+    /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("customForm", function(customEvent) {
-        try {
-            const { UUID, Context, Varargin } = customEvent.Data;
-            const labelColumnWidth  = customEvent.Data.ColumnWidth || "70px";
-            let Fields    = customEvent.Data.Fields;
-            Fields        = Array.isArray(Fields) ? Fields : [Fields];
-            const zIndex  = 1000;
+        const { UUID, Fields, Context, Varargin } = customEvent.Data;
+        const width = 260;
+        const nFields = Array.isArray(Fields) ? Fields.length : 1;
+        const height = nFields <= 3 ? 155 : 85 + 20 * nFields + 5 * (nFields - 1);
 
-            let nFields = Fields.length;
-            let Height  = nFields <= 3 ? 165 : 95+20*nFields+5*(nFields-1);
+        const { overlay, dialog, content, closeBtn } = createModalContainer({ dataTag: UUID, width, height });
 
-            injectBaseStyles();
+        // --- Form ---
+        const form = appWindow.document.createElement("form");
+        form.style.cssText = `display: grid; grid-template-columns: 70px auto; gap:5px; font-size: 11px; align-items: center; padding: 20px 10px 20px 20px;`;
 
-            // Background layer
-            var u = window.parent.document.createElement("div");
-            u.style.cssText = "visibility: visible; position: absolute; left: 0%; top: 0%; width: 100%; height: 100%; background: rgba(255,255,255,0.65); z-index: " + (zIndex + 3) + ";";
+        Fields.forEach(field => {
+            const label = appWindow.document.createElement("label");
+            label.textContent = field.label;
+            form.appendChild(label);
 
-            // Progress dialog
-            var w = window.parent.document.createElement("div");
-            w.setAttribute("data-tag", UUID);
-            w.innerHTML = `
-                <div class="mwDialog mwAlertDialog mwModalDialog mw-theme-light mwModalDialogFg" data-tag="${UUID}_uiCustomForm" style="width: 260px; height: ${Height}px; visibility: visible; z-index: ${zIndex + 4}; color-scheme: light; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);">
-                    <div class="mwDialogTitleBar mwDraggableDialog" data-tag="${UUID}_PanelTitle">
-                        <span class="mwTitleNode"></span>
-                        <div class="mwControlNodeBar">
-                            <button class="mwCloseNode" data-tag="${UUID}_Close">
-                                <svg viewBox="0 0 12 12" class="mwCloseSVG">
-                                    <g>
-                                        <rect width="12" height="12" fill="none"></rect>
-                                        <path d="M9.09,1.5L6,4.59,2.91,1.5,1.5,2.91,4.59,6,1.5,9.08,2.91,10.5,6,7.41,9.09,10.5,10.5,9.08,7.41,6,10.5,2.91,9.09,1.5h0Z" fill="var(--mw-backgroundColor-iconFill, #616161)"></path>
-                                    </g>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                    <div id="mwDialogBody" style="padding: 10px; height: ${Height-75}px;">
-                    </div>
-                    <div class="mwDialogButtonBar mwNoSplBtn">
-                        <div class="mwActionButtonBar">
-                            <button class="mwButton" data-tag="${UUID}_OK">OK</button>
-                        </div>
-                    </div>    
-                </div>
-            `;
+            const input = appWindow.document.createElement("input");
+            input.type = field.type;
+            input.value = field.defaultValue || "";
+            input.className = "custom-form-entry";
+            input.style.height = "18px";
+            input.dataset.tag = `${UUID}_${field.id}`;
 
-            u.appendChild(w);
-            appWindow.document.body.appendChild(u);
+            input.addEventListener("keydown", e => { if (e.key === "Enter") e.preventDefault(); });
 
-            // Form generation
-            let formContainer = window.parent.document.createElement("form");
-            formContainer.style.cssText = `display: grid; grid-template-columns: ${labelColumnWidth} auto; gap: 5px; font-size: 12px; align-items: center;`;
-    
-            Fields.forEach(function(field) {
-                // Label
-                let label = appWindow.document.createElement("label");
-                label.textContent = field.label;
-                formContainer.appendChild(label);
-    
-                // Input field
-                let input = appWindow.document.createElement("input");
-                input.type = field.type;
-                input.value = field.defaultValue || "";
-                input.className = "custom-form-entry";
-                input.style.cssText = "height: 18px;";
-                input.setAttribute("data-tag", UUID + "_" + field.id);
-                
-                input.addEventListener("keydown", event => {
-                    if (event.key === "Enter") {
-                        event.preventDefault();
-                    }
-                });
+            form.appendChild(input);
+        });
 
-                formContainer.appendChild(input);
-            });
-    
-            // Append form to the dialog body
-            let dialogBody = appWindow.document.getElementById("mwDialogBody");
-            dialogBody.appendChild(formContainer);
+        content.appendChild(form);
 
-            // Handles
-            let dialogBox  = appWindow.document.querySelector(`div[data-tag="${UUID}_uiCustomForm"]`);            
-            let panelTitle = appWindow.document.querySelector(`div[data-tag="${UUID}_PanelTitle"]`);            
-            let btnClose   = appWindow.document.querySelector(`button[data-tag="${UUID}_Close"]`);
-            let btnOK      = appWindow.document.querySelector(`button[data-tag="${UUID}_OK"]`);
+        // --- Button Bar ---
+        const buttonBar = appWindow.document.createElement("div");
+        buttonBar.className = "mwDialogButtonBar mwNoSplBtn";
+        buttonBar.innerHTML = `
+            <div class="mwActionButtonBar">
+                <button class="mwButton" data-tag="${UUID}_OK">OK</button>
+            </div>
+        `;
+        content.appendChild(buttonBar);
 
-            // Callbacks
-            let mousePosX, mousePosY;
-            let objNormLeft, objNormTop;
-            panelTitle.addEventListener("mousedown", function(event) {
-                event.preventDefault();
+        const btnOK = buttonBar.querySelector(`button[data-tag="${UUID}_OK"]`);
 
-                mousePosX    = event.clientX;
-                mousePosY    = event.clientY;
+        // --- Tab trap para foco interno ---
+        const focusElements = Array.from(content.querySelectorAll('button, input, select, [contenteditable]')).filter(el => !el.disabled && el.tabIndex !== -1);
+        focusElements.push(closeBtn);
 
-                objNormLeft  = dialogBox.offsetLeft;
-                objNormTop   = dialogBox.offsetTop;
-                
-                dialogBox.style.cursor = "move";
-                appWindow.document.addEventListener("mousemove", mouseMoveCallback);
-                appWindow.document.addEventListener("mouseup", mouseUpCallback);
+        dialog.addEventListener("keydown", event => {
+            if (event.key !== "Tab" || focusElements.length === 0) return;
+
+            const activeElement = appWindow.document.activeElement;
+            let currentIndex = focusElements.indexOf(activeElement);
+            currentIndex = currentIndex === -1 ? 0 : currentIndex;
+
+            event.preventDefault();
+
+            let nextIndex = event.shiftKey
+                ? (currentIndex - 1 + focusElements.length) % focusElements.length
+                : (currentIndex + 1) % focusElements.length;
+
+            focusElements[nextIndex].focus();
+        });
+
+        // --- Inicializa foco no primeiro input ---
+        const firstInput = appWindow.document.querySelector(`input[data-tag="${UUID}_${Fields[0].id}"]`);
+        if (firstInput) firstInput.focus();
+
+        // --- Listener OK ---
+        btnOK.addEventListener("click", () => {
+            const formData = {};
+            Fields.forEach(field => {
+                const input = appWindow.document.querySelector(`input[data-tag="${UUID}_${field.id}"]`);
+                formData[field.id] = input.value.trim();
             });
 
-            function mouseMoveCallback(event) {
-                mouseDiffX   = event.clientX - mousePosX;
-                mouseDiffY   = event.clientY - mousePosY;
-
-                objNormLeft += mouseDiffX;
-                objNormTop  += mouseDiffY;
-
-                let minLeft  = dialogBox.offsetWidth/2;
-                let maxLeft  = appWindow.innerWidth  - dialogBox.offsetWidth/2;
-                let minTop   = dialogBox.offsetHeight/2;
-                let maxTop   = appWindow.innerHeight - dialogBox.offsetHeight/2;
-
-                if (objNormLeft < minLeft) objNormLeft = minLeft;
-                if (objNormLeft > maxLeft) objNormLeft = maxLeft;
-
-                if (objNormTop  < minTop)  objNormTop  = minTop;
-                if (objNormTop  > maxTop)  objNormTop  = maxTop;
-                
-                dialogBox.style.left = 100 * objNormLeft/appWindow.innerWidth + "%";
-                dialogBox.style.top  = 100 * objNormTop/appWindow.innerHeight + "%";
-
-                mousePosX    = event.clientX;
-                mousePosY    = event.clientY;
+            // Validação
+            const firstEmpty = Object.keys(formData).find(k => formData[k] === "");
+            if (firstEmpty) {
+                const emptyInput = appWindow.document.querySelector(`input[data-tag="${UUID}_${firstEmpty}"]`);
+                emptyInput.focus();
+                return;
             }
 
-            function mouseUpCallback(event) {
-                dialogBox.style.cursor = "default";                
-                appWindow.document.removeEventListener("mousemove", mouseMoveCallback);
-                appWindow.document.removeEventListener("mouseup", mouseUpCallback);
-            }
+            formData.uuid = UUID;
+            if (Context)  formData.context = Context;
+            if (Varargin) formData.varargin = Varargin;
 
-            btnClose.addEventListener("click", function() {
-                u.remove();
-            });
-
-            btnOK.addEventListener("click", function() {
-                let formData = {};
-                Fields.forEach(function(field) {
-                    let inputField = appWindow.document.querySelector(`input[data-tag="${UUID}_${field.id}"]`);
-                    formData[field.id] = inputField.value.trim();
-                });
-    
-                // Validation
-                let firstEmptyField = Object.keys(formData).find(key => formData[key] === "");
-                if (firstEmptyField) {
-                    let emptyField = appWindow.document.querySelector(`input[data-tag="${UUID}_${firstEmptyField}"]`);
-                    emptyField.focus();
-                    return;
-                }
-
-                formData.uuid = UUID;
-                if (Context) formData.context = Context;
-                if (Varargin) formData.varargin = Varargin;
-                htmlComponent.sendEventToMATLAB("customForm", formData);
-
-                u.remove();
-            });
-
-            const focusElements = Array.from(w.querySelectorAll('button, input, select, [contenteditable]')).filter(el => !el.disabled && el.tabIndex !== -1);
-
-            w.addEventListener("keydown", function(event) {                
-                    if (focusElements.length === 0) return;
-                
-                    if (event.key === 'Tab') {
-                        const activeElement = appWindow.document.activeElement;
-                        let currentIndex = focusElements.indexOf(activeElement);
-                        currentIndex = (currentIndex === -1) ? 0 : currentIndex;
-            
-                        event.preventDefault();
-            
-                        let nextIndex;
-                        if (event.shiftKey) {
-                            nextIndex = (currentIndex - 1 + focusElements.length) % focusElements.length;
-                        } else {
-                            nextIndex = (currentIndex + 1) % focusElements.length;
-                        }
-            
-                        focusElements[nextIndex].focus();
-                    }
-            });
-
-            const firstInput = appWindow.document.querySelector(`input[data-tag="${UUID}_${Fields[0].id}"]`);
-            firstInput.focus();
-
-        } catch (ME) {
-            // console.log(ME);
-        }
+            htmlComponent.sendEventToMATLAB("customForm", formData);
+            overlay.remove();
+        });
     });
 
     /*-----------------------------------------------------------------------------------
@@ -1083,7 +1009,7 @@ function setup(htmlComponent) {
     }
 
     /*---------------------------------------------------------------------------------*/
-    function createUIBlocker(parentWindow, id, zIndex = 900, delay = 50) {
+    function createUIBlocker(parentWindow, id, zIndex = 925, delay = 50) {
         const uiBlocker = parentWindow.document.createElement("div");
         Object.assign(uiBlocker.style, {
             visibility: 'visible',
@@ -1109,6 +1035,130 @@ function setup(htmlComponent) {
         }, delay);
 
         return uiBlocker;
+    }
+
+    /*---------------------------------------------------------------------------------*/
+    function createModalContainer({ dataTag, width, height, zIndex = 900, context = "", auxDockAppName = "" }) {
+        const overlay = appWindow.document.createElement("div");
+        overlay.dataset.tag = `${dataTag}_overlay`;
+        overlay.style.cssText = `position: absolute; left:0; top:0; width:100%; height:100%; background: rgba(255,255,255,0.65); z-index:${zIndex};`;
+
+        const wrapper = appWindow.document.createElement("div");
+        wrapper.innerHTML = `
+            <div class="mwDialog mwAlertDialog mwModalDialog mw-theme-light mwModalDialogFg" data-tag="${dataTag}_dialog" style="width:${width}px; height:${height}px; visibility: visible; color-scheme: light; position: fixed; top:50%; left:50%; transform: translate(-50%, -50%);">
+                <div class="mwDialogTitleBar mwDraggableDialog" data-tag="${dataTag}_title">
+                    <span class="mwTitleNode"></span>
+                    <div class="mwControlNodeBar">
+                        <button class="mwCloseNode">
+                            <svg viewBox="0 0 12 12" class="mwCloseSVG">
+                                <g>
+                                    <rect width="12" height="12" fill="none"></rect>
+                                    <path d="M9.09,1.5L6,4.59,2.91,1.5,1.5,2.91,4.59,6,1.5,9.08,2.91,10.5,6,7.41,9.09,10.5,10.5,9.08,7.41,6,10.5,2.91,9.09,1.5h0Z" fill="var(--mw-backgroundColor-iconFill, #616161)"></path>
+                                </g>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div data-tag="${dataTag}_content"></div>
+            </div>
+        `;
+
+        overlay.appendChild(wrapper);
+        appWindow.document.body.appendChild(overlay);
+
+        const dialog   = wrapper.querySelector(`[data-tag="${dataTag}_dialog"]`);
+        const titleBar = wrapper.querySelector(`[data-tag="${dataTag}_title"]`);
+        const content  = wrapper.querySelector(`[data-tag="${dataTag}_content"]`);
+        const closeBtn = wrapper.querySelector(".mwCloseNode");
+
+        dialog.dataset.top  = dialog.style.top;
+        dialog.dataset.left = dialog.style.left;
+
+        // ---- Close button ----
+        closeBtn.addEventListener("mousedown", event => event.stopPropagation());
+        closeBtn.addEventListener("click", () => closeDialog());
+        closeBtn.addEventListener("keydown", event => {
+            if (event.key === "Escape") closeDialog();
+        });
+
+        function closeDialog() {
+            if (context !== "") {
+                htmlComponent.sendEventToMATLAB("closeFcnCallFromPopupApp", { context, auxDockAppName });
+            }
+
+            appWindow.removeEventListener("resize", handleViewportResize);
+            overlay.remove();
+        }
+
+        // ---- Drag logic ----
+        let mousePosX, mousePosY, objNormLeft, objNormTop;
+
+        titleBar.addEventListener("mousedown", event => {
+            event.preventDefault();
+
+            mousePosX   = event.clientX;
+            mousePosY   = event.clientY;
+            objNormLeft = dialog.offsetLeft;
+            objNormTop  = dialog.offsetTop;
+
+            dialog.style.cursor = "move";
+            appWindow.document.addEventListener("mousemove", onMouseMove);
+            appWindow.document.addEventListener("mouseup", onMouseUp);
+        });
+
+        function onMouseMove(event) {
+            objNormLeft += (event.clientX - mousePosX);
+            objNormTop  += (event.clientY - mousePosY);
+
+            const minLeft = dialog.offsetWidth / 2;
+            const maxLeft = appWindow.innerWidth  - dialog.offsetWidth / 2;
+            const minTop  = dialog.offsetHeight / 2;
+            const maxTop  = appWindow.innerHeight - dialog.offsetHeight / 2;
+
+            if (objNormLeft > maxLeft) objNormLeft = maxLeft;
+            if (objNormLeft < minLeft) objNormLeft = minLeft;
+            
+            if (objNormTop  > maxTop)  objNormTop  = maxTop;
+            if (objNormTop  < minTop)  objNormTop  = minTop;            
+
+            dialog.style.left = `${(objNormLeft / appWindow.innerWidth)  * 100}%`;
+            dialog.style.top  = `${(objNormTop  / appWindow.innerHeight) * 100}%`;
+
+            mousePosX = event.clientX;
+            mousePosY = event.clientY;
+        }
+
+        function onMouseUp() {
+            dialog.style.cursor = "default";
+            appWindow.document.removeEventListener("mousemove", onMouseMove);
+            appWindow.document.removeEventListener("mouseup", onMouseUp);
+        }
+
+        // ---- Viewport resize ----
+        function handleViewportResize() {
+            const rect = dialog.getBoundingClientRect();
+            
+            const viewportWidth  = appWindow.innerWidth;
+            const viewportHeight = appWindow.innerHeight;
+
+            let currentTopPct  = parseFloat(dialog.style.top);
+            let currentLeftPct = parseFloat(dialog.style.left);
+            
+            const minTopPct  = (dialog.offsetHeight  / 2) / appWindow.innerHeight  * 100;
+            const minLeftPct = (dialog.offsetWidth   / 2) / appWindow.innerWidth   * 100;
+
+            if (rect.bottom < 0 || rect.top > viewportHeight || rect.right < 0 || rect.left > viewportWidth) {
+                dialog.style.top  = `${minTopPct}%`;
+                dialog.style.left = `${minLeftPct}%`;
+            } else {
+                if (currentTopPct  < minTopPct)  dialog.style.top  = `${minTopPct}%`;
+                if (currentLeftPct < minLeftPct) dialog.style.left = `${minLeftPct}%`;
+            }
+        }
+
+        appWindow.addEventListener("resize", handleViewportResize);
+
+        return { overlay, dialog, content, closeBtn };
     }
     
     /*---------------------------------------------------------------------------------*/

@@ -192,5 +192,24 @@ classdef (Abstract) gpsLib
                 gpsSummary.LocationSource = cityInfo.source;
             end
         end
+
+        %-----------------------------------------------------------------%
+        function [monitoringType, radiusMeters] = classifyMonitoringType(gpsSummary)
+            metersPerDegLat = 111000;
+            metersPerDegLon = 111000 * cosd(gpsSummary.Latitude);
+        
+            latStdMeters    = gpsSummary.Latitude_std  * metersPerDegLat;
+            lonStdMeters    = gpsSummary.Longitude_std * metersPerDegLon;
+
+            radiusMeters    = hypot(latStdMeters, lonStdMeters);
+        
+            if radiusMeters <= 30 % meters
+                monitoringType = 'fixed';
+            elseif radiusMeters > 300 % meters
+                monitoringType = 'mobile';
+            else
+                monitoringType = 'undetermined';
+            end
+        end
     end
 end

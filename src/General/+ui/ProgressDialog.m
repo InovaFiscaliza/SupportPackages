@@ -76,6 +76,7 @@ classdef ProgressDialog < handle
 
         %-----------------------------------------------------------------%
         function requestVisibilityChange(obj, visibilityValue, visibilityCallerRole)
+            unlockIfHidden(obj)
             if strcmp(obj.VisibilityLock, 'locked') && strcmp(visibilityCallerRole, 'unlocked')
                 return
             elseif ~strcmp(obj.VisibilityLock, visibilityCallerRole)
@@ -104,14 +105,18 @@ classdef ProgressDialog < handle
 
         %-----------------------------------------------------------------%
         function changeVisibility(obj)
-            if strcmp(obj.VisibilityLock, 'locked') && strcmp(obj.Visible, 'hidden')
-                obj.VisibilityLock = 'unlocked';
-            end
-
+            unlockIfHidden(obj)
             sendEventToHTMLSource(obj.jsBackDoor, "progressDialog", struct("Type",       'changeVisibility', ...
                                                                            "UUID",       obj.UUID,           ...
                                                                            "Visibility", obj.Visible));
             drawnow
+        end
+
+        %-----------------------------------------------------------------%
+        function unlockIfHidden(obj)
+            if strcmp(obj.VisibilityLock, 'locked') && strcmp(obj.Visible, 'hidden')
+                obj.VisibilityLock = 'unlocked';
+            end
         end
     end
 end

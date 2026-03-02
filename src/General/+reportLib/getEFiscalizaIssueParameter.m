@@ -18,121 +18,122 @@ function fieldValue = getEFiscalizaIssueParameter(reportInfo, fieldName, varargi
         varargin
     end
 
-    fieldValue = '';
-    
     projectData = reportInfo.Project;
     context = reportInfo.Context;
     generalSettings = reportInfo.Settings;
 
     issueDetails = getOrFetchIssueDetails(projectData, projectData.modules.(context).ui.system, projectData.modules.(context).ui.issue, reportInfo.App.eFiscalizaObj);
+    if isempty(issueDetails)
+        error('reportLib:getEFiscalizaIssueParameter:EmptyIssueDetails', 'Empty issue details')
+    end
 
-    if ~isempty(issueDetails)
-        fieldSubName = {};
-        if ~isempty(varargin)
-            fieldSubName = varargin{1};
-        end
+    fieldValue = '';
 
-        switch fieldName
-            case 'Informação Bruta'
-                fieldValue = jsonencode(issueDetails);
+    fieldSubName = {};
+    if ~isempty(varargin)
+        fieldSubName = varargin{1};
+    end
 
-            case 'Solicitação de Inspeção'
-                switch fieldSubName
-                    case {'id', 'codigo', 'descricao', 'status', 'entidades', 'servicos'}
-                        fieldValue = issueDetails.issueContext.solicitacao.(fieldSubName);
-                    case {'inicio', 'fim'}
-                        fieldValue = issueDetails.issueContext.solicitacao.periodo.(fieldSubName);
-                    case {'demandante', 'paaf'}
-                        fieldValue = issueDetails.issueContext.solicitacao.origem.(fieldSubName);
-                    case {'tipo', 'tema', 'subtema', 'tematica', 'macrotema', 'classe'}
-                        fieldValue = issueDetails.issueContext.solicitacao.classificacao.(fieldSubName);
-                    case 'processo'
-                        fieldValue = issueDetails.issueContext.solicitacao.sei.(fieldSubName);
-                end
+    switch fieldName
+        case 'Informação Bruta'
+            fieldValue = jsonencode(issueDetails);
 
-            case 'Ação de Inspeção'
-                switch fieldSubName
-                    case {'id', 'codigo', 'descricao', 'status'}
-                        fieldValue = issueDetails.issueContext.acao.(fieldSubName);
-                    case {'inicio', 'fim'}
-                        fieldValue = issueDetails.issueContext.acao.periodo.(fieldSubName);
-                    case {'unidade', 'responsavel'}
-                        fieldValue = issueDetails.issueContext.acao.execucao.(fieldSubName);
-                    case {'processo', 'relatorio', 'despacho', 'pado'}
-                        fieldValue = issueDetails.issueContext.acao.sei.(fieldSubName);
-                end
+        case 'Solicitação de Inspeção'
+            switch fieldSubName
+                case {'id', 'codigo', 'descricao', 'status', 'entidades', 'servicos'}
+                    fieldValue = issueDetails.issueContext.solicitacao.(fieldSubName);
+                case {'inicio', 'fim'}
+                    fieldValue = issueDetails.issueContext.solicitacao.periodo.(fieldSubName);
+                case {'demandante', 'paaf'}
+                    fieldValue = issueDetails.issueContext.solicitacao.origem.(fieldSubName);
+                case {'tipo', 'tema', 'subtema', 'tematica', 'macrotema', 'classe'}
+                    fieldValue = issueDetails.issueContext.solicitacao.classificacao.(fieldSubName);
+                case 'processo'
+                    fieldValue = issueDetails.issueContext.solicitacao.sei.(fieldSubName);
+            end
 
-            case 'Atividade de Inspeção'
-                switch fieldSubName
-                    case {'id', 'codigo', 'descricao', 'status'}
-                        fieldValue = issueDetails.issueContext.atividade.(fieldSubName);
-                    case {'inicio', 'fim'}
-                        fieldValue = issueDetails.issueContext.atividade.periodo.(fieldSubName);
-                    case {'principal', 'equipe'}
-                        fieldValue = issueDetails.issueContext.atividade.responsaveis.(fieldSubName);
-                end
+        case 'Ação de Inspeção'
+            switch fieldSubName
+                case {'id', 'codigo', 'descricao', 'status'}
+                    fieldValue = issueDetails.issueContext.acao.(fieldSubName);
+                case {'inicio', 'fim'}
+                    fieldValue = issueDetails.issueContext.acao.periodo.(fieldSubName);
+                case {'unidade', 'responsavel'}
+                    fieldValue = issueDetails.issueContext.acao.execucao.(fieldSubName);
+                case {'processo', 'relatorio', 'despacho', 'pado'}
+                    fieldValue = issueDetails.issueContext.acao.sei.(fieldSubName);
+            end
 
-            case {'Nome do Demandante', 'Nome da Unidade Executante'}
-                switch fieldName
-                    case 'Nome do Demandante'
-                        unit = reportLib.getEFiscalizaIssueParameter(reportInfo, 'Solicitação de Inspeção', 'demandante');
-                    case 'Nome da Unidade Executante'
-                        unit = reportLib.getEFiscalizaIssueParameter(reportInfo, 'Ação de Inspeção', 'unidade');
-                end
+        case 'Atividade de Inspeção'
+            switch fieldSubName
+                case {'id', 'codigo', 'descricao', 'status'}
+                    fieldValue = issueDetails.issueContext.atividade.(fieldSubName);
+                case {'inicio', 'fim'}
+                    fieldValue = issueDetails.issueContext.atividade.periodo.(fieldSubName);
+                case {'principal', 'equipe'}
+                    fieldValue = issueDetails.issueContext.atividade.responsaveis.(fieldSubName);
+            end
 
-                unitIndex = find(strcmpi({generalSettings.eFiscaliza.defaultValues.unitNameMapping.unit}, unit), 1);
-                if ~isempty(unitIndex)
-                    fieldValue = sprintf('%s (%s)', generalSettings.eFiscaliza.defaultValues.unitNameMapping(unitIndex).name, unit);
-                else
-                    fieldValue = unit;
-                end
+        case {'Nome do Demandante', 'Nome da Unidade Executante'}
+            switch fieldName
+                case 'Nome do Demandante'
+                    unit = reportLib.getEFiscalizaIssueParameter(reportInfo, 'Solicitação de Inspeção', 'demandante');
+                case 'Nome da Unidade Executante'
+                    unit = reportLib.getEFiscalizaIssueParameter(reportInfo, 'Ação de Inspeção', 'unidade');
+            end
 
-            case 'Sede da Unidade Executante'
-                unit = reportLib.getEFiscalizaIssueParameter(reportInfo, 'Ação de Inspeção', 'unidade');
-                unitIndex = find(strcmpi({generalSettings.eFiscaliza.defaultValues.unitCityMapping.unit}, unit), 1);
-                if ~isempty(unitIndex)
-                    fieldValue = generalSettings.eFiscaliza.defaultValues.unitCityMapping(unitIndex).city;
-                end
+            unitIndex = find(strcmpi({generalSettings.eFiscaliza.defaultValues.unitNameMapping.unit}, unit), 1);
+            if ~isempty(unitIndex)
+                fieldValue = sprintf('%s (%s)', generalSettings.eFiscaliza.defaultValues.unitNameMapping(unitIndex).name, unit);
+            else
+                fieldValue = unit;
+            end
 
-            case 'Período Previsto da Fiscalização'
-                fieldValue = sprintf('%s a %s', ...
-                    datetime(reportLib.getEFiscalizaIssueParameter(reportInfo, 'Ação de Inspeção', 'inicio'), 'InputFormat', 'yyyy-MM-dd', 'Format', 'dd/MM/yyyy'), ...
-                    datetime(reportLib.getEFiscalizaIssueParameter(reportInfo, 'Ação de Inspeção', 'fim'),    'InputFormat', 'yyyy-MM-dd', 'Format', 'dd/MM/yyyy') ...
-                );
+        case 'Sede da Unidade Executante'
+            unit = reportLib.getEFiscalizaIssueParameter(reportInfo, 'Ação de Inspeção', 'unidade');
+            unitIndex = find(strcmpi({generalSettings.eFiscaliza.defaultValues.unitCityMapping.unit}, unit), 1);
+            if ~isempty(unitIndex)
+                fieldValue = generalSettings.eFiscaliza.defaultValues.unitCityMapping(unitIndex).city;
+            end
 
-            case 'Lista de Entidades'
-                entidades = reportLib.getEFiscalizaIssueParameter(reportInfo, 'Solicitação de Inspeção', 'entidades');
-                entidades = arrayfun(@(x) sprintf('%s (%s)', x.nome, x.id), entidades, 'UniformOutput', false);
-                if isscalar(entidades)
-                    fieldValue = char(entidades);
-                else
-                    fieldValue = strjoin([{strjoin(entidades(1:end-1), ', ')}, entidades(end)], ' e ');
-                end
+        case 'Período Previsto da Fiscalização'
+            fieldValue = sprintf('%s a %s', ...
+                datetime(reportLib.getEFiscalizaIssueParameter(reportInfo, 'Ação de Inspeção', 'inicio'), 'InputFormat', 'yyyy-MM-dd', 'Format', 'dd/MM/yyyy'), ...
+                datetime(reportLib.getEFiscalizaIssueParameter(reportInfo, 'Ação de Inspeção', 'fim'),    'InputFormat', 'yyyy-MM-dd', 'Format', 'dd/MM/yyyy') ...
+            );
 
-            case 'Lista de Serviços'
-                servicos = reportLib.getEFiscalizaIssueParameter(reportInfo, 'Solicitação de Inspeção', 'servicos');
-                if isscalar(servicos)
-                    fieldValue = char(servicos);
-                else
-                    fieldValue = strjoin([{strjoin(servicos(1:end-1), ', ')}, servicos(end)], ' e ');
-                end
+        case 'Lista de Entidades'
+            entidades = reportLib.getEFiscalizaIssueParameter(reportInfo, 'Solicitação de Inspeção', 'entidades');
+            entidades = arrayfun(@(x) sprintf('%s (%s)', x.nome, x.id), entidades, 'UniformOutput', false);
+            if isscalar(entidades)
+                fieldValue = char(entidades);
+            else
+                fieldValue = strjoin([{strjoin(entidades(1:end-1), ', ')}, entidades(end)], ' e ');
+            end
 
-            case 'Lista de Fiscais'
-                fiscais = reportLib.getEFiscalizaIssueParameter(reportInfo, 'Atividade de Inspeção', 'equipe');
-                if isscalar(fiscais)
-                    fieldValue = char(fiscais);
-                else
-                    fieldValue = strjoin([{strjoin(fiscais(1:end-1), ', ')}, fiscais(end)], ' e ');
-                end
-        end
+        case 'Lista de Serviços'
+            servicos = reportLib.getEFiscalizaIssueParameter(reportInfo, 'Solicitação de Inspeção', 'servicos');
+            if isscalar(servicos)
+                fieldValue = char(servicos);
+            else
+                fieldValue = strjoin([{strjoin(servicos(1:end-1), ', ')}, servicos(end)], ' e ');
+            end
 
-        if isnumeric(fieldValue)
-            fieldValue = num2str(fieldValue);
-        end
+        case 'Lista de Fiscais'
+            fiscais = reportLib.getEFiscalizaIssueParameter(reportInfo, 'Atividade de Inspeção', 'equipe');
+            if isscalar(fiscais)
+                fieldValue = char(fiscais);
+            else
+                fieldValue = strjoin([{strjoin(fiscais(1:end-1), ', ')}, fiscais(end)], ' e ');
+            end
+    end
 
-        if isempty(fieldSubName) || ~ismember(fieldSubName, {'inicio', 'fim', 'demandante', 'unidade', 'entidades', 'servicos', 'equipe'})
-            fieldValue = highlightIssueParameterInDev(fieldValue);
-        end
+    if isnumeric(fieldValue)
+        fieldValue = num2str(fieldValue);
+    end
+
+    if isempty(fieldSubName) || ~ismember(fieldSubName, {'inicio', 'fim', 'demandante', 'unidade', 'entidades', 'servicos', 'equipe'})
+        fieldValue = highlightIssueParameterInDev(fieldValue);
     end
 end
 
