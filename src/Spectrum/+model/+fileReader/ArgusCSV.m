@@ -48,9 +48,9 @@ function specData = Fcn_MetaDataReader(specData, fileName)
     % Metadados extraídos da coluna "Frequency (Hz)".
     xArray      = unique(rawTable.Frequency);
 
-    DataPoints  = numel(xArray);
-    FreqStart   = xArray(1);
-    FreqStop    = xArray(end);
+    dataPoints  = numel(xArray);
+    freqStart   = xArray(1);
+    freqStop    = xArray(end);
 
     % Índices das linhas da tabela temporária...
     initialSweepIndex = strfind(rawTable.Frequency', xArray');
@@ -60,19 +60,19 @@ function specData = Fcn_MetaDataReader(specData, fileName)
     nSweeps     = numel(initialSweepIndex);
 
     % Metadados extraídos da coluna "Time".
-    [BeginTime, InputFormat] = str2datetime(rawTable.Time{initialSweepIndex(1)});
-    EndTime     = str2datetime(rawTable.Time{initialSweepIndex(end)});
-    RevisitTime = seconds(EndTime-BeginTime)/(nSweeps-1);
+    [beginTime, InputFormat] = str2datetime(rawTable.Time{initialSweepIndex(1)});
+    endTime     = str2datetime(rawTable.Time{initialSweepIndex(end)});
+    revisitTime = seconds(endTime-beginTime)/(nSweeps-1);
 
-    BeginTime.Format = 'dd/MM/yyyy HH:mm:ss';
-    EndTime.Format   = 'dd/MM/yyyy HH:mm:ss';
+    beginTime.Format = 'dd/MM/yyyy HH:mm:ss';
+    endTime.Format   = 'dd/MM/yyyy HH:mm:ss';
 
-    specData(1).MetaData.FreqStart = FreqStart;
-    specData.MetaData.FreqStop     = FreqStop;
-    specData.MetaData.DataPoints   = DataPoints;
+    specData(1).MetaData.FreqStart = freqStart;
+    specData.MetaData.FreqStop     = freqStop;
+    specData.MetaData.DataPoints   = dataPoints;
     specData.MetaData.Detector     = 'Sample';
     specData.MetaData.LevelUnit    = LevelUnit;
-    specData.RelatedFiles(1,:)     = {[file ext], '-', 1, DefaultDescription(1, FreqStart, FreqStop), BeginTime, EndTime, nSweeps, RevisitTime, [], char(matlab.lang.internal.uuid())};
+    specData.RelatedFiles(1, {'File', 'Task', 'Id', 'Description', 'BeginTime', 'EndTime', 'NumSweeps', 'RevisitTime', 'GPS'}) = {[file ext], '-', 1, DefaultDescription(1, freqStart, freqStop), beginTime, endTime, nSweeps, revisitTime, []};
 
     switch fileFormat
         case 'Measurement Result'
@@ -151,8 +151,8 @@ function specData = Fcn_MetaDataReader(specData, fileName)
                             case 'Range Definition'
                                 if strcmp(subFieldName, 'Name')
                                     if ~isnan(str2double(subFieldValue))
-                                        specData.RelatedFiles.ID(1)          = str2double(subFieldValue);
-                                        specData.RelatedFiles.Description{1} = DefaultDescription(specData.RelatedFiles.ID(1), specData.MetaData.FreqStart, specData.MetaData.FreqStop);
+                                        specData.RelatedFiles.Id(1)          = str2double(subFieldValue);
+                                        specData.RelatedFiles.Description{1} = DefaultDescription(specData.RelatedFiles.Id(1), specData.MetaData.FreqStart, specData.MetaData.FreqStop);
                                     else
                                         specData.RelatedFiles.Description{1} = subFieldValue;
                                     end
@@ -185,11 +185,11 @@ function specData = Fcn_MetaDataReader(specData, fileName)
     % vetor xArray, apagando-os. E depois salva a informação que será útil
     % na leitura dos dados de espectro (de certa forma já lida, mas não
     % mapeada na propriedade "Data").
-    if nSweeps*DataPoints ~= height(rawTable)
+    if nSweeps*dataPoints ~= height(rawTable)
         tableIndex = zeros(height(rawTable), 1, 'logical');
 
         for kk = initialSweepIndex
-            tableIndex(kk:kk+DataPoints-1) = true;
+            tableIndex(kk:kk+dataPoints-1) = true;
         end
         rawTable(~tableIndex,:) = [];
     end
@@ -207,7 +207,7 @@ function specData = Fcn_SpecDataReader(specData)
     
         DataPoints  = specData.MetaData.DataPoints;
         idxSweeps   = 1:DataPoints:height(rawTable);
-        nSweeps     = specData.RelatedFiles.nSweeps(1);    
+        nSweeps     = specData.RelatedFiles.NumSweeps(1);    
     
         % E, por fim, preenche o vetor de timestamp e a matriz de níveis...
         preallocateData(specData)

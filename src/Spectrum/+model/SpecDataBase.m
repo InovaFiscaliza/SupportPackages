@@ -6,11 +6,11 @@ classdef SpecDataBase < handle
         MetaData     (1,1) struct = model.SpecDataBase.templateMetaData()
         Data         cell
         GPS          struct
-        RelatedFiles table = table('Size', [0,10],                                                                                                  ...
-                                   'VariableTypes', {'cell', 'cell', 'double', 'cell', 'datetime', 'datetime', 'double', 'double', 'cell', 'cell'}, ...
-                                   'VariableNames', {'File', 'Task', 'ID', 'Description', 'BeginTime', 'EndTime', 'nSweeps', 'RevisitTime', 'GPS', 'uuid'})
+        RelatedFiles table = table('Size', [0, 9],                                                                                          ...
+                                   'VariableTypes', {'cell', 'cell', 'double', 'cell', 'datetime', 'datetime', 'double', 'double', 'cell'}, ...
+                                   'VariableNames', {'File', 'Task', 'Id', 'Description', 'BeginTime', 'EndTime', 'NumSweeps', 'RevisitTime', 'GPS'})
         FileMap
-        Enable       (1,1) matlab.lang.OnOffSwitchState = 'on'              % 1 | 0 | 'on' | 'off' | true | false
+        Enable       (1,1) matlab.lang.OnOffSwitchState = 'on' % 1 | 0 | 'on' | 'off' | true | false
     end
 
     
@@ -58,10 +58,10 @@ classdef SpecDataBase < handle
         end
 
         %-----------------------------------------------------------------%
-        function copyObj = copy(obj, fields2remove)
+        function copyObj = copy(obj, fieldsToRemove)
             arguments
                 obj
-                fields2remove = {}
+                fieldsToRemove = {}
             end
             % A classe "model.SpecData", do appAnalise, extende a presente classe. 
             % Por essa razão, utiliza-se "eval(class(obj))" de forma que seja criada 
@@ -69,7 +69,7 @@ classdef SpecDataBase < handle
             % Essa cópia do objeto é limitada às suas propriedades públicas.
 
             copyObj  = eval(class(obj));
-            propList = setdiff(properties(copyObj), fields2remove);
+            propList = setdiff(properties(copyObj), fieldsToRemove);
 
             for ii = 1:numel(obj)
                 for jj = 1:numel(propList)
@@ -87,7 +87,7 @@ classdef SpecDataBase < handle
 
             for ii = 1:numel(obj)
                 dataPoints   = obj(ii).MetaData.DataPoints;
-                nSweeps      = sum(obj(ii).RelatedFiles.nSweeps);
+                nSweeps      = sum(obj(ii).RelatedFiles.NumSweeps);
     
                 obj(ii).Data = {repmat(datetime([0 0 0 0 0 0], 'Format', 'dd/MM/yyyy HH:mm:ss'), 1, nSweeps), ...
                                 zeros(dataPoints, nSweeps, 'single'),                                         ...
@@ -102,17 +102,17 @@ classdef SpecDataBase < handle
 
         %-----------------------------------------------------------------%
         function IDs = idList(obj)
-            IDs = arrayfun(@(x) x.RelatedFiles.ID(1), obj);
+            IDs = arrayfun(@(x) x.RelatedFiles.Id(1), obj);
         end
 
         %-----------------------------------------------------------------%
-        function estimatedMemory = estimateMemory(obj)
-            estimatedMemory = sum(arrayfun(@(x) 4 * sum(x.RelatedFiles.nSweeps) .* x.MetaData.DataPoints, obj)) .* 1e-6; % MB
+        function estimatedMemory = computeEstimatedMemory(obj)
+            estimatedMemory = sum(arrayfun(@(x) 4 * sum(x.RelatedFiles.NumSweeps) .* x.MetaData.DataPoints, obj)); % Bytes
         end
 
         %-----------------------------------------------------------------%
-        function sweepsPerThread = sweepsPerThread(obj)
-            sweepsPerThread = arrayfun(@(x) sum(x.RelatedFiles.nSweeps), obj)';
+        function nSweeps = computeSweepNumber(obj)
+            nSweeps = arrayfun(@(x) sum(x.RelatedFiles.NumSweeps), obj)';
         end
 
         %-----------------------------------------------------------------%
@@ -152,7 +152,7 @@ classdef SpecDataBase < handle
         end
 
         %-----------------------------------------------------------------%
-        function str = id2str(Type, ID)
+        function value = id2str(type, id)
             % Em tese, os IDs do Detector deveriam ser apenas 1 a 4 representando,
             % respectivamente, "Sample", "Average/RMS", "Positive Peak" e "Negative Peak".
             %
@@ -160,63 +160,63 @@ classdef SpecDataBase < handle
             % v. 1.11 nos quais esse ID estava igual a "0". Foram monitorações 
             % conduzidas com o R&S EB500.
 
-            switch Type
+            switch type
                 case 'TraceMode'
-                    switch ID
-                        case 1; str = 'ClearWrite';
-                        case 2; str = 'Average';
-                        case 3; str = 'MaxHold';
-                        case 4; str = 'MinHold';
+                    switch id
+                        case 1; value = 'ClearWrite';
+                        case 2; value = 'Average';
+                        case 3; value = 'MaxHold';
+                        case 4; value = 'MinHold';
                     end
 
                 case 'Detector'
-                    switch ID
-                        case {0, 1}; str = 'Sample';
-                        case 2;      str = 'Average/RMS';
-                        case 3;      str = 'Positive Peak';
-                        case 4;      str = 'Negative Peak';
+                    switch id
+                        case {0, 1}; value = 'Sample';
+                        case 2; value = 'Average/RMS';
+                        case 3; value = 'Positive Peak';
+                        case 4; value = 'Negative Peak';
                     end        
 
                 case 'LevelUnit'
-                    switch ID
-                        case 1; str = 'dBm';
-                        case 2; str = 'dBµV';
-                        case 3; str = 'dBµV/m';
+                    switch id
+                        case 1; value = 'dBm';
+                        case 2; value = 'dBµV';
+                        case 3; value = 'dBµV/m';
                     end
             end        
         end
 
         %-----------------------------------------------------------------%
-        function ID = str2id(Type, Value)
-            switch Type
+        function id = str2id(type, value)
+            switch type
                 case 'TraceMode'
-                    switch Value
-                        case 'ClearWrite'; ID = 1;
-                        case 'Average';    ID = 2;
-                        case 'MaxHold';    ID = 3;
-                        case 'MinHold';    ID = 4;
+                    switch value
+                        case 'ClearWrite'; id = 1;
+                        case 'Average';    id = 2;
+                        case 'MaxHold';    id = 3;
+                        case 'MinHold';    id = 4;
                     end
         
                 case 'Detector'
-                    switch Value
-                        case 'Sample';        ID = 1;
-                        case 'Average/RMS';   ID = 2;
-                        case 'Positive Peak'; ID = 3;
-                        case 'Negative Peak'; ID = 4;
+                    switch value
+                        case 'Sample';        id = 1;
+                        case 'Average/RMS';   id = 2;
+                        case 'Positive Peak'; id = 3;
+                        case 'Negative Peak'; id = 4;
                     end
         
                 case 'LevelUnit'
-                    switch Value
-                        case 'dBm';                ID = 1;
-                        case {'dBµV', 'dBμV'};     ID = 2;
-                        case {'dBµV/m', 'dBμV/m'}; ID = 3;
+                    switch value
+                        case 'dBm';                id = 1;
+                        case {'dBµV', 'dBμV'};     id = 2;
+                        case {'dBµV/m', 'dBμV/m'}; id = 3;
                     end
             end        
         end
 
         %-----------------------------------------------------------------%
-        function Value = str2str(Value)
-            Value = replace(Value, 'μ', 'µ');
+        function value = str2str(value)
+            value = replace(value, 'μ', 'µ');
         end
 
         %-----------------------------------------------------------------%
@@ -301,6 +301,31 @@ classdef SpecDataBase < handle
 
             secundaryMetaData = structUtil.sortByFieldNames(secundaryMetaData);
             secundaryMetaData = jsonencode(secundaryMetaData);
+        end
+
+        %-----------------------------------------------------------------%
+        function comparableData = comparableMetaData(specData, generalSettings)
+            fieldsToRemove = {'Others'};
+            if generalSettings.context.FILE.spectrumConsolidationPolicy.antennaPolicy == "remove"
+                fieldsToRemove{end+1} = 'Antenna';
+            end
+            if generalSettings.context.FILE.spectrumConsolidationPolicy.dataTypePolicy == "remove"
+                fieldsToRemove{end+1} = 'DataType';
+            end
+
+            for ii = 1:numel(specData)
+                tempStruct = rmfield(specData(ii).MetaData, fieldsToRemove);
+                tempStruct.Receiver = specData(ii).Receiver;
+
+                if isfield(tempStruct, 'Antenna') && ~isempty(tempStruct.Antenna)
+                    antennaFields = fields(tempStruct.Antenna);
+                    antennaFieldsToRemove = antennaFields(~ismember(antennaFields, generalSettings.context.FILE.spectrumConsolidationPolicy.antennaAttributes));
+                    
+                    tempStruct.Antenna = rmfield(tempStruct.Antenna, antennaFieldsToRemove);
+                end
+        
+                comparableData(ii) = tempStruct;
+            end
         end
     end
 end

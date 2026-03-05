@@ -53,14 +53,14 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileName)
     DATATYPES    = [1:8, 21:22, 24, 40:42, 51, 60:69];
     SPECTYPES    = [4, 7:8, 60:65, 67:69];
     
-    BlocksTable  = table('Size', [0, 6],                                                             ...
+    blocksTable  = table('Size', [0, 6],                                                             ...
                          'VariableTypes', {'uint8', 'double', 'double', 'uint16', 'int8', 'uint32'}, ...
                          'VariableNames', {'ID', 'StartByte', 'StopByte', 'OffsetByte', 'OffsetLevel', 'DataPoints'});
     messageTable = table('Size', [0, 2],                      ...
                          'VariableTypes', {'double', 'cell'}, ...
                          'VariableNames', {'ThreadID', 'Message'});
-    Hostname     = '';
-    Taskname     = '';
+    hostName     = '';
+    taskName     = '';
 
     warning('off', 'MATLAB:table:RowsAddedExistingVars')
     
@@ -147,8 +147,8 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileName)
                     % Informações desses blocos não compõem app.specData.
                     
                 % Unit info
-                case  1; [Hostname, Taskname] = Read_DataType01(rawArray);
-                case 21; [Hostname, Taskname] = Read_DataType21(rawArray);
+                case  1; [hostName, taskName] = Read_DataType01(rawArray);
+                case 21; [hostName, taskName] = Read_DataType21(rawArray);
 
                 % Others...
                 otherwise
@@ -159,7 +159,7 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileName)
 
             ii = ii+jj+1;
             if ismember(DataType, SPECTYPES)
-                BlocksTable(end+1,:) = {ID, ind1, ind2, OffsetByte, OffsetLevel, DataPoints};
+                blocksTable(end+1,:) = {ID, ind1, ind2, OffsetByte, OffsetLevel, DataPoints};
             end
     
         catch ME
@@ -173,7 +173,7 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileName)
     end
 
     gpsSummary = gpsLib.summary((gpsData));
-    specData   = Fcn_DataOrganization(specData, gpsSummary, fileName, rawData, BlocksTable, Hostname, Taskname, messageTable);
+    specData   = Fcn_DataOrganization(specData, gpsSummary, fileName, rawData, blocksTable, hostName, taskName, messageTable);
 end
 
 
@@ -183,7 +183,7 @@ function specData = Fcn_SpecDataReader(specData, rawData, fileName)
     for ii = 1:numel(specData)
         if specData(ii).Enable
             preallocateData(specData(ii))
-            nSweeps = specData(ii).RelatedFiles.nSweeps;
+            nSweeps = specData(ii).RelatedFiles.NumSweeps;
             
             for jj = 1:nSweeps
                 specData(ii) = Read_SpecData(specData(ii), jj, rawData);
@@ -203,14 +203,14 @@ end
 %-------------------------------------------------------------------------%
 % AUXILIAR FUNCTIONS
 %-------------------------------------------------------------------------%
-function specData = Fcn_DataOrganization(specData, gpsData, fileFullPath, rawData, BlocksTable, Hostname, Taskname, messageTable)
+function specData = Fcn_DataOrganization(specData, gpsData, fileFullPath, rawData, blocksTable, hostName, taskName, messageTable)
 
-    listOfIDs = idList(specData);
-    messageTable(~ismember(messageTable{:,1}, listOfIDs), :) = [];
+    ids = idList(specData);
+    messageTable(~ismember(messageTable{:,1}, ids), :) = [];
     [~, fileName, fileExt] = fileparts(fileFullPath);
 
     for ii = 1:numel(specData)
-        specData(ii).Receiver = Hostname;
+        specData(ii).Receiver = hostName;
 
         levelUnit = '';
         switch specData(ii).MetaData.LevelUnit
@@ -241,10 +241,10 @@ function specData = Fcn_DataOrganization(specData, gpsData, fileFullPath, rawDat
         specData(ii).MetaData.Antenna = antennaInfo;
          
         specData(ii).GPS = rmfield(gpsData, 'Matrix');
-        specData(ii).FileMap = BlocksTable(BlocksTable.ID == ii, 2:6);
+        specData(ii).FileMap = blocksTable(blocksTable.ID == ii, 2:6);
 
-        [BeginTime, EndTime, RevisitTime] = Read_ObservationTime(specData(ii), rawData, fileFullPath);
-        specData(ii).RelatedFiles(1,[1:2 5:10]) = {[fileName fileExt], Taskname, BeginTime, EndTime, height(specData(ii).FileMap), RevisitTime, {gpsData}, char(matlab.lang.internal.uuid())};
+        [beginTime, endTime, revisitTime] = Read_ObservationTime(specData(ii), rawData, fileFullPath);
+        specData(ii).RelatedFiles(1, {'File', 'Task', 'BeginTime', 'EndTime', 'NumSweeps', 'RevisitTime', 'GPS'}) = {[fileName fileExt], taskName, beginTime, endTime, height(specData(ii).FileMap), revisitTime, {gpsData}};
         
         
         if ~isempty(messageTable)
@@ -253,15 +253,15 @@ function specData = Fcn_DataOrganization(specData, gpsData, fileFullPath, rawDat
     end
 
     % Ordena os fluxos pelo ID:
-    if ~issorted(listOfIDs)
-        [~, idx] = sort(listOfIDs);
+    if ~issorted(ids)
+        [~, idx] = sort(ids);
         specData = specData(idx);
     end
 end
 
 
 %-------------------------------------------------------------------------%
-function [specData, idx] = Fcn_BinInfo(specData, ThreadID, DataType, Description, FreqStart, FreqStop, Resolution, Threshold, AntennaID, TraceID, UnitID, NDATA)
+function [specData, idx] = Fcn_BinInfo(specData, id, DataType, Description, FreqStart, FreqStop, Resolution, Threshold, AntennaID, TraceID, UnitID, NDATA)
     
     Bin            = model.SpecDataBase.templateMetaData();
     Bin.DataType   = DataType;
@@ -276,7 +276,7 @@ function [specData, idx] = Fcn_BinInfo(specData, ThreadID, DataType, Description
     
     idx = numel(specData)+1;
     for ii = 1:numel(specData)
-        if ~isempty(specData(ii).RelatedFiles) && (specData(ii).RelatedFiles.ID == ThreadID) && strcmp(specData(ii).RelatedFiles.Description, Description) && isequal(rmfield(specData(ii).MetaData, 'Antenna'), rmfield(Bin, 'Antenna'))
+        if ~isempty(specData(ii).RelatedFiles) && (specData(ii).RelatedFiles.Id == id) && strcmp(specData(ii).RelatedFiles.Description, Description) && isequal(rmfield(specData(ii).MetaData, 'Antenna'), rmfield(Bin, 'Antenna'))
             idx = ii;
             break
         end
@@ -288,7 +288,7 @@ function [specData, idx] = Fcn_BinInfo(specData, ThreadID, DataType, Description
         specData(idx).MetaData.DataPoints = double(specData(idx).MetaData.DataPoints);
         specData(idx).MetaData.TraceMode  = double(specData(idx).MetaData.TraceMode);
 
-        specData(idx).RelatedFiles(1,3:4) = {double(ThreadID), Description};
+        specData(idx).RelatedFiles(1, {'Id', 'Description'}) = {double(id), Description};
     end
 end
 
@@ -353,7 +353,7 @@ function Description = Read_Description(specData, ii, messageTable)
     if isequal(messageTable.ThreadID', listOfIDs)
         Description = messageTable.Message{ii};
     else
-        idx = find(messageTable.ThreadID == specData(ii).RelatedFiles.ID);
+        idx = find(messageTable.ThreadID == specData(ii).RelatedFiles.Id);
         if ~isempty(idx)
             if isscalar(idx)
                 Description = messageTable.Message{idx};

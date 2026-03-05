@@ -80,24 +80,24 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileName)
     fileNameToken  = regexpi(file, '(?<Receiver>CWSM2\d{6,7})_E(?<Scan>\d*)_A(?<Operation>\d*)_(?<TraceMode>\w*).*', 'names');
 
     if isempty(fileNameToken)
-        Receiver  = 'CWSM2110000';
-        TraceMode = 'ClearWrite';
-        ThreadID  = 1;
+        receiver  = 'CWSM2110000';
+        traceMode = 'ClearWrite';
+        threadID  = 1;
     else
-        Receiver  = fileNameToken.Receiver;
+        receiver  = fileNameToken.Receiver;
         switch fileNameToken.TraceMode
-            case 'Spec'; TraceMode = 'ClearWrite';
-            case 'Peak'; TraceMode = 'MaxHold';
-            case 'Mean'; TraceMode = 'Average';
+            case 'Spec'; traceMode = 'ClearWrite';
+            case 'Peak'; traceMode = 'MaxHold';
+            case 'Mean'; traceMode = 'Average';
         end
-        ThreadID  = str2double([fileNameToken.Scan, fileNameToken.Operation]);
+        threadID  = str2double([fileNameToken.Scan, fileNameToken.Operation]);
     end
 
     % Bloco espectral...
     metaDataInfo = model.SpecDataBase.templateMetaData();
     metaDataInfo.DataType  = 1000;
     metaDataInfo.LevelUnit = 'dBm';
-    metaDataInfo.TraceMode = TraceMode;
+    metaDataInfo.TraceMode = traceMode;
     metaDataInfo.Detector  = 'Sample';
 
     nBlocks = numel(startIndex);
@@ -153,18 +153,18 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileName)
     % que a CellPlan dividiu em diversos blocos por extrapolar o limite de
     % 40 ou 100 MHz.
     if ~isscalar(specData)
-        FreqStartArray  = arrayfun(@(x) x.MetaData.FreqStart,  specData);
-        FreqStopArray   = arrayfun(@(x) x.MetaData.FreqStop,   specData);
-        DataPointsArray = arrayfun(@(x) x.MetaData.DataPoints, specData);
-        StepWidthArray  = (FreqStopArray - FreqStartArray) ./ (DataPointsArray - 1);
+        freqStartArray  = arrayfun(@(x) x.MetaData.FreqStart,  specData);
+        freqStopArray   = arrayfun(@(x) x.MetaData.FreqStop,   specData);
+        dataPointsArray = arrayfun(@(x) x.MetaData.DataPoints, specData);
+        stepWidthArray  = (freqStopArray - freqStartArray) ./ (dataPointsArray - 1);
         nSweepsArray    = arrayfun(@(x) height(x.FileMap{1}), specData);
 
         if isscalar(unique(nSweepsArray)) && ...
-                isequal(unique(FreqStartArray(2:end) - FreqStopArray(1:end-1)), unique(StepWidthArray))
+                isequal(unique(freqStartArray(2:end) - freqStopArray(1:end-1)), unique(stepWidthArray))
 
-            specData(1).MetaData.FreqStart  = min(FreqStartArray);
-            specData(1).MetaData.FreqStop   = max(FreqStopArray);
-            specData(1).MetaData.DataPoints = sum(DataPointsArray);
+            specData(1).MetaData.FreqStart  = min(freqStartArray);
+            specData(1).MetaData.FreqStop   = max(freqStopArray);
+            specData(1).MetaData.DataPoints = sum(dataPointsArray);
             specData(1).FileMap             = arrayfun(@(x) x.FileMap{1}, specData, UniformOutput=false);
             
             delete(specData(2:end))
@@ -173,12 +173,12 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileName)
     end
 
     for jj = 1:numel(specData)
-        specData(jj).Receiver = Receiver;
+        specData(jj).Receiver = receiver;
         specData(jj).GPS      = rmfield(gpsSummary, 'Matrix');
 
         nSweeps = height(specData(jj).FileMap{1});
-        [BeginTime, EndTime, RevisitTime] = Read_ObservationTime(specData(jj), rawData, nSweeps);
-        specData(jj).RelatedFiles(1,:) = {[file ext], 'Undefined', ThreadID, 'Undefined', BeginTime, EndTime, nSweeps, RevisitTime, {gpsSummary}, char(matlab.lang.internal.uuid())};
+        [beginTime, endTime, revisitTime] = Read_ObservationTime(specData(jj), rawData, nSweeps);
+        specData(jj).RelatedFiles(1, {'File', 'Task', 'Id', 'Description', 'BeginTime', 'EndTime', 'NumSweeps', 'RevisitTime', 'GPS'}) = {[file ext], 'Undefined', threadID, 'Undefined', beginTime, endTime, nSweeps, revisitTime, {gpsSummary}};
     end
 end
 
@@ -213,7 +213,7 @@ function specData = Fcn_SpecDataReader(specData, rawData)
         if specData(ii).Enable
             preallocateData(specData(ii))
 
-            nSweeps = specData(ii).RelatedFiles.nSweeps;
+            nSweeps = specData(ii).RelatedFiles.NumSweeps;
             nBlocks = numel(specData(ii).FileMap);
             
             for jj = 1:nSweeps

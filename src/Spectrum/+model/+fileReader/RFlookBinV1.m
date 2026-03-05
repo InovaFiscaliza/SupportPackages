@@ -50,10 +50,10 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileFormat, fileName)
         return
     end
 
-    [TaskName, ID, Description, Receiver, AntennaInfo, IntegrationFactor] = Fcn_TextBlockRead(rawData(FileHeaderBlock.Offset3+1:end));
+    [taskName, threadId, description, receiver, antennaInfo, integrationFactor] = Fcn_TextBlockRead(rawData(FileHeaderBlock.Offset3+1:end));
 
     % Metadados principais.
-    specData(1).Receiver         = Receiver;
+    specData(1).Receiver         = receiver;
     specData.MetaData.DataType   = 1;
     specData.MetaData.FreqStart  = double(FileHeaderBlock.F0);
     specData.MetaData.FreqStop   = double(FileHeaderBlock.F1);
@@ -63,11 +63,11 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileFormat, fileName)
     specData.MetaData.TraceMode  = model.SpecDataBase.id2str('TraceMode', FileHeaderBlock.TraceMode);
 
     if ~strcmp(specData.MetaData.TraceMode, 'ClearWrite')
-        specData.MetaData.TraceIntegration = IntegrationFactor;
+        specData.MetaData.TraceIntegration = integrationFactor;
     end
     
     specData.MetaData.Detector   = model.SpecDataBase.id2str('Detector', FileHeaderBlock.Detector);
-    specData.MetaData.Antenna    = AntennaInfo;
+    specData.MetaData.Antenna    = antennaInfo;
     specData.MetaData.Others     = model.SpecDataBase.secundaryMetaData(fileFormat, FileHeaderBlock);
 
 
@@ -99,12 +99,12 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileFormat, fileName)
     % informação acerca do mapeamento do arquivo (para fins de leitura dos
     % dados de espectro).
     [~, file, ext] = fileparts(fileName);
-    BeginTime      = datetime(gpsTimestampBlock.Data(1).localTimeStamp,   'Format', 'dd/MM/yyyy HH:mm:ss') + years(2000);
-    EndTime        = datetime(gpsTimestampBlock.Data(end).localTimeStamp, 'Format', 'dd/MM/yyyy HH:mm:ss') + years(2000);
-    RevisitTime    = seconds(EndTime-BeginTime)/(nSweeps-1);    
+    beginTime      = datetime(gpsTimestampBlock.Data(1).localTimeStamp,   'Format', 'dd/MM/yyyy HH:mm:ss') + years(2000);
+    endTime        = datetime(gpsTimestampBlock.Data(end).localTimeStamp, 'Format', 'dd/MM/yyyy HH:mm:ss') + years(2000);
+    revisitTime    = seconds(endTime-beginTime)/(nSweeps-1);    
     
     specData.GPS = rmfield(gpsSummary, 'Matrix');
-    specData.RelatedFiles(end+1,:) = {[file ext], TaskName, ID, Description, BeginTime, EndTime, nSweeps, RevisitTime, {gpsSummary}, char(matlab.lang.internal.uuid())};
+    specData.RelatedFiles(end+1, {'File', 'Task', 'Id', 'Description', 'BeginTime', 'EndTime', 'NumSweeps', 'RevisitTime', 'GPS'}) = {[file ext], taskName, threadId, description, beginTime, endTime, nSweeps, revisitTime, {gpsSummary}};
 
     specData.FileMap.BitsPerPoint      = FileHeaderBlock.BitsPerPoint;
     specData.FileMap.gpsTimestampBlock = gpsTimestampBlock;
@@ -122,7 +122,7 @@ function specData = Fcn_SpecDataReader(specData)
     if specData.Enable
         preallocateData(specData)
     
-        nSweeps           = specData.RelatedFiles.nSweeps;
+        nSweeps           = specData.RelatedFiles.NumSweeps;
         BitsPerPoint      = specData.FileMap.BitsPerPoint;
         gpsTimestampBlock = specData.FileMap.gpsTimestampBlock;
         SpectralBlock     = specData.FileMap.SpectralBlock;

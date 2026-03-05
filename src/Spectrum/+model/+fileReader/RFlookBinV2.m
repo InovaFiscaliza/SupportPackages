@@ -65,7 +65,7 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileFormat, fileName)
     end
 
     % Leitura dos principais metadados escritos em arquivo:
-    BitsPerSample  = rawData(16);                                           % 8 | 16 | 32 (bits)
+    bitsPerSample  = rawData(16);                                           % 8 | 16 | 32 (bits)
     attMode_ID     = rawData(17);                                           % 0 (manual) | 1 (auto)
     gpsMode_ID     = rawData(18);                                           % 0 (manual) | 1 (Built-in) | 2 (External)
     nMetaStruct    = typecast(rawData(19:22), 'uint32');
@@ -107,11 +107,11 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileFormat, fileName)
     else;                            blockOffset1 =  0;
     end
 
-    if BitsPerSample == 8;           blockOffset2 =  2;
+    if bitsPerSample == 8;           blockOffset2 =  2;
     else;                            blockOffset2 =  0;
     end
 
-    specData.FileMap = struct('BitsPerSample', BitsPerSample, ...
+    specData.FileMap = struct('BitsPerSample', bitsPerSample, ...
                               'blockOffset1',  blockOffset1,  ...
                               'blockOffset2',  blockOffset2,  ...
                               'idxTable',      table(startIndex', stopIndex', 'VariableNames', {'startByte', 'stopByte'}), ...
@@ -128,11 +128,11 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileFormat, fileName)
             blockArray = rawData(startIndex(ii):stopIndex(ii));
 
             if  ii == 1
-                BeginTime = observationTime(blockArray);
+                beginTime = observationTime(blockArray);
             end
 
             if ii == nSweeps
-                EndTime   = observationTime(blockArray);
+                endTime   = observationTime(blockArray);
             end
 
             gpsArray(ii,:) = [single(blockArray(9)),                 ...    % STATUS
@@ -142,8 +142,8 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileFormat, fileName)
         gpsData = gpsLib.interpolation(gpsArray);
 
     else
-        BeginTime = observationTime(rawData(startIndex(1):stopIndex(1)));
-        EndTime   = observationTime(rawData(startIndex(end):stopIndex(end)));
+        beginTime = observationTime(rawData(startIndex(1):stopIndex(1)));
+        endTime   = observationTime(rawData(startIndex(end):stopIndex(end)));
 
         if isfield(MetaStruct, 'Latitude') && isfield(MetaStruct, 'Longitude')
             gpsData.Status = -1;
@@ -153,10 +153,10 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileFormat, fileName)
     
     gpsSummary     = gpsLib.summary(gpsData);
     [~, file, ext] = fileparts(fileName);
-    RevisitTime    = seconds(EndTime-BeginTime)/(nSweeps-1);
+    revisitTime    = seconds(endTime-beginTime)/(nSweeps-1);
     
     specData.GPS   = rmfield(gpsSummary, 'Matrix');
-    specData.RelatedFiles(end+1,:) = {[file ext], MetaStruct.Task, MetaStruct.ID, MetaStruct.Description, BeginTime, EndTime, nSweeps, RevisitTime, {gpsSummary}, char(matlab.lang.internal.uuid())};    
+    specData.RelatedFiles(end+1, {'File', 'Task', 'Id', 'Description', 'BeginTime', 'EndTime', 'NumSweeps', 'RevisitTime', 'GPS'}) = {[file ext], MetaStruct.Task, MetaStruct.ID, MetaStruct.Description, beginTime, endTime, nSweeps, revisitTime, {gpsSummary}};    
 end
 
 
@@ -169,7 +169,7 @@ function specData = Fcn_SpecDataReader(specData, rawData, fileFormat)
 
     if specData.Enable
         preallocateData(specData, fileFormat)
-        nSweeps       = specData.RelatedFiles.nSweeps;
+        nSweeps       = specData.RelatedFiles.NumSweeps;
         DataPoints    = specData.MetaData.DataPoints;
         OFFSET        = [];
         
@@ -231,11 +231,11 @@ function specData = Fcn_SpecDataReader(specData, rawData, fileFormat)
             specData.Data{2}(:,errorIndex) = noiseLevel;
         end
     
-        BeginTime   = specData.Data{1}(1);
-        EndTime     = specData.Data{1}(end);
-        RevisitTime = seconds(EndTime-BeginTime)/(nSweeps-1);
+        beginTime   = specData.Data{1}(1);
+        endTime     = specData.Data{1}(end);
+        revisitTime = seconds(endTime-beginTime)/(nSweeps-1);
     
-        specData.RelatedFiles(1,5:8) = {BeginTime, EndTime, nSweeps, RevisitTime};
+        specData.RelatedFiles(1, {'BeginTime', 'EndTime', 'NumSweeps', 'RevisitTime'}) = {beginTime, endTime, nSweeps, revisitTime};
     end
 
     specData.FileMap = [];

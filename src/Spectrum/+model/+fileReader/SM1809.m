@@ -51,50 +51,49 @@ function specData = Fcn_MetaDataReader(specData, fileID, fileName)
         
         switch Field
             case 'Latitude';             latDegree        = gpsConversionFormats(Value);
-            case 'Longitude';            longDegree       = gpsConversionFormats(Value);
-            case 'FreqStart';            FreqStart        = strsplit(Value, ';');
-            case 'FreqStop';             FreqStop         = strsplit(Value, ';');
-            case 'AntennaType';          AntennaType      = Value;
-            case 'FilterBandwidth';      FilterBandwidth  = strsplit(Value, ';');
-            case 'LevelUnits';           LevelUnits       = strsplit(Value, ';');
-            case 'Date';                 ReferenceDate    = Value;
-            case 'DataPoints';           DataPoints       = strsplit(Value, ';');
-            case 'ScanTime';             RevisitTime      = strsplit(Value, ';');
-            case 'Detector';             Detector         = strsplit(Value, ';');
-            case 'TraceMode';            TraceMode        = strsplit(Value, ';');
+            case 'Longitude';            lngDegree        = gpsConversionFormats(Value);
+            case 'FreqStart';            freqStart        = strsplit(Value, ';');
+            case 'FreqStop';             freqStop         = strsplit(Value, ';');
+            case 'AntennaType';          antennaType      = Value;
+            case 'FilterBandwidth';      filterBandwidth  = strsplit(Value, ';');
+            case 'LevelUnits';           levelUnits       = strsplit(Value, ';');
+            case 'Date';                 referenceDate    = Value;
+            case 'DataPoints';           dataPoints       = strsplit(Value, ';');
+            case 'ScanTime';             revisitTime      = strsplit(Value, ';');
+            case 'Detector';             detector         = strsplit(Value, ';');
+            case 'TraceMode';            traceMode        = strsplit(Value, ';');
             case {'Samples', 'nSweeps'}; nSweeps          = str2double(Value);
-            case {'Node', 'Receiver'};   Receiver         = Value;
-            case {'ThreadID', 'ID'};     ID               = strsplit(Value, ';');
-            case 'TaskName';             TaskName         = Value;    
-            case 'Description';          Description      = strsplit(Value, ';');
-            case 'ObservationTime';      ObservationTime  = Value;
+            case {'Node', 'Receiver'};   receiver         = Value;
+            case {'ThreadID', 'ID'};     id               = strsplit(Value, ';');
+            case 'TaskName';             taskName         = Value;    
+            case 'Description';          description      = strsplit(Value, ';');
+            case 'ObservationTime';      observationTime  = Value;
         end
     end
-    ByteOffset = ftell(fileID);
+    byteOffset = ftell(fileID);
     
-    if exist('latDegree', 'var')  && ~isempty(latDegree) && ...
-       exist('longDegree', 'var') && ~isempty(longDegree)
+    if exist('latDegree', 'var') && ~isempty(latDegree) && exist('lngDegree', 'var') && ~isempty(lngDegree)
         gpsData.Status = 1;
-        gpsData.Matrix = [latDegree, longDegree];
+        gpsData.Matrix = [latDegree, lngDegree];
     end
     gpsSummary = gpsLib.summary(gpsData);
     
-    for ii=1:numel(FreqStart)
-        specData(ii).Receiver             = Receiver;
+    for ii=1:numel(freqStart)
+        specData(ii).Receiver             = receiver;
 
         specData(ii).MetaData.DataType    = 1809;
-        specData(ii).MetaData.FreqStart   = str2double(FreqStart{ii}) * 1e+3;
-        specData(ii).MetaData.FreqStop    = str2double(FreqStop{ii})  * 1e+3;
-        specData(ii).MetaData.DataPoints  = str2double(DataPoints{ii});
-        specData(ii).MetaData.TraceMode   = TraceMode{ii};
+        specData(ii).MetaData.FreqStart   = str2double(freqStart{ii}) * 1e+3;
+        specData(ii).MetaData.FreqStop    = str2double(freqStop{ii})  * 1e+3;
+        specData(ii).MetaData.DataPoints  = str2double(dataPoints{ii});
+        specData(ii).MetaData.TraceMode   = traceMode{ii};
 
         try
-            specData(ii).MetaData.Antenna = jsondecode(AntennaType);
+            specData(ii).MetaData.Antenna = jsondecode(antennaType);
         catch
-            specData(ii).MetaData.Antenna = struct('Name', AntennaType);
+            specData(ii).MetaData.Antenna = struct('Name', antennaType);
         end
         
-        switch LevelUnits{ii}
+        switch levelUnits{ii}
             case 'dBm'
                 specData(ii).MetaData.LevelUnit = 'dBm';
             case 'dBuV'
@@ -103,26 +102,26 @@ function specData = Fcn_MetaDataReader(specData, fileID, fileName)
                 specData(ii).MetaData.LevelUnit = 'dBµV/m';
         end
         
-        if ~isempty(FilterBandwidth{ii})
-            specData(ii).MetaData.Resolution = str2double(FilterBandwidth{ii}) * 1e+3;
+        if ~isempty(filterBandwidth{ii})
+            specData(ii).MetaData.Resolution = str2double(filterBandwidth{ii}) * 1e+3;
         end
         
-        if ~isempty(TraceMode{ii})
-            specData(ii).MetaData.TraceMode  = TraceMode{ii};
+        if ~isempty(traceMode{ii})
+            specData(ii).MetaData.TraceMode  = traceMode{ii};
         end
         
         try
-            specData(ii).MetaData.Detector   = Detector{ii};
+            specData(ii).MetaData.Detector   = detector{ii};
         catch
         end
 
         specData(ii).GPS     = rmfield(gpsSummary, 'Matrix');
-        specData(ii).FileMap = struct('ReferenceDate', ReferenceDate, 'ByteOffset', ByteOffset);
+        specData(ii).FileMap = struct('ReferenceDate', referenceDate, 'ByteOffset', byteOffset);
 
-        BeginTime = datetime(extractBefore(ObservationTime, ' - '), 'InputFormat', 'dd/MM/yyyy HH:mm:ss', 'Format', 'dd/MM/yyyy HH:mm:ss');
-        EndTime   = datetime(extractAfter( ObservationTime, ' - '), 'InputFormat', 'dd/MM/yyyy HH:mm:ss', 'Format', 'dd/MM/yyyy HH:mm:ss');
+        beginTime = datetime(extractBefore(observationTime, ' - '), 'InputFormat', 'dd/MM/yyyy HH:mm:ss', 'Format', 'dd/MM/yyyy HH:mm:ss');
+        endTime   = datetime(extractAfter( observationTime, ' - '), 'InputFormat', 'dd/MM/yyyy HH:mm:ss', 'Format', 'dd/MM/yyyy HH:mm:ss');
 
-        specData(ii).RelatedFiles(1,:) = {[file ext], TaskName, str2double(ID{ii}), Description{ii}, BeginTime, EndTime, nSweeps, str2double(RevisitTime{ii}), {gpsSummary}, char(matlab.lang.internal.uuid())};
+        specData(ii).RelatedFiles(1, {'File', 'Task', 'Id', 'Description', 'BeginTime', 'EndTime', 'NumSweeps', 'RevisitTime', 'GPS'}) = {[file ext], taskName, str2double(id{ii}), description{ii}, beginTime, endTime, nSweeps, str2double(revisitTime{ii}), {gpsSummary}};
     end
 end
 
@@ -135,7 +134,7 @@ function specData = Fcn_SpecDataReader(specData, fileID)
     arrayfun(@(x) preallocateData(x), specData)
     
     startDate = specData(1).FileMap.ReferenceDate;
-    TimeStamp = datetime([0 0 0 0 0 0], 'Format', 'dd/MM/yyyy HH:mm:ss');
+    timeStamp = datetime([0 0 0 0 0 0], 'Format', 'dd/MM/yyyy HH:mm:ss');
     
     kk = zeros(1, numel(specData));
     while true
@@ -152,18 +151,18 @@ function specData = Fcn_SpecDataReader(specData, fileID)
                 if ii == 1
                     auxTimeStamp = datetime([startDate auxData{1}], 'InputFormat', 'yyyy-MM-ddHH:mm:ss', 'Format', 'dd/MM/yyyy HH:mm:ss');
                     
-                    if auxTimeStamp > TimeStamp
-                        TimeStamp = auxTimeStamp;
+                    if auxTimeStamp > timeStamp
+                        timeStamp = auxTimeStamp;
                     else
-                        TimeStamp = auxTimeStamp + days(1);
-                        startDate = datestr(TimeStamp, 'yyyy-mm-dd');
+                        timeStamp = auxTimeStamp + days(1);
+                        startDate = datestr(timeStamp, 'yyyy-mm-dd');
                     end
                 end
                 
                 if numel(auxData) == specData(ii).MetaData.DataPoints + 1
                     kk(ii) = kk(ii)+1;
                     
-                    specData(ii).Data{1}(kk(ii))   = TimeStamp;
+                    specData(ii).Data{1}(kk(ii))   = timeStamp;
                     specData(ii).Data{2}(:,kk(ii)) = cellfun(@(x) str2double(x), auxData(2:end))';
                 end
             end
@@ -171,7 +170,7 @@ function specData = Fcn_SpecDataReader(specData, fileID)
     end
 
     for ii = 1:numel(specData)
-        if kk(ii) < specData(ii).RelatedFiles.nSweeps(1)
+        if kk(ii) < specData(ii).RelatedFiles.NumSweeps(1)
             specData(ii).Data{1}(kk(ii)+1:end)   = [];
             specData(ii).Data{2}(:,kk(ii)+1:end) = [];
         end
