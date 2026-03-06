@@ -389,16 +389,39 @@ function setup(htmlComponent) {
         ## DOCK CONTAINER & CUSTOM FORM ##
     -----------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("dockContainer", function(customEvent) {
-        const { dataTag, width, height, zIndex, context, auxDockAppName } = customEvent.Data;
+        const { dockAppName, dockAppDataTag, dockAppContainerDataTag, width, height, zIndex, context } = customEvent.Data;
         
-        const dockAppHandle = findComponentHandle(dataTag);
+        const dockAppContainerHandle = findComponentHandle(dockAppContainerDataTag);
+        const dockAppHandle = findComponentHandle(dockAppDataTag);
         if (!dockAppHandle) return;
 
-        const { content } = createModalContainer({ dataTag, width, height, zIndex, context, auxDockAppName });
+        const { content } = createModalContainer({ dockAppName, dataTag: dockAppDataTag, width, height, zIndex, context });
 
         dockAppHandle.style.position = "inherit";
-        const dockAppCanvas = dockAppHandle.querySelector(".canvasNode");
-        if (dockAppCanvas) dockAppCanvas.style.display = "none";
+        const dockAppCanvasNode = dockAppHandle.querySelector(".canvasNode");
+        if (dockAppCanvasNode) {
+            dockAppCanvasNode.style.display = "none";
+        }
+
+        const canvasElements = dockAppHandle.querySelectorAll("canvas");
+        canvasElements.forEach(canvas => {
+            canvas.addEventListener("mouseenter", () => {
+                const dockAppRect     = content.getBoundingClientRect();
+                const dockAppLeft     = Math.round(dockAppRect.left);
+                const dockAppBottom   = Math.round(appWindow.innerHeight - dockAppRect.bottom);
+
+                const containerRect   = dockAppContainerHandle.getBoundingClientRect();
+                const containerLeft   = Math.round(containerRect.left);
+                const containerBottom = Math.round(appWindow.innerHeight - containerRect.bottom);
+
+                if (dockAppLeft !== containerLeft || dockAppBottom !== containerBottom) {
+                    dockAppContainerHandle.style.left   = `${dockAppLeft}px`;
+                    dockAppContainerHandle.style.bottom = `${dockAppBottom}px`;
+
+                    htmlComponent.sendEventToMATLAB("syncPopupWithPanel", { x: dockAppLeft+1, y: dockAppBottom+1 });
+                }
+            });
+        })
 
         content.appendChild(dockAppHandle);
     });
@@ -1038,7 +1061,7 @@ function setup(htmlComponent) {
     }
 
     /*---------------------------------------------------------------------------------*/
-    function createModalContainer({ dataTag, width, height, zIndex = 900, context = "", auxDockAppName = "" }) {
+    function createModalContainer({ dataTag, width, height, zIndex = 900, context = "", dockAppName = "" }) {
         const overlay = appWindow.document.createElement("div");
         overlay.dataset.tag = `${dataTag}_overlay`;
         overlay.style.cssText = `position: absolute; left:0; top:0; width:100%; height:100%; background: rgba(255,255,255,0.65); z-index:${zIndex};`;
@@ -1083,7 +1106,7 @@ function setup(htmlComponent) {
 
         function closeDialog() {
             if (context !== "") {
-                htmlComponent.sendEventToMATLAB("closeFcnCallFromPopupApp", { context, auxDockAppName });
+                htmlComponent.sendEventToMATLAB("closeFcnCallFromPopupApp", { context, dockAppName });
             }
 
             appWindow.removeEventListener("resize", handleViewportResize);

@@ -118,11 +118,9 @@ classdef SpecDataBase < handle
         %-----------------------------------------------------------------%
         function basicStats(obj)
             for ii = 1:numel(obj)
-                if obj(ii).Enable
-                    obj(ii).Data{3} = [ min(obj(ii).Data{2}, [], 2), ...
-                                       mean(obj(ii).Data{2},     2), ...
-                                        max(obj(ii).Data{2}, [], 2)];
-                end
+                obj(ii).Data{3} = [ min(obj(ii).Data{2}, [], 2), ...
+                                   mean(obj(ii).Data{2},     2), ...
+                                    max(obj(ii).Data{2}, [], 2)];
             end
         end
     end
