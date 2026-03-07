@@ -426,11 +426,13 @@ function setup(htmlComponent) {
                         const containerLeft   = Math.round(containerRect.left);
                         const containerBottom = Math.round(appWindow.innerHeight - containerRect.bottom);
 
-                        if (dockAppLeft !== containerLeft || dockAppBottom !== containerBottom) {
-                            dockAppContainerHandle.style.left   = `${dockAppLeft}px`;
-                            dockAppContainerHandle.style.bottom = `${dockAppBottom}px`;
-
-                            htmlComponent.sendEventToMATLAB("syncPopupWithPanel", { x: dockAppLeft+1, y: dockAppBottom+1 });
+                        if (Math.abs(dockAppLeft - containerLeft) > 2 || Math.abs(dockAppBottom - containerBottom) > 2) {
+                            // dockAppContainerHandle.style.left   = `${dockAppLeft}px`;
+                            // dockAppContainerHandle.style.bottom = `${dockAppBottom}px`;
+                            htmlComponent.sendEventToMATLAB("syncPopupWithPanel", { 
+                                x: dockAppLeft + 1, 
+                                y: dockAppBottom + 1 
+                            });
                         }
                     });
                 })
