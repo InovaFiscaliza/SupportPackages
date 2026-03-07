@@ -389,7 +389,7 @@ function setup(htmlComponent) {
         ## DOCK CONTAINER & CUSTOM FORM ##
     -----------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("dockContainer", function(customEvent) {
-        const { dockAppName, dockAppDataTag, dockAppContainerDataTag, width, height, zIndex, context } = customEvent.Data;
+        const { dockAppName, dockAppDataTag, dockAppContainerDataTag, width, height, zIndex, context, numCanvasElements } = customEvent.Data;
         
         const dockAppContainerHandle = findComponentHandle(dockAppContainerDataTag);
         const dockAppHandle = findComponentHandle(dockAppDataTag);
@@ -403,25 +403,45 @@ function setup(htmlComponent) {
             dockAppCanvasNode.style.display = "none";
         }
 
-        const canvasElements = dockAppHandle.querySelectorAll("canvas");
-        canvasElements.forEach(canvas => {
-            canvas.addEventListener("mouseenter", () => {
-                const dockAppRect     = content.getBoundingClientRect();
-                const dockAppLeft     = Math.round(dockAppRect.left);
-                const dockAppBottom   = Math.round(appWindow.innerHeight - dockAppRect.bottom);
+        if (numCanvasElements > 0) {
+            let modifyAttempts = 0;
 
-                const containerRect   = dockAppContainerHandle.getBoundingClientRect();
-                const containerLeft   = Math.round(containerRect.left);
-                const containerBottom = Math.round(appWindow.innerHeight - containerRect.bottom);
+            const canvasInterval = setInterval(() => {
+                modifyAttempts++;
 
-                if (dockAppLeft !== containerLeft || dockAppBottom !== containerBottom) {
-                    dockAppContainerHandle.style.left   = `${dockAppLeft}px`;
-                    dockAppContainerHandle.style.bottom = `${dockAppBottom}px`;
+                const canvasElements = dockAppHandle.querySelectorAll("canvas");
+                canvasElements.forEach(canvas => {
+                    if (canvas.dataset.mouseEnterListener) {
+                        return;
+                    }
+                    
+                    canvas.dataset.mouseEnterListener = "true";
+                    
+                    canvas.addEventListener("mouseenter", () => {
+                        const dockAppRect     = content.getBoundingClientRect();
+                        const dockAppLeft     = Math.round(dockAppRect.left);
+                        const dockAppBottom   = Math.round(appWindow.innerHeight - dockAppRect.bottom);
 
-                    htmlComponent.sendEventToMATLAB("syncPopupWithPanel", { x: dockAppLeft+1, y: dockAppBottom+1 });
+                        const containerRect   = dockAppContainerHandle.getBoundingClientRect();
+                        const containerLeft   = Math.round(containerRect.left);
+                        const containerBottom = Math.round(appWindow.innerHeight - containerRect.bottom);
+
+                        if (dockAppLeft !== containerLeft || dockAppBottom !== containerBottom) {
+                            dockAppContainerHandle.style.left   = `${dockAppLeft}px`;
+                            dockAppContainerHandle.style.bottom = `${dockAppBottom}px`;
+
+                            htmlComponent.sendEventToMATLAB("syncPopupWithPanel", { x: dockAppLeft+1, y: dockAppBottom+1 });
+                        }
+                    });
+                })
+
+
+                if (canvasElements.length === numCanvasElements || modifyAttempts >= 10) {
+                    consoleLog(`Canvas elements modified: ${canvasElements.length}/${numCanvasElements} after ${modifyAttempts} attempt`);
+                    clearInterval(canvasInterval);
                 }
-            });
-        })
+            }, 1000);
+        }
 
         content.appendChild(dockAppHandle);
     });
