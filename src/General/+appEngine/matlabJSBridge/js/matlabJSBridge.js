@@ -261,6 +261,23 @@ function setup(htmlComponent) {
     });
 
     /*---------------------------------------------------------------------------------*/
+    htmlComponent.addEventListener("getTableColumnWidth", function(customEvent) {
+        const { tableId, dataTag } = customEvent.Data;
+        const handle  = findComponentHandle(dataTag);
+        if (!handle) return;
+
+        const headers = handle.querySelectorAll("th[role='columnheader'][scope='col']");
+        const columnWidths = Array.from(headers).map(col => ({
+            idx: Number(col.dataset.columnId),
+            width: col.style.minWidth
+        }));
+
+        if (columnWidths.length) {
+            htmlComponent.sendEventToMATLAB("getTableColumnWidth", { tableId, columnWidths });
+        }
+    });
+
+    /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("changeTableRowHeight", function(customEvent) {
         let styleElement = appWindow.document.getElementById('matlab-js-bridge-uitable');
         if (styleElement) {
