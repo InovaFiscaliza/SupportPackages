@@ -196,7 +196,7 @@ classdef ProjectCommon < handle
         function fileName = getGeneratedDocumentFileName(obj, fileExt, context)
             arguments
                 obj
-                fileExt (1,:) char {mustBeMember(fileExt, {'.html', '.json', '.xlsx', '.teams', '.zip'})}
+                fileExt (1,:) char {mustBeMember(fileExt, {'.html', '.json', '.xlsx', '.teams', '.zip', 'rawFiles'})}
                 context
             end
 
@@ -211,6 +211,8 @@ classdef ProjectCommon < handle
                     fileName = obj.modules.(context).generatedFiles.lastTEAMSFullPath;
                 case '.zip'
                     fileName = obj.modules.(context).generatedFiles.lastZIPFullPath;
+                case 'rawFiles'
+                    fileName = obj.modules.(context).generatedFiles.rawFiles;
             end
 
             if ismember(fileExt, {'.html', '.zip'}) && ~isempty(fileName) && ~isfile(fileName)
