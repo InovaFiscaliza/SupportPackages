@@ -1350,6 +1350,10 @@ a, a:hover {
     background-color: transparent !important;
 }
 
+.mwListItem {
+    padding: 5px !important;
+}
+
 /*
   ## DropDown ##
 */
@@ -1409,6 +1413,10 @@ a, a:hover {
 
 .textview--borderless {
     border: none;
+}
+
+.textview--wordbreak {
+    word-break: break-word;
 }
 
 .mwDialog *::selection,

@@ -40,7 +40,7 @@ classdef (Abstract) TextView
                         case 'matlab.ui.control.Label'
                             classList = {'textview'};
                             if ~isempty(varargin) && isstruct(varargin{1}) && isfield(varargin{1}, 'class')
-                                classList = [classList, {varargin{1}.class}];
+                                classList = [classList, varargin{1}.class];
                             end
 
                             sendEventToHTMLSource(jsBackDoor, 'initializeComponents', { ...
