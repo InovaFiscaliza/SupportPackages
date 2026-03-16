@@ -2,22 +2,22 @@ classdef (Abstract) Occupancy
 
     properties (Constant)
         %-----------------------------------------------------------------%
-        ParametersTemplate = struct('Method',                  {}, ...
-                                    'IntegrationTime',         {}, ...
-                                    'IntegrationTimeCaptured', {}, ...
-                                    'THR',                     {}, ...
-                                    'THRCaptured',             {}, ...
-                                    'Offset',                  {}, ...
-                                    'ceilFactor',              {}, ...
-                                    'noiseFcn',                {}, ...
-                                    'noiseTrashSamples',       {}, ...
-                                    'noiseUsefulSamples',      {});
+        ParametersTemplate = struct( ...
+            'Method',                  {}, ... % 'Linear fixo (COLETA)' | 'Linear fixo' | 'Linear adaptativo' | 'Envoltória do ruído'
+            'IntegrationTime',         {}, ...
+            'Threshold',               {}, ...
+            'Offset',                  {}, ...
+            'CeilingFactor',           {}, ...
+            'NoiseEstimator',          {}, ...
+            'NoiseDiscardFraction',    {}, ...
+            'NoiseSampleFraction',     {} ...
+        );
     end
 
     
     methods (Static = true)
         %-----------------------------------------------------------------%
-        function varargout = run(TimeStamp, Matrix, Method, Threshold, IntegrationTime, OutputType)
+        function varargout = run(timeStamp, levelMatrix, method, threshold, integrationTime, outputType)
             % A aferição da ocupação pode ser realizada por meio de um tempo 
             % de integração INFINITO ou FINITO (1, 5, 15, 30 ou 60 minutos).            
             % • INFINITO
@@ -41,30 +41,30 @@ classdef (Abstract) Occupancy
 
             % <VALIDATION>
             arguments
-                TimeStamp datetime {mustBeVector}
-                Matrix             {mustBeNumeric}
-                Method             {mustBeMember(Method, {'Linear fixo', 'Linear adaptativo', 'Envoltória do ruído'})}                
-                Threshold          {mustBeNumeric, mustBeVector}
-                IntegrationTime    {mustBeNumeric}
-                OutputType         {mustBeMember(OutputType, {'OnlyMatrix', 'TimeStamp+Matrix+BasicStats'})} = 'TimeStamp+Matrix+BasicStats'
+                timeStamp datetime {mustBeVector}
+                levelMatrix        {mustBeNumeric}
+                method             {mustBeMember(method, {'Linear fixo', 'Linear adaptativo', 'Envoltória do ruído'})}                
+                threshold          {mustBeNumeric, mustBeVector}
+                integrationTime    {mustBeNumeric}
+                outputType         {mustBeMember(outputType, {'OnlyMatrix', 'TimeStamp+Matrix+BasicStats'})} = 'TimeStamp+Matrix+BasicStats'
             end
 
             try
-                mustBeMember(IntegrationTime, [1, 5, 15, 30, 60, inf])                
+                mustBeMember(integrationTime, [1, 5, 15, 30, 60, inf]) % em minutos
                 
-                dataPoints = height(Matrix);
-                numSweeps  = width(Matrix);
+                dataPoints = height(levelMatrix);
+                numSweeps  = width(levelMatrix);
 
-                if strcmp(Method, 'Linear fixo') && ~isscalar(Threshold)
-                    error('Threshold must be a scalar value.')
-                elseif strcmp(Method, 'Linear adaptativo') && numel(Threshold) ~= numSweeps
-                    error('Threshold must be an array with the same number of elements as the number of columns in the Matrix.')
-                elseif strcmp(Method, 'Envoltória do ruído') && numel(Threshold) ~= dataPoints
-                    error('Threshold must be an array with the same number of elements as the number of rows in the Matrix.')
+                if strcmp(method, 'Linear fixo') && ~isscalar(threshold)
+                    error('RF:Occupancy:UnexpectedThreshold', 'Threshold must be a scalar value.')
+                elseif strcmp(method, 'Linear adaptativo') && numel(threshold) ~= numSweeps
+                    error('RF:Occupancy:UnexpectedThreshold', 'Threshold must be an array with the same number of elements as the number of columns in the Matrix.')
+                elseif strcmp(method, 'Envoltória do ruído') && numel(threshold) ~= dataPoints
+                    error('RF:Occupancy:UnexpectedThreshold', 'Threshold must be an array with the same number of elements as the number of rows in the Matrix.')
                 end
 
-                if numel(TimeStamp) ~= numSweeps
-                    error('The TimeStamp array must have the same number of elements as the number of columns in the Matrix.')
+                if numel(timeStamp) ~= numSweeps
+                    error('RF:Occupancy:UnmatchArrays', 'The timeStamp array must have the same number of elements as the number of columns in the matrix.')
                 end
 
             catch ME
@@ -73,13 +73,13 @@ classdef (Abstract) Occupancy
             % </VALIDATION>
 
             % <PROCESS>
-            if isinf(IntegrationTime)
-                occMatrix = Matrix > Threshold;
+            if isinf(integrationTime)
+                occMatrix = levelMatrix > threshold;
 
-                if OutputType == "OnlyMatrix"
+                if outputType == "OnlyMatrix"
                     varargout = {occMatrix};
                 else
-                    occData = {TimeStamp(1),                   ...
+                    occData = {timeStamp(1),                   ...
                                zeros(dataPoints, 1, 'single'), ...
                                zeros(dataPoints, 3, 'single')};
                     occData{2}(:) = 100 * sum(occMatrix, 2) / width(occMatrix);
@@ -92,8 +92,8 @@ classdef (Abstract) Occupancy
                 % Estimativa da quantidade de amostras que poderá ter o fluxo de 
                 % ocupação, pré-alocando espaço em memória (para fins de tornar 
                 % mais eficiente a operação).
-                Observation = minutes(TimeStamp(end) - TimeStamp(1));
-                occSamples  = ceil(Observation / IntegrationTime);
+                observation = minutes(timeStamp(end) - timeStamp(1));
+                occSamples  = ceil(observation / integrationTime);
                 occData     = {repmat(datetime(0,0,0), 1, occSamples),  ...
                                zeros(dataPoints, occSamples, 'single'), ...
                                zeros(dataPoints,          3, 'single')};
@@ -108,36 +108,36 @@ classdef (Abstract) Occupancy
                 % • 15min: [0,15,30,45]
                 % • 30min: [0,30]
                 % • 60min: 0    
-                referenceTime        = TimeStamp(1);
-                referenceTime.Minute = referenceTime.Minute - mod(referenceTime.Minute, IntegrationTime);
+                referenceTime = timeStamp(1);
+                referenceTime.Minute = referenceTime.Minute - mod(referenceTime.Minute, integrationTime);
                 referenceTime.Second = 0;
     
                 occTimeStamp = 0;            
-                while referenceTime < TimeStamp(end)
-                    [~, idx] = find((TimeStamp >= referenceTime) & ...
-                                    (TimeStamp <  referenceTime + minutes(IntegrationTime)));
+                while referenceTime < timeStamp(end)
+                    [~, idx] = find((timeStamp >= referenceTime) & ...
+                                    (timeStamp <  referenceTime + minutes(integrationTime)));
                     
                     if ~isempty(idx)
-                        switch Method
+                        switch method
                             case {'Linear fixo', 'Envoltória do ruído'}
-                                occMatrix = single(Matrix(:, idx) > Threshold);
+                                occMatrix = single(levelMatrix(:, idx) > threshold);
     
                             case 'Linear adaptativo'
-                                occMatrix = single(Matrix(:, idx) > Threshold(idx));
+                                occMatrix = single(levelMatrix(:, idx) > threshold(idx));
                         end
 
                         occTimeStamp = occTimeStamp + 1;                        
-                        occData{1}(occTimeStamp)   = referenceTime;
-                        occData{2}(:,occTimeStamp) = 100 * sum(occMatrix, 2) / width(occMatrix);
+                        occData{1}(occTimeStamp)    = referenceTime;
+                        occData{2}(:, occTimeStamp) = 100 * sum(occMatrix, 2) / width(occMatrix);
                     end
-                    referenceTime = referenceTime + minutes(IntegrationTime);
+                    referenceTime = referenceTime + minutes(integrationTime);
                 end
     
                 % Elimina amostras relacionadas a períodos de tempo não
                 % monitorados...            
                 if occTimeStamp < occSamples
-                    occData{1}(occTimeStamp+1:end)   = [];
-                    occData{2}(:,occTimeStamp+1:end) = [];
+                    occData{1}(occTimeStamp+1:end)    = [];
+                    occData{2}(:, occTimeStamp+1:end) = [];
                 end
 
                 occData{3}(:) = [ min(occData{2}, [], 2), ...
@@ -150,133 +150,126 @@ classdef (Abstract) Occupancy
         end
 
         %-----------------------------------------------------------------%
-        function occParametersDefault = ParametersDefault()
-            occParametersDefault                    = RF.Occupancy.ParametersTemplate;
+        function defaultParameters = getDefaultParameters()
+            defaultParameters = RF.Occupancy.ParametersTemplate;
 
-            occParametersDefault(1).Method          = 'Linear adaptativo';
-            occParametersDefault.IntegrationTime    = 15;
-            occParametersDefault.Offset             = 12;
-            occParametersDefault.noiseFcn           = 'mean';
-            occParametersDefault.noiseTrashSamples  = 0.10;
-            occParametersDefault.noiseUsefulSamples = 0.20;
+            defaultParameters(1).Method = 'Linear adaptativo';
+            defaultParameters.IntegrationTime = 15;
+            defaultParameters.Offset = 12;
+            defaultParameters.NoiseEstimator = 'mean';
+            defaultParameters.NoiseDiscardFraction = 0.10;
+            defaultParameters.NoiseSampleFraction = 0.20;
         end
 
         %-----------------------------------------------------------------%
-        function occParameters = Parameters(Method, varargin)
+        function parameters = applyRelatedParameters(method, varargin)
             arguments
-                Method  char {mustBeMember(Method, {'Linear fixo (COLETA)', ... % 'Fixed' (?)
-                                                    'Linear fixo',          ... % 'Fixed'
-                                                    'Linear adaptativo',    ... % 'Adaptive Linear'
-                                                    'Envoltória do ruído'})}    % 'Offset Noise-Envelope'
+                method  char {mustBeMember(method, {'Linear fixo (COLETA)', ...
+                                                    'Linear fixo',          ...
+                                                    'Linear adaptativo',    ...
+                                                    'Envoltória do ruído'})}
             end
 
             arguments (Repeating)
                 varargin
             end
 
-            occParameters = RF.Occupancy.ParametersTemplate;
-            occParameters(1).Method = Method;
+            parameters = RF.Occupancy.ParametersTemplate;
+            parameters(1).Method = method;
 
-            switch Method
-                case 'Linear fixo (COLETA)'
-                    occParameters.IntegrationTimeCaptured = varargin{1};
-                    occParameters.THRCaptured             = varargin{2};
-
-                case 'Linear fixo'
-                    occParameters.IntegrationTime         = varargin{1};
-                    occParameters.THR                     = varargin{2};
+            switch method
+                case {'Linear fixo (COLETA)', 'Linear fixo'}
+                    parameters.IntegrationTime      = varargin{1};
+                    parameters.Threshold            = varargin{2};
 
                 case {'Linear adaptativo', 'Envoltória do ruído'}
-                    occParameters.IntegrationTime         = varargin{1};
-                    occParameters.Offset                  = varargin{2};
-                    occParameters.noiseFcn                = varargin{3};
-                    occParameters.noiseTrashSamples       = varargin{4};
-                    occParameters.noiseUsefulSamples      = varargin{5};
+                    parameters.IntegrationTime      = varargin{1};
+                    parameters.Offset               = varargin{2};
+                    parameters.NoiseEstimator       = varargin{3};
+                    parameters.NoiseDiscardFraction = varargin{4};
+                    parameters.NoiseSampleFraction  = varargin{5};
 
-                    if Method == "Envoltória do ruído"
-                        occParameters.ceilFactor          = varargin{6};
+                    if method == "Envoltória do ruído"
+                        parameters.CeilingFactor    = varargin{6};
                     end
             end
         end
 
         %-----------------------------------------------------------------%
-        function occTHR = Threshold(Method, occParameters, varargin)
+        function threshold = getThreshold(method, parameters, varargin)
             arguments
-                Method        char {mustBeMember(Method, {'Linear fixo (COLETA)', ... % 'Fixed' (?)
-                                                          'Linear fixo',          ... % 'Fixed'
-                                                          'Linear adaptativo',    ... % 'Adaptive Linear'
-                                                          'Envoltória do ruído'})}    % 'Offset Noise-Envelope'
-                occParameters struct
+                method        char {mustBeMember(method, {'Linear fixo (COLETA)', ...
+                                                          'Linear fixo',          ...
+                                                          'Linear adaptativo',    ...
+                                                          'Envoltória do ruído'})}
+                parameters struct
             end
 
             arguments (Repeating)
                 varargin
             end
 
-            switch Method
+            switch method
                 case 'Linear fixo (COLETA)'
-                    occTHR = occParameters.THRCaptured;
+                    threshold = parameters.ThresholdMeasured;
 
                 case 'Linear fixo'
-                    occTHR = occParameters.THR;
+                    threshold = parameters.Threshold;
 
                 case {'Linear adaptativo', 'Envoltória do ruído'}
-                    specData    = varargin{1};
-                    Orientation = varargin{2};
-
-                    occTHR = RF.Occupancy.adaptiveThreshold(Method, occParameters, specData, Orientation);
+                    specData = varargin{1};
+                    orientation = varargin{2};
+                    threshold = RF.Occupancy.computeThresholdPerSweep(method, parameters, specData, orientation);
             end
         end
 
         %-----------------------------------------------------------------%
-        function occTHR = adaptiveThreshold(Method, occParameters, specData, Orientation)
+        function threshold = computeThresholdPerSweep(method, parameters, specData, orientation)
             arguments
-                Method        char {mustBeMember(Method, {'Linear adaptativo', 'Envoltória do ruído'})}
-                occParameters struct
-                specData      model.SpecData
-                Orientation   char {mustBeMember(Orientation, {'bin', 'channel'})} = 'bin'
+                method      char {mustBeMember(method, {'Linear adaptativo', 'Envoltória do ruído'})}
+                parameters  struct
+                specData    model.SpecData
+                orientation char {mustBeMember(orientation, {'bin', 'channel'})} = 'bin'
             end
 
-            switch Orientation
+            switch orientation
                 case 'bin'
-                    DataPoints  = specData.MetaData.DataPoints;
+                    dataPoints = specData.MetaData.DataPoints;
         
                     % Inicialmente, identificam-se os índices que limitarão as amostras 
                     % ordenadas de todas as varreduras (sortedData), o que possibilitará
-                    % aferir a estimativa do piso de ruído.
-        
-                    idx1        = max(1,                 ceil(occParameters.noiseTrashSamples  * DataPoints));
-                    idx2        = min(DataPoints, idx1 + ceil(occParameters.noiseUsefulSamples * DataPoints));
+                    % aferir a estimativa do piso de ruído.        
+                    idx1 = max(1,                 ceil(parameters.NoiseDiscardFraction  * dataPoints));
+                    idx2 = min(dataPoints, idx1 + ceil(parameters.NoiseSampleFraction * dataPoints));
                     
-                    sortedData  = sort(specData.Data{2});
-                    sortedData  = sortedData(idx1:idx2,:);
+                    sortedData = sort(specData.Data{2});
+                    sortedData = sortedData(idx1:idx2, :);
         
                     % O método "Linear adaptativo" é uma simples média (ou mediana)
                     % do piso de ruído acrescida do Offset. Já o método "Envoltória 
                     % do ruído adaptativo", por outro lado, é o sinal ceifado nos 
-                    % limites [µ-k𝜎, µ+k𝜎].
-                    
-                    switch Method
+                    % limites [µ-k𝜎, µ+k𝜎].                    
+                    switch method
                         case 'Linear adaptativo'
-                            switch occParameters.noiseFcn
+                            switch parameters.NoiseEstimator
                                 case 'mean';   averageNoise =   mean(sortedData);
                                 case 'median'; averageNoise = median(sortedData);
                             end
         
-                            occTHR   = ceil(averageNoise + occParameters.Offset);
+                            threshold = ceil(averageNoise + parameters.Offset);
                             
                         case 'Envoltória do ruído'
-                            switch occParameters.noiseFcn
+                            switch parameters.NoiseEstimator
                                 case 'mean';   averageNoise =   mean(sortedData, 'all');
                                 case 'median'; averageNoise = median(sortedData, 'all');
                             end
                             stdNoise = std(sortedData, 1, 'all');
                             
-                            Factor   = str2double(extractBefore(occParameters.ceilFactor, '𝜎'));
-                            Lim1     = averageNoise - Factor*stdNoise;
-                            Lim2     = averageNoise + Factor*stdNoise;
+                            ceilingFactor = str2double(extractBefore(parameters.CeilingFactor, '𝜎'));
+                            inferiorLim = averageNoise - ceilingFactor*stdNoise;
+                            superioLim = averageNoise + ceilingFactor*stdNoise;
         
-                            occTHR   = ceil(bsxfun(@min, bsxfun(@max, specData.Data{3}(:,2), Lim1), Lim2) + occParameters.Offset);
+                            threshold = ceil(bsxfun(@min, bsxfun(@max, specData.Data{3}(:,2), inferiorLim), superioLim) + parameters.Offset);
                     end
 
                 case 'channel'
