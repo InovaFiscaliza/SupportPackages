@@ -6,32 +6,83 @@ classdef SpecDataBase < handle
         MetaData     (1,1) struct = model.SpecDataBase.templateMetaData()
         Data         cell
         GPS          struct
-        RelatedFiles table = table('Size', [0, 9],                                                                                          ...
-                                   'VariableTypes', {'cell', 'cell', 'double', 'cell', 'datetime', 'datetime', 'double', 'double', 'cell'}, ...
-                                   'VariableNames', {'File', 'Task', 'Id', 'Description', 'BeginTime', 'EndTime', 'NumSweeps', 'RevisitTime', 'GPS'})
+        RelatedFiles table = table('Size', [0,10],                                                                                                  ...
+            'VariableTypes', {'cell', 'cell', 'double', 'cell', 'datetime', 'datetime', 'double', 'double', 'cell', 'cell'}, ...
+            'VariableNames', {'File', 'Task', 'ID', 'Description', 'BeginTime', 'EndTime', 'nSweeps', 'RevisitTime', 'GPS', 'uuid'})
         FileMap
-        Enable       (1,1) matlab.lang.OnOffSwitchState = 'on' % 1 | 0 | 'on' | 'off' | true | false
+        Enable       (1,1) matlab.lang.OnOffSwitchState = 'on'              % 1 | 0 | 'on' | 'off' | true | false
     end
 
-    
+
     methods
         %-----------------------------------------------------------------%
-        function [obj, projectData] = read(obj, fileFullName, readType, varargin)
+        function [obj, projectData] = read(obj, fileFullName, readType)
+            % Método principal de leitura de arquivos.
+            %
+            % Regras:
+            % 1) Arquivos individuais são processados em objeto limpo.
+            % 2) ZIP é extraído e cada arquivo interno é processado
+            %    individualmente e agregado ao objeto final.
+            % 3) ZIP aninhado é tratado naturalmente via recursão.
+            % 4) Nenhum estado interno é reutilizado indevidamente.
+            % 5) Cleanup é explícito e determinístico.
+
             arguments
                 obj
                 fileFullName char {mustBeFile}
-                readType     char {mustBeMember(readType, {'MetaData', 'SpecData', 'SingleFile'})} = 'SingleFile'
-            end
-
-            arguments (Repeating)
-                varargin
+                readType char {mustBeMember(readType, {'MetaData','SpecData','SingleFile'})} = 'SingleFile'
             end
 
             projectData = [];
-            [~, fileName, fileExt] = fileparts(fileFullName);
-            
+            [~,~,fileExt] = fileparts(fileFullName);
+
             switch lower(fileExt)
+
+                % =========================================================
+                % CASO ZIP
+                % =========================================================
+                case '.zip'
+
+                    % Extrai conteúdo para pasta temporária
+                    [fileList, tempFolder] = ...
+                        model.fileReader.zipUtils.Zip.extractToWorkspace(fileFullName);
+
+                    try
+                        % Processa cada arquivo extraído individualmente
+                        for k = 1:numel(fileList)
+
+                            fname = fileList{k};
+
+                            % Cria objeto limpo para cada arquivo
+                            tmpObj = model.SpecDataBase.empty;
+
+                            % Processa o arquivo (recursivo se for ZIP interno)
+                            [tmpObj, ~] = read(tmpObj,fname, readType);
+
+                            % Agrega ao objeto final
+                            if isempty(obj)
+                                obj = tmpObj;
+                            else
+                                obj = [obj tmpObj];
+                            end
+                        end
+
+                    catch ME
+                        % Garante limpeza da pasta temporária em caso de erro
+                        model.fileReader.zipUtils.Zip.safeCleanup(tempFolder);
+                        rethrow(ME);
+                    end
+
+                    % Remove pasta temporária após processamento completo
+                    model.fileReader.zipUtils.Zip.safeCleanup(tempFolder);
+                    return
+
+
+                    % =========================================================
+                    % CASOS DE ARQUIVOS INDIVIDUAIS
+                    % =========================================================
                 case '.bin'
+
                     switch model.SpecDataBase.checkBinaryFormat(fileFullName)
                         case 'CRFS'
                             obj = model.fileReader.CRFSBin(obj, fileFullName, readType);
@@ -40,40 +91,49 @@ classdef SpecDataBase < handle
                         case 'RFlookBin v.2'
                             obj = model.fileReader.RFlookBinV2(obj, fileFullName, readType);
                     end
+
                 case '.dbm'
                     obj = model.fileReader.CellPlanDBM(obj, fileFullName, readType);
+
                 case '.sm1809'
                     obj = model.fileReader.SM1809(obj, fileFullName, readType);
+
                 case '.csv'
                     obj = model.fileReader.ArgusCSV(obj, fileFullName, readType);
+
                 case '.mat'
                     [obj, projectData] = model.fileReader.MAT(fileFullName, readType);
+
                 otherwise
-                    error('Unexpected file format "%s"\n%s', fileExt, [fileName, fileExt])
+                    % Arquivos não suportados são ignorados
+                    return
             end
 
-            if ismember(readType, {'SpecData', 'SingleFile'})
+            % =========================================================
+            % Pós-processamento estatístico
+            % =========================================================
+            if ismember(readType, {'SpecData','SingleFile'})
                 basicStats(obj)
             end
         end
 
         %-----------------------------------------------------------------%
-        function copyObj = copy(obj, fieldsToRemove)
+        function copyObj = copy(obj, fields2remove)
             arguments
                 obj
-                fieldsToRemove = {}
+                fields2remove = {}
             end
-            % A classe "model.SpecData", do appAnalise, extende a presente classe. 
-            % Por essa razão, utiliza-se "eval(class(obj))" de forma que seja criada 
-            % uma instância da classe sob análise ("model.SpecData" ou "model.SpecDataBase"). 
+            % A classe "model.SpecData", do appAnalise, extende a presente classe.
+            % Por essa razão, utiliza-se "eval(class(obj))" de forma que seja criada
+            % uma instância da classe sob análise ("model.SpecData" ou "model.SpecDataBase").
             % Essa cópia do objeto é limitada às suas propriedades públicas.
 
             copyObj  = eval(class(obj));
-            propList = setdiff(properties(copyObj), fieldsToRemove);
+            propList = setdiff(properties(copyObj), fields2remove);
 
             for ii = 1:numel(obj)
                 for jj = 1:numel(propList)
-                    copyObj(ii).(propList{jj}) = obj(ii).(propList{jj});                
+                    copyObj(ii).(propList{jj}) = obj(ii).(propList{jj});
                 end
             end
         end
@@ -87,12 +147,12 @@ classdef SpecDataBase < handle
 
             for ii = 1:numel(obj)
                 dataPoints   = obj(ii).MetaData.DataPoints;
-                nSweeps      = sum(obj(ii).RelatedFiles.NumSweeps);
-    
+                nSweeps      = sum(obj(ii).RelatedFiles.nSweeps);
+
                 obj(ii).Data = {repmat(datetime([0 0 0 0 0 0], 'Format', 'dd/MM/yyyy HH:mm:ss'), 1, nSweeps), ...
-                                zeros(dataPoints, nSweeps, 'single'),                                         ...
-                                zeros(dataPoints, 3,       'single')};
-    
+                    zeros(dataPoints, nSweeps, 'single'),                                         ...
+                    zeros(dataPoints, 3,       'single')};
+
                 if ismember(fileFormatName, {'RFlookBin v.2/2', 'RFlookBin v.2/4'})
                     obj(ii).Data{4} = zeros(obj(ii).MetaData.DataPoints, nSweeps, 'single');
                     obj(ii).Data{5} = zeros(obj(ii).MetaData.DataPoints, nSweeps, 'single');
@@ -102,25 +162,27 @@ classdef SpecDataBase < handle
 
         %-----------------------------------------------------------------%
         function IDs = idList(obj)
-            IDs = arrayfun(@(x) x.RelatedFiles.Id(1), obj);
+            IDs = arrayfun(@(x) x.RelatedFiles.ID(1), obj);
         end
 
         %-----------------------------------------------------------------%
-        function estimatedMemory = computeEstimatedMemory(obj)
-            estimatedMemory = sum(arrayfun(@(x) 4 * sum(x.RelatedFiles.NumSweeps) .* x.MetaData.DataPoints, obj)); % Bytes
+        function estimatedMemory = estimateMemory(obj)
+            estimatedMemory = sum(arrayfun(@(x) 4 * sum(x.RelatedFiles.nSweeps) .* x.MetaData.DataPoints, obj)) .* 1e-6; % MB
         end
 
         %-----------------------------------------------------------------%
-        function nSweeps = computeSweepNumber(obj)
-            nSweeps = arrayfun(@(x) sum(x.RelatedFiles.NumSweeps), obj)';
+        function sweepsPerThread = sweepsPerThread(obj)
+            sweepsPerThread = arrayfun(@(x) sum(x.RelatedFiles.nSweeps), obj)';
         end
 
         %-----------------------------------------------------------------%
         function basicStats(obj)
             for ii = 1:numel(obj)
-                obj(ii).Data{3} = [ min(obj(ii).Data{2}, [], 2), ...
-                                   mean(obj(ii).Data{2},     2), ...
-                                    max(obj(ii).Data{2}, [], 2)];
+                if obj(ii).Enable
+                    obj(ii).Data{3} = [ min(obj(ii).Data{2}, [], 2), ...
+                        mean(obj(ii).Data{2},     2), ...
+                        max(obj(ii).Data{2}, [], 2)];
+                end
             end
         end
     end
@@ -150,71 +212,71 @@ classdef SpecDataBase < handle
         end
 
         %-----------------------------------------------------------------%
-        function value = id2str(type, id)
+        function str = id2str(Type, ID)
             % Em tese, os IDs do Detector deveriam ser apenas 1 a 4 representando,
             % respectivamente, "Sample", "Average/RMS", "Positive Peak" e "Negative Peak".
             %
-            % Foi observado, contudo, arquivos de monitoração gerados pelo appColeta 
-            % v. 1.11 nos quais esse ID estava igual a "0". Foram monitorações 
+            % Foi observado, contudo, arquivos de monitoração gerados pelo appColeta
+            % v. 1.11 nos quais esse ID estava igual a "0". Foram monitorações
             % conduzidas com o R&S EB500.
 
-            switch type
+            switch Type
                 case 'TraceMode'
-                    switch id
-                        case 1; value = 'ClearWrite';
-                        case 2; value = 'Average';
-                        case 3; value = 'MaxHold';
-                        case 4; value = 'MinHold';
+                    switch ID
+                        case 1; str = 'ClearWrite';
+                        case 2; str = 'Average';
+                        case 3; str = 'MaxHold';
+                        case 4; str = 'MinHold';
                     end
 
                 case 'Detector'
-                    switch id
-                        case {0, 1}; value = 'Sample';
-                        case 2; value = 'Average/RMS';
-                        case 3; value = 'Positive Peak';
-                        case 4; value = 'Negative Peak';
-                    end        
+                    switch ID
+                        case {0, 1}; str = 'Sample';
+                        case 2;      str = 'Average/RMS';
+                        case 3;      str = 'Positive Peak';
+                        case 4;      str = 'Negative Peak';
+                    end
 
                 case 'LevelUnit'
-                    switch id
-                        case 1; value = 'dBm';
-                        case 2; value = 'dBµV';
-                        case 3; value = 'dBµV/m';
+                    switch ID
+                        case 1; str = 'dBm';
+                        case 2; str = 'dBµV';
+                        case 3; str = 'dBµV/m';
                     end
-            end        
+            end
         end
 
         %-----------------------------------------------------------------%
-        function id = str2id(type, value)
-            switch type
+        function ID = str2id(Type, Value)
+            switch Type
                 case 'TraceMode'
-                    switch value
-                        case 'ClearWrite'; id = 1;
-                        case 'Average';    id = 2;
-                        case 'MaxHold';    id = 3;
-                        case 'MinHold';    id = 4;
+                    switch Value
+                        case 'ClearWrite'; ID = 1;
+                        case 'Average';    ID = 2;
+                        case 'MaxHold';    ID = 3;
+                        case 'MinHold';    ID = 4;
                     end
-        
+
                 case 'Detector'
-                    switch value
-                        case 'Sample';        id = 1;
-                        case 'Average/RMS';   id = 2;
-                        case 'Positive Peak'; id = 3;
-                        case 'Negative Peak'; id = 4;
+                    switch Value
+                        case 'Sample';        ID = 1;
+                        case 'Average/RMS';   ID = 2;
+                        case 'Positive Peak'; ID = 3;
+                        case 'Negative Peak'; ID = 4;
                     end
-        
+
                 case 'LevelUnit'
-                    switch value
-                        case 'dBm';                id = 1;
-                        case {'dBµV', 'dBμV'};     id = 2;
-                        case {'dBµV/m', 'dBμV/m'}; id = 3;
+                    switch Value
+                        case 'dBm';                ID = 1;
+                        case {'dBµV', 'dBμV'};     ID = 2;
+                        case {'dBµV/m', 'dBμV/m'}; ID = 3;
                     end
-            end        
+            end
         end
 
         %-----------------------------------------------------------------%
-        function value = str2str(value)
-            value = replace(value, 'μ', 'µ');
+        function Value = str2str(Value)
+            Value = replace(Value, 'μ', 'µ');
         end
 
         %-----------------------------------------------------------------%
@@ -222,29 +284,29 @@ classdef SpecDataBase < handle
             % A propriedade "MetaData" é uma estrutura com os campos aqui
             % abaixo definidos, podendo ser estendida.
 
-            % • DataType: RFlookBin (1-2), CRFSBin (4, 7-8, 60-65 e 67-69), 
+            % • DataType: RFlookBin (1-2), CRFSBin (4, 7-8, 60-65 e 67-69),
             %   Argus (167-168), CellPlan (1000) e SM1809 (1809)
             % • FreqStart/FreqStop: Valor numérico em Hertz
             % • LevelUnit: dBm | dBµV | dBµV/m
             % • Resolution: Valor numérico em Hertz ou -1 (caso não registrado
             %   em arquivo)
-            % • TraceMode: "ClearWrite" | "Average" | "MaxHold" | "MinHold" | 
+            % • TraceMode: "ClearWrite" | "Average" | "MaxHold" | "MinHold" |
             %   "OCC" | "SingleMeasurement" | "Mean" | "Peak" | "Minimum"
             % • Detector: "Sample" | "Average/RMS" | "Positive Peak" | "Negative Peak"
 
             templateMetaData = struct('DataType',         [], ...
-                                      'FreqStart',        [], ...
-                                      'FreqStop',         [], ...
-                                      'DataPoints',       [], ...
-                                      'Resolution',       -1, ...
-                                      'VBW',              -1, ...
-                                      'Threshold',        -1, ...
-                                      'TraceMode',        '', ...
-                                      'TraceIntegration', -1, ...
-                                      'Detector',         '', ...
-                                      'LevelUnit',        [], ...
-                                      'Antenna',          [], ...
-                                      'Others',           '');
+                'FreqStart',        [], ...
+                'FreqStop',         [], ...
+                'DataPoints',       [], ...
+                'Resolution',       -1, ...
+                'VBW',              -1, ...
+                'Threshold',        -1, ...
+                'TraceMode',        '', ...
+                'TraceIntegration', -1, ...
+                'Detector',         '', ...
+                'LevelUnit',        [], ...
+                'Antenna',          [], ...
+                'Others',           '');
         end
 
         %-----------------------------------------------------------------%
@@ -254,38 +316,38 @@ classdef SpecDataBase < handle
             % contemplados em outros campos do objeto model.SpecDataBase.
 
             % Abaixo a lista de metadados já contemplados em outros campos
-            % e que, por essa razão, não constarão em "Others". Inicialmente, 
+            % e que, por essa razão, não constarão em "Others". Inicialmente,
             % análise restrita ao formato de arquivo gerado pelo appColeta.
 
             if contains(fileFormatName, 'RFlookBin v.1', 'IgnoreCase', true)
                 fieldsList = {'FileName',         ...
-                              'EstimatedSamples', ...
-                              'WritedSamples',    ...
-                              'F0',               ...
-                              'F1',               ...
-                              'Resolution',       ...
-                              'DataPoints',       ...
-                              'TraceMode',        ...
-                              'Detector',         ...
-                              'LevelUnit',        ...
-                              'Alignment',        ...
-                              'Offset1',          ...
-                              'Offset2',          ...
-                              'Offset3'};
+                    'EstimatedSamples', ...
+                    'WritedSamples',    ...
+                    'F0',               ...
+                    'F1',               ...
+                    'Resolution',       ...
+                    'DataPoints',       ...
+                    'TraceMode',        ...
+                    'Detector',         ...
+                    'LevelUnit',        ...
+                    'Alignment',        ...
+                    'Offset1',          ...
+                    'Offset2',          ...
+                    'Offset3'};
 
             elseif contains(fileFormatName, 'RFlookBin v.2', 'IgnoreCase', true)
                 fieldsList = {'Receiver',         ...
-                              'AntennaInfo',      ...
-                              'ID',               ...
-                              'Description',      ...
-                              'FreqStart',        ...
-                              'FreqStop',         ...
-                              'DataPoints',       ...
-                              'Resolution',       ...
-                              'Unit',             ...
-                              'TraceMode',        ...
-                              'TraceIntegration', ...
-                              'Detector'};
+                    'AntennaInfo',      ...
+                    'ID',               ...
+                    'Description',      ...
+                    'FreqStart',        ...
+                    'FreqStop',         ...
+                    'DataPoints',       ...
+                    'Resolution',       ...
+                    'Unit',             ...
+                    'TraceMode',        ...
+                    'TraceIntegration', ...
+                    'Detector'};
 
             else
                 fieldsList = {};
@@ -299,31 +361,6 @@ classdef SpecDataBase < handle
 
             secundaryMetaData = structUtil.sortByFieldNames(secundaryMetaData);
             secundaryMetaData = jsonencode(secundaryMetaData);
-        end
-
-        %-----------------------------------------------------------------%
-        function comparableData = comparableMetaData(specData, generalSettings)
-            fieldsToRemove = {'Others'};
-            if generalSettings.context.FILE.spectrumConsolidationPolicy.antennaPolicy == "remove"
-                fieldsToRemove{end+1} = 'Antenna';
-            end
-            if generalSettings.context.FILE.spectrumConsolidationPolicy.dataTypePolicy == "remove"
-                fieldsToRemove{end+1} = 'DataType';
-            end
-
-            for ii = 1:numel(specData)
-                tempStruct = rmfield(specData(ii).MetaData, fieldsToRemove);
-                tempStruct.Receiver = specData(ii).Receiver;
-
-                if isfield(tempStruct, 'Antenna') && ~isempty(tempStruct.Antenna)
-                    antennaFields = fields(tempStruct.Antenna);
-                    antennaFieldsToRemove = antennaFields(~ismember(antennaFields, generalSettings.context.FILE.spectrumConsolidationPolicy.antennaAttributes));
-                    
-                    tempStruct.Antenna = rmfield(tempStruct.Antenna, antennaFieldsToRemove);
-                end
-        
-                comparableData(ii) = tempStruct;
-            end
         end
     end
 end

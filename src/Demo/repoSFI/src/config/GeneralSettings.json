@@ -1,5 +1,5 @@
 {
-    "version": 0.01,
+    "version": 0.12,
     "operationMode": {
         "Debug": false,
         "Dock": true,
@@ -24,13 +24,16 @@
     },
     "tcpServer": {
         "Status": 0,
-        "IP": "",
+        "IP": "", 
         "Port": 8910,
         "Key": "123456",
+        "Repo":"Z:",
+        "Repo_map":"/mnt/reposfi",
         "ClientList": [
             "Zabbix",
             "Jupyter",
             "Matlab"
         ]
+        
     }
 }
