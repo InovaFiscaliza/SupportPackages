@@ -4,7 +4,7 @@
     <param.icon />
     <param.icons />
     <param.version>0.2.0</param.version>
-    <param.authnamewatermark />
+    <param.authnamewatermark>Augusto Peterle</param.authnamewatermark>
     <param.email />
     <param.company>ANATEL</param.company>
     <param.summary>Servidor TCP para processamento distribuído de dados de RF/Espectro</param.summary>
@@ -45,7 +45,6 @@
     <unset>
       <param.icon />
       <param.icons />
-      <param.authnamewatermark />
       <param.email />
       <param.screenshot />
       <param.guid />
@@ -77,9 +76,9 @@
     </fileset.main>
     <fileset.resources>
       <file>${PROJECT_ROOT}\+class</file>
-      <file>${PROJECT_ROOT}\+util</file>
-      <file>${PROJECT_ROOT}\+server</file>
       <file>${PROJECT_ROOT}\+handlers</file>
+      <file>${PROJECT_ROOT}\+server</file>
+      <file>${PROJECT_ROOT}\+util</file>
       <file>C:\InovaFiscaliza\SupportPackages\src\General</file>
       <file>C:\InovaFiscaliza\SupportPackages\src\Spectrum</file>
     </fileset.resources>
