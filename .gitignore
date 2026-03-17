@@ -1,4 +1,5 @@
 # List of folder to ignore:
+src/Demo/repoSFI/src/wsSpectrumReader/
 
 # List of untracked files to ignore:
 src/Anatel/+ws/Fiscaliza.m
