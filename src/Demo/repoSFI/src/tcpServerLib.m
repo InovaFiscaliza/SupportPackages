@@ -121,67 +121,12 @@ classdef tcpServerLib < handle
         function GeneralSettingsRead(obj)
             appName    = class.Constants.appName;
             rootFolder = obj.RootFolder;
-            
-            try
-                % Resolve caminhos
-                [projectFolder, programDataFolder] = appEngine.util.Path(appName, rootFolder);
-                
-                projectFilePath     = fullfile(projectFolder,     'GeneralSettings.json');
-                programDataFilePath = fullfile(programDataFolder, 'GeneralSettings.json');
-                
-                % Garante pasta ProgramData
-                if ~isfolder(programDataFolder)
-                    mkdir(programDataFolder);
-                end
-                
-                % Valida que arquivo default existe
-                if ~isfile(projectFilePath)
-                    error("Arquivo default nao encontrado: %s", projectFilePath);
-                end
-                
-                %% Logica de sincronizacao de versoes
-                shouldCopyFile = false;
-                
-                if ~isfile(programDataFilePath)
-                    %% Primeira execucao - arquivo nao existe em ProgramData
-                    shouldCopyFile = true;
-                else
-                    %% Arquivo existe - compara versoes
-                    try
-                        projectConfig = jsondecode(fileread(projectFilePath));
-                        programDataConfig = jsondecode(fileread(programDataFilePath));
-                        
-                        projectVersion = projectConfig.version;
-                        programDataVersion = programDataConfig.version;
-                        
-                        %% Se versao do projeto e mais recente, atualiza
-                        if projectVersion > programDataVersion
-                            shouldCopyFile = true;
-                        end
-                    catch
-                        %% Se houver erro ao comparar, copia o arquivo
-                        shouldCopyFile = true;
-                    end
-                end
-                
-                %% Copia arquivo se necessario
-                if shouldCopyFile
-                    copyfile(projectFilePath, programDataFilePath);
-                end
-                
-                % Sempre le ProgramData
-                generalSettings = jsondecode(fileread(programDataFilePath));
-                msgWarning = '';
-                
-            catch ME
-                generalSettings = [];
-                msgWarning = ME.message;
-            end
-            
+
+            [generalSettings, msgWarning] = appEngine.util.generalSettingsLoad(appName, rootFolder);
             if ~isempty(msgWarning)
                 warning(msgWarning)
             end
-            
+
             obj.General = generalSettings;
         end
         
