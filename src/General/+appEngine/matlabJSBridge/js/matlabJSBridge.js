@@ -262,7 +262,7 @@ function setup(htmlComponent) {
 
     /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("getTableColumnWidth", function(customEvent) {
-        const { tableId, dataTag } = customEvent.Data;
+        const { tableId, dataTag, displayedColumnCount } = customEvent.Data;
         const handle  = findComponentHandle(dataTag);
         if (!handle) return;
 
@@ -273,7 +273,7 @@ function setup(htmlComponent) {
         }));
 
         if (columnWidths.length) {
-            htmlComponent.sendEventToMATLAB("getTableColumnWidth", { tableId, columnWidths });
+            htmlComponent.sendEventToMATLAB("getTableColumnWidth", { tableId, displayedColumnCount, columnWidths });
         }
     });
 
