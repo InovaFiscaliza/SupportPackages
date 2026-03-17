@@ -1,13 +1,13 @@
 classdef tcpServerLib < handle
-    % tcpServerLib - Servidor TCP para processamento de requisições
+    % tcpServerLib - Servidor TCP para processamento de requisicoes
     %
-    % Gerencia comunicação TCP com clientes, recebe requisições JSON,
-    % processa e retorna respostas. Mantém log de todas as operações.
+    % Gerencia comunicacao TCP com clientes, recebe requisicoes JSON,
+    % processa e retorna respostas. Mantem log de todas as operacoes.
     %
     % Arquitetura:
     %   - MessageValidator: valida mensagens recebidas
-    %   - RequestFactory: distribui para handlers específicos
-    %   - ServerLogger: mantém histórico de operações
+    %   - RequestFactory: distribui para handlers especificos
+    %   - ServerLogger: mantem historico de operacoes
     %
     % Uso:
     %   server = tcpServerLib()
@@ -19,17 +19,17 @@ classdef tcpServerLib < handle
         % Servidor TCP
         Server
         
-        % Configuração
+        % Configuracao
         RootFolder
         General
         
-        % Timer para reconexão
+        % Timer para reconexao
         Timer
         
         % Logger
         Logger
         
-        % Timestamp de inicialização
+        % Timestamp de inicializacao
         Time
     end
     
@@ -47,7 +47,7 @@ classdef tcpServerLib < handle
             
             % Inicializa paths e configuração
             obj.RootFolder = appEngine.util.RootFolder(class.Constants.appName, tcpServerLib.Path());
-            tcpServerLib.GeneralSettingsRead(obj)
+            GeneralSettingsRead(obj)
             
             % Inicializa logger
             obj.Logger = server.ServerLogger();
@@ -134,15 +134,42 @@ classdef tcpServerLib < handle
                     mkdir(programDataFolder);
                 end
                 
-                % Primeira execução → copia default
+                % Valida que arquivo default existe
+                if ~isfile(projectFilePath)
+                    error("Arquivo default nao encontrado: %s", projectFilePath);
+                end
+                
+                %% Logica de sincronizacao de versoes
+                shouldCopyFile = false;
+                
                 if ~isfile(programDataFilePath)
-                    if ~isfile(projectFilePath)
-                        error("Arquivo default não encontrado: %s", projectFilePath);
+                    %% Primeira execucao - arquivo nao existe em ProgramData
+                    shouldCopyFile = true;
+                else
+                    %% Arquivo existe - compara versoes
+                    try
+                        projectConfig = jsondecode(fileread(projectFilePath));
+                        programDataConfig = jsondecode(fileread(programDataFilePath));
+                        
+                        projectVersion = projectConfig.version;
+                        programDataVersion = programDataConfig.version;
+                        
+                        %% Se versao do projeto e mais recente, atualiza
+                        if projectVersion > programDataVersion
+                            shouldCopyFile = true;
+                        end
+                    catch
+                        %% Se houver erro ao comparar, copia o arquivo
+                        shouldCopyFile = true;
                     end
+                end
+                
+                %% Copia arquivo se necessario
+                if shouldCopyFile
                     copyfile(projectFilePath, programDataFilePath);
                 end
                 
-                % Sempre lê ProgramData
+                % Sempre le ProgramData
                 generalSettings = jsondecode(fileread(programDataFilePath));
                 msgWarning = '';
                 
