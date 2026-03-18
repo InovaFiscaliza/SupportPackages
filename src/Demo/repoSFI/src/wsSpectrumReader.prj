@@ -1,9 +1,9 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration file="C:\InovaFiscaliza\SupportPackages\src\Demo\repoSFI\src\wsSpectrumReader.prj" location="C:\InovaFiscaliza\SupportPackages\src\Demo\repoSFI\src" name="wsSpectrumReader" target="target.ezdeploy.standalone" target-name="Application Compiler">
+  <configuration build-checksum="2319460481" file="C:\InovaFiscaliza\SupportPackages\src\Demo\repoSFI\src\wsSpectrumReader.prj" location="C:\InovaFiscaliza\SupportPackages\src\Demo\repoSFI\src" name="wsSpectrumReader" preferred-package-location="C:\InovaFiscaliza\SupportPackages\src\Demo\repoSFI\src\wsSpectrumReader\for_redistribution" preferred-package-type="package.type.exe" target="target.ezdeploy.standalone" target-name="Application Compiler">
     <param.appname>repoSFI</param.appname>
     <param.icon />
     <param.icons />
-    <param.version>0.2.0</param.version>
+    <param.version>0.2.5</param.version>
     <param.authnamewatermark>Augusto Peterle</param.authnamewatermark>
     <param.email />
     <param.company>ANATEL</param.company>
@@ -37,11 +37,13 @@
     <param.checkbox>false</param.checkbox>
     <param.example />
     <param.help.text>Syntax 
-	  -? 
-	 
+	 repoSFI -? 
+	 repoSFI varargin 
  Input Arguments 
 	 -?  print help on how to use the application 
-	 input arguments</param.help.text>
+	 varargin  input arguments 
+ Description 
+ 	 repoSFI - Servidor TCP que recebe requisições JSON, processa dados de espectro e retorna respostas estruturadas</param.help.text>
     <unset>
       <param.icon />
       <param.icons />
