@@ -1,4 +1,8 @@
 classdef tcpServerLib < handle
+    % tcpServerLib - Encapsula a infraestrutura de socket do repoSFI.
+    %
+    % A classe concentra configuracao, reconexao do listener, validacao das
+    % mensagens recebidas, delegacao para handlers e registro de log.
     % tcpServerLib - Servidor TCP para processamento de requisicoes
     %
     % Gerencia comunicacao TCP com clientes, recebe requisicoes JSON,
@@ -42,6 +46,7 @@ classdef tcpServerLib < handle
         %==================================================================
         %                         CONSTRUTOR
         %==================================================================
+        % Prepara configuracao, logger e timer de conexao do servidor.
         function obj = tcpServerLib()
             appEngine.util.disableWarnings()
             
@@ -62,6 +67,7 @@ classdef tcpServerLib < handle
         %==================================================================
         %                         DESTRUTOR
         %==================================================================
+        % Libera timer e socket para evitar handles pendurados no MATLAB.
         function delete(obj)
             % Para e deleta timer
             if ~isempty(obj.Timer) && isvalid(obj.Timer)
@@ -86,6 +92,7 @@ classdef tcpServerLib < handle
         %------------------------------------------------------------------
         % Exibe configurações gerais
         %------------------------------------------------------------------
+        % Exibe em console a arvore de configuracao carregada do JSON.
         function GeneralSettingsPrint(obj)
             disp("========================================")
             disp("     CONFIGURAÇÕES DO SERVIDOR TCP      ")
@@ -97,6 +104,7 @@ classdef tcpServerLib < handle
         %------------------------------------------------------------------
         % Retorna log completo
         %------------------------------------------------------------------
+        % Entrega o historico completo acumulado pelo ServerLogger.
         function logTable = getLog(obj)
             logTable = obj.Logger.getLogTable();
         end
@@ -104,6 +112,7 @@ classdef tcpServerLib < handle
         %------------------------------------------------------------------
         % Retorna número de transações logadas
         %------------------------------------------------------------------
+        % Retorna a quantidade de requisicoes registradas ate o momento.
         function count = getLogCount(obj)
             count = obj.Logger.getLogCount();
         end
@@ -118,6 +127,7 @@ classdef tcpServerLib < handle
         %------------------------------------------------------------------
         % Carrega e valida configurações do JSON
         %------------------------------------------------------------------
+        % Carrega configuracoes persistidas e propaga warnings de leitura.
         function GeneralSettingsRead(obj)
             appName    = class.Constants.appName;
             rootFolder = obj.RootFolder;
@@ -133,6 +143,7 @@ classdef tcpServerLib < handle
         %------------------------------------------------------------------
         % Cria e inicia timer para reconexão automática
         %------------------------------------------------------------------
+        % Cria o timer responsavel por conectar e reconectar o listener TCP.
         function TimerCreation(obj)
             obj.Timer = timer( ...
                 "ExecutionMode", "fixedSpacing", ...
@@ -148,6 +159,7 @@ classdef tcpServerLib < handle
         %------------------------------------------------------------------
         % Tenta conectar ou reconectar socket
         %------------------------------------------------------------------
+        % Garante que exista um listener ativo ou tenta recria-lo.
         function ConnectAttempt(obj, ~, ~)
             ip = obj.General.tcpServer.IP;
             port = obj.General.tcpServer.Port;
@@ -165,9 +177,9 @@ classdef tcpServerLib < handle
                         delete(obj.Server)
                         obj.Server = [];
                     end
-                    
-                    util.portRelease(port)
-                    
+
+                    % A instancia unica e controlada no main.m; nao derruba
+                    % outro processo para tomar a porta.
                     if ~isempty(ip)
                         obj.Server = tcpserver(ip, port);
                     else
@@ -186,6 +198,7 @@ classdef tcpServerLib < handle
         %------------------------------------------------------------------
         % Processa mensagens recebidas do cliente
         %------------------------------------------------------------------
+        % Consome todas as mensagens pendentes na fila do socket atual.
         function receivedMessage(obj)
             while obj.Server.NumBytesAvailable
                 rawMsg = readline(obj.Server);
@@ -205,6 +218,7 @@ classdef tcpServerLib < handle
         %------------------------------------------------------------------
         % Processa uma mensagem raw único
         %------------------------------------------------------------------
+        % Faz o pipeline completo: decode, validate, dispatch e log.
         function processRawMessage(obj, rawMsg)
             try
                 % Decodifica JSON
@@ -249,6 +263,7 @@ classdef tcpServerLib < handle
         %------------------------------------------------------------------
         % Manipula mensagem vazia
         %------------------------------------------------------------------
+        % Trata leituras vazias para manter o protocolo previsivel.
         function handleEmptyMessage(obj)
             try
                 obj.sendMessageToClient(struct('Request', '', 'Answer', 'Invalid request'))
@@ -267,6 +282,7 @@ classdef tcpServerLib < handle
         %------------------------------------------------------------------
         % Envia mensagem para cliente (encapsulation JSON)
         %------------------------------------------------------------------
+        % Encapsula a resposta em <JSON>...</JSON> antes de escrever.
         function sendMessageToClient(obj, structMsg)
             writeline(obj.Server, ['<JSON>' jsonencode(structMsg) '</JSON>'])
         end
@@ -274,6 +290,7 @@ classdef tcpServerLib < handle
         %------------------------------------------------------------------
         % Exibe estrutura formatada (configurações)
         %------------------------------------------------------------------
+        % Imprime structs aninhadas em formato amigavel para console.
         function printStruct(obj, s, indent)
             fields = fieldnames(s);
             for i = 1:numel(fields)
@@ -307,6 +324,7 @@ classdef tcpServerLib < handle
         %------------------------------------------------------------------
         % Retorna path do arquivo atual (usa para resolução de paths)
         %------------------------------------------------------------------
+        % Retorna o diretorio do arquivo para resolucao de paths relativos.
         function path = Path()
             path = fileparts(mfilename('fullpath'));
         end

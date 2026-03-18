@@ -1,4 +1,8 @@
 classdef DiagnosticHandler
+    % DiagnosticHandler - Consolida informacoes de diagnostico do ambiente.
+    %
+    % O handler e usado para suporte operacional e verificacoes de saude,
+    % reunindo metadados da aplicacao, variaveis de ambiente e dados do host.
     % DiagnosticHandler - Processa requisições de diagnóstico
     %
     % Retorna informações de sistema, ambiente e configuração
@@ -7,6 +11,7 @@ classdef DiagnosticHandler
         %------------------------------------------------------------------
         % Processa requisição Diagnostic
         %------------------------------------------------------------------
+        % Retorna um snapshot enxuto do ambiente de execucao.
         function answer = handle()
             answer = struct( ...
                 'App', struct( ...
@@ -32,6 +37,7 @@ classdef DiagnosticHandler
         %------------------------------------------------------------------
         % Coleta variáveis de ambiente relevantes
         %------------------------------------------------------------------
+        % Filtra apenas variaveis relevantes para suporte e inventario.
         function envTable = getEnvVariables()
             envFields = ["COMPUTERNAME", "MATLAB_ARCH", "MODEL", ...
                 "PROCESSOR_ARCHITECTURE", "PROCESSOR_IDENTIFIER", ...
@@ -55,6 +61,7 @@ classdef DiagnosticHandler
         %------------------------------------------------------------------
         % Coleta informações de sistema (via systeminfo)
         %------------------------------------------------------------------
+        % Faz o parse da saida do comando systeminfo em pares chave/valor.
         function systemInfo = getSystemInfo()
             systemInfo = struct('parameter', {}, 'value', {});
             
@@ -102,6 +109,7 @@ classdef DiagnosticHandler
         %------------------------------------------------------------------
         % Coleta informações de discos lógicos
         %------------------------------------------------------------------
+        % Extrai capacidade e espaco livre das unidades logicas visiveis.
         function logicalDisk = getLogicalDiskInfo()
             logicalDisk = struct.empty;
             

@@ -1,4 +1,8 @@
 classdef FileReadHandler
+    % FileReadHandler - Executa o fluxo de leitura e exportacao de espectro.
+    %
+    % A classe encapsula o mapeamento de caminho entre RF.Fusion e MATLAB,
+    % a leitura via appColeta e a montagem da resposta devolvida ao cliente.
     % FileReadHandler - Processa requisições de leitura de arquivo
     %
     % Responsável por:
@@ -10,6 +14,7 @@ classdef FileReadHandler
         %------------------------------------------------------------------
         % Processa requisição FileRead
         %------------------------------------------------------------------
+        % requestData define o arquivo e se a resposta exige exportacao.
         function answer = handle(requestData, generalSettings)
             arguments
                 requestData (1,1) struct
@@ -46,6 +51,7 @@ classdef FileReadHandler
         %------------------------------------------------------------------
         % Mapeia path do RF.Fusion para MATLAB
         %------------------------------------------------------------------
+        % Converte o path publicado ao cliente para o repositorio local.
         function norm_filepath = mapFilePath(filepath, generalSettings)
             repoPrefixMap = generalSettings.tcpServer.Repo_map;
             repoPath = generalSettings.tcpServer.Repo;
@@ -56,6 +62,7 @@ classdef FileReadHandler
         %------------------------------------------------------------------
         % Lê arquivo de espectro
         %------------------------------------------------------------------
+        % mode controla se a leitura retorna apenas metadados ou o conteudo.
         function specData = readFile(filepath, mode)
             arguments
                 filepath (1,:) char
@@ -82,6 +89,7 @@ classdef FileReadHandler
         %------------------------------------------------------------------
         % Exporta dados para arquivo .mat
         %------------------------------------------------------------------
+        % Persiste o objeto lido em um .mat ao lado do arquivo original.
         function full_mat_path = exportMatFile(specData, original_filepath)
             if ismissing(specData)
                 error('handlers:FileReadHandler:InvalidSpecData', ...
@@ -102,6 +110,7 @@ classdef FileReadHandler
         %------------------------------------------------------------------
         % Constrói resposta com metadados
         %------------------------------------------------------------------
+        % Monta uma resposta leve, removendo dados pesados dos espectros.
         function answer = buildMetadataResponse(specData, full_mat_path, generalSettings)
             if isempty(specData)
                 error('handlers:FileReadHandler:EmptySpecData', ...

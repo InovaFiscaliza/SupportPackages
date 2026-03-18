@@ -1,4 +1,8 @@
 classdef MessageValidator
+    % MessageValidator - Barra mensagens invalidas antes dos handlers.
+    %
+    % A ideia aqui e falhar cedo e com erro claro: primeiro validamos o
+    % envelope minimo, depois autenticacao/autorizacao e so entao o handler.
     % MessageValidator - Valida mensagens JSON recebidas do cliente
     %
     % Responsável por verificar:
@@ -8,7 +12,9 @@ classdef MessageValidator
     %   - Autorização (cliente na whitelist)
     
     properties (Constant)
+        % Campos minimos para autenticar, identificar o cliente e despachar.
         REQUIRED_FIELDS = {'Key', 'ClientName', 'Request'}
+        % Campo que define para onde o Request sera roteado.
         REQUEST_FIELD = 'type'
     end
     
@@ -16,6 +22,7 @@ classdef MessageValidator
         %------------------------------------------------------------------
         % Valida una mensagem completa
         %------------------------------------------------------------------
+        % A ordem e proposital para devolver erros mais especificos cedo.
         function validateMessage(decodedMsg, generalSettings)
             % Validate required fields
             server.MessageValidator.validateFields(decodedMsg);
@@ -36,6 +43,7 @@ classdef MessageValidator
         %------------------------------------------------------------------
         % Valida presença de campos obrigatórios
         %------------------------------------------------------------------
+        % Sem esses campos nao da nem para autenticar nem para despachar.
         function validateFields(decodedMsg)
             if ~all(ismember(server.MessageValidator.REQUIRED_FIELDS, fields(decodedMsg)))
                 error('server:MessageValidator:MissingRequiredFields', ...
@@ -46,6 +54,7 @@ classdef MessageValidator
         %------------------------------------------------------------------
         % Valida tipos de dados
         %------------------------------------------------------------------
+        % Protege as etapas seguintes contra mensagens estruturalmente ruins.
         function validateDataTypes(decodedMsg)
             mustBeTextScalar(decodedMsg.Key)
             mustBeTextScalar(decodedMsg.ClientName)
@@ -59,6 +68,7 @@ classdef MessageValidator
         %------------------------------------------------------------------
         % Valida estrutura da requisição
         %------------------------------------------------------------------
+        % Aqui validamos so o contrato minimo comum a qualquer Request.
         function validateRequestStructure(decodedMsg)
             % Este método pode ser expandido para validações específicas
             % de cada tipo de requisição
@@ -71,6 +81,7 @@ classdef MessageValidator
         %------------------------------------------------------------------
         % Valida autenticação (chave)
         %------------------------------------------------------------------
+        % A chave e a primeira barreira antes de qualquer processamento.
         function validateAuthentication(decodedMsg, generalSettings)
             correctKey = generalSettings.tcpServer.Key;
             if ~strcmp(decodedMsg.Key, correctKey)
@@ -82,6 +93,8 @@ classdef MessageValidator
         %------------------------------------------------------------------
         % Valida autorização (cliente na whitelist)
         %------------------------------------------------------------------
+        % Whitelist vazia significa "sem restricao"; caso contrario, o
+        % cliente precisa estar explicitamente liberado.
         function validateAuthorization(decodedMsg, generalSettings)
             clientList = generalSettings.tcpServer.ClientList;
             

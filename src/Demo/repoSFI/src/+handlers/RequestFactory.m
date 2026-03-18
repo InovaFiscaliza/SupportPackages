@@ -1,4 +1,8 @@
 classdef RequestFactory
+    % RequestFactory - Ponto unico de roteamento do protocolo.
+    %
+    % Quando um novo tipo de Request e exposto para o cliente, a entrada
+    % dele deve aparecer aqui. Isso evita regras de dispatch espalhadas.
     % RequestFactory - Factory pattern para distribuir requisições
     %
     % Mapeia tipos de requisição para seus respectivos handlers
@@ -7,6 +11,8 @@ classdef RequestFactory
         %------------------------------------------------------------------
         % Processa requisição baseada no tipo
         %------------------------------------------------------------------
+        % O switch abaixo e pequeno de proposito: ele mostra exatamente
+        % quais operacoes o servidor publica para fora.
         function answer = process(requestType, requestData, generalSettings)
             arguments
                 requestType (1,:) string

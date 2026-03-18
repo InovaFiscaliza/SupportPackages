@@ -1,9 +1,14 @@
 classdef ServerLogger < handle
+    % ServerLogger - Mantem uma trilha curta do que o servidor processou.
+    %
+    % O log fica em memoria para diagnostico rapido: quem chamou, o que
+    % mandou, quanto foi escrito na resposta e como a operacao terminou.
     % ServerLogger - Gerencia logging das operações do servidor
     %
     % Mantém histórico de requisições, respostas, erros e eventos
     
     properties (Access = private)
+        % Uma linha por transacao, sempre no mesmo schema para simplificar consulta.
         logTable
     end
     
@@ -11,6 +16,7 @@ classdef ServerLogger < handle
         %------------------------------------------------------------------
         % Construtor - inicializa tabela de log
         %------------------------------------------------------------------
+        % O schema fixo evita ifs especiais quando o log ainda esta vazio.
         function obj = ServerLogger()
             obj.logTable = table( ...
                 'Size', [0, 8], ...
@@ -22,6 +28,8 @@ classdef ServerLogger < handle
         %------------------------------------------------------------------
         % Registra uma transação no log
         %------------------------------------------------------------------
+        % Guarda a mensagem crua e uma versao resumida do Request para
+        % facilitar depuracao sem precisar reprocessar o JSON original.
         function logTransaction(obj, clientAddress, clientPort, rawMsg, decodedMsg, numBytesWritten, status)
             arguments
                 obj
@@ -65,6 +73,7 @@ classdef ServerLogger < handle
         %------------------------------------------------------------------
         % Retorna tabela completa de log
         %------------------------------------------------------------------
+        % Exposicao direta da tabela para diagnostico e inspecao offline.
         function table = getLogTable(obj)
             table = obj.logTable;
         end
@@ -72,6 +81,7 @@ classdef ServerLogger < handle
         %------------------------------------------------------------------
         % Retorna número de entradas no log
         %------------------------------------------------------------------
+        % Usado pelo loop principal para saber quando houve nova atividade.
         function count = getLogCount(obj)
             count = height(obj.logTable);
         end
@@ -79,6 +89,7 @@ classdef ServerLogger < handle
         %------------------------------------------------------------------
         % Limpa o log
         %------------------------------------------------------------------
+        % Limpa o conteudo sem recriar a tabela e sem perder as colunas.
         function clearLog(obj)
             obj.logTable = obj.logTable(false(height(obj.logTable), 1), :);
         end
@@ -86,6 +97,7 @@ classdef ServerLogger < handle
         %------------------------------------------------------------------
         % Retorna últimas N entradas
         %------------------------------------------------------------------
+        % Recorta so a cauda do log, mantendo a ordem cronologica original.
         function lastEntries = getLastEntries(obj, n)
             arguments
                 obj
