@@ -36,7 +36,7 @@ classdef ReceitaFederal < ws.WebServiceBase
         end
 
         %-----------------------------------------------------------------%
-        function [APIResponse, Status] = Get(obj, operationType, fileType, varargin)
+        function [APIResponse, status] = Get(obj, operationType, fileType, varargin)
             arguments
                 obj
                 operationType char {mustBeMember(operationType, {'OnlyCache', 'Cache+RealTime', 'RealTime'})}
@@ -67,20 +67,19 @@ classdef ReceitaFederal < ws.WebServiceBase
                 % Códigos de status (p/ controle no monitorSPED):
                 % -2 (Erro) | -1 (Diverge) | 0 (Pendente) | 1 (Coincide)
 
-                if ~isempty(APIResponse) && isstruct(APIResponse) && isfield(APIResponse, 'retVerif')
-                    if contains(APIResponse.retVerif, 'mesma', 'IgnoreCase', true)
-                        Status = 1;
-                    elseif contains(APIResponse.retVerif, 'não', 'IgnoreCase', true)
-                        Status = -1;
-                    else
-                        Status = -2;
+                if ~isempty(APIResponse) && isstruct(APIResponse) && isfield(APIResponse, 'situacao')
+                    switch APIResponse.situacao
+                        case {'A', 'R'}
+                            status = 1;
+                        otherwise % 'S'
+                            status = -1;
                     end
                 else
-                    Status = -2;
+                    status = -2;
                 end
 
             catch ME
-                Status = -2;
+                status = -2;
                 APIResponse = struct('identifier', ME.identifier, 'message', ME.message);
             end
         end
