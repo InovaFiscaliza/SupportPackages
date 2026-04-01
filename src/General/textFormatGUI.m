@@ -325,7 +325,12 @@ classdef (Abstract) textFormatGUI
         %-----------------------------------------------------------------%
         function out = bytes2human(bytes)
             arguments
-                bytes {mustBeInteger, mustBePositive}
+                bytes {mustBeInteger, mustBeNonnegative}
+            end
+
+            if bytes == 0
+                out = '0';
+                return
             end
             
             units = ["bytes","kB","MB","GB"];
@@ -337,52 +342,6 @@ classdef (Abstract) textFormatGUI
             value = bytes / (base^(idx-1));
             
             out = sprintf('%.2f %s', value, units(idx));
-        end
-
-        %-----------------------------------------------------------------%
-        function jsonPretty = jsonEncodePretty(obj)
-            jsonCompact = jsonencode(obj);
-        
-            try
-                nChars = numel(jsonCompact);
-                buffer = char(zeros(1, nChars*2)); % buffer inicial com folga
-                idx = 1;
-                
-                insideString = false;
-                
-                for ii = 1:nChars
-                    currentChar = jsonCompact(ii);
-                    
-                    if currentChar == '"' && (ii == 1 || jsonCompact(ii-1) ~= '\')
-                        insideString = ~insideString;
-                    end
-                    
-                    spaceBefore = '';
-                    spaceAfter  = '';
-                    
-                    if ~insideString
-                        switch currentChar
-                            case {'{', ':', ','}
-                                spaceAfter = ' ';
-                            case '}'
-                                spaceBefore = ' ';
-                        end
-                    end
-                    
-                    for ch = [spaceBefore currentChar spaceAfter]
-                        if idx > numel(buffer)
-                            buffer = [buffer, char(zeros(1, numel(buffer)))]; 
-                        end
-        
-                        buffer(idx) = ch;
-                        idx = idx + 1;
-                    end
-                end        
-                jsonPretty = strtrim(buffer(1:idx-1));
-                
-            catch
-                jsonPretty = jsonCompact;
-            end
         end
     end
 end

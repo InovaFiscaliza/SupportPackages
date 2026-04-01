@@ -219,16 +219,16 @@ classdef (Abstract) Occupancy
                 case {'Linear adaptativo', 'Envoltória do ruído'}
                     specData = varargin{1};
                     orientation = varargin{2};
-                    threshold = RF.Occupancy.computeThresholdPerSweep(method, parameters, specData, orientation);
+                    threshold = RF.Occupancy.computeThresholdPerSweep(method, specData, parameters, orientation);
             end
         end
 
         %-----------------------------------------------------------------%
-        function threshold = computeThresholdPerSweep(method, parameters, specData, orientation)
+        function threshold = computeThresholdPerSweep(method, specData, parameters, orientation)
             arguments
                 method      char {mustBeMember(method, {'Linear adaptativo', 'Envoltória do ruído'})}
-                parameters  struct
                 specData    model.SpecData
+                parameters  struct = struct('NoiseEstimator', 'median', 'Offset', 12, 'CeilingFactor', '10𝜎', 'NoiseDiscardFraction', 0.10, 'NoiseSampleFraction', 0.20)
                 orientation char {mustBeMember(orientation, {'bin', 'channel'})} = 'bin'
             end
 
@@ -267,9 +267,9 @@ classdef (Abstract) Occupancy
                             
                             ceilingFactor = str2double(extractBefore(parameters.CeilingFactor, '𝜎'));
                             inferiorLim = averageNoise - ceilingFactor*stdNoise;
-                            superioLim = averageNoise + ceilingFactor*stdNoise;
+                            superiorLim = averageNoise + ceilingFactor*stdNoise;
         
-                            threshold = ceil(bsxfun(@min, bsxfun(@max, specData.Data{3}(:,2), inferiorLim), superioLim) + parameters.Offset);
+                            threshold = ceil(bsxfun(@min, bsxfun(@max, specData.Data{3}(:,2), inferiorLim), superiorLim) + parameters.Offset);
                     end
 
                 case 'channel'
