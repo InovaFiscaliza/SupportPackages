@@ -35,6 +35,26 @@ classdef (Abstract) textFormatGUI
             end
         end
 
+        %-----------------------------------------------------------------%
+        function formattedString = cellstr2FriendlyListWithQuotes(unformattedString)
+            % cellstr >> char
+            % {'name1', 'name2', 'name3'} >> '"name1", "name2" e "name3"'
+            arguments
+                unformattedString cell
+            end
+
+            if ~iscellstr(unformattedString)
+                unformattedString = cellstr(unformattedString);
+            end
+
+            formattedString = strcat({'"'}, unformattedString, {'"'});
+
+            if isscalar(formattedString)
+                formattedString = formattedString{1};
+            else
+                formattedString = sprintf('%s e %s', strjoin(formattedString(1:end-1), ', '), formattedString{end});
+            end
+        end
 
         %-----------------------------------------------------------------%
         function formattedString = cellstr2Bullets(unformattedString)
