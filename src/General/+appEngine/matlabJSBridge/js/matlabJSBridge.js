@@ -1270,8 +1270,13 @@ function setup(htmlComponent) {
     --mw-fontSize-table-cell: 10px !important;
 }
 
-a, a:hover {
-    text-decoration: none;
+.mw-table-flex-container {
+    min-height: 27px !important;
+    text-align: left !important;
+}
+
+.mw-table-header-label-container {
+    overflow: visible !important;
 }
 
 .mw-table-row-header-cell {
@@ -1352,6 +1357,10 @@ a, a:hover {
 
 .mwListItem {
     padding: 5px !important;
+}
+
+a, a:hover {
+    text-decoration: none;
 }
 
 /*
