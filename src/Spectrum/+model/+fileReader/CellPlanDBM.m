@@ -2,7 +2,8 @@ function specData = CellPlanDBM(specData, fileName, ReadType)
 
     % Author.: Eric Magalhães Delgado
     % Date...: February 13, 2025
-    % Version: 1.11
+    % Modified: April 09, 2026 by Augusto Peterle
+    % Version: 1.13
 
     arguments
         specData
@@ -21,24 +22,11 @@ function specData = CellPlanDBM(specData, fileName, ReadType)
     % alguns dos seus metadados, além da matriz de níveis, inicialmente, 
     % gera-se um arquivo temporário (no formato .bin), o qual possui uma
     % estrutura conhecida.
-    rootFolder = pwd;
-    tempFile   = [tempname '.bin'];
-
-    cd(fullfile(fileparts(mfilename('fullpath')), 'CellPlanDBM'))
-    
-    system(sprintf('CellPlan_dBmReader.exe "%s" "%s"', fileName, tempFile));
-    pause(.100)
-    
-    cd(rootFolder)
-    
-    % Abrindo o arquivo temporário...
-    fileID2 = fopen(tempFile);
-    if fileID2 == -1
-        error('Tempfile not found.');
-    end
-
-    rawData = fread(fileID2, [1, inf], 'uint8=>uint8');
-    fclose(fileID2);
+    % O fluxo legado continua o mesmo: o executavel externo gera um .bin
+    % temporario e o MATLAB interpreta esse conteudo conhecido. A unica
+    % diferenca aqui e que a chamada externa passa a ser supervisionada
+    % para evitar travamentos indefinidos quando o .dbm vier malformado.
+    rawData = convertCellPlanDbmToRawData(fileName);
 
     switch ReadType
         case {'MetaData', 'SingleFile'}
@@ -53,8 +41,185 @@ function specData = CellPlanDBM(specData, fileName, ReadType)
             specData = Fcn_SpecDataReader(specData, rawData);
     end
     
+end
+
+
+%-------------------------------------------------------------------------%
+% Converte o .dbm em um .bin temporario via reader externo
+%-------------------------------------------------------------------------%
+% A essencia do reader continua a mesma: o executavel externo gera um
+% arquivo temporario conhecido e o MATLAB interpreta esse conteudo. A
+% protecao adicionada aqui existe apenas para evitar popup, hang e falhas
+% silenciosas na geracao do .bin.
+function rawData = convertCellPlanDbmToRawData(fileName)
+    exePath  = getCellPlanReaderExecutablePath();
+    tempFile = [tempname '.bin'];
+    process  = [];
+
+    cleanupTempFile = onCleanup(@() safeDeleteFile(tempFile));
+
     try
-        delete(tempFile)
+        [exeFolder, ~, ~] = fileparts(exePath);
+
+        % Em vez de system(...) + cd(...), usamos Process/.NET para manter
+        % o diretorio de trabalho local ao processo externo, aplicar
+        % timeout e encerrar explicitamente o reader quando necessario.
+        process = System.Diagnostics.Process();
+        processInfo = System.Diagnostics.ProcessStartInfo();
+        processInfo.FileName = exePath;
+        processInfo.WorkingDirectory = exeFolder;
+        processInfo.Arguments = sprintf('"%s" "%s"', fileName, tempFile);
+        processInfo.UseShellExecute = false;
+        processInfo.CreateNoWindow = true;
+        processInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
+        process.StartInfo = processInfo;
+
+        started = process.Start();
+        if ~started
+            error('model:CellPlanDBM:ProcessStartFailed', ...
+                'Falha ao iniciar CellPlan_dBmReader.exe.');
+        end
+
+        % O timeout evita que um popup/modal do reader externo ou um .dbm
+        % corrompido deixem o MATLAB preso indefinidamente.
+        timeoutMilliseconds = int32(round(getCellPlanTimeoutSeconds() * 1000));
+        hasExited = process.WaitForExit(timeoutMilliseconds);
+        if ~hasExited
+            try
+                process.Kill();
+            catch
+            end
+            try
+                process.WaitForExit();
+            catch
+            end
+
+            error('model:CellPlanDBM:ProcessTimeout', ...
+                ['Timeout ao processar arquivo CellPlan DBM. ', ...
+                 'O processo externo foi encerrado para evitar travamento.']);
+        end
+    catch ME
+        disposeProcess(process);
+        rethrow(ME)
+    end
+
+    disposeProcess(process);
+
+    % Alguns ambientes devolvem o controle do processo externo um pouco
+    % antes de o .bin ficar visivel no filesystem. Em vez de pausar sempre
+    % 100 ms, aguardamos apenas o necessario.
+    waitForTempFile(tempFile, 0.10)
+
+    % Se o .bin nao apareceu ao final da execucao, o caso mais comum e
+    % falha do reader externo em um .dbm malformado ou nao suportado.
+    fileID2 = fopen(tempFile);
+    if fileID2 == -1
+        error('model:CellPlanDBM:TempfileNotFound', ...
+            'Conversao do arquivo DBM nao gerou o arquivo temporario esperado.');
+    end
+
+    cleanupFileHandle = onCleanup(@() fclose(fileID2));
+    rawData = fread(fileID2, [1, inf], 'uint8=>uint8');
+    fclose(fileID2);
+    clear cleanupFileHandle
+    clear cleanupTempFile
+end
+
+
+%-------------------------------------------------------------------------%
+% Timeout opcional para o reader externo
+%-------------------------------------------------------------------------%
+% Mantemos um default seguro e permitimos override por variavel de
+% ambiente para nao exigir recompilacao em caso de ajuste fino.
+function timeoutSeconds = getCellPlanTimeoutSeconds()
+    timeoutSeconds = 30;
+
+    envCandidates = { ...
+        getenv('CELLPLAN_DBM_TIMEOUT_SECONDS'), ...
+        getenv('REPOSFI_CELLPLAN_TIMEOUT_SECONDS')};
+
+    for ii = 1:numel(envCandidates)
+        envValue = envCandidates{ii};
+        if isempty(envValue)
+            continue
+        end
+
+        parsedValue = str2double(envValue);
+        if ~isnan(parsedValue) && isfinite(parsedValue) && (parsedValue > 0)
+            timeoutSeconds = parsedValue;
+            return
+        end
+    end
+end
+
+
+%-------------------------------------------------------------------------%
+% Localiza o CellPlan_dBmReader.exe
+%-------------------------------------------------------------------------%
+% O comportamento preferido continua sendo o do reader original: buscar o
+% executavel ao lado da propria pasta CellPlanDBM empacotada com este
+% reader.
+function exePath = getCellPlanReaderExecutablePath()
+    baseFolder = fileparts(mfilename('fullpath'));
+    exePath = fullfile(baseFolder, 'CellPlanDBM', 'CellPlan_dBmReader.exe');
+
+    if isfile(exePath)
+        return
+    end
+
+    modelReaderPath = which('model.fileReader.CellPlanDBM');
+    if ~isempty(modelReaderPath)
+        fallbackPath = fullfile(fileparts(modelReaderPath), 'CellPlanDBM', 'CellPlan_dBmReader.exe');
+        if isfile(fallbackPath)
+            exePath = fallbackPath;
+            return
+        end
+    end
+
+    error('model:CellPlanDBM:ReaderExecutableNotFound', ...
+        'CellPlan_dBmReader.exe nao encontrado ao lado de model.fileReader.CellPlanDBM.');
+end
+
+
+%-------------------------------------------------------------------------%
+% Remove arquivo temporario sem mascarar o erro principal
+%-------------------------------------------------------------------------%
+function safeDeleteFile(filePath)
+    try
+        if isfile(filePath)
+            delete(filePath);
+        end
+    catch
+    end
+end
+
+
+%-------------------------------------------------------------------------%
+% Aguarda o .bin aparecer por um curto intervalo
+%-------------------------------------------------------------------------%
+function waitForTempFile(filePath, timeoutSeconds)
+    if isfile(filePath)
+        return
+    end
+
+    waitTimer = tic;
+    while toc(waitTimer) < timeoutSeconds
+        pause(0.01)
+        if isfile(filePath)
+            return
+        end
+    end
+end
+
+
+%-------------------------------------------------------------------------%
+% Libera o objeto .NET Process sem propagar falha de cleanup
+%-------------------------------------------------------------------------%
+function disposeProcess(process)
+    try
+        if ~isempty(process)
+            process.Dispose();
+        end
     catch
     end
 end

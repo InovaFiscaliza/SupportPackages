@@ -1,30 +1,29 @@
 classdef FileReadHandler
     % FileReadHandler - Executa o fluxo de leitura e exportacao de espectro.
     %
-    % O fluxo parece mais complexo porque precisou tratar um problema de
-    % producao: alguns arquivos .dbm invalidos faziam o processo externo
-    % da CellPlan travar com popup modal. Nesse caso, um try/catch simples
-    % ao redor da leitura do ZIP nao bastava, porque o controle nem
-    % chegava a voltar para o MATLAB.
+    % O fluxo foi simplificado para ficar o mais proximo possivel do
+    % comportamento natural de model.SpecDataBase.read.
     %
-    % A divisao atual separa duas preocupacoes:
-    %   - ZIP membro a membro, para falhas recuperaveis nao invalidarem
-    %     todos os arquivos do pacote.
-    %   - DBM protegido com timeout, para falhas travantes nao prenderem
-    %     o servico inteiro.
+    % Hoje, a protecao contra travamento do reader da CellPlan ja fica em
+    % model.fileReader.CellPlanDBM. Por isso o repoSFI nao precisa mais
+    % manter um reader paralelo para .dbm.
+    %
+    % O repoSFI agora fica responsavel apenas pela cola do servico:
+    % mapeamento de caminho, exportacao opcional, montagem da resposta e
+    % observabilidade do fluxo.
     %
     % A classe encapsula o mapeamento de caminho entre RF.Fusion e MATLAB,
     % a leitura via appColeta e a montagem da resposta devolvida ao cliente.
-    % FileReadHandler - Processa requisições de leitura de arquivo
+    % FileReadHandler - Processa requisicoes de leitura de arquivo
     %
-    % Responsável por:
-    %   - Mapear paths (RF.Fusion → MATLAB)
+    % Responsavel por:
+    %   - Mapear paths (RF.Fusion -> MATLAB)
     %   - Ler dados de espectro
     %   - Exportar em diferentes formatos (.mat, metadados)
     
     methods (Static)
         %------------------------------------------------------------------
-        % Processa requisição FileRead
+        % Processa requisicao FileRead
         %------------------------------------------------------------------
         % requestData define o arquivo e se a resposta exige exportacao.
         function answer = handle(requestData, generalSettings)
@@ -33,7 +32,7 @@ classdef FileReadHandler
                 generalSettings (1,1) struct
             end
             
-            % Valida presença de filepath
+            % Valida presenca de filepath
             if ~isfield(requestData, 'filepath') || isempty(requestData.filepath)
                 error('handlers:FileReadHandler:MissingFilePath', ...
                     'Request must contain a filepath.')
@@ -55,7 +54,7 @@ classdef FileReadHandler
                 'Iniciando processamento de FileRead.', ...
                 requestDetails);
             
-            % Lê dados
+            % Le dados
             try
                 if needsExport
                     specData = handlers.FileReadHandler.readFile(norm_filepath, 'SingleFile');
@@ -65,7 +64,7 @@ classdef FileReadHandler
                     full_mat_path = norm_filepath;
                 end
             
-            % Prepara metadata para devolução
+            % Prepara metadata para devolucao
                 answer = handlers.FileReadHandler.buildMetadataResponse( ...
                     specData, full_mat_path, generalSettings);
 
@@ -100,15 +99,15 @@ classdef FileReadHandler
         end
         
         %------------------------------------------------------------------
-        % Lê arquivo de espectro
+        % Le arquivo de espectro
         %------------------------------------------------------------------
         % mode controla se a leitura retorna apenas metadados ou o conteudo.
-        % O fluxo abaixo privilegia estabilidade do servico: o caminho de
-        % leitura passa por um roteador protegido para impedir que ZIPs ou
-        % DBMs problemáticos congelem o processo principal.
+        % O caminho de leitura delega diretamente para model.SpecDataBase.read.
+        % As protecoes de ZIP e do reader da CellPlan ficam concentradas no
+        % proprio ecossistema Spectrum.
         % Resumo do fluxo:
         %   - valida se o arquivo existe
-        %   - roteia por extensao (.zip, .dbm ou reader legado)
+        %   - delega a leitura para a Spectrum
         %   - copia apenas o necessario do objeto resultante
         function specData = readFile(filepath, mode)
             arguments
@@ -142,18 +141,19 @@ classdef FileReadHandler
                 [~, ~, fileExt] = fileparts(filepath);
                 readDetails.FileExtension = string(lower(fileExt));
 
-                % before_guarded_read:
-                % O arquivo existe e a proxima etapa e o roteador de leitura.
-                % Aqui o fluxo decide entre ZIP tolerante, DBM protegido ou
-                % reader legado para formatos que ja eram estaveis.
-                currentStage = "before_guarded_read";
+                % before_read:
+                % O arquivo existe e a proxima etapa e a leitura em si.
+                % A partir daqui a leitura segue para a Spectrum, que hoje
+                % concentra tanto a tolerancia de ZIP quanto a protecao do
+                % reader da CellPlan.
+                currentStage = "before_read";
                 readDetails.Stage = currentStage;
                 lastwarn('');
                 handlers.FileReadHandler.logReadStage( ...
                     'handlers.FileReadHandler.readFile', ...
-                    'Entrando no roteador protegido de leitura.', ...
+                    'Iniciando leitura do arquivo.', ...
                     readDetails, readTimer);
-                specData = handlers.FileReadHandler.readPathGuarded(filepath, mode);
+                specData = handlers.FileReadHandler.readPath(filepath, mode);
 
                 % before_strip_filemap:
                 % A leitura principal terminou. Agora removemos apenas o
@@ -199,185 +199,20 @@ classdef FileReadHandler
         end
 
         %------------------------------------------------------------------
-        % Leitura protegida por tipo de arquivo
+        % Leitura por caminho
         %------------------------------------------------------------------
-        % Mantem os formatos estaveis no fluxo antigo e isola apenas os
-        % casos onde houve historico de travamento do servico.
-        %
-        % Se o arquivo nao e .zip nem .dbm, o comportamento e quase o
-        % mesmo de antes: delega diretamente para model.SpecDataBase.read.
-        function specData = readPathGuarded(filepath, mode)
+        % O comportamento padrao do repoSFI agora volta a ser delegar a
+        % leitura diretamente para model.SpecDataBase.read. A tolerancia
+        % de ZIP e a protecao do reader da CellPlan passaram a viver no
+        % proprio ecossistema Spectrum.
+        function specData = readPath(filepath, mode)
             arguments
                 filepath (1,:) char
                 mode (1,:) char {mustBeMember(mode, {'MetaData', 'SpecData', 'SingleFile'})}
             end
 
-            [~, ~, fileExt] = fileparts(filepath);
-            switch lower(fileExt)
-                case '.zip'
-                    specData = handlers.FileReadHandler.readZipFileTolerant(filepath, mode);
-
-                case '.dbm'
-                    specData = model.SpecDataBase.empty;
-                    specData = handlers.internal.ProtectedCellPlanDBM(specData, filepath, mode);
-
-                otherwise
-                    specData = model.SpecDataBase.empty;
-                    specData = read(specData, filepath, mode);
-            end
-        end
-
-        %------------------------------------------------------------------
-        % Leitura tolerante de ZIP
-        %------------------------------------------------------------------
-        % Processa os membros do ZIP individualmente para que um unico DBM
-        % ruim nao invalide toda a requisicao.
-        %
-        % Isso responde a pergunta "nao bastava um try/catch no ZIP?".
-        % Parcialmente sim, mas so para falhas que realmente retornam
-        % excecao ao MATLAB. O problema observado em producao incluia .dbm
-        % que travavam o executavel externo da CellPlan, sem devolver o
-        % controle. Por isso:
-        %   - este loop trata erros recuperaveis por membro
-        %   - o wrapper ProtectedCellPlanDBM trata travamentos do processo
-        function specData = readZipFileTolerant(zipFilePath, mode)
-            arguments
-                zipFilePath (1,:) char
-                mode (1,:) char {mustBeMember(mode, {'MetaData', 'SpecData', 'SingleFile'})}
-            end
-
-            zipTimer = tic;
-            zipDetails = struct( ...
-                'ZipFilePath', string(zipFilePath), ...
-                'Mode', string(mode), ...
-                'TotalEntries', 0, ...
-                'ProcessedEntries', 0, ...
-                'SkippedEntries', 0);
-            handlers.FileReadHandler.logVerboseReadInfo( ...
-                'handlers.FileReadHandler.readZipFileTolerant', ...
-                'Iniciando leitura tolerante de arquivo ZIP.', ...
-                zipDetails);
-
-            [fileList, tempFolder] = model.fileReader.zipUtils.Zip.extractToWorkspace(zipFilePath);
-            cleanupFolder = onCleanup(@() model.fileReader.zipUtils.Zip.safeCleanup(tempFolder));
-
-            zipDetails.TotalEntries = numel(fileList);
-            handlers.FileReadHandler.logVerboseReadInfo( ...
-                'handlers.FileReadHandler.readZipFileTolerant', ...
-                'Conteudo do ZIP extraido para workspace temporario.', ...
-                zipDetails);
-
             specData = model.SpecDataBase.empty;
-            skippedFiles = strings(numel(fileList), 1);
-            skippedCount = 0;
-            firstFailureIdentifier = "";
-            firstFailureMessage = "";
-
-            for kk = 1:numel(fileList)
-                memberPath = fileList{kk};
-                memberDetails = struct( ...
-                    'ZipFilePath', string(zipFilePath), ...
-                    'EntryPath', string(memberPath), ...
-                    'EntryIndex', kk, ...
-                    'TotalEntries', numel(fileList), ...
-                    'Mode', string(mode));
-
-                handlers.FileReadHandler.logVerboseReadInfo( ...
-                    'handlers.FileReadHandler.readZipFileTolerant', ...
-                    'Iniciando processamento de membro extraido do ZIP.', ...
-                    memberDetails);
-
-                % O try/catch abaixo isola erros recuperaveis por membro.
-                % Ele sozinho nao resolveria o travamento historico do .dbm;
-                % por isso os membros .dbm passam antes pelo wrapper
-                % ProtectedCellPlanDBM via readPathGuarded.
-                try
-                    memberSpecData = handlers.FileReadHandler.readPathGuarded(memberPath, mode);
-                    if isempty(memberSpecData)
-                        zipDetails.SkippedEntries = zipDetails.SkippedEntries + 1;
-                        skippedCount = skippedCount + 1;
-                        skippedFiles(skippedCount) = string(memberPath);
-                        memberDetails.SkipReason = "empty_or_unsupported";
-                        handlers.FileReadHandler.logVerboseReadInfo( ...
-                            'handlers.FileReadHandler.readZipFileTolerant', ...
-                            'Membro do ZIP ignorado por nao produzir espectro.', ...
-                            memberDetails);
-                        continue
-                    end
-
-                    specData = handlers.FileReadHandler.appendSpecData(specData, memberSpecData);
-                    zipDetails.ProcessedEntries = zipDetails.ProcessedEntries + 1;
-                    memberDetails.SpectraCount = numel(memberSpecData);
-                    handlers.FileReadHandler.logVerboseReadInfo( ...
-                        'handlers.FileReadHandler.readZipFileTolerant', ...
-                        'Membro do ZIP processado com sucesso.', ...
-                        memberDetails);
-                catch ME
-                    zipDetails.SkippedEntries = zipDetails.SkippedEntries + 1;
-                    skippedCount = skippedCount + 1;
-                    skippedFiles(skippedCount) = string(memberPath);
-                    % Mantemos a primeira falha para devolver um erro final
-                    % mais acionavel quando o ZIP inteiro nao produzir saida.
-                    if strlength(firstFailureIdentifier) == 0
-                        firstFailureIdentifier = string(ME.identifier);
-                        firstFailureMessage = string(ME.message);
-                    end
-                    memberDetails.Identifier = string(ME.identifier);
-                    memberDetails.ErrorMessage = string(ME.message);
-                    server.RuntimeLog.logWarning( ...
-                        'handlers.FileReadHandler.readZipFileTolerant', ...
-                        'Falha ao processar membro do ZIP; arquivo sera ignorado.', ...
-                        memberDetails);
-                end
-            end
-
-            zipDetails.DurationSeconds = toc(zipTimer);
-            zipDetails.SpectraCount = numel(specData);
-            if skippedCount > 0
-                zipDetails.SkippedFiles = skippedFiles(1:skippedCount);
-            end
-
-            if isempty(specData)
-                server.RuntimeLog.logWarning( ...
-                    'handlers.FileReadHandler.readZipFileTolerant', ...
-                    'ZIP concluido sem nenhum arquivo legivel.', ...
-                    zipDetails);
-                if strlength(firstFailureIdentifier) > 0
-                    error('handlers:FileReadHandler:NoReadableFilesInZip', ...
-                        ['Nenhum arquivo suportado e legivel foi encontrado no ZIP: %s\n', ...
-                         'Primeira falha identificada: [%s] %s'], ...
-                        zipFilePath, firstFailureIdentifier, firstFailureMessage);
-                end
-                error('handlers:FileReadHandler:NoReadableFilesInZip', ...
-                    'Nenhum arquivo suportado e legivel foi encontrado no ZIP: %s', zipFilePath);
-            end
-
-            handlers.FileReadHandler.logVerboseReadInfo( ...
-                'handlers.FileReadHandler.readZipFileTolerant', ...
-                sprintf('Leitura tolerante do ZIP concluida em %.3f s.', zipDetails.DurationSeconds), ...
-                zipDetails);
-        end
-
-        %------------------------------------------------------------------
-        % Agrega lotes de specData mantendo semantica do reader original
-        %------------------------------------------------------------------
-        % Preserva o comportamento anterior de concatenar os objetos lidos
-        % sem alterar a estrutura esperada por quem consome FileRead.
-        function specData = appendSpecData(specData, newSpecData)
-            arguments
-                specData
-                newSpecData
-            end
-
-            if isempty(newSpecData)
-                return
-            end
-
-            if isempty(specData)
-                specData = newSpecData;
-            else
-                specData = [specData newSpecData];
-            end
+            specData = read(specData, filepath, mode);
         end
 
         %------------------------------------------------------------------
@@ -389,19 +224,6 @@ classdef FileReadHandler
         function specData = stripFileMap(specData)
             for ii = 1:numel(specData)
                 specData(ii).FileMap = [];
-            end
-        end
-
-        %------------------------------------------------------------------
-        % Log informativo apenas quando verbose estiver habilitado
-        %------------------------------------------------------------------
-        function logVerboseReadInfo(source, message, details)
-            if nargin < 3
-                details = [];
-            end
-
-            if handlers.FileReadHandler.shouldLogVerboseReadFlow()
-                server.RuntimeLog.logInfo(source, message, details);
             end
         end
 
@@ -529,7 +351,7 @@ classdef FileReadHandler
         end
         
         %------------------------------------------------------------------
-        % Constrói resposta com metadados
+        % Constroi resposta com metadados
         %------------------------------------------------------------------
         % Monta uma resposta leve, removendo dados pesados dos espectros.
         function answer = buildMetadataResponse(specData, full_mat_path, generalSettings)
@@ -566,3 +388,4 @@ classdef FileReadHandler
         end
     end
 end
+

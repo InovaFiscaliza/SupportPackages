@@ -112,8 +112,6 @@ src/
 |   |-- RequestFactory.m
 |   |-- DiagnosticHandler.m
 |   |-- FileReadHandler.m
-|   `-- +internal/
-|       `-- ProtectedCellPlanDBM.m
 |-- test/
 |   `-- test_tcpServerLib.m
 `-- wsSpectrumReader/
@@ -206,8 +204,8 @@ Comportamento operacional atual do `FileRead`:
 
 - Arquivos `.zip` sao lidos de forma tolerante, membro a membro.
 - Um membro invalido nao derruba a requisicao inteira se ainda houver outros arquivos legiveis no ZIP.
-- Arquivos `.dbm` passam por um wrapper protegido para evitar que o `CellPlan_dBmReader.exe` deixe o servico preso em popup modal ou sem resposta.
-- O parser interno continua equivalente ao fluxo legado; a mudanca principal esta na supervisao do processo externo e no tratamento gracioso de falhas.
+- Arquivos `.dbm` usam diretamente `model.fileReader.CellPlanDBM`, que agora concentra a protecao contra timeout, popup modal e falhas do `CellPlan_dBmReader.exe`.
+- A tolerancia de ZIP agora fica em `model.SpecDataBase.read`, nao mais no `FileReadHandler` do `repoSFI`.
 - Cada instancia do `repoSFI` processa uma requisicao por vez. Se um `FileRead` estiver lendo um ZIP grande, a conexao atual permanece aberta ate o fim do processamento.
 - ZIPs com muitos arquivos pequenos, especialmente `.dbm` da Celplan, podem aumentar bastante o tempo total por requisicao porque a leitura e feita membro a membro.
 - Timeout do cliente Python durante um ZIP grande nao significa, por si so, que a porta caiu. Em geral isso indica que o cliente desistiu antes da resposta final.
@@ -292,7 +290,8 @@ Comportamento operacional atual do `FileRead`:
 
 | Variavel | Significado | Padrao |
 |----------|-------------|--------|
-| `REPOSFI_CELLPLAN_TIMEOUT_SECONDS` | Timeout, em segundos, para o `CellPlan_dBmReader.exe` | `30` |
+| `CELLPLAN_DBM_TIMEOUT_SECONDS` | Timeout, em segundos, para o reader protegido da CellPlan | `30` |
+| `REPOSFI_CELLPLAN_TIMEOUT_SECONDS` | Alias legado aceito pelo `CellPlanDBM` por compatibilidade | `30` |
 | `REPOSFI_VERBOSE_READ_LOGS` | Habilita logs detalhados do pipeline de leitura (`1`, `true`, `on`, `yes`) | desabilitado |
 
 ### Intervalos internos de runtime
@@ -508,7 +507,8 @@ Para diagnosticar, compare:
 
 - o timeout configurado no cliente Python
 - o `CurrentRequestAgeSeconds` no heartbeat
-- os logs de `handlers.FileReadHandler.handle` e `handlers.FileReadHandler.readZipFileTolerant`
+- os logs de `handlers.FileReadHandler.handle`
+- warnings emitidos por `model.SpecDataBase.read` quando houver leitura parcial de ZIP
 
 ---
 
@@ -522,7 +522,8 @@ Para diagnosticar, compare:
 - [+handlers/RequestFactory.m](./src/+handlers/RequestFactory.m) - Factory pattern
 - [+handlers/DiagnosticHandler.m](./src/+handlers/DiagnosticHandler.m) - Handler Diagnostic
 - [+handlers/FileReadHandler.m](./src/+handlers/FileReadHandler.m) - Handler FileRead
-- [+handlers/+internal/ProtectedCellPlanDBM.m](./src/+handlers/+internal/ProtectedCellPlanDBM.m) - Wrapper protegido para `.dbm` da Celplan
+- [../Spectrum/+model/SpecDataBase.m](../Spectrum/+model/SpecDataBase.m) - Leitura principal de arquivos, incluindo ZIP tolerante
+- [../Spectrum/+model/+fileReader/CellPlanDBM.m](../Spectrum/+model/+fileReader/CellPlanDBM.m) - Reader `.dbm` com timeout e protecao do processo externo
 - [tcpServerLib.m](./src/tcpServerLib.m) - Listener TCP, watchdog e auto-recuperacao
 - [main.m](./src/main.m) - Entry-point, lock global, heartbeat e loop principal
 

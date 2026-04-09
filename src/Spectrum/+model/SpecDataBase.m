@@ -27,6 +27,10 @@ classdef SpecDataBase < handle
             % 4) Nenhum estado interno é reutilizado indevidamente.
             % 5) Cleanup é explícito e determinístico.
 
+            % 6) Quando um membro do ZIP falha, a leitura segue com os
+            %    demais membros e devolve warning de leitura parcial
+            %    quando ainda houver conteudo aproveitavel.
+
             arguments
                 obj
                 fileFullName char {mustBeFile}
@@ -43,38 +47,11 @@ classdef SpecDataBase < handle
                 % =========================================================
                 case '.zip'
 
-                    % Extrai conteúdo para pasta temporária
-                    [fileList, tempFolder] = ...
-                        model.fileReader.zipUtils.Zip.extractToWorkspace(fileFullName);
+                    % O tratamento de ZIP tolerante fica centralizado aqui,
+                    % para que qualquer consumidor de SpecDataBase.read se
+                    % beneficie do mesmo comportamento.
+                    [obj, projectData] = model.SpecDataBase.readZipTolerant(obj, fileFullName, readType);
 
-                    try
-                        % Processa cada arquivo extraído individualmente
-                        for k = 1:numel(fileList)
-
-                            fname = fileList{k};
-
-                            % Cria objeto limpo para cada arquivo
-                            tmpObj = model.SpecDataBase.empty;
-
-                            % Processa o arquivo (recursivo se for ZIP interno)
-                            [tmpObj, ~] = read(tmpObj,fname, readType);
-
-                            % Agrega ao objeto final
-                            if isempty(obj)
-                                obj = tmpObj;
-                            else
-                                obj = [obj tmpObj];
-                            end
-                        end
-
-                    catch ME
-                        % Garante limpeza da pasta temporária em caso de erro
-                        model.fileReader.zipUtils.Zip.safeCleanup(tempFolder);
-                        rethrow(ME);
-                    end
-
-                    % Remove pasta temporária após processamento completo
-                    model.fileReader.zipUtils.Zip.safeCleanup(tempFolder);
                     return
 
 
@@ -189,6 +166,67 @@ classdef SpecDataBase < handle
 
 
     methods (Static = true)
+        %-----------------------------------------------------------------%
+        function [obj, projectData] = readZipTolerant(obj, fileFullName, readType)
+            % Le membros de um ZIP individualmente para que uma falha local
+            % nao invalide o pacote inteiro quando ainda houver conteudo
+            % legivel a aproveitar.
+
+            projectData = [];
+            [fileList, tempFolder] = model.fileReader.zipUtils.Zip.extractToWorkspace(fileFullName);
+            cleanupFolder = onCleanup(@() model.fileReader.zipUtils.Zip.safeCleanup(tempFolder));
+
+            failedCount = 0;
+            firstFailureIdentifier = "";
+            firstFailureMessage = "";
+
+            for k = 1:numel(fileList)
+                fname = fileList{k};
+                tmpObj = model.SpecDataBase.empty;
+
+                try
+                    % A recursao continua sendo o mecanismo principal de
+                    % leitura. A tolerancia aqui so impede que uma falha de
+                    % membro interrompa todo o ZIP.
+                    [tmpObj, ~] = read(tmpObj, fname, readType);
+
+                    % Arquivos nao suportados ou membros que nao produziram
+                    % espectro continuam sendo simplesmente ignorados.
+                    if isempty(tmpObj)
+                        continue
+                    end
+
+                    if isempty(obj)
+                        obj = tmpObj;
+                    else
+                        obj = [obj tmpObj];
+                    end
+                catch ME
+                    failedCount = failedCount + 1;
+                    if strlength(firstFailureIdentifier) == 0
+                        firstFailureIdentifier = string(ME.identifier);
+                        firstFailureMessage = string(ME.message);
+                    end
+                end
+            end
+
+            clear cleanupFolder
+
+            if failedCount > 0
+                if isempty(obj)
+                    error('SpecDataBase:NoReadableFilesInZip', ...
+                        ['Nenhum arquivo legivel foi encontrado no ZIP: %s\n', ...
+                         'Primeira falha identificada: [%s] %s'], ...
+                        fileFullName, firstFailureIdentifier, firstFailureMessage);
+                end
+
+                warning('SpecDataBase:ZipPartialRead', ...
+                    ['Leitura parcial do ZIP: %d membro(s) falharam em %s. ', ...
+                     'Primeira falha: [%s] %s'], ...
+                    failedCount, fileFullName, firstFailureIdentifier, firstFailureMessage);
+            end
+        end
+
         %-----------------------------------------------------------------%
         function fileFormatName = checkBinaryFormat(fileFullName)
             % O formato .BIN é muito comum, sendo gerado pelo Logger, appColeta
