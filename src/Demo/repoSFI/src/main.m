@@ -18,12 +18,22 @@ function main(varargin)
     if ~isempty(varargin) && ischar(varargin{1}) && strcmp(varargin{1}, 'force-restart')
         forceRestart = true;
     end
+
+    % Cria um log persistente fora do diretorio atual para suportar
+    % execucao em Task Scheduler e sessoes sem desktop interativo.
+    runtimeLog = startRuntimeLogging();
     
     try
         % ===================================================================
         % INICIALIZACAO
         % ===================================================================
         printBanner()
+        fprintf('[INFO] Diretorio de trabalho atual: %s\n', pwd);
+        if runtimeLog.isEnabled
+            fprintf('[INFO] %s\n', runtimeLog.message);
+        elseif ~isempty(runtimeLog.message)
+            fprintf('[AVISO] %s\n', runtimeLog.message);
+        end
         
         % ===================================================================
         % VERIFICACAO DE INSTANCIA JA ABERTA (mutex global + lock file)
@@ -69,6 +79,9 @@ function main(varargin)
         
         lastLogCount = 0;
         lastCleanupCheck = datetime('now');
+        lastLogMaintenanceCheck = datetime('now');
+        lastHeartbeatCheck = datetime('now');
+        lastWatchdogCheck = datetime('now');
         
         while true
             pause(1);
@@ -92,24 +105,75 @@ function main(varargin)
                 cleanupServerRuntimeLock();
                 lastCleanupCheck = currentTime;
             end
+
+            % Watchdog leve de infraestrutura: tenta recuperar listener e
+            % timer quando o processo ainda esta vivo, mas a porta deixou
+            % de aceitar conexoes. O objetivo e reduzir a janela de
+            % indisponibilidade sem depender apenas do timer de 300 s.
+            if seconds(currentTime - lastWatchdogCheck) >= runtimeLog.watchdogIntervalSeconds
+                try
+                    server.runHealthWatchdog();
+                catch watchdogError
+                    appendRuntimeLog(runtimeLog, sprintf('[%s] Falha no watchdog do servidor: [%s] %s\n', ...
+                        char(datetime('now', 'Format', 'dd/MM/yyyy HH:mm:ss')), ...
+                        watchdogError.identifier, ...
+                        watchdogError.message));
+                end
+
+                lastWatchdogCheck = currentTime;
+            end
+
+            % Heartbeat leve para diagnostico de travamentos: se o processo
+            % morrer sem excecao capturada, o ultimo heartbeat ajuda a
+            % delimitar a janela da falha.
+            if seconds(currentTime - lastHeartbeatCheck) >= runtimeLog.heartbeatIntervalSeconds
+                try
+                    appendRuntimeLog(runtimeLog, sprintf('[%s] Heartbeat | %s\n', ...
+                        char(datetime('now', 'Format', 'dd/MM/yyyy HH:mm:ss')), ...
+                        jsonencode(server.getRuntimeHealth())));
+                catch heartbeatError
+                    appendRuntimeLog(runtimeLog, sprintf('[%s] Falha ao registrar heartbeat: [%s] %s\n', ...
+                        char(datetime('now', 'Format', 'dd/MM/yyyy HH:mm:ss')), ...
+                        heartbeatError.identifier, ...
+                        heartbeatError.message));
+                end
+
+                lastHeartbeatCheck = currentTime;
+            end
+
+            % Mantem o arquivo de log sob um teto de tamanho para evitar
+            % crescimento indefinido em execucoes longas no agendador.
+            if seconds(currentTime - lastLogMaintenanceCheck) >= runtimeLog.maintenanceIntervalSeconds
+                maintainRuntimeLog(runtimeLog);
+                lastLogMaintenanceCheck = currentTime;
+            end
         end
         
     catch ME
         % ===================================================================
         % TRATAMENTO DE ERROS E INTERRUPCAO
         % ===================================================================
-        % Ctrl+C lanÃ§a exceÃ§Ã£o com ID 'MATLAB:interrupted'
+        % Ctrl+C lanca excecao com ID 'MATLAB:interrupted'
         % No MATLAB interativo, Ctrl+C chega aqui como excecao.
         if strcmp(ME.identifier, 'MATLAB:interrupted')
             fprintf('\n%s\n', repmat('=', 1, 70));
             fprintf('[INFO] Servidor interrompido pelo usuario\n');
             fprintf('%s\n\n', repmat('=', 1, 70));
+            appendRuntimeLog(runtimeLog, sprintf('[%s] Servidor interrompido pelo usuario.\n', ...
+                char(datetime('now', 'Format', 'dd/MM/yyyy HH:mm:ss'))));
         else
+            errorReport = getReport(ME, 'extended', 'hyperlinks', 'off');
             fprintf('\n%s\n', repmat('=', 1, 70));
             fprintf('[ERRO] Excecao capturada durante execucao\n');
             fprintf('%s\n', repmat('=', 1, 70));
-            fprintf(2, '%s\n', getReport(ME, 'extended', 'hyperlinks', 'off'));
+            fprintf(2, '%s\n', errorReport);
             fprintf('%s\n\n', repmat('=', 1, 70));
+            appendRuntimeLog(runtimeLog, sprintf('%s\n[%s] Excecao capturada durante execucao\n%s\n%s\n%s\n', ...
+                repmat('=', 1, 70), ...
+                char(datetime('now', 'Format', 'dd/MM/yyyy HH:mm:ss')), ...
+                repmat('=', 1, 70), ...
+                errorReport, ...
+                repmat('=', 1, 70)));
         end
         
     finally
@@ -123,6 +187,7 @@ function main(varargin)
             end
         end
         releaseServerLock(serverLock);
+        stopRuntimeLogging(runtimeLog);
     end
     
 end
@@ -134,16 +199,33 @@ function [canStart, lockState, message] = acquireServerRuntimeLock(forceRestart)
     % O mutex e o bloqueio real entre sessoes/usuarios desta maquina.
     % O lock file existe so para dizer quem era o dono da instancia e para
     % permitir um force-restart sem confiar apenas em PID solto.
+    %
+    % Resumo do fluxo:
+    %   1. Monta a estrutura local do lock (mutex + lock file).
+    %   2. Tenta criar/abrir o mutex global do sistema operacional.
+    %   3. Tenta assumir a posse imediatamente.
+    %   4. Se ja houver dono:
+    %        - sem forceRestart: aborta startup com mensagem amigavel
+    %        - com forceRestart: tenta encerrar a instancia anterior
+    %   5. Se assumiu a posse, escreve o lock file com metadados do dono.
+    %
+    % A saida canStart=true so acontece quando esta copia realmente ficou
+    % dona do mutex e conseguiu registrar isso no lock file auxiliar.
     arguments
         forceRestart (1,1) logical = false
     end
 
+    % Estado default: otimista. Vamos derrubar canStart para false assim
+    % que qualquer etapa obrigatoria de sincronizacao falhar.
     canStart = true;
     message = '';
     lockState = createEmptyLockState();
     lockState.lockFile = getServerRuntimeLockFilePath();
     lockState.mutexName = getServerRuntimeMutexName();
 
+    % O mutex nomeado e a trava principal entre usuarios/sessoes.
+    % Se essa criacao falhar, nao faz sentido continuar, porque a
+    % aplicacao perderia sua garantia de instancia unica.
     [lockState.mutex, errorMessage] = createServerRuntimeMutex(lockState.mutexName);
     if isempty(lockState.mutex)
         canStart = false;
@@ -151,6 +233,8 @@ function [canStart, lockState, message] = acquireServerRuntimeLock(forceRestart)
         return;
     end
 
+    % Tentativa imediata (timeout zero): no startup normal queremos saber
+    % agora se esta copia conseguiu ou nao assumir a instancia.
     [ownsMutex, mutexWasAbandoned, errorMessage] = tryAcquireServerRuntimeMutex(lockState.mutex, 0);
     if ~isempty(errorMessage)
         canStart = false;
@@ -158,10 +242,18 @@ function [canStart, lockState, message] = acquireServerRuntimeLock(forceRestart)
         return;
     end
 
+    % O lock file e apenas um rastro operacional. Ele ajuda a explicar
+    % quem parecia ser o dono anterior e tambem orienta o force-restart.
     existingLockData = readServerRuntimeLockFile(lockState.lockFile);
 
+    % Se nao pegamos o mutex, outra instancia ainda e a dona real do
+    % servico. A partir daqui decidimos se abortamos ou se tentamos
+    % substituir essa instancia antiga de forma controlada.
     if ~ownsMutex
         if forceRestart
+            % Force-restart e um caminho excepcional: tentamos encerrar a
+            % instancia antiga apenas quando conseguimos identificar seu
+            % processo com seguranca usando PID, nome e StartTime.
             [stopped, stopMessage] = stopExistingServerRuntime(lockState, existingLockData);
             if ~stopped
                 canStart = false;
@@ -169,7 +261,12 @@ function [canStart, lockState, message] = acquireServerRuntimeLock(forceRestart)
                 return;
             end
 
+            % Depois de mandar a instancia anterior embora, esperamos um
+            % pequeno intervalo para porta, handles e mutex estabilizarem.
             pause(2);
+
+            % Aqui ja nao basta timeout zero: damos alguns segundos para o
+            % processo antigo concluir o release do mutex global.
             [ownsMutex, ~, errorMessage] = tryAcquireServerRuntimeMutex(lockState.mutex, 5000);
             if ~ownsMutex
                 canStart = false;
@@ -187,23 +284,36 @@ function [canStart, lockState, message] = acquireServerRuntimeLock(forceRestart)
 
             message = stopMessage;
         else
+            % Startup normal: se ja existe outro dono do mutex, a resposta
+            % correta e sair sem competir pela porta nem pelos arquivos.
             canStart = false;
             message = buildServerRuntimeAlreadyRunningMessage(existingLockData);
             return;
         end
     elseif mutexWasAbandoned
+        % Esse caso ocorre quando a copia anterior morreu sem cleanup
+        % formal. O Windows nos entrega a posse do mutex abandonado e
+        % podemos seguir, apenas registrando que houve recuperacao.
         message = 'Instancia anterior finalizou de forma inesperada. O bloqueio foi recuperado com sucesso.';
     end
 
+    % A partir daqui esta copia realmente possui o mutex global.
     lockState.ownsMutex = true;
 
+    % Se havia um lock file velho apontando para processo morto, limpamos
+    % esse rastro antes de escrever os metadados da instancia atual.
     if ~isempty(existingLockData) && ~isServerRuntimeLockOwnerActive(existingLockData)
         safeDeleteServerRuntimeFile(lockState.lockFile);
     end
 
+    % O lock file nao participa da exclusao mutua. Ele existe para
+    % observabilidade, suporte operacional e force-restart seguro.
     lockData = buildCurrentServerRuntimeLockData(lockState.mutexName);
     [writeOk, errorMessage] = writeServerRuntimeLockFile(lockState.lockFile, lockData);
     if ~writeOk
+        % Se nao conseguimos persistir o rastro da instancia atual,
+        % voltamos atras: liberamos o mutex para nao ficar com uma
+        % instancia "sem identidade" rodando parcialmente.
         releaseServerLock(lockState);
         lockState = createEmptyLockState();
         canStart = false;
@@ -264,12 +374,258 @@ end
 function lockFile = getServerRuntimeLockFilePath()
     % ProgramData e compartilhado por sessoes/usuarios, entao o lock file
     % fica visivel para qualquer copia do executavel na mesma maquina.
-    programDataFolder = fullfile(getenv('PROGRAMDATA'), 'ANATEL', 'repoSFI');
-    if ~isfolder(programDataFolder)
-        mkdir(programDataFolder);
+    programDataFolder = getServerRuntimeSharedDataFolder();
+    lockFile = fullfile(programDataFolder, '.server.lock');
+end
+
+%-------------------------------------------------------------------------
+% Pasta compartilhada da aplicacao em ProgramData
+%-------------------------------------------------------------------------
+function sharedFolder = getServerRuntimeSharedDataFolder()
+    % Mantem artefatos operacionais em um local estavel, independente do
+    % diretorio atual e da sessao do Windows que iniciou o processo.
+    sharedFolder = fullfile(getenv('PROGRAMDATA'), 'ANATEL', class.Constants.appName);
+    if ~isfolder(sharedFolder)
+        mkdir(sharedFolder);
+    end
+end
+
+%-------------------------------------------------------------------------
+% Inicializa log persistente da aplicacao
+%-------------------------------------------------------------------------
+function runtimeLog = startRuntimeLogging()
+    % O log proprio evita depender do -logfile relativo do MATLAB Compiler,
+    % que pode apontar para outro working directory no Task Scheduler.
+    runtimeLog = struct( ...
+        'filePath', '', ...
+        'isEnabled', false, ...
+        'message', '', ...
+        'maxBytes', 100 * 1024 * 1024, ...
+        'maintenanceIntervalSeconds', 30, ...
+        'heartbeatIntervalSeconds', 60, ...
+        'watchdogIntervalSeconds', 15);
+
+    logFolder = getServerRuntimeLogFolder();
+    if isempty(logFolder)
+        runtimeLog.message = 'Nao foi possivel resolver a pasta de log persistente.';
+        return;
     end
 
-    lockFile = fullfile(programDataFolder, '.server.lock');
+    logFile = server.RuntimeLog.getFilePath();
+    if isempty(logFile)
+        logFile = getServerRuntimePrimaryLogFilePath();
+    end
+    [canWrite, errorMessage] = touchRuntimeLogFile(logFile);
+    if ~canWrite
+        runtimeLog.message = sprintf('Falha ao preparar o log persistente em "%s": %s', logFile, errorMessage);
+        return;
+    end
+
+    runtimeLog.filePath = logFile;
+    runtimeLog.isEnabled = true;
+    maintainRuntimeLog(runtimeLog);
+    runtimeLog.message = sprintf('Log persistente configurado em "%s" com limite de %.0f MB.', ...
+        logFile, runtimeLog.maxBytes / (1024 * 1024));
+
+    appendRuntimeLog(runtimeLog, sprintf('\n%s\n', repmat('=', 1, 70)));
+    appendRuntimeLog(runtimeLog, sprintf('[%s] Processo iniciado | PID: %d | Usuario: %s | Computador: %s | Deployed: %d\n', ...
+        char(datetime('now', 'Format', 'dd/MM/yyyy HH:mm:ss')), ...
+        getCurrentProcessId(), ...
+        safeGetEnv('USERNAME'), ...
+        safeGetEnv('COMPUTERNAME'), ...
+        isdeployed));
+    appendRuntimeLog(runtimeLog, sprintf('[INFO] Diretorio de trabalho inicial: %s\n', pwd));
+    appendRuntimeLog(runtimeLog, sprintf('%s\n', repmat('=', 1, 70)));
+end
+
+%-------------------------------------------------------------------------
+% Encerra log persistente da aplicacao
+%-------------------------------------------------------------------------
+function stopRuntimeLogging(runtimeLog)
+    % Registra o fechamento sem deixar o log interferir no shutdown.
+    if ~isstruct(runtimeLog)
+        return;
+    end
+
+    if isfield(runtimeLog, 'isEnabled') && runtimeLog.isEnabled
+        appendRuntimeLog(runtimeLog, sprintf('[%s] Processo finalizado.\n', ...
+            char(datetime('now', 'Format', 'dd/MM/yyyy HH:mm:ss'))));
+    end
+end
+
+%-------------------------------------------------------------------------
+% Caminho principal do log persistente
+%-------------------------------------------------------------------------
+function logFile = getServerRuntimePrimaryLogFilePath()
+    % Mantem um unico arquivo de log para permitir reset ao atingir o teto.
+    logFile = fullfile(getServerRuntimeLogFolder(), 'repoSFI-runtime.log');
+end
+
+%-------------------------------------------------------------------------
+% Pasta do log persistente
+%-------------------------------------------------------------------------
+function logFolder = getServerRuntimeLogFolder()
+    % Guarda logs em ProgramData para manter o path estavel no agendador.
+    logFolder = '';
+
+    try
+        logFolder = fullfile(getServerRuntimeSharedDataFolder(), 'logs');
+        if ~isfolder(logFolder)
+            mkdir(logFolder);
+        end
+    catch
+        logFolder = '';
+    end
+end
+
+%-------------------------------------------------------------------------
+% Reinicia o log quando excede o teto configurado
+%-------------------------------------------------------------------------
+function maintainRuntimeLog(runtimeLog)
+    % Faz manutencao best-effort: se o arquivo crescer demais, zera e
+    % continua escrevendo no mesmo caminho para simplificar o Scheduler.
+    if ~isstruct(runtimeLog) || ~isfield(runtimeLog, 'isEnabled') || ~runtimeLog.isEnabled
+        return;
+    end
+
+    currentSize = getRuntimeLogFileSize(runtimeLog.filePath);
+    if currentSize < 0 || currentSize <= runtimeLog.maxBytes
+        return;
+    end
+
+    resetReason = sprintf(['[%s] Log reiniciado automaticamente apos exceder o limite de %.0f MB ', ...
+        '(tamanho anterior: %.2f MB).\n'], ...
+        char(datetime('now', 'Format', 'dd/MM/yyyy HH:mm:ss')), ...
+        runtimeLog.maxBytes / (1024 * 1024), ...
+        currentSize / (1024 * 1024));
+
+    [resetOk, errorMessage] = overwriteRuntimeLogFile(runtimeLog.filePath, resetReason);
+
+    if resetOk
+        fprintf('[INFO] Log persistente reiniciado ao exceder %.0f MB.\n', ...
+            runtimeLog.maxBytes / (1024 * 1024));
+    else
+        fprintf('[AVISO] Falha ao reiniciar log persistente: %s\n', errorMessage);
+    end
+end
+
+%-------------------------------------------------------------------------
+% Garante que o arquivo de log existe e aceita append
+%-------------------------------------------------------------------------
+function [canWrite, errorMessage] = touchRuntimeLogFile(logFile)
+    % Abertura em append valida permissao antes da aplicacao depender dele.
+    canWrite = false;
+    errorMessage = '';
+    fid = -1;
+
+    try
+        fid = fopen(logFile, 'a');
+        if fid == -1
+            error('repoSFI:RuntimeLogOpenFailed', 'Nao foi possivel abrir o arquivo de log para append.');
+        end
+
+        fclose(fid);
+        fid = -1;
+        canWrite = true;
+    catch ME
+        errorMessage = ME.message;
+        if fid ~= -1
+            fclose(fid);
+        end
+    end
+end
+
+%-------------------------------------------------------------------------
+% Sobrescreve o arquivo inteiro com um novo cabecalho
+%-------------------------------------------------------------------------
+function [writeOk, errorMessage] = overwriteRuntimeLogFile(logFile, text)
+    % Reabre em modo write para truncar o arquivo quando ele excede o teto.
+    writeOk = false;
+    errorMessage = '';
+    fid = -1;
+
+    try
+        fid = fopen(logFile, 'w');
+        if fid == -1
+            error('repoSFI:RuntimeLogRewriteFailed', 'Nao foi possivel sobrescrever o arquivo de log.');
+        end
+
+        fprintf(fid, '%s', char(text));
+        fclose(fid);
+        fid = -1;
+        writeOk = true;
+    catch ME
+        errorMessage = ME.message;
+        if fid ~= -1
+            fclose(fid);
+        end
+    end
+end
+
+%-------------------------------------------------------------------------
+% Escreve texto diretamente no log persistente
+%-------------------------------------------------------------------------
+function appendRuntimeLog(runtimeLog, text)
+    % Escrita best-effort para nao interromper o servidor por causa do log.
+    if ~isstruct(runtimeLog) || ~isfield(runtimeLog, 'isEnabled') || ~runtimeLog.isEnabled
+        return;
+    end
+
+    maintainRuntimeLog(runtimeLog);
+
+    fid = -1;
+    try
+        fid = fopen(runtimeLog.filePath, 'a');
+        if fid == -1
+            return;
+        end
+
+        fprintf(fid, '%s', char(text));
+        fclose(fid);
+    catch
+        if fid ~= -1
+            fclose(fid);
+        end
+    end
+end
+
+%-------------------------------------------------------------------------
+% Tamanho atual do arquivo de log
+%-------------------------------------------------------------------------
+function fileSize = getRuntimeLogFileSize(logFile)
+    % Leitura isolada para simplificar a politica de manutencao.
+    fileSize = -1;
+
+    if isempty(logFile) || ~isfile(logFile)
+        fileSize = 0;
+        return;
+    end
+
+    try
+        fileInfo = dir(logFile);
+        fileSize = fileInfo.bytes;
+    catch
+        fileSize = -1;
+    end
+end
+
+%-------------------------------------------------------------------------
+% PID do processo atual
+%-------------------------------------------------------------------------
+function pid = getCurrentProcessId()
+    % Encapsula o acesso ao PID para startup log e lock file.
+    pid = feature('getpid');
+end
+
+%-------------------------------------------------------------------------
+% getenv com fallback amigavel para diagnostico
+%-------------------------------------------------------------------------
+function value = safeGetEnv(name)
+    % Evita campos vazios no log de diagnostico.
+    value = getenv(name);
+    if isempty(value)
+        value = '-';
+    end
 end
 
 %-------------------------------------------------------------------------
@@ -402,7 +758,7 @@ function processInfo = getCurrentServerRuntimeProcessInfo()
     % Coleta exatamente os campos usados depois para comparar identidade
     % entre lock file e processo vivo.
     processInfo = struct( ...
-        'pid', feature('getpid'), ...
+        'pid', getCurrentProcessId(), ...
         'name', char(class.Constants.appName), ...
         'startTimeUtc', '');
 

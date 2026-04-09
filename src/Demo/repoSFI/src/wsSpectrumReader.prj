@@ -3,7 +3,7 @@
     <param.appname>repoSFI</param.appname>
     <param.icon />
     <param.icons />
-    <param.version>0.2.5</param.version>
+    <param.version>0.3.1</param.version>
     <param.authnamewatermark>Augusto Peterle</param.authnamewatermark>
     <param.email />
     <param.company>ANATEL</param.company>
@@ -30,8 +30,8 @@
     <param.web.mcr.name>MyAppInstaller_web</param.web.mcr.name>
     <param.package.mcr.name>MyAppInstaller_mcr</param.package.mcr.name>
     <param.no.mcr.name>MyAppInstaller_app</param.no.mcr.name>
-    <param.windows.command.prompt>false</param.windows.command.prompt>
-    <param.create.log>true</param.create.log>
+    <param.windows.command.prompt>true</param.windows.command.prompt>
+    <param.create.log>false</param.create.log>
     <param.log.file>log.txt</param.log.file>
     <param.native.matlab>false</param.native.matlab>
     <param.checkbox>false</param.checkbox>
@@ -69,6 +69,8 @@
       <param.web.mcr.name />
       <param.package.mcr.name />
       <param.no.mcr.name />
+      <param.windows.command.prompt />
+      <param.create.log />
       <param.native.matlab />
       <param.checkbox />
       <param.example />

@@ -21,7 +21,7 @@ Você verá:
 ========================================================================
   SERVIDOR TCP - repoSFI
   Processamento Distribuido de RF/Espectro
-  Versão: 0.2.0 | Release: R2024a
+  Versão: <appVersion> | Release: <appRelease>
   Iniciado: 17/03/2026 14:30:45
 ========================================================================
 
@@ -32,10 +32,7 @@ STATUS: Servidor aguardando requisições...
 ### Enviar Requisição de Cliente
 
 ```matlab
-% Usar test/socketClient.m
-socketClient.sendRequest(struct('type', 'Diagnostic'))
-
-% Ou via socket direto:
+% Exemplo via socket direto:
 client = tcpclient('localhost', 8910);
 msg = struct('Key', '123456', 'ClientName', 'Matlab', ...
     'Request', struct('type', 'Diagnostic'));
@@ -86,11 +83,42 @@ src/
 │   ├── DiagnosticHandler.m         Processa 'Diagnostic'
 │   └── FileReadHandler.m           Processa 'FileRead'
 ├── test/
-│   ├── socketClient.m              Cliente de teste
-│   ├── test_celplan.m
-│   └── test_rfeye.m
-└── wsSpectrumReader/               Projeto compilação .exe
-    └── wsSpectrumReader.prj
+│   └── test_tcpServerLib.m         Script manual de teste
+├── wsSpectrumReader/               Artefatos de compilação
+└── wsSpectrumReader.prj            Projeto de build do executável
+```
+
+Observacao: a arvore acima preserva a organizacao conceitual do projeto.
+A estrutura real logo abaixo reflete os caminhos e arquivos atuais do repositorio.
+
+Estrutura real atual:
+
+```text
+src/
+|-- main.m
+|-- tcpServerLib.m
+|-- wsSpectrumReader.prj
+|-- config/
+|   `-- GeneralSettings.json
+|-- +class/
+|   `-- Constants.m
+|-- +util/
+|   `-- portRelease.m
+|-- +server/
+|   |-- MessageValidator.m
+|   |-- RuntimeLog.m
+|   `-- ServerLogger.m
+|-- +handlers/
+|   |-- RequestFactory.m
+|   |-- DiagnosticHandler.m
+|   |-- FileReadHandler.m
+|   `-- +internal/
+|       `-- ProtectedCellPlanDBM.m
+|-- test/
+|   `-- test_tcpServerLib.m
+`-- wsSpectrumReader/
+    |-- for_testing/
+    `-- for_redistribution/
 ```
 
 ---
@@ -153,8 +181,8 @@ Retorna informações de ambiente, SO, hardware.
 {
   "App": {
     "name": "repoSFI",
-    "version": "0.2.0",
-    "release": "R2024a"
+    "version": "<appVersion>",
+    "release": "<appRelease>"
   },
   "EnvVariables": [
     {"env": "COMPUTERNAME", "value": "WIMATLABPDIN01"},
@@ -173,6 +201,16 @@ Retorna informações de ambiente, SO, hardware.
 #### 2. FileRead - Leitura de Espectro
 
 Lê arquivo de espectro, opcionalmente exporta para .mat.
+
+Comportamento operacional atual do `FileRead`:
+
+- Arquivos `.zip` sao lidos de forma tolerante, membro a membro.
+- Um membro invalido nao derruba a requisicao inteira se ainda houver outros arquivos legiveis no ZIP.
+- Arquivos `.dbm` passam por um wrapper protegido para evitar que o `CellPlan_dBmReader.exe` deixe o servico preso em popup modal ou sem resposta.
+- O parser interno continua equivalente ao fluxo legado; a mudanca principal esta na supervisao do processo externo e no tratamento gracioso de falhas.
+- Cada instancia do `repoSFI` processa uma requisicao por vez. Se um `FileRead` estiver lendo um ZIP grande, a conexao atual permanece aberta ate o fim do processamento.
+- ZIPs com muitos arquivos pequenos, especialmente `.dbm` da Celplan, podem aumentar bastante o tempo total por requisicao porque a leitura e feita membro a membro.
+- Timeout do cliente Python durante um ZIP grande nao significa, por si so, que a porta caiu. Em geral isso indica que o cliente desistiu antes da resposta final.
 
 **Request:**
 
@@ -250,6 +288,23 @@ Lê arquivo de espectro, opcionalmente exporta para .mat.
 | `Repo` | Caminho MATLAB | `"Z:"` |
 | `Repo_map` | Mapeamento RF.Fusion | `"/mnt/reposfi"` |
 
+### Variaveis de ambiente opcionais
+
+| Variavel | Significado | Padrao |
+|----------|-------------|--------|
+| `REPOSFI_CELLPLAN_TIMEOUT_SECONDS` | Timeout, em segundos, para o `CellPlan_dBmReader.exe` | `30` |
+| `REPOSFI_VERBOSE_READ_LOGS` | Habilita logs detalhados do pipeline de leitura (`1`, `true`, `on`, `yes`) | desabilitado |
+
+### Intervalos internos de runtime
+
+Os intervalos abaixo sao internos do servico e hoje nao sao configurados por variavel de ambiente:
+
+| Item | Valor atual | Finalidade |
+|------|-------------|------------|
+| Heartbeat de runtime | `60 s` | Registrar que o processo principal continua vivo |
+| Watchdog de listener/timer | `15 s` | Detectar estado "processo vivo, porta morta" e tentar recuperacao |
+| Timer de reconexao TCP | `300 s` | Reaplicar tentativa de conexao/reconexao do listener |
+
 ---
 
 ## Segurança
@@ -285,6 +340,38 @@ end
 ---
 
 ## Logging
+
+### Log persistente de runtime
+
+Diagnosticos do processo principal, callbacks, timers e protecoes de leitura sao gravados em:
+
+```text
+C:\ProgramData\ANATEL\repoSFI\logs\repoSFI-runtime.log
+```
+
+Por padrao, o caminho feliz do `FileRead` usa menos logs para reduzir overhead.
+Quando for necessario diagnosticar uma leitura em detalhe, habilite:
+
+```powershell
+$env:REPOSFI_VERBOSE_READ_LOGS='1'
+```
+
+Com isso, o servico volta a registrar as etapas intermediarias da validacao de arquivo,
+leitura protegida de ZIP/DBM e agregacao dos membros do ZIP.
+
+### Heartbeat e watchdog
+
+O runtime log tambem registra sinais de saude do processo:
+
+- `Heartbeat | {...}`: snapshot periodico de saude do listener, timer e request atual.
+- `tcpServerLib.Watchdog`: mudancas de saude, tentativas de recuperacao do listener e avisos de requisicao longa.
+- `CurrentRequest` e `CurrentRequestAgeSeconds`: ajudam a distinguir "processando devagar" de "listener caiu".
+
+Na pratica:
+
+- Se o processo continuar vivo, mas a porta parar de aceitar conexoes, o watchdog tenta recriar o listener/timer.
+- Se uma request ficar muito tempo ativa, o watchdog registra avisos periodicos sem abortar a operacao.
+- Se o processo travar de verdade, o ultimo heartbeat ajuda a delimitar quando ele deixou de responder.
 
 ### Acessar histórico de requisições
 
@@ -325,24 +412,36 @@ Timestamp           ClientAddress  ClientPort  Client    Status
 
 ```matlab
 % No MATLAB
-cd src/wsSpectrumReader/
+cd src
 mcc -m wsSpectrumReader.prj
 ```
 
-Gera executável em:
+Historico de build antigo:
 
 ```
 src/wsSpectrumReader/application/
-  ├── wsSpectrumReader.exe
-  ├── MCRInstaller.exe           (Runtime MATLAB)
-  └── ...
+  - layout antigo, mantido aqui apenas como referencia historica
 ```
 
 ### Executar
 
 ```bash
-cd application
-wsSpectrumReader.exe
+cd src/wsSpectrumReader/for_testing
+repoSFI.exe
+```
+
+Observacao: no projeto atual (`wsSpectrumReader.prj`), os artefatos principais sao gerados em:
+
+```text
+src/wsSpectrumReader/for_testing/repoSFI.exe
+src/wsSpectrumReader/for_redistribution/
+```
+
+Para teste local do build, use:
+
+```bash
+cd src/wsSpectrumReader/for_testing
+repoSFI.exe
 ```
 
 ---
@@ -352,8 +451,7 @@ wsSpectrumReader.exe
 ### "Porta 8910 já em uso"
 
 ```matlab
-% portRelease() é chamado automaticamente
-% Se ainda houver problema, liberar manualmente:
+% Utilitario manual; nao e chamado automaticamente no startup atual:
 util.portRelease(8910)
 ```
 
@@ -376,6 +474,42 @@ util.portRelease(8910)
 2. IP configurado corretamente
 3. Outro servidor não está rodando na mesma porta
 
+### Processo aparece no Windows, mas a porta recusa conexoes
+
+Isso normalmente indica degradacao do listener TCP, nao necessariamente queda completa do processo.
+
+Verificar no arquivo:
+
+```text
+C:\ProgramData\ANATEL\repoSFI\logs\repoSFI-runtime.log
+```
+
+Procurar por:
+
+- `Heartbeat |`
+- `tcpServerLib.Watchdog`
+- `tcpServerLib.ConnectAttempt`
+- `tcpServerLib.TimerError`
+- `tcpServerLib.sendMessageToClient`
+
+Se houver heartbeat recente com `ServerValid=false`, `ServerConnected=false`, `TimerValid=false` ou `TimerRunning="off"`, o processo esta vivo mas a infraestrutura TCP degradou.
+
+### Cliente Python da timeout em ZIP grande
+
+Quando o `FileRead` recebe um ZIP com muitos arquivos pequenos, o processamento pode levar bem mais tempo do que uma leitura simples.
+
+Nesses casos:
+
+1. O `repoSFI` continua processando a request atual de forma sincrona.
+2. A conexao pode permanecer aberta ate a resposta final.
+3. O cliente pode expirar antes da resposta se o timeout dele for curto.
+
+Para diagnosticar, compare:
+
+- o timeout configurado no cliente Python
+- o `CurrentRequestAgeSeconds` no heartbeat
+- os logs de `handlers.FileReadHandler.handle` e `handlers.FileReadHandler.readZipFileTolerant`
+
 ---
 
 ## Referências
@@ -384,9 +518,13 @@ util.portRelease(8910)
 
 - [+server/MessageValidator.m](./src/+server/MessageValidator.m) - Validação de requisições
 - [+server/ServerLogger.m](./src/+server/ServerLogger.m) - Gerenciamento de log
+- [+server/RuntimeLog.m](./src/+server/RuntimeLog.m) - Log persistente de runtime
 - [+handlers/RequestFactory.m](./src/+handlers/RequestFactory.m) - Factory pattern
 - [+handlers/DiagnosticHandler.m](./src/+handlers/DiagnosticHandler.m) - Handler Diagnostic
 - [+handlers/FileReadHandler.m](./src/+handlers/FileReadHandler.m) - Handler FileRead
+- [+handlers/+internal/ProtectedCellPlanDBM.m](./src/+handlers/+internal/ProtectedCellPlanDBM.m) - Wrapper protegido para `.dbm` da Celplan
+- [tcpServerLib.m](./src/tcpServerLib.m) - Listener TCP, watchdog e auto-recuperacao
+- [main.m](./src/main.m) - Entry-point, lock global, heartbeat e loop principal
 
 ---
 
@@ -396,11 +534,11 @@ MIT License - veja [LICENSE](../../../LICENSE)
 
 ---
 
-## Desenvolvido com dedicação
+## Estado da Documentacao
 
-Versão: 0.2.0  
-Release: R2024a  
-Última atualização: 17/03/2026
+Release base do ambiente: `R2024a`  
+Ultima atualizacao deste README: `07/04/2026`  
+Observacao: a versao funcional do app e a versao do pacote compilado podem divergir entre `src/+class/Constants.m` e `src/wsSpectrumReader.prj`; por isso os exemplos usam placeholders como `<appVersion>`.
 
 
 

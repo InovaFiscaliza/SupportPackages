@@ -101,8 +101,11 @@ classdef DiagnosticHandler
                         end
                     end
                 end
-            catch
-                % Silenciosamente ignora erros
+            catch ME
+                server.RuntimeLog.logWarning( ...
+                    'handlers.DiagnosticHandler.getSystemInfo', ...
+                    'Falha ao coletar informacoes de sistema.', ...
+                    struct('Identifier', string(ME.identifier), 'Message', string(ME.message)));
             end
         end
         
@@ -127,8 +130,11 @@ classdef DiagnosticHandler
                         '(?<DeviceID>[A-Z]:)\s+(?<FileSystem>\w+)\s+(?<FreeSpace>\d+)\s+(?<Size>\d+)', ...
                         'names'), cmdout(2:end));
                 end
-            catch
-                % Silenciosamente ignora erros
+            catch ME
+                server.RuntimeLog.logWarning( ...
+                    'handlers.DiagnosticHandler.getLogicalDiskInfo', ...
+                    'Falha ao coletar informacoes de discos logicos.', ...
+                    struct('Identifier', string(ME.identifier), 'Message', string(ME.message)));
             end
         end
     end

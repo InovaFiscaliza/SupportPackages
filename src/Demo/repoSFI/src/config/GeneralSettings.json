@@ -27,7 +27,7 @@
         "IP": "", 
         "Port": 8910,
         "Key": "123456",
-        "Repo":"Z:",
+        "Repo":"\\\\reposfi\\sfi$\\sensores",
         "Repo_map":"/mnt/reposfi",
         "ClientList": [
             "Zabbix",
