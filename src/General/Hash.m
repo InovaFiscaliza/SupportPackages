@@ -35,8 +35,15 @@ classdef (Abstract) Hash
             end
 
             md = java.security.MessageDigest.getInstance('SHA-1');
-            md.update(input(:));
-            
+
+            numBytes = numel(input);
+            offset = 1;
+            while offset <= numBytes
+                last = min(offset + 2^30 - 1, numBytes);
+                md.update(input(offset:last));
+                offset = last + 1;
+            end
+
             hashBytes = typecast(md.digest(), 'uint8'); 
             hashHex = sprintf('%02x', hashBytes);
         end
