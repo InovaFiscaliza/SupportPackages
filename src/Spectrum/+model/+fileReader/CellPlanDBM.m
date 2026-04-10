@@ -1,4 +1,3 @@
-
 function specData = CellPlanDBM(specData, fileName, ReadType)
     %-----------------------------------------------------------------------------------------------%
     % Autor.: Eric Magalhães Delgado / Marcelo Lúcio Nunes
@@ -22,37 +21,34 @@ function specData = CellPlanDBM(specData, fileName, ReadType)
     %   - O método é compatível com arquivos de espectro únicos ou divididos em blocos pela CellPlan, associando cada bloco à entrada de specData correspondente por meio de comparação de metadados.
     %   - O método extrai informações de GPS e timestamps diretamente dos campos do struct hdr  retornado pela DLL, eliminando a necessidade de parsing manual de bytes para essas informações.
     %-----------------------------------------------------------------------------------------------%
-
-
     arguments
         specData
         fileName   char
         ReadType   char   = 'SingleFile'
     end
 
-    %-----------------------------------------------------------------------------------------------%
-    % Validação de existência do arquivo antes de tentar abrir via DLL, para evitar erros.
-    fileID1 = fopen(fileName);
-    if fileID1 == -1
-        error('File not found.');
+    % Validação de existência do arquivo antes de tentar abrir via DLL, 
+    % para evitar erros.
+    fileId = fopen(fileName);
+    if fileId == -1
+        error('model:fileReader:CellPlanDBM:FileNotFound', 'File not found or access denied.');
     end
-    fclose(fileID1);
+    fclose(fileId);
 
-    %-----------------------------------------------------------------------------------------------%
-    % A DLL IQWrapper é carregada dinamicamente a partir da pasta 'CellPlanDBM' localizada no
-    % mesmo diretório deste arquivo.
+    % A DLL IQWrapper é carregada dinamicamente a partir da pasta 'CellPlanDBM' 
+    % localizada no mesmo diretório deste arquivo.
     dllFolder  = fullfile(fileparts(mfilename('fullpath')), 'CellPlanDBM');
     rootFolder = pwd;
     cd(dllFolder)
 
-    %-----------------------------------------------------------------------------------------------%
-    % Garantia de retorno ao diretório original mesmo em caso de erro durante a leitura DLL.
+    % Garantia de retorno ao diretório original mesmo em caso de erro durante 
+    % a leitura DLL.
     cleanupCD = onCleanup(@() cd(rootFolder));
 
     Fcn_LoadDLL(dllFolder);
 
     if ~calllib('IQWrapper', 'IQWrapper_Load_Library')
-        error('IQWrapper: falha ao inicializar IQ_dBm_FileReader.');
+        error('model:fileReader:CellPlanDBM:LoadLibraryFailed', 'Failed to load IQWrapper library.')
     end
 
     try
@@ -66,10 +62,8 @@ function specData = CellPlanDBM(specData, fileName, ReadType)
         end
 
     catch ME
-        %-----------------------------------------------------------------------------------------------%
-        % Garantia de fechamento do arquivo e descarregamento da DLL em caso de erro.
         try
-            calllib('IQWrapper', 'IQWrapper_CloseFile');
+            evalc('calllib("IQWrapper", "IQWrapper_CloseFile");');
         catch
         end
 
@@ -85,14 +79,13 @@ function specData = CellPlanDBM(specData, fileName, ReadType)
         calllib('IQWrapper', 'IQWrapper_Unload_Library');
     catch
     end
+end
 
-    end
 
-
-    %-------------------------------------------------------------------------%
-    % Carrega a DLL IQWrapper (apenas uma vez por sessão MATLAB)
-    function Fcn_LoadDLL(dllFolder)
-
+%-------------------------------------------------------------------------%
+% Carrega a DLL IQWrapper (apenas uma vez por sessão MATLAB)
+%-------------------------------------------------------------------------%
+function Fcn_LoadDLL(dllFolder)
     if libisloaded('IQWrapper')
         return
     end
@@ -106,13 +99,13 @@ function specData = CellPlanDBM(specData, fileName, ReadType)
         loadlibrary(dllFile, fullfile(dllFolder, 'IQWrapper.h'), ...
             'mfilename', fullfile(dllFolder, 'IQWrapperProto'));
     end
-    end
+end
 
 
-    %-------------------------------------------------------------------------%
-    % Inicializa os ponteiros usados pela DLL em cada leitura
-    function [hdrPtr, dBmPtr, totPtr, medPtr] = Fcn_InitPointers()
-
+%-------------------------------------------------------------------------%
+% Inicializa os ponteiros usados pela DLL em cada leitura
+%-------------------------------------------------------------------------%
+function [hdrPtr, dBmPtr, totPtr, medPtr] = Fcn_InitPointers()
     hdr = struct( ...
         'latitude',                double(0), ...
         'longitude',               double(0), ...
@@ -150,16 +143,16 @@ function specData = CellPlanDBM(specData, fileName, ReadType)
     dBmPtr = libpointer('singlePtr', single(zeros(1, 10000)));
     totPtr = libpointer('int32Ptr', 0);   % 3º arg = comprimento (nº de bins)
     medPtr = libpointer('int32Ptr', 0);   % 4º arg = indicador de bloco médio (0 ou 1)
-    end
+end
 
-    %-------------------------------------------------------------------------%
-    % Lê os metadados do arquivo .dBm e preenche as entradas de specData com as informações de FreqStart,
-    % FreqStop, DataPoints e Resolution.
-    % O método também extrai informações de GPS e timestamps diretamente dos campos do struct hdr retornado
-    % pela DLL.
-    function specData = Fcn_MetaDataReader(specData, fileName, ReadType)
 
-    % Criação das variáveis principais (specData e gpsData)
+%-------------------------------------------------------------------------%
+% Lê os metadados do arquivo .dBm e preenche as entradas de specData com as informações de FreqStart,
+% FreqStop, DataPoints e Resolution.
+% O método também extrai informações de GPS e timestamps diretamente dos campos do struct hdr retornado
+% pela DLL.
+%-------------------------------------------------------------------------%
+function specData = Fcn_MetaDataReader(specData, fileName, ReadType)
     gpsData = struct('Status', 0, 'Matrix', []);
 
     % INFORMAÇÕES EXTRAÍDAS DO NOME DO ARQUIVO
@@ -192,7 +185,7 @@ function specData = CellPlanDBM(specData, fileName, ReadType)
     % Abertura do arquivo via DLL
     nBlocksPtr = libpointer('int32Ptr', 0);
     if ~calllib('IQWrapper', 'IQWrapper_OpenFile', fileName, nBlocksPtr)
-        error('IQWrapper: não foi possível abrir "%s"', fileName);
+        error('model:fileReader:CellPlanDBM:OpenFileFailed', 'Failed to open file.')
     end
 
     [hdrPtr, dBmPtr, totPtr, medPtr] = Fcn_InitPointers();
@@ -218,8 +211,6 @@ function specData = CellPlanDBM(specData, fileName, ReadType)
             metaDataInfo.Resolution = ext_ResBw_Hz;
 
             [specData, idx] = checkNewBlock(specData, metaDataInfo);
-
-            % GPS coletado de todos os blocos (comportamento equivalente ao método antigo)
             gpsData = Read_GPSInfo(gpsData, hdr);
 
             ts = Read_TimeStamp(hdr);
@@ -240,11 +231,11 @@ function specData = CellPlanDBM(specData, fileName, ReadType)
         end
 
     catch ME
-        calllib('IQWrapper', 'IQWrapper_CloseFile');
+        evalc('calllib("IQWrapper", "IQWrapper_CloseFile");');
         rethrow(ME)
     end
 
-    calllib('IQWrapper', 'IQWrapper_CloseFile');
+    evalc('calllib("IQWrapper", "IQWrapper_CloseFile");');
 
     if isempty(specData)
         return
@@ -304,28 +295,28 @@ function specData = CellPlanDBM(specData, fileName, ReadType)
             specData(jj).Data{2} = tempLvl{jj};
         end
     end
-    end
+end
 
 
-    %-------------------------------------------------------------------------%
-    % Verifica se o bloco lido pela DLL corresponde a um bloco já presente em
-    % specData (comparando os metadados).
-    % Se corresponder, retorna o índice do bloco existente. Caso contrário,
-    % cria uma nova entrada em specData para o % novo bloco e retorna seu índice.
-    % O método é utilizado para associar cada bloco lido pela DLL à entrada de
-    % specData correspondente, garantindo que os dados sejam organizados
-    % corretamente mesmo quando a CellPlan divide o espectro em múltiplos blocos.
-    % O método é chamado dentro de Fcn_MetaDataReader para cada bloco lido,
-    % permitindo a construção incremental de specData à medida que os blocos
-    % são processados.
-    % A comparação de metadados é feita considerando uma tolerância de 1 Hz para
-    % FreqStart e FreqStop, para acomodar pequenas variações que podem ocorrer
-    % entre blocos adjacentes.
-    % O método também garante que, se um novo bloco for identificado, uma nova
-    %  entrada em specData seja criada com os metadados correspondentes e um
-    % FileMap vazio, preparando a estrutura para o preenchimento dos dados posteriormente.
-    function [specData, idx] = checkNewBlock(specData, metaDataInfo)
-
+%-------------------------------------------------------------------------%
+% Verifica se o bloco lido pela DLL corresponde a um bloco já presente em
+% specData (comparando os metadados).
+% Se corresponder, retorna o índice do bloco existente. Caso contrário,
+% cria uma nova entrada em specData para o % novo bloco e retorna seu índice.
+% O método é utilizado para associar cada bloco lido pela DLL à entrada de
+% specData correspondente, garantindo que os dados sejam organizados
+% corretamente mesmo quando a CellPlan divide o espectro em múltiplos blocos.
+% O método é chamado dentro de Fcn_MetaDataReader para cada bloco lido,
+% permitindo a construção incremental de specData à medida que os blocos
+% são processados.
+% A comparação de metadados é feita considerando uma tolerância de 1 Hz para
+% FreqStart e FreqStop, para acomodar pequenas variações que podem ocorrer
+% entre blocos adjacentes.
+% O método também garante que, se um novo bloco for identificado, uma nova
+%  entrada em specData seja criada com os metadados correspondentes e um
+% FileMap vazio, preparando a estrutura para o preenchimento dos dados posteriormente.
+%-------------------------------------------------------------------------%
+function [specData, idx] = checkNewBlock(specData, metaDataInfo)
     if isempty(specData)
         idx = 1;
     else
@@ -339,23 +330,23 @@ function specData = CellPlanDBM(specData, fileName, ReadType)
         specData(idx).MetaData = metaDataInfo;
         specData(idx).FileMap  = [];
     end
-    end
+end
 
 
-    %-------------------------------------------------------------------------%
-    % Lê os níveis de potência (dBm) do arquivo .dBm usando a DLL IQWrapper e
-    % preenche as entradas de specData correspondentes.
-    % O método associa cada bloco lido pela DLL à entrada de specData correspondente
-    % por meio de comparação de metadados, garantindo que os níveis sejam organizados
-    % corretamente mesmo quando a CellPlan divide o espectro em múltiplos blocos.
-    % O método também acumula os timestamps de cada bloco para cada entrada de specData,
-    %  registrando o timestamp da sub-faixa de menor frequência como o timestamp
-    % representativo do sweep.
-    function specData = Fcn_SpecDataReader(specData, fileName)
-
+%-------------------------------------------------------------------------%
+% Lê os níveis de potência (dBm) do arquivo .dBm usando a DLL IQWrapper e
+% preenche as entradas de specData correspondentes.
+% O método associa cada bloco lido pela DLL à entrada de specData correspondente
+% por meio de comparação de metadados, garantindo que os níveis sejam organizados
+% corretamente mesmo quando a CellPlan divide o espectro em múltiplos blocos.
+% O método também acumula os timestamps de cada bloco para cada entrada de specData,
+%  registrando o timestamp da sub-faixa de menor frequência como o timestamp
+% representativo do sweep.
+%-------------------------------------------------------------------------%
+function specData = Fcn_SpecDataReader(specData, fileName)
     nBlocksPtr = libpointer('int32Ptr', 0);
     if ~calllib('IQWrapper', 'IQWrapper_OpenFile', fileName, nBlocksPtr)
-        error('IQWrapper: não foi possível abrir "%s"', fileName);
+        error('model:fileReader:CellPlanDBM:OpenFileFailed', 'Failed to open file.')
     end
 
     [hdrPtr, dBmPtr, totPtr, medPtr] = Fcn_InitPointers();
@@ -414,11 +405,11 @@ function specData = CellPlanDBM(specData, fileName, ReadType)
         end
 
     catch ME
-        calllib('IQWrapper', 'IQWrapper_CloseFile');
+        evalc('calllib("IQWrapper", "IQWrapper_CloseFile");');
         rethrow(ME)
     end
 
-    calllib('IQWrapper', 'IQWrapper_CloseFile');
+    evalc('calllib("IQWrapper", "IQWrapper_CloseFile");');
 
     for jj = 1:nEntries
         if specData(jj).Enable && ~isempty(tempTS{jj})
@@ -436,23 +427,28 @@ function specData = CellPlanDBM(specData, fileName, ReadType)
         end
         specData(jj).FileMap = [];
     end
-    end
+end
 
 
-    %-------------------------------------------------------------------------%
-    % Lê o timestamp do struct hdr retornado pela DLL e converte para datetime.
-    function TimeStamp = Read_TimeStamp(hdr)
+%-------------------------------------------------------------------------%
+% Lê o timestamp do struct hdr retornado pela DLL e converte para datetime.
+%-------------------------------------------------------------------------%
+function timeStamp = Read_TimeStamp(hdr)
+    timeStamp = datetime([ ...
+        double(hdr.year), ...
+        double(hdr.month), ...
+        double(hdr.day), ...
+        double(hdr.hour), ...
+        double(hdr.minute), ...
+        double(hdr.second) + double(hdr.milliseconds)/1000 ...
+    ]);
+end
 
-    TimeStamp = datetime([double(hdr.year),   double(hdr.month),  double(hdr.day), ...
-        double(hdr.hour),   double(hdr.minute),                  ...
-        double(hdr.second) + double(hdr.milliseconds)/1000]);
-    end
 
-
-    %-------------------------------------------------------------------------%
-    % Lê as informações de GPS do struct hdr retornado pela DLL e acumula em gpsData.
-    function gpsData = Read_GPSInfo(gpsData, hdr)
-
+%-------------------------------------------------------------------------%
+% Lê as informações de GPS do struct hdr retornado pela DLL e acumula em gpsData.
+%-------------------------------------------------------------------------%
+function gpsData = Read_GPSInfo(gpsData, hdr)
     if (hdr.latitude ~= -200) && (hdr.longitude ~= -200)
         gpsData.Matrix(end+1,:) = [hdr.latitude, hdr.longitude];
     end
