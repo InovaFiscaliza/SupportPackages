@@ -220,8 +220,7 @@ function specData = Fcn_DataOrganization(specData, gpsData, fileFullPath, rawDat
         
         traceMode = '';
         if ismember(specData(ii).MetaData.DataType, [8, 62, 65, 69])
-            traceMode = 'OCC';
-            levelUnit = '%';
+            traceMode = 'Occupancy';
         else
             switch specData(ii).MetaData.TraceMode
                 case 0; traceMode = 'SingleMeasurement';

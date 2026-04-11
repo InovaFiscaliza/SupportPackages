@@ -3,7 +3,7 @@ classdef (Abstract) Occupancy
     properties (Constant)
         %-----------------------------------------------------------------%
         ParametersTemplate = struct( ...
-            'Method',                  {}, ... % 'Linear fixo (COLETA)' | 'Linear fixo' | 'Linear adaptativo' | 'Envoltória do ruído'
+            'Method',                  {}, ... % 'Linear fixo (coleta)' | 'Linear fixo' | 'Linear adaptativo' | 'Envoltória do ruído'
             'IntegrationTime',         {}, ...
             'Threshold',               {}, ...
             'Offset',                  {}, ...
@@ -164,7 +164,7 @@ classdef (Abstract) Occupancy
         %-----------------------------------------------------------------%
         function parameters = applyRelatedParameters(method, varargin)
             arguments
-                method  char {mustBeMember(method, {'Linear fixo (COLETA)', ...
+                method  char {mustBeMember(method, {'Linear fixo (coleta)', ...
                                                     'Linear fixo',          ...
                                                     'Linear adaptativo',    ...
                                                     'Envoltória do ruído'})}
@@ -178,7 +178,7 @@ classdef (Abstract) Occupancy
             parameters(1).Method = method;
 
             switch method
-                case {'Linear fixo (COLETA)', 'Linear fixo'}
+                case {'Linear fixo (coleta)', 'Linear fixo'}
                     parameters.IntegrationTime      = varargin{1};
                     parameters.Threshold            = varargin{2};
 
@@ -198,7 +198,7 @@ classdef (Abstract) Occupancy
         %-----------------------------------------------------------------%
         function threshold = getThreshold(method, parameters, varargin)
             arguments
-                method        char {mustBeMember(method, {'Linear fixo (COLETA)', ...
+                method        char {mustBeMember(method, {'Linear fixo (coleta)', ...
                                                           'Linear fixo',          ...
                                                           'Linear adaptativo',    ...
                                                           'Envoltória do ruído'})}
@@ -210,8 +210,8 @@ classdef (Abstract) Occupancy
             end
 
             switch method
-                case 'Linear fixo (COLETA)'
-                    threshold = parameters.ThresholdMeasured;
+                case 'Linear fixo (coleta)'
+                    threshold = parameters.Threshold;
 
                 case 'Linear fixo'
                     threshold = parameters.Threshold;
