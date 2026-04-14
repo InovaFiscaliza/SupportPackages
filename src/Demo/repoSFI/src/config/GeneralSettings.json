@@ -1,5 +1,5 @@
 {
-    "version": 0.12,
+    "version": 0.15,
     "operationMode": {
         "Debug": false,
         "Dock": true,
@@ -35,5 +35,14 @@
             "Matlab"
         ]
         
+    },
+    "runtime": {
+        "VerboseReadLogs": false,
+        "LogMaintenanceIntervalSeconds": 30,
+        "HeartbeatIntervalSeconds": 60,
+        "WatchdogIntervalSeconds": 15,
+        "ServerRecycleIntervalSeconds": 43200,
+        "MaxConsecutiveWatchdogRecoveriesBeforeRecycle": 3,
+        "TcpReconnectTimerPeriodSeconds": 300
     }
 }

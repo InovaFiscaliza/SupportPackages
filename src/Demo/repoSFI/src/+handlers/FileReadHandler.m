@@ -41,7 +41,7 @@ classdef FileReadHandler
             % Mapeia path do RF.Fusion para MATLAB
             norm_filepath = handlers.FileReadHandler.mapFilePath( ...
                 requestData.filepath, generalSettings);
-            
+
             % Verifica se precisa exportar
             needsExport = isfield(requestData, 'export') && requestData.export;
             requestTimer = tic;
@@ -155,6 +155,14 @@ classdef FileReadHandler
                     readDetails, readTimer);
                 specData = handlers.FileReadHandler.readPath(filepath, mode);
 
+                % after_read_non_empty_check:
+                % Alguns readers podem terminar sem excecao, mas tambem sem
+                % produzir qualquer espectro. Esse caso precisa falhar aqui,
+                % antes de exportar MAT vazio ou montar resposta invalida.
+                currentStage = "after_read_non_empty_check";
+                readDetails.Stage = currentStage;
+                handlers.FileReadHandler.assertNonEmptySpecData(specData, filepath, mode);
+
                 % before_strip_filemap:
                 % A leitura principal terminou. Agora removemos apenas o
                 % FileMap temporario, que nao precisa sair deste handler.
@@ -228,6 +236,21 @@ classdef FileReadHandler
         end
 
         %------------------------------------------------------------------
+        % Garante que a leitura produziu pelo menos um espectro
+        %------------------------------------------------------------------
+        % Esse guard evita um falso sucesso em que o parser termina sem
+        % erro, mas retorna objeto vazio. Sem isso, o fluxo poderia salvar
+        % um MAT vazio e so falhar mais tarde ao montar a resposta.
+        function assertNonEmptySpecData(specData, filepath, mode)
+            if isempty(specData)
+                error('handlers:FileReadHandler:EmptySpecData', ...
+                    ['Nenhum espectro foi lido do arquivo: %s (%s). ', ...
+                     'A leitura terminou sem erro explicito, mas retornou resultado vazio.'], ...
+                    filepath, mode)
+            end
+        end
+
+        %------------------------------------------------------------------
         % Registra um Stage apenas quando o verbose fino estiver ligado
         %------------------------------------------------------------------
         function logReadStage(source, message, details, readTimer)
@@ -249,19 +272,11 @@ classdef FileReadHandler
         %------------------------------------------------------------------
         % Flag de verbose para diagnostico fino do pipeline de leitura
         %------------------------------------------------------------------
-        % O default e "off" para reduzir overhead no caminho feliz. Quando
-        % precisar rastrear uma leitura dificil, habilite a variavel de
-        % ambiente REPOSFI_VERBOSE_READ_LOGS.
+        % O default agora vem do bloco runtime do GeneralSettings, com
+        % compatibilidade para override legado por variavel de ambiente.
         function enabled = shouldLogVerboseReadFlow()
-            persistent cachedEnabled isInitialized
-
-            if isempty(isInitialized)
-                envValue = lower(strtrim(char(string(getenv('REPOSFI_VERBOSE_READ_LOGS')))));
-                cachedEnabled = ismember(envValue, {'1', 'true', 'on', 'yes'});
-                isInitialized = true;
-            end
-
-            enabled = cachedEnabled;
+            runtimeSettings = server.RuntimeSettings.loadRuntimeSettings();
+            enabled = runtimeSettings.VerboseReadLogs;
         end
         
         %------------------------------------------------------------------
@@ -269,6 +284,14 @@ classdef FileReadHandler
         %------------------------------------------------------------------
         % Persiste o objeto lido em um .mat ao lado do arquivo original.
         function full_mat_path = exportMatFile(specData, original_filepath)
+            % O save de um MAT vazio mascara falhas reais do parser e
+            % empurra o erro para etapas posteriores. Validamos isso logo
+            % na entrada para manter o fluxo consistente.
+            if isempty(specData)
+                error('handlers:FileReadHandler:EmptySpecData', ...
+                    'SpecData is empty and cannot be exported.')
+            end
+
             if ismissing(specData)
                 error('handlers:FileReadHandler:InvalidSpecData', ...
                     'SpecData is invalid or missing.')

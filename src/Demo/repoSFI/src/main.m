@@ -13,6 +13,8 @@ function main(varargin)
     serverLock = createEmptyLockState();
     forceRestart = false;
     % Esse modo existe para automacoes controladas, como Task Scheduler.
+
+    % O startup principal fica concentrado neste entry-point unico.
     
     % Verifica parametro de forÃ§a restart
     if ~isempty(varargin) && ischar(varargin{1}) && strcmp(varargin{1}, 'force-restart')
@@ -82,6 +84,7 @@ function main(varargin)
         lastLogMaintenanceCheck = datetime('now');
         lastHeartbeatCheck = datetime('now');
         lastWatchdogCheck = datetime('now');
+        pendingRuntimeRecycleReason = "";
         
         while true
             pause(1);
@@ -112,7 +115,14 @@ function main(varargin)
             % indisponibilidade sem depender apenas do timer de 300 s.
             if seconds(currentTime - lastWatchdogCheck) >= runtimeLog.watchdogIntervalSeconds
                 try
-                    server.runHealthWatchdog();
+                    watchdogHealth = server.runHealthWatchdog();
+                    [pendingRuntimeRecycleReason, recycleScheduleMessage] = ...
+                        updatePendingRuntimeRecycle(runtimeLog, watchdogHealth, pendingRuntimeRecycleReason);
+                    if strlength(recycleScheduleMessage) > 0
+                        appendRuntimeLog(runtimeLog, sprintf('[%s] %s\n', ...
+                            char(datetime('now', 'Format', 'dd/MM/yyyy HH:mm:ss')), ...
+                            char(recycleScheduleMessage)));
+                    end
                 catch watchdogError
                     appendRuntimeLog(runtimeLog, sprintf('[%s] Falha no watchdog do servidor: [%s] %s\n', ...
                         char(datetime('now', 'Format', 'dd/MM/yyyy HH:mm:ss')), ...
@@ -121,6 +131,20 @@ function main(varargin)
                 end
 
                 lastWatchdogCheck = currentTime;
+            end
+
+            % Se o watchdog ou a politica de uptime pedirem uma reciclagem
+            % completa, esperamos apenas a janela segura: nenhuma request
+            % ativa no callback unico do MATLAB. Assim voltamos ao estado
+            % inicial sem interromper um processamento em andamento.
+            if strlength(pendingRuntimeRecycleReason) > 0
+                runtimeHealth = server.getRuntimeHealth();
+                if ~runtimeHealth.CurrentRequest.IsActive
+                    [server, lastLogCount] = recycleServerInstance(server, runtimeLog, pendingRuntimeRecycleReason);
+                    pendingRuntimeRecycleReason = "";
+                    lastHeartbeatCheck = datetime('now');
+                    lastWatchdogCheck = datetime('now');
+                end
             end
 
             % Heartbeat leve para diagnostico de travamentos: se o processo
@@ -396,14 +420,17 @@ end
 function runtimeLog = startRuntimeLogging()
     % O log proprio evita depender do -logfile relativo do MATLAB Compiler,
     % que pode apontar para outro working directory no Task Scheduler.
+    runtimeSettings = server.RuntimeSettings.loadRuntimeSettings();
     runtimeLog = struct( ...
         'filePath', '', ...
         'isEnabled', false, ...
         'message', '', ...
         'maxBytes', 100 * 1024 * 1024, ...
-        'maintenanceIntervalSeconds', 30, ...
-        'heartbeatIntervalSeconds', 60, ...
-        'watchdogIntervalSeconds', 15);
+        'maintenanceIntervalSeconds', runtimeSettings.LogMaintenanceIntervalSeconds, ...
+        'heartbeatIntervalSeconds', runtimeSettings.HeartbeatIntervalSeconds, ...
+        'watchdogIntervalSeconds', runtimeSettings.WatchdogIntervalSeconds, ...
+        'serverRecycleIntervalSeconds', runtimeSettings.ServerRecycleIntervalSeconds, ...
+        'maxConsecutiveWatchdogRecoveriesBeforeRecycle', runtimeSettings.MaxConsecutiveWatchdogRecoveriesBeforeRecycle);
 
     logFolder = getServerRuntimeLogFolder();
     if isempty(logFolder)
@@ -436,6 +463,86 @@ function runtimeLog = startRuntimeLogging()
         isdeployed));
     appendRuntimeLog(runtimeLog, sprintf('[INFO] Diretorio de trabalho inicial: %s\n', pwd));
     appendRuntimeLog(runtimeLog, sprintf('%s\n', repmat('=', 1, 70)));
+end
+
+%-------------------------------------------------------------------------
+% Avalia se a instancia deve ser reciclada por politica de runtime
+%-------------------------------------------------------------------------
+function [pendingReason, message] = updatePendingRuntimeRecycle(runtimeLog, health, currentPendingReason)
+    % Existem dois gatilhos complementares:
+    %   1. Reciclagem preventiva por uptime alto quando a instancia ficar
+    %      muito tempo viva.
+    %   2. Reciclagem corretiva quando o watchdog precisou recuperar a
+    %      infraestrutura varias vezes seguidas.
+    %
+    % O helper nao recicla nada diretamente; ele so agenda o motivo para o
+    % loop principal executar isso na proxima janela segura.
+    pendingReason = string(currentPendingReason);
+    message = "";
+
+    if strlength(pendingReason) > 0
+        return;
+    end
+
+    if isfield(health, 'ConsecutiveWatchdogRecoveryCount') && ...
+            health.ConsecutiveWatchdogRecoveryCount >= runtimeLog.maxConsecutiveWatchdogRecoveriesBeforeRecycle
+        pendingReason = sprintf([ ...
+            'Watchdog precisou recuperar listener/timer em %d ciclos consecutivos. ', ...
+            'A instancia sera reciclada para voltar ao estado inicial.'], ...
+            health.ConsecutiveWatchdogRecoveryCount);
+
+    elseif runtimeLog.serverRecycleIntervalSeconds > 0 && ...
+            isfield(health, 'UptimeSeconds') && ...
+            isfinite(health.UptimeSeconds) && ...
+            health.UptimeSeconds >= runtimeLog.serverRecycleIntervalSeconds
+        pendingReason = sprintf([ ...
+            'Instancia atingiu %.0f segundos de uptime. ', ...
+            'A instancia sera reciclada preventivamente para reduzir degradacao acumulada.'], ...
+            double(health.UptimeSeconds));
+    end
+
+    if strlength(pendingReason) == 0
+        return;
+    end
+
+    if isfield(health, 'CurrentRequest') && isstruct(health.CurrentRequest) && health.CurrentRequest.IsActive
+        message = "Reciclagem completa do servidor agendada apos a request atual. " + pendingReason;
+    else
+        message = "Reciclagem completa do servidor agendada imediatamente. " + pendingReason;
+    end
+end
+
+%-------------------------------------------------------------------------
+% Recicla a instancia do servidor mantendo o processo principal vivo
+%-------------------------------------------------------------------------
+function [server, lastLogCount] = recycleServerInstance(server, runtimeLog, reason)
+    % Esse reset e mais forte do que o watchdog do listener: destruimos e
+    % recriamos toda a infraestrutura do tcpServerLib, preservando apenas
+    % o processo principal e o lock global da instancia.
+    timestamp = char(datetime('now', 'Format', 'dd/MM/yyyy HH:mm:ss'));
+    fprintf('\n[%s] Reciclando infraestrutura do servidor...\n', timestamp);
+    appendRuntimeLog(runtimeLog, sprintf('[%s] Iniciando reciclagem completa do servidor. Motivo: %s\n', ...
+        timestamp, char(reason)));
+
+    try
+        delete(server);
+    catch recycleDeleteError
+        appendRuntimeLog(runtimeLog, sprintf('[%s] Aviso ao destruir instancia anterior durante reciclagem: [%s] %s\n', ...
+            char(datetime('now', 'Format', 'dd/MM/yyyy HH:mm:ss')), ...
+            recycleDeleteError.identifier, ...
+            recycleDeleteError.message));
+    end
+
+    % Pequena folga para o Windows liberar porta e handles antes de subir
+    % uma nova instancia do listener dentro do mesmo processo.
+    pause(1);
+    server = tcpServerLib();
+    printServerStatus(server);
+    lastLogCount = server.getLogCount();
+
+    appendRuntimeLog(runtimeLog, sprintf('[%s] Reciclagem completa concluida. Novo estado: %s\n', ...
+        char(datetime('now', 'Format', 'dd/MM/yyyy HH:mm:ss')), ...
+        jsonencode(server.getRuntimeHealth())));
 end
 
 %-------------------------------------------------------------------------

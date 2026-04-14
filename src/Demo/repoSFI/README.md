@@ -204,11 +204,12 @@ Comportamento operacional atual do `FileRead`:
 
 - Arquivos `.zip` sao lidos de forma tolerante, membro a membro.
 - Um membro invalido nao derruba a requisicao inteira se ainda houver outros arquivos legiveis no ZIP.
-- Arquivos `.dbm` usam diretamente `model.fileReader.CellPlanDBM`, que agora concentra a protecao contra timeout, popup modal e falhas do `CellPlan_dBmReader.exe`.
+- Arquivos `.dbm` usam diretamente `model.fileReader.CellPlanDBM`, que agora concentra o pre-check de cabecalho e a chamada da DLL `IQWrapper`.
 - A tolerancia de ZIP agora fica em `model.SpecDataBase.read`, nao mais no `FileReadHandler` do `repoSFI`.
 - Cada instancia do `repoSFI` processa uma requisicao por vez. Se um `FileRead` estiver lendo um ZIP grande, a conexao atual permanece aberta ate o fim do processamento.
 - ZIPs com muitos arquivos pequenos, especialmente `.dbm` da Celplan, podem aumentar bastante o tempo total por requisicao porque a leitura e feita membro a membro.
 - Timeout do cliente Python durante um ZIP grande nao significa, por si so, que a porta caiu. Em geral isso indica que o cliente desistiu antes da resposta final.
+- Por isso, um `connect()` TCP puro nao prova disponibilidade de processamento. O health check mais confiavel do cliente e enviar uma request `Diagnostic` e validar a resposta JSON completa.
 
 **Request:**
 
@@ -266,6 +267,15 @@ Comportamento operacional atual do `FileRead`:
     "Repo":"Z:",                      // Caminho MATLAB para repositório
     "Repo_map":"/mnt/reposfi"         // Mapeamento RF.Fusion
   },
+  "runtime": {
+    "VerboseReadLogs": false,
+    "LogMaintenanceIntervalSeconds": 30,
+    "HeartbeatIntervalSeconds": 60,
+    "WatchdogIntervalSeconds": 15,
+    "ServerRecycleIntervalSeconds": 43200,
+    "MaxConsecutiveWatchdogRecoveriesBeforeRecycle": 3,
+    "TcpReconnectTimerPeriodSeconds": 300
+  },
   
   "operationMode": {
     "Debug": false,
@@ -286,22 +296,39 @@ Comportamento operacional atual do `FileRead`:
 | `Repo` | Caminho MATLAB | `"Z:"` |
 | `Repo_map` | Mapeamento RF.Fusion | `"/mnt/reposfi"` |
 
-### Variaveis de ambiente opcionais
+### Campos de runtime no GeneralSettings
+
+| Campo | Significado | Padrao |
+|----------|-------------|--------|
+| `runtime.VerboseReadLogs` | Liga logs detalhados do pipeline de leitura | `false` |
+| `runtime.LogMaintenanceIntervalSeconds` | Periodo da manutencao do log persistente | `30` |
+| `runtime.HeartbeatIntervalSeconds` | Periodo do heartbeat do processo principal | `60` |
+| `runtime.WatchdogIntervalSeconds` | Periodo do watchdog do listener/timer | `15` |
+| `runtime.ServerRecycleIntervalSeconds` | Uptime maximo antes de agendar reciclagem preventiva | `43200` |
+| `runtime.MaxConsecutiveWatchdogRecoveriesBeforeRecycle` | Quantidade de recuperacoes consecutivas antes de reciclar a infraestrutura | `3` |
+| `runtime.TcpReconnectTimerPeriodSeconds` | Periodo do timer de reconexao TCP | `300` |
+
+### Variaveis de ambiente opcionais e legadas
 
 | Variavel | Significado | Padrao |
 |----------|-------------|--------|
-| `CELLPLAN_DBM_TIMEOUT_SECONDS` | Timeout, em segundos, para o reader protegido da CellPlan | `30` |
-| `REPOSFI_CELLPLAN_TIMEOUT_SECONDS` | Alias legado aceito pelo `CellPlanDBM` por compatibilidade | `30` |
-| `REPOSFI_VERBOSE_READ_LOGS` | Habilita logs detalhados do pipeline de leitura (`1`, `true`, `on`, `yes`) | desabilitado |
+| `REPOSFI_VERBOSE_READ_LOGS` | Override legado para logs detalhados do pipeline de leitura (`1`, `true`, `on`, `yes`) | valor do `GeneralSettings.runtime.VerboseReadLogs` |
+
+Observacoes:
+
+- O `FileRead` nao implementa timeout hard nem cancelamento por request.
+- Se a leitura travar dentro do parser, o controle continua dependendo do watchdog, do recycle da instancia ou do timeout do cliente externo.
 
 ### Intervalos internos de runtime
 
-Os intervalos abaixo sao internos do servico e hoje nao sao configurados por variavel de ambiente:
+Os intervalos abaixo agora tambem ficam espelhados no bloco `runtime` do `GeneralSettings`:
 
 | Item | Valor atual | Finalidade |
 |------|-------------|------------|
 | Heartbeat de runtime | `60 s` | Registrar que o processo principal continua vivo |
 | Watchdog de listener/timer | `15 s` | Detectar estado "processo vivo, porta morta" e tentar recuperacao |
+| Reciclagem preventiva da instancia | `12 h` | Reinicializar a infraestrutura do `tcpServerLib` quando a instancia estiver ociosa e antiga demais |
+| Escalada por recuperacoes consecutivas | `3 ciclos` | Reciclar a infraestrutura completa quando o watchdog precisar intervir repetidamente |
 | Timer de reconexao TCP | `300 s` | Reaplicar tentativa de conexao/reconexao do listener |
 
 ---
@@ -364,12 +391,17 @@ O runtime log tambem registra sinais de saude do processo:
 
 - `Heartbeat | {...}`: snapshot periodico de saude do listener, timer e request atual.
 - `tcpServerLib.Watchdog`: mudancas de saude, tentativas de recuperacao do listener e avisos de requisicao longa.
+- `tcpServerLib.ImmediateReconnect`: tentativa imediata de recriar o listener apos falha de leitura/escrita no transporte.
 - `CurrentRequest` e `CurrentRequestAgeSeconds`: ajudam a distinguir "processando devagar" de "listener caiu".
+- `ReadyForRequest`: indica se a instancia esta realmente apta a aceitar uma nova request naquele instante.
+- `ConsecutiveWatchdogRecoveryCount`: mostra quando o watchdog esta apenas tratando um evento isolado ou uma degradacao persistente.
 
 Na pratica:
 
-- Se o processo continuar vivo, mas a porta parar de aceitar conexoes, o watchdog tenta recriar o listener/timer.
+- Se o processo continuar vivo, mas a porta parar de aceitar conexoes, o transporte tenta uma reconexao imediata e o watchdog continua como rede de seguranca.
 - Se uma request ficar muito tempo ativa, o watchdog registra avisos periodicos sem abortar a operacao.
+- Se o watchdog precisar recuperar listener/timer em varios ciclos consecutivos, o `main` agenda uma reciclagem completa da infraestrutura assim que nao houver request ativa.
+- Se a instancia ficar muito tempo viva, o `main` tambem agenda uma reciclagem preventiva quando houver janela ociosa.
 - Se o processo travar de verdade, o ultimo heartbeat ajuda a delimitar quando ele deixou de responder.
 
 ### Acessar histórico de requisições
@@ -493,6 +525,15 @@ Procurar por:
 
 Se houver heartbeat recente com `ServerValid=false`, `ServerConnected=false`, `TimerValid=false` ou `TimerRunning="off"`, o processo esta vivo mas a infraestrutura TCP degradou.
 
+Se o heartbeat mostrar `ReadyForRequest=false` com `CurrentRequest.IsActive=true`, a porta pode continuar aberta, mas o MATLAB ainda esta ocupado na request anterior. Nesse caso um preflight baseado apenas em `connect()` pode passar mesmo sem capacidade imediata de atender outra tarefa.
+
+Para preflight mais confiavel do lado do Python:
+
+1. Abrir o socket.
+2. Enviar uma request `Diagnostic`.
+3. Aguardar uma resposta `<JSON>...</JSON>`.
+4. So considerar o servico saudavel se a resposta vier completa dentro do timeout.
+
 ### Cliente Python da timeout em ZIP grande
 
 Quando o `FileRead` recebe um ZIP com muitos arquivos pequenos, o processamento pode levar bem mais tempo do que uma leitura simples.
@@ -537,8 +578,8 @@ MIT License - veja [LICENSE](../../../LICENSE)
 
 ## Estado da Documentacao
 
-Release base do ambiente: `R2024a`  
-Ultima atualizacao deste README: `07/04/2026`  
+Release base do ambiente: `R2024a`
+Ultima atualizacao deste README: `10/04/2026`
 Observacao: a versao funcional do app e a versao do pacote compilado podem divergir entre `src/+class/Constants.m` e `src/wsSpectrumReader.prj`; por isso os exemplos usam placeholders como `<appVersion>`.
 
 

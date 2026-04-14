@@ -44,6 +44,9 @@ classdef tcpServerLib < handle
 
         % Timestamp de inicializacao
         Time
+
+        % Periodo configurado para o timer de reconexao do listener.
+        TimerPeriodSeconds = 300
     end
 
     properties (Access = private)
@@ -52,6 +55,12 @@ classdef tcpServerLib < handle
 
         % Bucket em minutos da ultima requisicao longa ja avisada
         LastLongRunningRequestBucket = -1
+
+        % Contadores para diferenciar um evento isolado de uma degradacao
+        % recorrente do listener/timer ao longo da vida da instancia.
+        TotalWatchdogRecoveryCount = 0
+        ConsecutiveWatchdogRecoveryCount = 0
+        LastWatchdogRecoveryAt = ""
     end
     
     properties (Constant)
@@ -176,16 +185,21 @@ classdef tcpServerLib < handle
         function health = getRuntimeHealth(obj)
             health = struct( ...
                 'Timestamp', string(datetime('now', 'Format', 'dd/MM/yyyy HH:mm:ss')), ...
+                'UptimeSeconds', obj.getUptimeSeconds(), ...
                 'ServerValid', obj.isServerValid(), ...
                 'ServerConnected', obj.isServerConnected(), ...
                 'TimerValid', obj.isTimerValid(), ...
                 'TimerRunning', string(obj.safeTimerRunningState()), ...
+                'ReadyForRequest', obj.isReadyForRequest(), ...
                 'ConfiguredIP', string(obj.safeGeneralField('IP')), ...
                 'ConfiguredPort', obj.safeGeneralPort(), ...
                 'CurrentLogCount', obj.getLogCount(), ...
                 'CurrentRequest', obj.getCurrentRequestSnapshot(), ...
                 'CurrentRequestAgeSeconds', obj.getCurrentRequestAgeSeconds(), ...
                 'LastRequest', obj.getLastRequestSnapshot(), ...
+                'TotalWatchdogRecoveryCount', obj.TotalWatchdogRecoveryCount, ...
+                'ConsecutiveWatchdogRecoveryCount', obj.ConsecutiveWatchdogRecoveryCount, ...
+                'LastWatchdogRecoveryAt', string(obj.LastWatchdogRecoveryAt), ...
                 'NumBytesAvailable', obj.safeNumBytesAvailable(), ...
                 'NumBytesWritten', obj.safeNumBytesWritten());
         end
@@ -218,16 +232,37 @@ classdef tcpServerLib < handle
             obj.logLongRunningRequestIfNeeded(health);
 
             if isempty(issues)
+                % Estado voltou ao normal: zeramos apenas a sequencia
+                % consecutiva para detectar degradacoes persistentes.
+                obj.ConsecutiveWatchdogRecoveryCount = 0;
+                health = obj.getRuntimeHealth();
+                health.Issues = strings(0, 1);
+                health.RecoveryApplied = false;
+                health.RecoveryActions = strings(0, 1);
                 return
             end
 
             recoveryDetails = obj.recoverRuntimeHealth(health);
+            if ~isempty(recoveryDetails.Actions)
+                obj.TotalWatchdogRecoveryCount = obj.TotalWatchdogRecoveryCount + 1;
+                obj.ConsecutiveWatchdogRecoveryCount = obj.ConsecutiveWatchdogRecoveryCount + 1;
+                obj.LastWatchdogRecoveryAt = string(datetime('now', 'Format', 'dd/MM/yyyy HH:mm:ss'));
+            end
+
             if ~isempty(recoveryDetails.Actions)
                 server.RuntimeLog.logWarning( ...
                     'tcpServerLib.Watchdog', ...
                     'Watchdog detectou listener degradado e aplicou tentativa de recuperacao.', ...
                     recoveryDetails);
             end
+
+            % O chamador recebe o estado ja atualizado para poder decidir
+            % se basta manter a auto-recuperacao local ou se vale reciclar
+            % a instancia inteira do servidor.
+            health = obj.getRuntimeHealth();
+            health.Issues = issues;
+            health.RecoveryApplied = ~isempty(recoveryDetails.Actions);
+            health.RecoveryActions = recoveryDetails.Actions;
         end
         
     end
@@ -254,7 +289,8 @@ classdef tcpServerLib < handle
                     struct('WarningMessage', string(msgWarning), 'RootFolder', string(rootFolder)));
             end
 
-            obj.General = generalSettings;
+            obj.General = server.RuntimeSettings.normalizeGeneralSettings(generalSettings);
+            obj.TimerPeriodSeconds = obj.General.runtime.TcpReconnectTimerPeriodSeconds;
         end
         
         %------------------------------------------------------------------
@@ -266,7 +302,7 @@ classdef tcpServerLib < handle
                 "ExecutionMode", "fixedSpacing", ...
                 "BusyMode", "queue", ...
                 "StartDelay", 0, ...
-                "Period", obj.TimerPeriod, ...
+                "Period", obj.TimerPeriodSeconds, ...
                 "TimerFcn", @obj.ConnectAttempt, ...
                 "ErrorFcn", @obj.HandleTimerError ...
                 );
@@ -274,7 +310,7 @@ classdef tcpServerLib < handle
             start(obj.Timer)
             server.RuntimeLog.logInfo( ...
                 'tcpServerLib.TimerCreation', ...
-                sprintf('Timer de reconexao iniciado com periodo de %d segundos.', obj.TimerPeriod), ...
+                sprintf('Timer de reconexao iniciado com periodo de %d segundos.', obj.TimerPeriodSeconds), ...
                 obj.buildConnectionContext());
         end
         
@@ -360,6 +396,8 @@ classdef tcpServerLib < handle
                     ME, ...
                     obj.buildExceptionDetails(ME));
                 obj.disposeServer();
+                obj.attemptImmediateReconnect( ...
+                    'Falha no callback de leitura; listener sera recriado imediatamente.');
             end
         end
         
@@ -493,6 +531,8 @@ classdef tcpServerLib < handle
                     ME, ...
                     obj.buildExceptionDetails(ME));
                 obj.disposeServer();
+                obj.attemptImmediateReconnect( ...
+                    'Falha ao responder cliente; listener sera recriado imediatamente.');
                 rethrow(ME)
             end
         end
@@ -864,6 +904,45 @@ classdef tcpServerLib < handle
         end
 
         %------------------------------------------------------------------
+        % Indica se a instancia esta pronta para nova requisicao
+        %------------------------------------------------------------------
+        % Esse sinal e mais forte do que "porta abriu": ele exige que
+        % listener e timer estejam saudaveis e que nao exista outra
+        % requisicao ainda ocupando o callback unico do MATLAB.
+        function tf = isReadyForRequest(obj)
+            tf = false;
+
+            try
+                timerRunning = strcmpi(obj.safeTimerRunningState(), 'on');
+                currentRequest = obj.getCurrentRequestSnapshot();
+                tf = obj.isServerValid() && ...
+                    obj.isServerConnected() && ...
+                    obj.isTimerValid() && ...
+                    timerRunning && ...
+                    ~currentRequest.IsActive;
+            catch
+                tf = false;
+            end
+        end
+
+        %------------------------------------------------------------------
+        % Uptime em segundos da instancia atual
+        %------------------------------------------------------------------
+        % O uptime ajuda a decidir reciclages preventivas sem depender de
+        % log externo ou PID.
+        function uptimeSeconds = getUptimeSeconds(obj)
+            uptimeSeconds = NaN;
+
+            try
+                if ~isempty(obj.Time)
+                    uptimeSeconds = seconds(datetime('now') - obj.Time);
+                end
+            catch
+                uptimeSeconds = NaN;
+            end
+        end
+
+        %------------------------------------------------------------------
         % Endereco do cliente, se disponivel
         %------------------------------------------------------------------
         function clientAddress = safeClientAddress(obj)
@@ -1016,6 +1095,28 @@ classdef tcpServerLib < handle
             end
 
             obj.Timer = [];
+        end
+
+        %------------------------------------------------------------------
+        % Tenta restabelecer o listener logo apos falha de transporte
+        %------------------------------------------------------------------
+        % O watchdog de 15 s continua existindo como rede de seguranca,
+        % mas esse caminho reduz a janela em que o cliente veria
+        % "connection refused" apos um erro de leitura/escrita.
+        function attemptImmediateReconnect(obj, reason)
+            server.RuntimeLog.logWarning( ...
+                'tcpServerLib.ImmediateReconnect', ...
+                reason, ...
+                obj.buildConnectionContext());
+
+            try
+                obj.ConnectAttempt();
+            catch reconnectError
+                server.RuntimeLog.logException( ...
+                    'tcpServerLib.ImmediateReconnect', ...
+                    reconnectError, ...
+                    obj.buildExceptionDetails(reconnectError));
+            end
         end
 
         %------------------------------------------------------------------
