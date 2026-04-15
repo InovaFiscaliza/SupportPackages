@@ -1428,6 +1428,10 @@ a, a:hover {
     word-break: break-word;
 }
 
+.textview--no-scroll {
+    overflow: hidden;
+}
+
 .mwDialog *::selection,
 .textview::selection,
 .textview *::selection { background: #0078d4; color: white; }

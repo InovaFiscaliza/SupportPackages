@@ -87,6 +87,10 @@ end
 
 %-----------------------------------------------------------------%
 function initializeJSBridge(role, app)
+    if isempty(app.jsBackDoor)
+        app.jsBackDoor = uihtml(app.UIFigure, "Visible", "off");
+    end
+
     switch role
         case 'mainApp'
             htmlEventReceivedFcn = @(~, evt)ipcMainJSEventsHandler(app, evt);
@@ -94,8 +98,5 @@ function initializeJSBridge(role, app)
             htmlEventReceivedFcn = @(~, evt)ipcSecondaryJSEventsHandler(app, evt);
     end
 
-    if isempty(app.jsBackDoor)
-        app.jsBackDoor = uihtml(app.UIFigure);
-    end
     set(app.jsBackDoor, "HTMLSource", appEngine.util.jsBackDoorHTMLSource(), "HTMLEventReceivedFcn", htmlEventReceivedFcn);
 end
