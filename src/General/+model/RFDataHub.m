@@ -55,19 +55,6 @@ classdef (Abstract) RFDataHub
                         load(backupPath, 'RFDataHub', 'RFDataHubLog', 'RFDataHub_info', '-mat')
                     end
                 end
-
-                % Algumas transformações foram migradas p/ model.RFDataHub.parquet2mat
-                % mas isso terá efeito apenas quando da atualização da base
-                % (que virá numa nova versão). Cria-se validação, evitando
-                % erros.
-                if isa(RFDataHub.("Latitude"), 'single') || isa(RFDataHub.("Longitude"), 'single')
-                    RFDataHub.("Latitude")    = double(RFDataHub.("Latitude"));
-                    RFDataHub.("Longitude")   = double(RFDataHub.("Longitude"));
-                end
-
-                if any(~ismember({'ID', 'Description', '_Name', '_Location'}, RFDataHub.Properties.VariableNames))
-                    RFDataHub = model.RFDataHub.createColumnsToGUI(RFDataHub);
-                end
             end
 
             % Algumas transformações foram migradas p/ model.RFDataHub.parquet2mat
@@ -75,8 +62,8 @@ classdef (Abstract) RFDataHub
             % (que virá numa nova versão). Cria-se validação, evitando
             % erros.
             if isa(RFDataHub.("Latitude"), 'single') || isa(RFDataHub.("Longitude"), 'single')
-                RFDataHub.("Latitude")  = double(RFDataHub.("Latitude"));
-                RFDataHub.("Longitude") = double(RFDataHub.("Longitude"));
+                RFDataHub.("Latitude")  = round(double(RFDataHub.("Latitude")),  6);
+                RFDataHub.("Longitude") = round(double(RFDataHub.("Longitude")), 6);
             end
 
             if any(~ismember({'ID', 'Description', '_Name', '_Location'}, RFDataHub.Properties.VariableNames))
@@ -144,8 +131,8 @@ classdef (Abstract) RFDataHub
             % estão em float32. No float64 isso não acontece... aberto BUG
             % na Mathworks, que indicou ter resolvido o problema. Pendente 
             % confirmar!
-            obj.Latitude  = str2double(obj.Latitude);
-            obj.Longitude = str2double(obj.Longitude);
+            obj.Latitude  = round(str2double(obj.Latitude),  6);
+            obj.Longitude = round(str2double(obj.Longitude), 6);
 
             obj.BW        = single(str2double(obj.BW));
             obj.Log       = obj.Log + 1;
@@ -308,29 +295,34 @@ classdef (Abstract) RFDataHub
                 error('Estação não consta na base <i>offline</i>. Favor confirmar que foi digitado o número corretamente.')
             end
             
-            Latitude    = obj.Latitude(idx(1));
-            Longitude   = obj.Longitude(idx(1));
+            lat = obj.Latitude(idx(1));
+            lng = obj.Longitude(idx(1));
+
             try
-                AntennaHeight = str2double(char(obj.AntennaHeight(idx(1))));
+                antennaHeight = str2double(char(obj.AntennaHeight(idx(1))));
     
-                mustBeFinite(AntennaHeight)
-                mustBeNonnegative(AntennaHeight)
-                mustBeNonempty(AntennaHeight)             
+                mustBeFinite(antennaHeight)
+                mustBeNonnegative(antennaHeight)
+                mustBeNonempty(antennaHeight)             
             catch
-                AntennaHeight = 0;
+                antennaHeight = 0;
             end
 
-            Frequency   = sprintf('%.3f, ', obj.Frequency(idx));
-            Frequency   = Frequency(1:end-2);
-        
-            ID          = strjoin(string(idx), ', ');
-            Service     = obj.Service(idx(1));
-            Station     = obj.Station(idx(1));
-            Description = model.RFDataHub.Description(obj, idx(1));
-            Details     = jsonencode(obj(idx(1), setdiff(obj.Properties.VariableNames, {'Service', 'Station', 'Latitude', 'Longitude', 'AntennaHeight'})));
-                        
-            Distance    = deg2km(distance(latNode, longNode, Latitude, Longitude));
-            stationInfo = struct('ID', ID, 'Frequency', Frequency, 'Service', Service, 'Station', Station, 'Description', Description, 'Distance', Distance, 'Latitude', Latitude, 'Longitude', Longitude, 'AntennaHeight', AntennaHeight, 'Details', Details);
+            frequency = sprintf('%.3f, ', obj.Frequency(idx));
+            frequency = frequency(1:end-2);
+
+            stationInfo = struct( ...
+                'ID', strjoin(string(idx), ', '), ...
+                'Frequency', frequency, ...
+                'Service', obj.Service(idx(1)), ...
+                'Station', obj.Station(idx(1)), ...
+                'Description', model.RFDataHub.Description(obj, idx(1)), ...
+                'Distance', deg2km(distance(latNode, longNode, lat, lng)), ...
+                'Latitude', lat, ...
+                'Longitude', lng, ...
+                'AntennaHeight', antennaHeight, ...
+                'Details', jsonencode(obj(idx(1), setdiff(obj.Properties.VariableNames, {'Service', 'Station', 'Latitude', 'Longitude', 'AntennaHeight'}))) ...
+            );
         end
 
 
