@@ -1,18 +1,17 @@
-function specData = CRFSBin(specData, fileName, ReadType)
-
-    % Author.: Eric Magalhães Delgado
-    % Date...: February 13, 2025
-    % Version: 2.02
-
+function specData = CRFSBin(specData, fileName, readType)
+    %---------------------------------------------------------------------%
+    % Leitura de arquivos .bin gerados por estação de monitoração fornecida 
+    % pela CRFS.
+    %---------------------------------------------------------------------%
     arguments
         specData
-        fileName char
-        ReadType char = 'SingleFile'
+        fileName (1,:) char
+        readType (1,:) char {mustBeMember(readType, {'MetaData', 'SpecData', 'SingleFile'})}  = 'SingleFile'
     end
     
     fileID = fopen(fileName, 'r');
     if fileID == -1
-        error('File not found.');
+        error('model:fileReader:CRFSBin:FileNotFound', 'File not found or access denied.')
     end
 
     fileFormatID = fread(fileID, 1, 'int32', 32);
@@ -23,11 +22,11 @@ function specData = CRFSBin(specData, fileName, ReadType)
     rawData = fread(fileID, [1, inf], 'uint8=>uint8');
     fclose(fileID);
     
-    switch ReadType
+    switch readType
         case {'MetaData', 'SingleFile'}
             specData = Fcn_MetaDataReader(specData, rawData, fileName);
 
-            if strcmp(ReadType, 'SingleFile')
+            if strcmp(readType, 'SingleFile')
                 specData = Fcn_SpecDataReader(specData, rawData, fileName);
             end
             
@@ -169,6 +168,12 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileName)
                 otherwise % 'DATATYPE', 'BLOCKTIMEOUT' and 'BLOCKSIZE'
                     ii = ii+1;
             end
+        end
+
+        % Arquivos com grande volume de dados de GPS e sem blocos de espectro tornam
+        % a leitura lenta e sem utilidade, sendo a execução interrompida nesses casos.
+        if height(gpsData.Matrix) > 1000 && isempty(specData)
+            error('model:fileReader:CRFSBin:NoSpectralData', 'Arquivo contém apenas dados de GPS (sem blocos de espectro). Leitura interrompida.')
         end
     end
 

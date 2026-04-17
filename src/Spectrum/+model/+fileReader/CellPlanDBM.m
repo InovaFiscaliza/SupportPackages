@@ -1,68 +1,18 @@
-function specData = CellPlanDBM(specData, fileName, ReadType)
-    %-----------------------------------------------------------------------------------------------%
-    % Autor.: Eric Magalhães Delgado / Marcelo Lúcio Nunes
-    % Data...: 09 de abril de2026
-    % Versão: 1.20
-    % Descrição:
-    %   Leitura de arquivos .dBm gerados pela CellPlan usando a DLL IQWrapper.
-    %   O método suporta leitura de metadados (FreqStart, FreqStop, DataPoints, Resolution) e níveis de potência (dBm) para arquivos de espectro.
-    %   O método é compatível com arquivos de espectro únicos ou divididos em bloc  os pela CellPlan, associando cada bloco à entrada de specData correspondente por meio de comparação de metadados.
-    %   O tipo de leitura é controlado pelo argumento ReadType, que pode ser 'MetaData' (apenas metadados), 'SingleFile' (metadados + níveis) ou 'SpecData' (níveis para entradas pré-existentes).
-    %   O método também extrai informações de GPS e timestamps.
-    % Uso:
-    %   specData = CellPlanDBM(specData, fileName, ReadType)
-    %   - specData: array de objetos SpecData (pode ser vazio para leitura de metadados)
-    %   - fileName: string com o caminho do arquivo .dBm a ser lido
-    %   - ReadType: string indicando o tipo de leitura ('MetaData', 'SingleFile' ou 'SpecData')
-    %   Retorno: array de objetos SpecData preenchidos com os dados lidos do arquivo .dBm
-    % Observações:
-    %   - A DLL IQWrapper deve estar presente na pasta 'CellPlanDBM' localizada no mesmo diretório deste arquivo.
-    %   - O método garante o fechamento do arquivo e descarregamento da DLL mesmo em caso de erros durante a leitura.
-    %   - O método é compatível com arquivos de espectro únicos ou divididos em blocos pela CellPlan, associando cada bloco à entrada de specData correspondente por meio de comparação de metadados.
-    %   - O método extrai informações de GPS e timestamps diretamente dos campos do struct hdr  retornado pela DLL, eliminando a necessidade de parsing manual de bytes para essas informações.
-    %-----------------------------------------------------------------------------------------------%
-    %-----------------------------------------------------------------------------------------------%
-    % Autor.: Eric Magalhães Delgado / Marcelo Lúcio Nunes
-    % Data...: 09 de abril de2026
-    % Versão: 1.20
-    % Descrição:
-    %   Leitura de arquivos .dBm gerados pela CellPlan usando a DLL IQWrapper.
-    %   O método suporta leitura de metadados (FreqStart, FreqStop, DataPoints, Resolution) e níveis de potência (dBm) para arquivos de espectro.
-    %   O método é compatível com arquivos de espectro únicos ou divididos em bloc  os pela CellPlan, associando cada bloco à entrada de specData correspondente por meio de comparação de metadados.
-    %   O tipo de leitura é controlado pelo argumento ReadType, que pode ser 'MetaData' (apenas metadados), 'SingleFile' (metadados + níveis) ou 'SpecData' (níveis para entradas pré-existentes).
-    %   O método também extrai informações de GPS e timestamps.
-    % Uso:
-    %   specData = CellPlanDBM(specData, fileName, ReadType)
-    %   - specData: array de objetos SpecData (pode ser vazio para leitura de metadados)
-    %   - fileName: string com o caminho do arquivo .dBm a ser lido
-    %   - ReadType: string indicando o tipo de leitura ('MetaData', 'SingleFile' ou 'SpecData')
-    %   Retorno: array de objetos SpecData preenchidos com os dados lidos do arquivo .dBm
-    % Observações:
-    %   - A DLL IQWrapper deve estar presente na pasta 'CellPlanDBM' localizada no mesmo diretório deste arquivo.
-    %   - O método garante o fechamento do arquivo e descarregamento da DLL mesmo em caso de erros durante a leitura.
-    %   - O método é compatível com arquivos de espectro únicos ou divididos em blocos pela CellPlan, associando cada bloco à entrada de specData correspondente por meio de comparação de metadados.
-    %   - O método extrai informações de GPS e timestamps diretamente dos campos do struct hdr  retornado pela DLL, eliminando a necessidade de parsing manual de bytes para essas informações.
-    %-----------------------------------------------------------------------------------------------%
+function specData = CellPlanDBM(specData, fileName, readType)
+    %---------------------------------------------------------------------%
+    % Leitura de arquivos .dBm gerados por estação de monitoração fornecida 
+    % pela CellPlan usando a DLL IQWrapper. Para tanto, a DLL IQWrapper deve 
+    % estar presente em subpasta "CellPlanDBM".
+    %---------------------------------------------------------------------%
     arguments
         specData
-        fileName   char
-        ReadType   char   = 'SingleFile'
+        fileName (1,:) char
+        readType (1,:) char {mustBeMember(readType, {'MetaData', 'SpecData', 'SingleFile'})}  = 'SingleFile'
     end
 
-    % Validação de existência do arquivo antes de tentar abrir via DLL, 
-    % para evitar erros.
-    fileId = fopen(fileName);
-    if fileId == -1
-        error('model:fileReader:CellPlanDBM:FileNotFound', 'File not found or access denied.');
-    end
-    fclose(fileId);
-
-    % A DLL IQWrapper é carregada dinamicamente a partir da pasta 'CellPlanDBM' 
-    % localizada no mesmo diretório deste arquivo.
-    dllFolder  = fullfile(fileparts(mfilename('fullpath')), 'CellPlanDBM');
     % Antes de entrar na IQWrapper, fazemos um pre-check barato do arquivo.
     % A intenção é barrar DBMs vazios ou com cabeçalho claramente inválido
-    % antes de chamar a DLL, evitando popup modal e travamento em OpenFile.
+    % antes de chamar a DLL, evitando popup modal gerado pela DLL.
     Fcn_PrecheckDbmHeader(fileName);
 
     % A DLL IQWrapper é carregada dinamicamente a partir da pasta 'CellPlanDBM'
@@ -82,9 +32,9 @@ function specData = CellPlanDBM(specData, fileName, ReadType)
     end
 
     try
-        switch ReadType
+        switch readType
             case {'MetaData', 'SingleFile'}
-                specData = Fcn_MetaDataReader(specData, fileName, ReadType);
+                specData = Fcn_MetaDataReader(specData, fileName, readType);
 
             case 'SpecData'
                 specData = copy(specData, {});
@@ -111,89 +61,48 @@ function specData = CellPlanDBM(specData, fileName, ReadType)
     end
 end
 
-
-%-------------------------------------------------------------------------%
-% Valida o cabeçalho textual esperado pela IQWrapper antes de acionar a DLL
 %-------------------------------------------------------------------------%
 function Fcn_PrecheckDbmHeader(fileName)
-    expectedIdentifier = '[CellSpec RawBuffer 009]';
-    headerReadLength   = 256;
-
-    % O check de tamanho só trata o caso exato de arquivo vazio.
-    % Não usamos limiar arbitrário porque isso seria frágil para DBMs
-    % válidos com compressão muito eficiente no ZIP.
     fileInfo = dir(fileName);
     if isempty(fileInfo) || fileInfo.bytes == 0
-        error('model:fileReader:CellPlanDBM:EmptyFile', ...
-            'DBM file is empty.')
+        error('model:fileReader:CellPlanDBM:EmptyFile', 'File empty.')
     end
 
     fileId = fopen(fileName, 'r');
     if fileId == -1
-        error('model:fileReader:CellPlanDBM:FileNotFound', ...
-            'File not found or access denied.')
+        error('model:fileReader:CellPlanDBM:FileNotFound', 'File not found or access denied.')
     end
     cleanupFile = onCleanup(@() fclose(fileId));
 
-    % Lemos apenas o prefixo do arquivo porque a DLL também decide a
-    % validade do DBM logo no cabeçalho. Assim, o pre-check continua leve.
-    headerBytes = fread(fileId, [1, headerReadLength], '*uint8');
-    if isempty(headerBytes)
-        error('model:fileReader:CellPlanDBM:EmptyFile', ...
-            'DBM file is empty.')
+    % Avaliar se arquivo possui no seu cabeçalho o identificador definido
+    % pela CellPlan.
+    expectedIdentifier = '[CellSpec RawBuffer 009]';
+
+    headerBytes = fread(fileId, [1, min(fileInfo.bytes, 256)], 'uint8=>uint8');
+    headerBytes(headerBytes == 0) = [];
+    headerText = char(headerBytes);
+    
+    if isempty(headerText) || ~contains(headerText, expectedIdentifier, 'IgnoreCase', true)
+        error('model:fileReader:CellPlanDBM:InvalidHeader', 'Invalid binary file header. Expected: "%s". Found: "%s".', expectedIdentifier, headerText)
     end
-
-    headerText = char(headerBytes(headerBytes ~= 0));
-    if isempty(strtrim(headerText))
-        error('model:fileReader:CellPlanDBM:InvalidHeader', ...
-            ['Invalid binary file header. Expected identifier: %s. ', ...
-             'Identifier found: <empty>.'], ...
-            expectedIdentifier)
-    end
-
-    if ~contains(headerText, expectedIdentifier)
-        printableMask = headerBytes >= 32 & headerBytes <= 126;
-        headerSnippet = strtrim(char(headerBytes(printableMask)));
-        headerSnippet = regexprep(headerSnippet, '\s+', ' ');
-
-        if isempty(headerSnippet)
-            headerSnippet = '<empty>';
-        elseif strlength(string(headerSnippet)) > 96
-            headerSnippet = char(extractBefore(string(headerSnippet), 97));
-        end
-
-        error('model:fileReader:CellPlanDBM:InvalidHeader', ...
-            ['Invalid binary file header. Expected identifier: %s. ', ...
-             'Identifier found: %s'], ...
-            expectedIdentifier, headerSnippet)
-    end
-
-    clear cleanupFile
 end
 
-
-%-------------------------------------------------------------------------%
-% Carrega a DLL IQWrapper (apenas uma vez por sessão MATLAB)
 %-------------------------------------------------------------------------%
 function Fcn_LoadDLL(dllFolder)
     if libisloaded('IQWrapper')
         return
     end
 
-    dllFile   = fullfile(dllFolder, 'IQWrapper.dll');
+    dllFile = fullfile(dllFolder, 'IQWrapper.dll');
     protoFile = fullfile(dllFolder, 'IQWrapperProto.m');
 
     if exist(protoFile, 'file')
         loadlibrary(dllFile, @IQWrapperProto);
     else
-        loadlibrary(dllFile, fullfile(dllFolder, 'IQWrapper.h'), ...
-            'mfilename', fullfile(dllFolder, 'IQWrapperProto'));
+        loadlibrary(dllFile, fullfile(dllFolder, 'IQWrapper.h'), 'mfilename', fullfile(dllFolder, 'IQWrapperProto'));
     end
 end
 
-
-%-------------------------------------------------------------------------%
-% Inicializa os ponteiros usados pela DLL em cada leitura
 %-------------------------------------------------------------------------%
 function [hdrPtr, dBmPtr, totPtr, medPtr] = Fcn_InitPointers()
     hdr = struct( ...
@@ -235,12 +144,6 @@ function [hdrPtr, dBmPtr, totPtr, medPtr] = Fcn_InitPointers()
     medPtr = libpointer('int32Ptr', 0);   % 4º arg = indicador de bloco médio (0 ou 1)
 end
 
-
-%-------------------------------------------------------------------------%
-% Lê os metadados do arquivo .dBm e preenche as entradas de specData com as informações de FreqStart,
-% FreqStop, DataPoints e Resolution.
-% O método também extrai informações de GPS e timestamps diretamente dos campos do struct hdr retornado
-% pela DLL.
 %-------------------------------------------------------------------------%
 function specData = Fcn_MetaDataReader(specData, fileName, ReadType)
     gpsData = struct('Status', 0, 'Matrix', []);
@@ -300,10 +203,10 @@ function specData = Fcn_MetaDataReader(specData, fileName, ReadType)
             metaDataInfo.DataPoints = tot;
             metaDataInfo.Resolution = ext_ResBw_Hz;
 
-            [specData, idx] = checkNewBlock(specData, metaDataInfo);
-            gpsData = Read_GPSInfo(gpsData, hdr);
+            [specData, idx] = findOrCreateFlow(specData, metaDataInfo);
+            gpsData = appendValidGPSData(gpsData, hdr);
 
-            ts = Read_TimeStamp(hdr);
+            ts = extractTimestamp(hdr);
             if numel(tempTS) < idx || isempty(tempTS{idx})
                 tempTS{idx} = ts;
             else
@@ -387,51 +290,6 @@ function specData = Fcn_MetaDataReader(specData, fileName, ReadType)
     end
 end
 
-
-%-------------------------------------------------------------------------%
-% Verifica se o bloco lido pela DLL corresponde a um bloco já presente em
-% specData (comparando os metadados).
-% Se corresponder, retorna o índice do bloco existente. Caso contrário,
-% cria uma nova entrada em specData para o % novo bloco e retorna seu índice.
-% O método é utilizado para associar cada bloco lido pela DLL à entrada de
-% specData correspondente, garantindo que os dados sejam organizados
-% corretamente mesmo quando a CellPlan divide o espectro em múltiplos blocos.
-% O método é chamado dentro de Fcn_MetaDataReader para cada bloco lido,
-% permitindo a construção incremental de specData à medida que os blocos
-% são processados.
-% A comparação de metadados é feita considerando uma tolerância de 1 Hz para
-% FreqStart e FreqStop, para acomodar pequenas variações que podem ocorrer
-% entre blocos adjacentes.
-% O método também garante que, se um novo bloco for identificado, uma nova
-%  entrada em specData seja criada com os metadados correspondentes e um
-% FileMap vazio, preparando a estrutura para o preenchimento dos dados posteriormente.
-%-------------------------------------------------------------------------%
-function [specData, idx] = checkNewBlock(specData, metaDataInfo)
-    if isempty(specData)
-        idx = 1;
-    else
-        idx = find(arrayfun(@(x) isequal(metaDataInfo, x), [specData.MetaData]), 1);
-        if isempty(idx)
-            idx = numel(specData) + 1;
-        end
-    end
-
-    if idx > numel(specData)
-        specData(idx).MetaData = metaDataInfo;
-        specData(idx).FileMap  = [];
-    end
-end
-
-
-%-------------------------------------------------------------------------%
-% Lê os níveis de potência (dBm) do arquivo .dBm usando a DLL IQWrapper e
-% preenche as entradas de specData correspondentes.
-% O método associa cada bloco lido pela DLL à entrada de specData correspondente
-% por meio de comparação de metadados, garantindo que os níveis sejam organizados
-% corretamente mesmo quando a CellPlan divide o espectro em múltiplos blocos.
-% O método também acumula os timestamps de cada bloco para cada entrada de specData,
-%  registrando o timestamp da sub-faixa de menor frequência como o timestamp
-% representativo do sweep.
 %-------------------------------------------------------------------------%
 function specData = Fcn_SpecDataReader(specData, fileName)
     nBlocksPtr = libpointer('int32Ptr', 0);
@@ -485,7 +343,7 @@ function specData = Fcn_SpecDataReader(specData, fileName)
 
             % Timestamp registrado pela sub-faixa de menor frequência
             if blkFreqStart <= specData(jj).MetaData.FreqStart + 1
-                ts = Read_TimeStamp(hdr);
+                ts = extractTimestamp(hdr);
                 if isempty(tempTS{jj})
                     tempTS{jj} = ts;
                 else
@@ -519,11 +377,25 @@ function specData = Fcn_SpecDataReader(specData, fileName)
     end
 end
 
+%-------------------------------------------------------------------------%
+function [specData, idx] = findOrCreateFlow(specData, metaDataInfo)
+    if isempty(specData)
+        idx = 1;
+    else
+        idx = find(arrayfun(@(x) isequal(metaDataInfo, x), [specData.MetaData]), 1);
+        if isempty(idx)
+            idx = numel(specData) + 1;
+        end
+    end
+
+    if idx > numel(specData)
+        specData(idx).MetaData = metaDataInfo;
+        specData(idx).FileMap  = [];
+    end
+end
 
 %-------------------------------------------------------------------------%
-% Lê o timestamp do struct hdr retornado pela DLL e converte para datetime.
-%-------------------------------------------------------------------------%
-function timeStamp = Read_TimeStamp(hdr)
+function timeStamp = extractTimestamp(hdr)
     timeStamp = datetime([ ...
         double(hdr.year), ...
         double(hdr.month), ...
@@ -534,55 +406,9 @@ function timeStamp = Read_TimeStamp(hdr)
     ]);
 end
 
-
 %-------------------------------------------------------------------------%
-% Lê as informações de GPS do struct hdr retornado pela DLL e acumula em gpsData.
-%-------------------------------------------------------------------------%
-function [startIndex, stopIndex] = findIndexArrays(rawData)
-    startIndex = strfind(char(rawData), 'StArT') + 5;
-    stopIndex  = strfind(char(rawData), 'StOp')  - 1;
-
-    concIndex  = [];
-    try
-        concIndex  = zeros(1, numel(startIndex)+numel(stopIndex));
-        concIndex(1:2:end) = startIndex;
-        concIndex(2:2:end) = stopIndex;
-    catch
-    end
-
-    if (numel(startIndex) ~= numel(stopIndex)) || (~isempty(concIndex) && ~issorted(concIndex))
-        [startIndex, stopIndex] = fixIndexArrays(startIndex, stopIndex);
-    end
-end
-
-
-%-------------------------------------------------------------------------%
-function [startIndex, stopIndex] = fixIndexArrays(startIndex, stopIndex)
-    if isempty(startIndex) || isempty(stopIndex)
-        return
-    end
-
-    ii = 1;
-    while true
-        NN = numel(startIndex);
-        MM = numel(stopIndex);
-        if ii > NN
-            break
-        end
-
-        if startIndex(ii) > stopIndex(ii)
-            stopIndex(ii) = [];
-            continue
-        elseif (NN > ii) && (startIndex(ii+1) < stopIndex(ii))
-            startIndex(ii) = [];
-            continue
-        end
-        ii = ii+1;
-    end
-
-    if NN < MM
-        startIndex(MM+1:end) = [];
-    elseif NN > MM
-        stopIndex(NN+1:end)  = [];
+function gpsData = appendValidGPSData(gpsData, hdr)
+    if (hdr.latitude ~= -200) && (hdr.longitude ~= -200)
+        gpsData.Matrix(end+1,:) = [hdr.latitude, hdr.longitude];
     end
 end
