@@ -1,7 +1,7 @@
-classdef Zip
+classdef (Abstract) Zip
 
     methods (Static)
-
+        %-----------------------------------------------------------------%
         function [fileList, tempFolder] = extractToWorkspace(zipFilePath)
             % Extrai o conteúdo do arquivo .zip para um diretório
             % temporário.
@@ -14,7 +14,8 @@ classdef Zip
                 error('Zip:FileNotFound','ZIP file not found.');
             end
 
-            tempFolder = model.fileReader.zipUtils.Zip.createWorkspaceFolder();
+            tempFolder = tempname;
+            mkdir(tempFolder);
 
             % Extração normal
             unzip(zipFilePath, tempFolder);
@@ -25,7 +26,6 @@ classdef Zip
 
             % Move todos os arquivos para a raiz do tempFolder
             for k = 1:numel(fileStruct)
-
                 oldPath = fullfile(fileStruct(k).folder, fileStruct(k).name);
                 newPath = fullfile(tempFolder, fileStruct(k).name);
 
@@ -57,31 +57,15 @@ classdef Zip
             fileList = fullfile({fileStruct.folder},{fileStruct.name});
         end
 
-
-        function tempFolder = createWorkspaceFolder()
-
-            baseFolder = 'C:\appAnalise_workspace';
-
-            if ~exist(baseFolder,'dir')
-                mkdir(baseFolder);
-            end
-
-            [~,uniqueName] = fileparts(tempname);
-            tempFolder = fullfile(baseFolder,uniqueName);
-
-            mkdir(tempFolder);
-        end
-
-
+        %-----------------------------------------------------------------%
         function safeCleanup(folderPath)
-
             try
-                if exist(folderPath,'dir')
+                if isfolder(folderPath)
                     rmdir(folderPath,'s');
                 end
             catch
             end
         end
-
     end
+
 end

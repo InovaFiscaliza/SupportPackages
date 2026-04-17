@@ -133,10 +133,6 @@ classdef SpecDataBase < handle
     methods (Static = true)
         %-----------------------------------------------------------------%
         function [obj, projectData] = readZipTolerant(obj, fileFullName, readType)
-            % Le membros de um ZIP individualmente para que uma falha local
-            % nao invalide o pacote inteiro quando ainda houver conteudo
-            % legivel a aproveitar.
-
             projectData = [];
             [fileList, tempFolder] = model.fileReader.zipUtils.Zip.extractToWorkspace(fileFullName);
             cleanupFolder = onCleanup(@() model.fileReader.zipUtils.Zip.safeCleanup(tempFolder));
@@ -145,22 +141,14 @@ classdef SpecDataBase < handle
             firstFailureIdentifier = "";
             firstFailureMessage = "";
 
-            for k = 1:numel(fileList)
-                fname = fileList{k};
-                tmpObj = model.SpecDataBase.empty;
-
+            for ii = 1:numel(fileList)
                 try
-                    [tmpObj, ~] = read(tmpObj, fname, readType);
+                    tmpObj = read(model.SpecDataBase.empty, fileList{ii}, readType);
 
-                    if isempty(tmpObj)
-                        continue
+                    if ~isempty(tmpObj)
+                        obj(end+1) = tmpObj;
                     end
 
-                    if isempty(obj)
-                        obj = tmpObj;
-                    else
-                        obj = [obj tmpObj];
-                    end
                 catch ME
                     failedCount = failedCount + 1;
                     if strlength(firstFailureIdentifier) == 0
@@ -170,17 +158,15 @@ classdef SpecDataBase < handle
                 end
             end
 
-            clear cleanupFolder
-
             if failedCount > 0
                 if isempty(obj)
-                    error('SpecDataBase:NoReadableFilesInZip', ...
+                    error('model:SpecDataBase:NoReadableFilesInZip', ...
                         ['Nenhum arquivo legivel foi encontrado no ZIP: %s\n', ...
                          'Primeira falha identificada: [%s] %s'], ...
                         fileFullName, firstFailureIdentifier, firstFailureMessage);
                 end
 
-                warning('SpecDataBase:ZipPartialRead', ...
+                warning('model:SpecDataBase:ZipPartialRead', ...
                     ['Leitura parcial do ZIP: %d membro(s) falharam em %s. ', ...
                      'Primeira falha: [%s] %s'], ...
                     failedCount, fileFullName, firstFailureIdentifier, firstFailureMessage);
@@ -205,7 +191,7 @@ classdef SpecDataBase < handle
                 fileFormatName = 'RFlookBin v.2';
             else
                 [~, fileName, fileExt] = fileparts(fileFullName);
-                error('Unexpected header for a "bin" file\n%s', [fileName, fileExt])
+                error('model:SpecDataBase:UnexpectedHeader', 'Unexpected header for a "bin" file\n%s', [fileName, fileExt])
             end
         end
 
