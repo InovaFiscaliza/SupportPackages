@@ -1,4 +1,9 @@
 function portRelease(port)
+    % portRelease - Mata qualquer processo que esteja segurando a porta.
+    %
+    % Este utilitario e agressivo por definicao: ele nao distingue um
+    % processo valido de um indevido. Por isso o fluxo atual do repoSFI
+    % prefere bloquear segunda instancia em vez de chamar isto no startup.
 
     if ~ispc
         error('tcpServerLib:UnsupportedPlatform', 'This feature is supported only on Windows platforms.')
@@ -6,6 +11,8 @@ function portRelease(port)
 
     % Identifica conexões relacionados à porta "Port" que podem inviabilizar a
     % criação de um novo socket.
+    % O netstat lista todos os PIDs tocando a porta; a regex extrai a
+    % ultima coluna para transformar essa saida em uma lista de processos.
     [~, cmdout] = system(sprintf('netstat -ano | findstr "%d"', port));
     pidList     = unique(regexp(cmdout, '\d+$', 'match', 'lineanchors'));
 
@@ -26,6 +33,8 @@ function portRelease(port)
         % da atual sessão do MATLAB. Caso contrário, o próprio MATLAB seria 
         % fechado.
         
+        % So pulamos o PID atual para nao matar o proprio MATLAB. Todo o
+        % resto sera encerrado sem perguntar.
         pidList(pidList == pidMatlab) = [];
         if ~isempty(pidList)
             for ii = 1:numel(pidList)

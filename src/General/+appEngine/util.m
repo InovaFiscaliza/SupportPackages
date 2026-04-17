@@ -273,6 +273,11 @@ classdef (Abstract) util
             projectFilePath     = fullfile(projectFolder,     'GeneralSettings.json');
             programDataFilePath = fullfile(programDataFolder, 'GeneralSettings.json');
         
+            % Tenta ler do projectFolder. Se nao existir e estiver compilado, procura em ctfroot
+            if ~isfile(projectFilePath) && isdeployed
+                projectFilePath = fullfile(ctfroot, 'config', 'GeneralSettings.json');
+            end
+            
             projectFileContent  = jsondecode(fileread(projectFilePath));
             try
                 if ~isfolder(programDataFolder)
@@ -284,9 +289,19 @@ classdef (Abstract) util
                     mkdir(programDataFolder_backup)
                 end
 
+                % Verifica se projectFolder esta DENTRO de programDataFolder (evita auto-delete)
+                isProjectFolderInProgramData = startsWith(projectFolder, programDataFolder);
+                
                 if ~isfile(programDataFilePath)
-                    appEngine.util.copyConfigFiles(programDataFolder, programDataFolder_backup, files2Keep, 'move')
-                    appEngine.util.copyConfigFiles(projectFolder,     programDataFolder,        files2Keep, 'copy')                
+                    % Arquivo nao existe em programDataFolder, copia do projectFolder ou ctfroot
+                    if isfolder(projectFolder)
+                        appEngine.util.copyConfigFiles(projectFolder, programDataFolder, files2Keep, 'copy')
+                    elseif isdeployed && isfolder(fullfile(ctfroot, 'config'))
+                        appEngine.util.copyConfigFiles(fullfile(ctfroot, 'config'), programDataFolder, files2Keep, 'copy')
+                    else
+                        % Pelo menos copia o arquivo GeneralSettings.json
+                        copyfile(projectFilePath, fullfile(programDataFolder, 'GeneralSettings.json'), 'f')
+                    end                
                 else
                     programDataFileContent = jsondecode(fileread(programDataFilePath));
         
@@ -312,8 +327,11 @@ classdef (Abstract) util
                             end
                         end
         
-                        appEngine.util.copyConfigFiles(programDataFolder, programDataFolder_backup, files2Keep, 'move')
-                        appEngine.util.copyConfigFiles(projectFolder,     programDataFolder,        files2Keep, 'copy')
+                        % Evita auto-delete quando projectFolder esta dentro de programDataFolder
+                        if ~isProjectFolderInProgramData
+                            appEngine.util.copyConfigFiles(programDataFolder, programDataFolder_backup, files2Keep, 'move')
+                            appEngine.util.copyConfigFiles(projectFolder,     programDataFolder,        files2Keep, 'copy')
+                        end
                         writematrix(jsonencode(projectFileContent, "PrettyPrint", true), programDataFilePath, "FileType", "text", "QuoteStrings", "none", "WriteMode", "overwrite")
                         
                         msgWarning = ['Os arquivos de configuração do app hospedado na pasta de configuração local, ' ...

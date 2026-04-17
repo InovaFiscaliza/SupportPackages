@@ -1,5 +1,5 @@
 {
-    "version": 0.01,
+    "version": 0.15,
     "operationMode": {
         "Debug": false,
         "Dock": true,
@@ -24,13 +24,25 @@
     },
     "tcpServer": {
         "Status": 0,
-        "IP": "",
+        "IP": "", 
         "Port": 8910,
         "Key": "123456",
+        "Repo":"\\\\reposfi\\sfi$\\sensores",
+        "Repo_map":"/mnt/reposfi",
         "ClientList": [
             "Zabbix",
             "Jupyter",
             "Matlab"
         ]
+        
+    },
+    "runtime": {
+        "VerboseReadLogs": false,
+        "LogMaintenanceIntervalSeconds": 30,
+        "HeartbeatIntervalSeconds": 60,
+        "WatchdogIntervalSeconds": 15,
+        "ServerRecycleIntervalSeconds": 43200,
+        "MaxConsecutiveWatchdogRecoveriesBeforeRecycle": 3,
+        "TcpReconnectTimerPeriodSeconds": 300
     }
 }

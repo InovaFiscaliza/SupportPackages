@@ -31,6 +31,10 @@ classdef SpecDataBase < handle
             [~, fileName, fileExt] = fileparts(fileFullName);
             
             switch lower(fileExt)
+                case '.zip'
+                    [obj, projectData] = model.SpecDataBase.readZipTolerant(obj, fileFullName, readType);
+                    return
+
                 case '.bin'
                     switch model.SpecDataBase.checkBinaryFormat(fileFullName)
                         case 'CRFS'
@@ -127,6 +131,62 @@ classdef SpecDataBase < handle
 
 
     methods (Static = true)
+        %-----------------------------------------------------------------%
+        function [obj, projectData] = readZipTolerant(obj, fileFullName, readType)
+            % Le membros de um ZIP individualmente para que uma falha local
+            % nao invalide o pacote inteiro quando ainda houver conteudo
+            % legivel a aproveitar.
+
+            projectData = [];
+            [fileList, tempFolder] = model.fileReader.zipUtils.Zip.extractToWorkspace(fileFullName);
+            cleanupFolder = onCleanup(@() model.fileReader.zipUtils.Zip.safeCleanup(tempFolder));
+
+            failedCount = 0;
+            firstFailureIdentifier = "";
+            firstFailureMessage = "";
+
+            for k = 1:numel(fileList)
+                fname = fileList{k};
+                tmpObj = model.SpecDataBase.empty;
+
+                try
+                    [tmpObj, ~] = read(tmpObj, fname, readType);
+
+                    if isempty(tmpObj)
+                        continue
+                    end
+
+                    if isempty(obj)
+                        obj = tmpObj;
+                    else
+                        obj = [obj tmpObj];
+                    end
+                catch ME
+                    failedCount = failedCount + 1;
+                    if strlength(firstFailureIdentifier) == 0
+                        firstFailureIdentifier = string(ME.identifier);
+                        firstFailureMessage = string(ME.message);
+                    end
+                end
+            end
+
+            clear cleanupFolder
+
+            if failedCount > 0
+                if isempty(obj)
+                    error('SpecDataBase:NoReadableFilesInZip', ...
+                        ['Nenhum arquivo legivel foi encontrado no ZIP: %s\n', ...
+                         'Primeira falha identificada: [%s] %s'], ...
+                        fileFullName, firstFailureIdentifier, firstFailureMessage);
+                end
+
+                warning('SpecDataBase:ZipPartialRead', ...
+                    ['Leitura parcial do ZIP: %d membro(s) falharam em %s. ', ...
+                     'Primeira falha: [%s] %s'], ...
+                    failedCount, fileFullName, firstFailureIdentifier, firstFailureMessage);
+            end
+        end
+
         %-----------------------------------------------------------------%
         function fileFormatName = checkBinaryFormat(fileFullName)
             % O formato .BIN é muito comum, sendo gerado pelo Logger, appColeta
