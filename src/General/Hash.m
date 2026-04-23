@@ -33,18 +33,45 @@ classdef (Abstract) Hash
             arguments
                 input uint8
             end
-
-            md = java.security.MessageDigest.getInstance('SHA-1');
-
+        
             numBytes = numel(input);
-            offset = 1;
-            while offset <= numBytes
-                last = min(offset + 2^30 - 1, numBytes);
-                md.update(input(offset:last));
-                offset = last + 1;
+
+            try
+                dotNetModule = System.Security.Cryptography.SHA1Managed;
+                dotNetModule.Initialize();
+
+                offset = 1;
+                while offset <= numBytes
+                    last = min(offset + 2^20 - 1, numBytes);
+                    chunk = input(offset:last);
+
+                    if last < numBytes
+                        dotNetModule.TransformBlock(chunk, 0, numel(chunk), chunk, 0);
+                    else
+                        dotNetModule.TransformFinalBlock(chunk, 0, numel(chunk));
+                    end
+
+                    offset = last + 1;
+                end
+                hashBytes = uint8(dotNetModule.Hash);
+            
+            catch dotNetError
+                try
+                    javaModule = java.security.MessageDigest.getInstance('SHA-1');
+        
+                    offset = 1;        
+                    while offset <= numBytes
+                        last = min(offset + 2^30 - 1, numBytes);
+                        javaModule.update(input(offset:last));
+                        offset = last + 1;
+                    end        
+                    hashBytes = typecast(javaModule.digest(), 'uint8');
+                
+                catch javaError
+                    error('Hash:sha1:UnexpectedError', 'Both SHA-1 backends failed. DotNet error: "%s", Java error: "%s"', dotNetError.message, javaError.message);
+                end
             end
 
-            hashBytes = typecast(md.digest(), 'uint8'); 
             hashHex = sprintf('%02x', hashBytes);
         end
     end

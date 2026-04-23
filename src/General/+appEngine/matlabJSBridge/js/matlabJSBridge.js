@@ -1525,11 +1525,11 @@ a, a:hover {
         styleElement.type = "text/css";
         styleElement.textContent = `
 #${elementId}_dropdown .mwMenuItem {
-    background: ${backgroundColor} !important;
+    background: ${backgroundColor.items} !important;
 }
 
 #${elementId}_dropdown .mwComboBoxSelectedMenuItem {
-    background: #6c0404 !important;
+    background: ${backgroundColor.selectedItem} !important;
 }`;
 
         parentDocument.head.appendChild(styleElement);
