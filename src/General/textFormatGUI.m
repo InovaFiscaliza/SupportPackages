@@ -145,7 +145,11 @@ classdef (Abstract) textFormatGUI
                         dataGroupColor = 'color: gray; ';
                 end
 
-                htmlCode  = sprintf('%s<font style="%sfont-size: 10px;">%s</font>', htmlCode, dataGroupColor, dataGroup);
+                htmlCode = sprintf('%s<font style="%sfont-size: 10px;">%s</font>', htmlCode, dataGroupColor, dataGroup);
+                
+                if isfield(dataStruct(ii), 'link')
+                    htmlCode = [htmlCode ' ' dataStruct(ii).link];
+                end
 
                 if isstruct(dataStruct(ii).value)
                     htmlCode = textFormatGUI.structParser(htmlCode, dataStruct(ii).value, 1, invalidStatus);
