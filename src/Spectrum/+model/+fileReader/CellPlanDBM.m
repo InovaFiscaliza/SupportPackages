@@ -10,6 +10,11 @@ function specData = CellPlanDBM(specData, fileName, readType)
         readType (1,:) char {mustBeMember(readType, {'MetaData', 'SpecData', 'SingleFile'})}  = 'SingleFile'
     end
 
+    % Garantia de retorno ao diretório original mesmo em caso de erro durante
+    % a leitura DLL.
+    initFolder = pwd;
+    cleanupCD = onCleanup(@() cd(initFolder));
+
     % Antes de entrar na IQWrapper, fazemos um pre-check barato do arquivo.
     % A intenção é barrar DBMs vazios ou com cabeçalho claramente inválido
     % antes de chamar a DLL, evitando popup modal gerado pela DLL.
@@ -17,15 +22,20 @@ function specData = CellPlanDBM(specData, fileName, readType)
 
     % A DLL IQWrapper é carregada dinamicamente a partir da pasta 'CellPlanDBM'
     % localizada no mesmo diretório deste arquivo.
-    dllFolder  = fullfile(fileparts(mfilename('fullpath')), 'CellPlanDBM');
-    rootFolder = pwd;
+    dllFolder = fullfile(fileparts(mfilename('fullpath')), 'CellPlanDBM');
     cd(dllFolder)
 
-    % Garantia de retorno ao diretório original mesmo em caso de erro durante
-    % a leitura DLL.
-    cleanupCD = onCleanup(@() cd(rootFolder));
+    % Garante que as dependências internas da DLL sejam encontradas pelo
+    % Windows tanto em modo interpretado quanto compilado, visto que
+    % "IQWrapper_Load_Library" tenta carregar DLLs adicionais em tempo 
+    % de execução.
+    prevPath = getenv('PATH');
+    cleanupPath = onCleanup(@() setenv('PATH', prevPath));
+    setenv('PATH', [dllFolder pathsep prevPath]);
 
-    Fcn_LoadDLL(dllFolder);
+    if ~libisloaded('IQWrapper')
+        loadlibrary('IQWrapper.dll', @IQWrapperProto);
+    end
 
     if ~calllib('IQWrapper', 'IQWrapper_Load_Library')
         error('model:fileReader:CellPlanDBM:LoadLibraryFailed', 'Failed to load IQWrapper library.')
@@ -84,22 +94,6 @@ function Fcn_PrecheckDbmHeader(fileName)
     
     if isempty(headerText) || ~contains(headerText, expectedIdentifier, 'IgnoreCase', true)
         error('model:fileReader:CellPlanDBM:InvalidHeader', 'Invalid binary file header. Expected: "%s". Found: "%s".', expectedIdentifier, headerText)
-    end
-end
-
-%-------------------------------------------------------------------------%
-function Fcn_LoadDLL(dllFolder)
-    if libisloaded('IQWrapper')
-        return
-    end
-
-    dllFile = fullfile(dllFolder, 'IQWrapper.dll');
-    protoFile = fullfile(dllFolder, 'IQWrapperProto.m');
-
-    if exist(protoFile, 'file')
-        loadlibrary(dllFile, @IQWrapperProto);
-    else
-        loadlibrary(dllFile, fullfile(dllFolder, 'IQWrapper.h'), 'mfilename', fullfile(dllFolder, 'IQWrapperProto'));
     end
 end
 
