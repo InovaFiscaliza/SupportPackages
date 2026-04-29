@@ -1,9 +1,9 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="2319460481" file="C:\InovaFiscaliza\SupportPackages\src\Demo\repoSFI\src\wsSpectrumReader.prj" location="C:\InovaFiscaliza\SupportPackages\src\Demo\repoSFI\src" name="wsSpectrumReader" preferred-package-location="C:\InovaFiscaliza\SupportPackages\src\Demo\repoSFI\src\wsSpectrumReader\for_redistribution" preferred-package-type="package.type.exe" target="target.ezdeploy.standalone" target-name="Application Compiler">
+  <configuration build-checksum="2184873771" file="C:\InovaFiscaliza\SupportPackages\src\Demo\repoSFI\src\wsSpectrumReader.prj" location="C:\InovaFiscaliza\SupportPackages\src\Demo\repoSFI\src" name="wsSpectrumReader" preferred-package-location="C:\InovaFiscaliza\SupportPackages\src\Demo\repoSFI\src\wsSpectrumReader\for_redistribution" preferred-package-type="package.type.exe" target="target.ezdeploy.standalone" target-name="Application Compiler">
     <param.appname>repoSFI</param.appname>
     <param.icon />
     <param.icons />
-    <param.version>0.3.3</param.version>
+    <param.version>0.3.5</param.version>
     <param.authnamewatermark>Augusto Peterle</param.authnamewatermark>
     <param.email />
     <param.company>ANATEL</param.company>
@@ -90,6 +90,11 @@
       <file>${PROJECT_ROOT}\config</file>
     </fileset.package>
     <fileset.depfun>
+      <file>C:\InovaFiscaliza\appAnalise\src\+model\SpecData.m</file>
+      <file>C:\InovaFiscaliza\appAnalise\src\+model\UserData.m</file>
+      <file>C:\InovaFiscaliza\appAnalise\src\+util\Classification.m</file>
+      <file>C:\InovaFiscaliza\appAnalise\src\+util\emissionChannel.m</file>
+      <file>C:\InovaFiscaliza\appAnalise\src\+util\Measures.m</file>
       <file>${PROJECT_ROOT}\tcpServerLib.m</file>
     </fileset.depfun>
     <build-deliverables>
