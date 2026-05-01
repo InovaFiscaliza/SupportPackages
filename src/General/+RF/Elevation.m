@@ -57,6 +57,20 @@ classdef Elevation < handle
                 end
             end
         end
+
+        %-----------------------------------------------------------------%
+        function isCached = IsCached(obj, txObj, rxObj, nPoints)
+            wayPoints2D = WayPoints2D(obj, txObj, rxObj, nPoints);
+            [lat1, lng1, lat2, lng2] = Bounds(obj, wayPoints2D);
+
+            isCached = any( ...
+                strcmp(obj.cacheMapping.Server, 'Open-Elevation') & ...
+                abs(obj.cacheMapping.Lat1  - lat1) <= 1e-5        & ...
+                abs(obj.cacheMapping.Lat2  - lat2) <= 1e-5        & ...
+                abs(obj.cacheMapping.Long1 - lng1) <= 1e-5        & ...
+                abs(obj.cacheMapping.Long2 - lng2) <= 1e-5          ...
+            );
+        end
     end
 
 
@@ -139,7 +153,7 @@ classdef Elevation < handle
                 end
 
             catch ME
-                msgWarning = ME.message;
+                msgWarning = ME.identifier;
             end
         end
 
