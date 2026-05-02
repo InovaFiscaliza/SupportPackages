@@ -266,7 +266,7 @@ classdef Elevation < handle
 
         %-----------------------------------------------------------------%
         function wayPoints3D = LookupCache(obj, path2D)
-            [lat1, lon1, lat2, lon2] = PathBounds(obj, path2D);
+            [lat1, lng1, lat2, lng2] = PathBounds(obj, path2D);
 
             % A procura inicial é restrita às informações obtidas em 'Open-Elevation'.
             % Não identificando a informação requerida, procura-se no rol de
@@ -274,8 +274,8 @@ classdef Elevation < handle
             isOpenElev    = strcmp(obj.CacheIndex.Server, 'Open-Elevation');
             matchesBounds = abs(obj.CacheIndex.Lat1  - lat1) <= obj.COORD_TOLERANCE & ...
                             abs(obj.CacheIndex.Lat2  - lat2) <= obj.COORD_TOLERANCE & ...
-                            abs(obj.CacheIndex.Long1 - lon1) <= obj.COORD_TOLERANCE & ...
-                            abs(obj.CacheIndex.Long2 - lon2) <= obj.COORD_TOLERANCE;
+                            abs(obj.CacheIndex.Long1 - lng1) <= obj.COORD_TOLERANCE & ...
+                            abs(obj.CacheIndex.Long2 - lng2) <= obj.COORD_TOLERANCE;
             cacheIdx = find(isOpenElev & matchesBounds);
 
             if isempty(cacheIdx)
@@ -283,10 +283,10 @@ classdef Elevation < handle
                                  lat1 <= obj.CacheIndex.Lat2  & ...
                                  lat2 >= obj.CacheIndex.Lat1  & ...
                                  lat2 <= obj.CacheIndex.Lat2  & ...
-                                 lon1 >= obj.CacheIndex.Long1 & ...
-                                 lon1 <= obj.CacheIndex.Long2 & ...
-                                 lon2 >= obj.CacheIndex.Long1 & ...
-                                 lon2 <= obj.CacheIndex.Long2;
+                                 lng1 >= obj.CacheIndex.Long1 & ...
+                                 lng1 <= obj.CacheIndex.Long2 & ...
+                                 lng2 >= obj.CacheIndex.Long1 & ...
+                                 lng2 <= obj.CacheIndex.Long2;
                 cacheIdx = find(~isOpenElev & containsBounds);
             end
 
@@ -298,23 +298,26 @@ classdef Elevation < handle
                 end
 
                 fileName = obj.CacheIndex.File{cacheIdx};
-
-                switch obj.CacheIndex.Server{cacheIdx}
-                    case 'Open-Elevation'
-                        load(fileName, 'wayPoints3D')
-                        
-                        nRequested = height(path2D);
-                        nCached = height(wayPoints3D);
-                        
-                        if nRequested ~= nCached
-                            z = 1:nCached;
-                            zq = linspace(1, nCached, nRequested);
-                            wayPoints3D = [path2D, interp1(z, wayPoints3D(:,3), zq)'];
-                        end
-    
-                    case 'MathWorks WMS Server'
-                        load(fileName, 'zMatrix', 'zMatrixReference')
-                        wayPoints3D = InterpolateElevation(obj, path2D, zMatrix, zMatrixReference);
+                
+                try
+                    switch obj.CacheIndex.Server{cacheIdx}
+                        case 'Open-Elevation'
+                            load(fileName, 'wayPoints3D')
+                            
+                            nRequested = height(path2D);
+                            nCached = height(wayPoints3D);
+                            
+                            if nRequested ~= nCached
+                                z = 1:nCached;
+                                zq = linspace(1, nCached, nRequested);
+                                wayPoints3D = [path2D, interp1(z, wayPoints3D(:,3), zq)'];
+                            end
+        
+                        case 'MathWorks WMS Server'
+                            load(fileName, 'zMatrix', 'zMatrixReference')
+                            wayPoints3D = InterpolateElevation(obj, path2D, zMatrix, zMatrixReference);
+                    end
+                catch
                 end
             end
         end
