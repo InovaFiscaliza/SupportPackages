@@ -194,6 +194,17 @@ classdef (Abstract) gpsLib
         end
 
         %-----------------------------------------------------------------%
+        function statusLabel = getGpsStatusLabel(gpsStatusCode)
+            if gpsStatusCode > 0 
+                statusLabel = 'Válido';
+            elseif gpsStatusCode == 0
+                statusLabel = '<font style="color: red;">Inválido</font>';
+            else
+                statusLabel = 'Definido manualmente';
+            end
+        end
+
+        %-----------------------------------------------------------------%
         function [monitoringType, radiusMeters] = classifyMonitoringType(gpsSummary)
             metersPerDegLat = 111000;
             metersPerDegLon = 111000 * cosd(gpsSummary.Latitude);
