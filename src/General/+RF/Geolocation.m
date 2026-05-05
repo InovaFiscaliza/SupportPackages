@@ -1,9 +1,23 @@
 classdef (Abstract) Geolocation
-  
+
+    % ## RF.Geolocation ##
+    %   ├── aoA
+    %   │   │── extractSpectralData
+    %   │   │── createGeographicBins
+    %   │   └── filterTriangulationPoints
+    %   ├── poA
+    %   │   │── createGeographicBins
+    %   │   └── estimateLocationViaPowerOfArrival
+    %   ├── extractSpectralData
+    %   ├── createGeographicBins
+    %   ├── filterTriangulationPoints
+    %   ├── estimateLocationViaPowerOfArrival
+    %   ├── runTest
+    %   ├── buildReferenceData
+    %   ├── computeTriangulationResults
+    %   └── drawResults
 
     methods (Static = true)
-        %-----------------------------------------------------------------%
-        % Espero frequencyCenterMHz em MHz e bandWidthKHz em kHz...
         %-----------------------------------------------------------------%
         function [estimatedLatitude, estimatedLongitude, uncertaintyRadius] = aoA(specData, frequencyCenterMHz, bandWidthkHz, localizationParams)
             arguments    
@@ -13,14 +27,13 @@ classdef (Abstract) Geolocation
                 localizationParams = struct( ...
                     'confidenceThreshold', 80, ... 
                     'powerStandardDeviationFactor', 0.2, ... % número de desvios padrões  
-                    'binSizeMeters', 10, ... % em metros 
+                    'binSizeMeters', 10, ...
                     'maximumAzimuthStandardDeviation', 4, ...
-                    'minimumPointsPerBin', 1)
-
+                    'minimumPointsPerBin', 1 ...
+                )
             end
             
             [powerLevel, azimuthAngle, confidenceLevel] = RF.Geolocation.extractSpectralData(specData, frequencyCenterMHz, bandWidthkHz);
-
 
             % Centro do canal em análise 
             channelCenter = round(height(powerLevel)/2);
@@ -31,7 +44,6 @@ classdef (Abstract) Geolocation
             % Função que encontra os indices dos pontos utilizados na
             % triangulação
             selectedMeasurementIndices = RF.Geolocation.filterTriangulationPoints(specBinTable, localizationParams, powerLevel, confidenceLevel, azimuthAngle);
-                                                 
 
             % Suavizando dados de AZIMUTES e recuperando apenas pontos
             % escolhidos (selectedMeasurementIndices)
@@ -85,10 +97,7 @@ classdef (Abstract) Geolocation
             % geograficas:
             [estimatedLatitude, estimatedLongitude] = eqa2grn(estPos(1), estPos(2), origin);
 
-
-
-            %%%% CALCULANDO O RAIO DO ERRO ------------------%%%%%%%%%%%%%%%%
-
+            %%%% CALCULANDO O RAIO DO ERRO
             tx = txsite(Name="Triangulado", ...
                 Latitude=estimatedLatitude, ...
                 Longitude=estimatedLongitude);
@@ -109,6 +118,7 @@ classdef (Abstract) Geolocation
             uncertaintyRadius = max(radiusScaleFactor*sqrt(sum((distanceToSource.*confidenceWeightRadians).^2)/(height(selectedMeasurementIndices)).^2), minimumRadiusMeters);
         end
 
+
         %-----------------------------------------------------------------%
         function [estimatedLatitude, estimatedLongitude, uncertaintyRadius] = poA(specData, frequencyCenterMHz, bandWidthKHz, localizationParams)
             % ...
@@ -119,10 +129,10 @@ classdef (Abstract) Geolocation
                 localizationParams = struct( ...
                     'confidenceThreshold', 80, ... 
                     'powerStandardDeviationFactor', 0.2, ... % número de desvios padrões  
-                    'binSizeMeters', 10, ... % em metros 
+                    'binSizeMeters', 10, ...
                     'maximumAzimuthStandardDeviation', 4, ...
-                    'minimumPointsPerBin', 1)
-
+                    'minimumPointsPerBin', 1 ...
+                )
             end
 
             % Georeferenciamento das varreduras e Data Binning...
@@ -131,13 +141,10 @@ classdef (Abstract) Geolocation
             % Função que encontra os indices dos pontos utilizados na
             % triangulação
             [estimatedLatitude, estimatedLongitude, uncertaintyRadius] = RF.Geolocation.estimateLocationViaPowerOfArrival(specRawTable);
-
-
         end  
 
-        %% ------SUB FUNÇÕES COMUNS ÀS DUAS FUNÇÕES PRINCIPAIS -----------% 
-        %-----------------------------------------------------------------%
 
+        %-----------------------------------------------------------------%
         function [powerLevel, azimuthValue, confidenceLevel] = extractSpectralData(specData, frequencyCenterMHz, bandWidthKHz)
             % Calcula potência do canal por varredura, mas a função espera que seja
             % passado "chLimits", com os limites em "Hertz" do canal.
@@ -166,14 +173,13 @@ classdef (Abstract) Geolocation
                 azimuthValue = double(yData(idx1:idx2,:)); 
                 confidenceLevel = double(zData(idx1:idx2,:)); 
             end
-            powerLevel = double(levelData(idx1:idx2,:)); 
-        
+            powerLevel = double(levelData(idx1:idx2,:));
         end
 
 
         %---------------------------------------------------------------%
-        % Georeferenciamento das varreduras e Data Binning...
         function [specRawTable, specBinTable] = createGeographicBins(specData, frequencyCenterMHz, bandWidthKHz, localizationParams)
+            % Georeferenciamento das varreduras e Data Binning...
             chEmission = struct( ...
                 'Frequency', frequencyCenterMHz, ...
                 'ChannelBW', bandWidthKHz);
@@ -184,18 +190,14 @@ classdef (Abstract) Geolocation
              ~, ...
              specBinTable,      ...
              ~,       ...
-             tool_FilterSummary.UserData] = RF.DataBinning.execute(specRawTable, ...
-                                                                       localizationParams.binSizeMeters, ... 
-                                                                       'max');
+             tool_FilterSummary.UserData] = RF.DataBinning.execute(specRawTable, localizationParams.binSizeMeters, 'max');
         end
 
 
         %-----------------------------------------------------------------%
-        %% -----------------SUB FUNÇÕES INDEPENDENTES---------------------% 
-        %-----------------------------------------------------------------%
-        % Função que encontra os indices dos pontos utilizados na
-        % triangulação do Aoa
         function selectedMeasurementIndices = filterTriangulationPoints(specBinTable, localizationParams, powerLevel, confidenceLevel, azimuthAngle)
+            % Função que encontra os indices dos pontos utilizados na
+            % triangulação do Aoa
             arguments 
                 specBinTable = []
                 localizationParams = []
@@ -220,7 +222,6 @@ classdef (Abstract) Geolocation
             grouping = @(x){x};
             powerByBin = splitapply(grouping,powerWithHighConfidence',binIndices);
 
-
             % transformações e smooth dos Az somete para os conjutos sem nenhuma medida
             % com confiança abaixo do threshold (ex. 80%);
             % Filtrar pontos a serem triangulados por ordem de maior potência recebida,
@@ -242,7 +243,7 @@ classdef (Abstract) Geolocation
             % Contar número de medições por bin
             binMeasurementCount = cellfun(@height,powerByBin,'UniformOutput',false);
 
-            %% Dividir pontos por região geográfica (20 grupos)
+            % Dividir pontos por região geográfica (20 grupos)
             % Segmentar dados em 20 regiões para análise local de potência máxima
             groupSize = floor(height(powerWithHighConfidence')/20);
             potGroups = reshape(powerWithHighConfidence(1:20*(groupSize)),groupSize,[]);
@@ -255,7 +256,7 @@ classdef (Abstract) Geolocation
             % Selecionar os 10 grupos com maior potência média
             [~,linearIndices] = maxk(maxPotGroups,10);
 
-            %% Aplicar filtro de potência mínima baseado em desvio padrão
+            % Aplicar filtro de potência mínima baseado em desvio padrão
             % Limiar = máxima potência - (fator × desvio padrão)
             % Isto garante apenas pontos com potência significativa
             minLevel = max(maxPotGroups(1,linearIndices))- ...
@@ -266,41 +267,39 @@ classdef (Abstract) Geolocation
             selectedMeasurementIndices = (index-1)*floor(height(powerWithHighConfidence')/20)+ind(:,index);
             selectedMeasurementIndices = reshape(selectedMeasurementIndices,[],1);
 
-            %% Filtro final: validar qualidade de medição por bin
+            % Filtro final: validar qualidade de medição por bin
             % Manter pontos onde:
             % 1) Desvio de azimute < máximo permitido (robustez angular)
             % 2) Número de pontos no bin > mínimo (confiabilidade estatística)
             selectedMeasurementIndices = selectedMeasurementIndices( ...
                 (azimuthStandardDeviation(binIndices(selectedMeasurementIndices)) < localizationParams.maximumAzimuthStandardDeviation) & ...
                 (cell2mat(binMeasurementCount(binIndices(selectedMeasurementIndices))) > localizationParams.minimumPointsPerBin));
-
         end
 
 
-
         %----------------------------------------------------------------%
-        % Retorna lat, long e raio calculados do emissor para a
-        % triangulação via PoA
-
         function [estimatedLatitude, estimatedLongitude, uncertaintyRadius] = estimateLocationViaPowerOfArrival(specRawTable)
+            % Retorna lat, long e raio calculados do emissor para a
+            % triangulação via PoA
 
             distanceToleranceMeters = 450; % threshold em torno da curva que delimita pontos a serem triangulados
             rssiPercentileArray = 5:3:26; % percentual de pontos a serem utilizados no fit da curva dist X Pot
             latEmissor = zeros(height(rssiPercentileArray'),1);
             longEmissor = zeros(height(rssiPercentileArray'),1);
-            minimumReceivedPowerThreshold = 100; % filtro inicial para a potência mínima
+            
+            minimumReceivedPowerThreshold = min(100, prctile(specRawTable.ChannelPower, 99));
+
             pathLossConstant = 600; % constante livre da curva dist X Pot
             
             for ind = 1 : height(rssiPercentileArray')
-            
                 % selecionando os 'ind' max valores de potência recebida
-                [maxValues, linearIndices] = maxk(specRawTable.ChannelPower, ...
-                    ceil((rssiPercentileArray(ind)/100)*height(specRawTable.ChannelPower)));
+                [maxValues, maxValuesIdxs] = maxk(specRawTable.ChannelPower, ceil((rssiPercentileArray(ind)/100)*height(specRawTable.ChannelPower)));
                 
                 % Filtrando rssi mínimo recebido
-                linearIndices = linearIndices(maxValues>minimumReceivedPowerThreshold);
+                maxValuesIdxs = maxValuesIdxs(maxValues > minimumReceivedPowerThreshold);
                
-                if height(maxValues) > height(linearIndices) % testa se todos os pontos max são maiores que o limite pré-estabelecido (minimumReceivedPowerThreshold)
+                if height(maxValues) < 3
+                    % testa se todos os pontos max são maiores que o limite pré-estabelecido (minimumReceivedPowerThreshold)
                     %  - reduzir o limite mínimo para maxValue (para contemplar emissores de
                     % menor potência);
                     minimumReceivedPowerThreshold = minimumReceivedPowerThreshold - 5;
@@ -308,12 +307,13 @@ classdef (Abstract) Geolocation
                     %  - reduzir o "pathLossConstant" da curva (dist X power) para ajustar à nova realidade
                     pathLossConstant = pathLossConstant - 30;
                     continue
+
                 else
                     % 1. Triangular ORIGEM PARA OS MaxValues calculados
-                    pot = specRawTable.ChannelPower(linearIndices);
-                    distAferida =  10.^7.2*exp(-0.115*pot)+pathLossConstant;
-                    latMax = specRawTable.Latitude(linearIndices);
-                    longMax = specRawTable.Longitude(linearIndices);
+                    pot = specRawTable.ChannelPower(maxValuesIdxs);
+                    distAferida = 10.^7.2*exp(-0.115*pot)+pathLossConstant;
+                    latMax = specRawTable.Latitude(maxValuesIdxs);
+                    longMax = specRawTable.Longitude(maxValuesIdxs);
 
                     [xpos,ypos,~] = matlab.deg2utm(latMax, longMax);
                     txPosition = [xpos';ypos'];
@@ -339,11 +339,10 @@ classdef (Abstract) Geolocation
                     % 4. Se menos de 3 pontos foram filtrados,
                     % volte paro o for loop para rejustar
                     % parâmetros da curva
-                    if sum(selectedMeasurementIndices)<3
+                    if sum(selectedMeasurementIndices) < 3
                         continue
                     end
                 end
-
 
                 latMax = specRawTable.Latitude(selectedMeasurementIndices>0);
                 longMax = specRawTable.Longitude(selectedMeasurementIndices>0);
@@ -356,7 +355,7 @@ classdef (Abstract) Geolocation
 
                 localizationMethod = "lateration";
 
-                %% Triangulação
+                % Triangulação
 
                 rxPosition = matlab.blePositionEstimate(txPosition,localizationMethod, ... 
                     distAferida');
@@ -364,7 +363,6 @@ classdef (Abstract) Geolocation
                 [lat_reverted, lon_reverted] = matlab.utm2deg(rxPosition(1), rxPosition(2), '24 L'); 
                 latEmissor(ind) = lat_reverted;
                 longEmissor(ind) = lon_reverted;
-
             end
             
             latEmissor = latEmissor(~(latEmissor==0));
@@ -383,9 +381,7 @@ classdef (Abstract) Geolocation
             estimatedLongitude = median(longEmissor(~IndOut));
             stdLat = std(latEmissor(~IndOut));
             stdLong = std(longEmissor(~IndOut));
-            uncertaintyRadius = (stdLat+stdLong)*111000;
-
-
+            uncertaintyRadius = (stdLat + stdLong) * 111000;
         end
 
 
@@ -424,9 +420,8 @@ classdef (Abstract) Geolocation
         end
 
 
-
+        %-----------------------------------------------------------------%
         function [referenceData, nEmitters] = buildReferenceData(specData, knownEmitterCoordinates)
-
             if isempty(knownEmitterCoordinates)
                 specData.UserData(1).ReportInclude = false;
                 basicStats(specData)
@@ -495,7 +490,7 @@ classdef (Abstract) Geolocation
         end
 
 
-
+        %-----------------------------------------------------------------%
         function triangulationResults = computeTriangulationResults(specData, method, referenceData, nEmitters, flagSaveTable)
 
             triangulatedLatitude = zeros(nEmitters, 1);
@@ -569,64 +564,71 @@ classdef (Abstract) Geolocation
 
 
         %-----------------------------------------------------------------%
-        function drawResults(axesHandle, triangulationResults)
-            arguments
-                axesHandle
-                triangulationResults table
-            end
+        function drawResults(axesHandle, varargin)
+            if ~isempty(axesHandle)
+                estimatedLatitude = varargin{1};
+                estimatedLongitude = varargin{2};
+                uncertaintyRadius = max(0.01, varargin{3});
 
+                delete(findobj(axesHandle.Children, 'Tag', 'estimatedEmissorLocation'))
 
-            if isempty(axesHandle)
+                % [circleLatitudes, circleLongitudes] = scircle1(estimatedLatitude, estimatedLongitude, uncertaintyRadius);
+                % geoplot(axesHandle, circleLatitudes, circleLongitudes, 'Color', '#ffffff', 'LineWidth', 1, 'LineStyle', ':', 'Tag', 'estimatedEmissorLocation');
+
+                images.roi.Circle(axesHandle, 'Center', [estimatedLatitude, estimatedLongitude], 'Radius', 0.1, 'LineWidth', 1, 'Deletable', 0, 'FaceSelectable', 0, 'Color', 'red', 'Tag', 'estimatedEmissorLocation');
+                geoplot(axesHandle, estimatedLatitude, estimatedLongitude, '^', 'Color', '#ffffff', 'LineWidth', 2.5, 'MarkerSize', 12, 'MarkerFaceColor', '#ffffff', 'Tag', 'estimatedEmissorLocation');
+                geolimits(axesHandle, 'auto')
+
+            else
+                triangulationResults = varargin{1};
+
                 f = uifigure;
                 axesHandle = geoaxes(f);
                 hold (axesHandle,'on');
-            end
 
-            nResults = height(triangulationResults);
-
-            % Cores diferentes para cada emissão
-            colors = hsv(nResults);
-
-            for resultIdx = 1:nResults
-                realLat = triangulationResults.RealLatitude(resultIdx);
-                realLon = triangulationResults.RealLongitude(resultIdx);
-                triangLat = triangulationResults.TriangulatedLatitude(resultIdx);
-                triangLon = triangulationResults.TriangulatedLongitude(resultIdx);
-                errorMeters = triangulationResults.ErrorMeters(resultIdx);
-                triangulatedRadius = triangulationResults.TriangulatedRadius(resultIdx);
-                stationId = triangulationResults.StationId{(resultIdx)};
-
-                % 1. Plotar ponto real (cruz)
-                geoplot(axesHandle, realLat, realLon, '+', ...
-                    'Color', colors(resultIdx,:), 'LineWidth', 2.5, 'MarkerSize', 10);
-                text(axesHandle,  realLat, realLon, sprintf('%s', stationId), ...
-                    'FontSize', 9, 'Color', colors(resultIdx,:));
-
-                % 2. Plotar ponto triangulado (triangulo)
-                geoplot(axesHandle, triangLat, triangLon, '^', ...
-                    'Color', colors(resultIdx,:), 'LineWidth', 2, 'MarkerSize', 12);
-                midLat = (realLat + triangLat) / 2;
-                midLon = (realLon + triangLon) / 2;
-                text(axesHandle, midLat, midLon, sprintf(' %.2f m',errorMeters), ...
-                    'FontSize', 8, 'Color', colors(resultIdx,:));
-
-                % 3. Traçar linha entre ponto real e triangulado
-                geoplot(axesHandle, [realLat, triangLat], [realLon, triangLon], '-', ...
-                    'Color', colors(resultIdx,:), 'LineWidth', 1.5, 'DisplayName', ...
-                    sprintf('Error: %.2f m', errorMeters));
-
-                % 4. Desenhar círculo de incerteza (raio = erro estimado)
-                if triangulatedRadius > 0
-                    [latCircle, lonCircle] = scircle1(triangLat, triangLon, triangulatedRadius/111000);
-                    geoplot(axesHandle, latCircle, lonCircle, 'Color', colors(resultIdx,:), ...
-                        'LineWidth', 1, 'LineStyle', ':', 'DisplayName', ...
-                        sprintf('Estimated Radius: %.2f m', triangulatedRadius));
+                nResults = height(triangulationResults);
+    
+                % Cores diferentes para cada emissão
+                colors = hsv(nResults);
+    
+                for resultIdx = 1:nResults
+                    realLat = triangulationResults.RealLatitude(resultIdx);
+                    realLon = triangulationResults.RealLongitude(resultIdx);
+                    triangLat = triangulationResults.TriangulatedLatitude(resultIdx);
+                    triangLon = triangulationResults.TriangulatedLongitude(resultIdx);
+                    errorMeters = triangulationResults.ErrorMeters(resultIdx);
+                    triangulatedRadius = triangulationResults.TriangulatedRadius(resultIdx);
+                    stationId = triangulationResults.StationId{(resultIdx)};
+    
+                    % 1. Plotar ponto real (cruz)
+                    geoplot(axesHandle, realLat, realLon, '+', ...
+                        'Color', colors(resultIdx,:), 'LineWidth', 2.5, 'MarkerSize', 10);
+                    text(axesHandle,  realLat, realLon, sprintf('%s', stationId), ...
+                        'FontSize', 9, 'Color', colors(resultIdx,:));
+    
+                    % 2. Plotar ponto triangulado (triangulo)
+                    geoplot(axesHandle, triangLat, triangLon, '^', ...
+                        'Color', colors(resultIdx,:), 'LineWidth', 2, 'MarkerSize', 12);
+                    midLat = (realLat + triangLat) / 2;
+                    midLon = (realLon + triangLon) / 2;
+                    text(axesHandle, midLat, midLon, sprintf(' %.2f m',errorMeters), ...
+                        'FontSize', 8, 'Color', colors(resultIdx,:));
+    
+                    % 3. Traçar linha entre ponto real e triangulado
+                    geoplot(axesHandle, [realLat, triangLat], [realLon, triangLon], '-', ...
+                        'Color', colors(resultIdx,:), 'LineWidth', 1.5, 'DisplayName', ...
+                        sprintf('Error: %.2f m', errorMeters));
+    
+                    % 4. Desenhar círculo de incerteza (raio = erro estimado)
+                    if triangulatedRadius > 0
+                        [circleLatitudes, circleLongitudes] = scircle1(triangLat, triangLon, triangulatedRadius/111000);
+                        geoplot(axesHandle, circleLatitudes, circleLongitudes, 'Color', colors(resultIdx,:), ...
+                            'LineWidth', 1, 'LineStyle', ':', 'DisplayName', ...
+                            sprintf('Estimated Radius: %.2f m', triangulatedRadius));
+                    end
                 end
             end
-
-            
         end
-
-
     end
+
 end
