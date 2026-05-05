@@ -71,6 +71,14 @@ function htmlReport = Controller(reportInfo, dataOverview)
 
                 try
                     switch childType
+                        case 'Container'
+                            containerType = childNode.Data.Source;
+                            buildImageFcn = @internalFcn_Image;
+                            buildTableFcn = @internalFcn_Table;
+
+                            htmlReport = [htmlReport, eval(sprintf('reportLibConnection.Container.%s(reportInfo, dataOverview, analyzedData, childNode, buildImageFcn, buildTableFcn)', containerType))];
+                            continue
+
                         case {'ItemN2', 'ItemN3', 'Paragraph', 'List', 'NonIndentedList', 'Footnote'}
                             % Esse loop existe apenas por conta do componente do tipo "List"...
                             for ll = 1:numel(childNode.Data)
