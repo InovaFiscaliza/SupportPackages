@@ -73,10 +73,8 @@ function htmlReport = Controller(reportInfo, dataOverview)
                     switch childType
                         case 'Container'
                             containerType = childNode.Data.Source;
-                            buildImageFcn = @internalFcn_Image;
-                            buildTableFcn = @internalFcn_Table;
-
-                            htmlReport = [htmlReport, eval(sprintf('reportLibConnection.Container.%s(reportInfo, dataOverview, analyzedData, childNode, buildImageFcn, buildTableFcn)', containerType))];
+                            [reportInfo, htmlReportTemp] = reportLibConnection.Container.(containerType)(reportInfo, dataOverview, analyzedData, childNode, @internalFcn_FillWords, @internalFcn_Image, @internalFcn_Table);
+                            htmlReport = [htmlReport, htmlReportTemp];
                             continue
 
                         case {'ItemN2', 'ItemN3', 'Paragraph', 'List', 'NonIndentedList', 'Footnote'}
