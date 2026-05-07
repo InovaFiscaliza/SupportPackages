@@ -137,6 +137,56 @@ classdef (Abstract) TextView
                 struct('dataTag', baseComponent.UserData.id, 'innerHTML', innerHTML) ...
             );
         end
+
+        %-----------------------------------------------------------------%
+        % Cria um link HTML que, quando clicado, dispara um evento no MATLAB. O 
+        % evento é tratado por meio de método público "ipcMainJSEventHandler", caso 
+        % se trate do "mainApp", ou "ipcSecondaryJSEventsHandler", caso se trate de
+        % um "secondaryApp". 
+        %------------------------------------------------------------------%
+        function htmlLink = createHTMLLink(linkType, appHandleNameInBase, eventName, varargin)
+            arguments
+                linkType {mustBeMember(linkType, {'link', 'question', 'edit', 'customText', 'customImage'})}
+                appHandleNameInBase
+                eventName
+            end
+
+            arguments (Repeating)
+                varargin
+            end
+
+            try
+                appRole = struct(evalin('base', appHandleNameInBase)).Role;
+                switch appRole
+                    case 'mainApp'
+                        ipcJSEventHandlerName = 'ipcMainJSEventsHandler';    
+                    case 'secondaryApp'
+                        ipcJSEventHandlerName = 'ipcSecondaryJSEventsHandler';    
+                    otherwise
+                        error('ui:TextView:UnexpectedAppRole', 'Unexpected app role "%s"', appRole)
+                end
+            catch ME
+                rethrow(ME)
+            end
+
+            switch linkType
+                case 'link'
+                    linkInnerHTML = '&#x1F517;'; % '🔗'
+                case 'question'
+                    linkInnerHTML = '&#x2753;'; % '❓'
+                case 'edit'
+                    linkInnerHTML = '&#x270F;&#xFE0F;'; % '✏️'
+                case 'customText'
+                    linkInnerHTML = varargin{1};
+                case 'customImage'
+                    imageFileName = varargin{1};
+                    generalSettings = varargin{2};
+                    resourceURL = replace(generalSettings.AppVersion.application.resourceStaticURL, '{resourceName}', imageFileName);
+                    linkInnerHTML = sprintf('<img class="vc-imageIcon" src="%s" draggable="false" ondragstart="return false;" data-dojo-attach-point="iconNode" tabindex="-1" width="18" height="18">', resourceURL);
+            end
+
+            htmlLink = sprintf('<a href="matlab:evalin(''base'', ''%s(%s, struct(''''HTMLEventName'''', ''''%s''''))'')">%s</a>', ipcJSEventHandlerName, appHandleNameInBase, eventName, linkInnerHTML);
+        end
     end
 
 end

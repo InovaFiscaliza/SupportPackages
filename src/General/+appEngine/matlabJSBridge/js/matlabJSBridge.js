@@ -360,6 +360,17 @@ function setup(htmlComponent) {
     });
 
     /*---------------------------------------------------------------------------------*/
+    htmlComponent.addEventListener("findResourceStaticURL", function(customEvent) {
+        const { resourceName, resourceTag, resourceId } = customEvent.Data;
+        let resourceUrl = findComponentHandle(resourceId)?.querySelector(resourceTag)?.getAttribute("src") || "";
+        if (resourceUrl) {
+            resourceUrl = resourceUrl.replace(resourceName, "{resourceName}");
+        }
+        
+        htmlComponent.sendEventToMATLAB("findResourceStaticURL", resourceUrl);
+    });
+
+    /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("setFocus", function(customEvent) {
         const dataTag = customEvent.Data.dataTag;
         const handle  = findComponentHandle(dataTag).querySelector("input");
@@ -1430,6 +1441,11 @@ a, a:hover {
 
 .textview--no-scroll {
     overflow: hidden;
+}
+
+.textview a {
+    display: inline-flex;
+    transform: translate(0px,3px);
 }
 
 .mwDialog *::selection,

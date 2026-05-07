@@ -148,7 +148,7 @@ classdef (Abstract) textFormatGUI
                 htmlCode = sprintf('%s<font style="%sfont-size: 10px;">%s</font>', htmlCode, dataGroupColor, dataGroup);
                 
                 if isfield(dataStruct(ii), 'link') && ~isempty(dataStruct(ii).link)
-                    htmlCode = [htmlCode ' ' dataStruct(ii).link];
+                    htmlCode = [htmlCode '&emsp;' dataStruct(ii).link];
                 end
 
                 if isstruct(dataStruct(ii).value)
