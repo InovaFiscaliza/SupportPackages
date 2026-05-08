@@ -11,11 +11,11 @@ classdef KML < handle
 
     methods
         %-----------------------------------------------------------------%
-        function obj = KML(fileName)
-            [~, ~, fileExt] = fileparts(fileName);
+        function obj = KML(fileFullName)
+            [~, ~, fileExt] = fileparts(fileFullName);
             switch lower(fileExt)
                 case '.kml'
-                    kmlFile = fileName;
+                    kmlFile = fileFullName;
 
                 case '.kmz'                    
                     tempDir = tempname;
@@ -23,35 +23,35 @@ classdef KML < handle
                         mkdir(tempDir)
                     end
                     
-                    tempFile = unzip(fileName, tempDir);
+                    tempFile = unzip(fileFullName, tempDir);
                     tempFile = tempFile(endsWith(tempFile, '.kml', 'IgnoreCase', true));
                     if isempty(tempFile)
-                        error('auxApp:drivetest:KML:read:KMLFileNotFound', 'KML file not found')
+                        error('RF:KML:FileNotFound', 'KML file not found')
                     end
 
                     kmlFile = tempFile{1};
 
                 otherwise
-                    error('auxApp:drivetest:KML:read:UnexpectedFileFormat', 'Unexpected file format')
+                    error('RF:KML:UnexpectedFileFormat', 'Unexpected file format "%s"', fileExt)
             end
 
-            obj.File = fileName;
+            obj.File = fileFullName;
             obj.TempFile = kmlFile;
 
             getLayerNames(obj, kmlFile)
         end
 
         %-----------------------------------------------------------------%
-        function readgeotable(obj, LayerName)
+        function readgeotable(obj, layerName)
             arguments
                 obj
-                LayerName char {mustBeTextScalar} = ''
+                layerName char {mustBeTextScalar} = ''
             end
 
-            if isempty(LayerName)
-                LayerName = obj.LayerNames{1};
+            if isempty(layerName)
+                layerName = obj.LayerNames{1};
             end
-            obj.GeoTable = readgeotable(obj.TempFile, 'CoordinateSystemType', 'geographic', 'Layer', LayerName);
+            obj.GeoTable = readgeotable(obj.TempFile, 'CoordinateSystemType', 'geographic', 'Layer', layerName);
         end
     end
 
@@ -66,7 +66,7 @@ classdef KML < handle
 
     methods (Static = true)
         %-----------------------------------------------------------------%
-        function [status, msgError] = generateKML(fileName, fileType, measTable, varargin)
+        function [status, errorMsg] = generateKML(fileName, fileType, measTable, varargin)
             arguments
                 fileName
                 fileType {mustBeMember(fileType, {'measures', 'route'})}
@@ -78,7 +78,7 @@ classdef KML < handle
             end
         
             status = true;
-            msgError = '';
+            errorMsg = '';
             
             try    
                 switch fileType
@@ -98,7 +98,7 @@ classdef KML < handle
         
             catch ME
                 status = false;
-                msgError = ME.message;
+                errorMsg = ME.message;
             end
         end
     end
