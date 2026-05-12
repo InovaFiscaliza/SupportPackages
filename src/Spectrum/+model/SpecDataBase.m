@@ -32,7 +32,7 @@ classdef SpecDataBase < handle
             
             switch lower(fileExt)
                 case '.zip'
-                    [obj, projectData] = model.SpecDataBase.readZipTolerant(obj, fileFullName, readType);
+                    obj = model.SpecDataBase.readZipTolerant(obj, fileFullName, readType);
                     return
 
                 case '.bin'
@@ -44,14 +44,19 @@ classdef SpecDataBase < handle
                         case 'RFlookBin v.2'
                             obj = model.fileReader.RFlookBinV2(obj, fileFullName, readType);
                     end
+
                 case '.dbm'
                     obj = model.fileReader.CellPlanDBM(obj, fileFullName, readType);
+
                 case '.sm1809'
                     obj = model.fileReader.SM1809(obj, fileFullName, readType);
+
                 case '.csv'
                     obj = model.fileReader.ArgusCSV(obj, fileFullName, readType);
+
                 case '.mat'
                     [obj, projectData] = model.fileReader.MAT(fileFullName, readType);
+
                 otherwise
                     error('Unexpected file format "%s"\n%s', fileExt, [fileName, fileExt])
             end
@@ -132,8 +137,7 @@ classdef SpecDataBase < handle
 
     methods (Static = true)
         %-----------------------------------------------------------------%
-        function [obj, projectData] = readZipTolerant(obj, fileFullName, readType)
-            projectData = [];
+        function obj = readZipTolerant(obj, fileFullName, readType)
             [fileList, tempFolder] = model.fileReader.zipUtils.Zip.extractToWorkspace(fileFullName);
             cleanupFolder = onCleanup(@() model.fileReader.zipUtils.Zip.safeCleanup(tempFolder));
 

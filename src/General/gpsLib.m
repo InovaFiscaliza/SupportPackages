@@ -200,7 +200,7 @@ classdef (Abstract) gpsLib
             elseif gpsStatusCode == 0
                 statusLabel = '<font style="color: red;">Inválido</font>';
             else
-                statusLabel = 'Definido manualmente';
+                statusLabel = '<font style="color: red;">Definido manualmente</font>';
             end
         end
 

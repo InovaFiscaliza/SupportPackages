@@ -87,7 +87,7 @@ function htmlReport = Controller(reportInfo, dataOverview)
                             vararginArgument = [];
 
                         case {'Image', 'Table'}
-                            vararginArgument = eval(sprintf('internalFcn_%s(reportInfo, dataOverview, analyzedData, childNode.Data)', childType));
+                            vararginArgument = eval(sprintf('internalFcn_%s(reportInfo, dataOverview, analyzedData, childNode.Data, true)', childType));
 
                         otherwise
                             error('Unexpected type "%s"', childType)
@@ -192,7 +192,7 @@ end
 
 
 %-------------------------------------------------------------------------%
-function imgFullPath = internalFcn_Image(reportInfo, dataOverview, analyzedData, imgSettings)
+function imgFullPath = internalFcn_Image(reportInfo, dataOverview, analyzedData, imgSettings, throwError)
     imgFullPath = '';
     imgOrigin   = imgSettings.Origin;
     imgSource   = imgSettings.Source;
@@ -212,14 +212,14 @@ function imgFullPath = internalFcn_Image(reportInfo, dataOverview, analyzedData,
             end
     end
 
-    if ~isfile(imgFullPath)
+    if throwError && ~isfile(imgFullPath)
         error('Configuration file error message: %s', imgError)
     end
 end
 
 
 %-------------------------------------------------------------------------%
-function Table = internalFcn_Table(reportInfo, dataOverview, analyzedData, tableSettings)
+function Table = internalFcn_Table(reportInfo, dataOverview, analyzedData, tableSettings, throwError)
     Table        = [];
     tableOrigin  = tableSettings.Origin;
     tableColumns = tableSettings.Columns;
@@ -275,7 +275,7 @@ function Table = internalFcn_Table(reportInfo, dataOverview, analyzedData, table
     catch
     end
 
-    if isempty(Table)
+    if throwError && isempty(Table)
         error('Configuration file error message: %s', tableError)
     end
 end
