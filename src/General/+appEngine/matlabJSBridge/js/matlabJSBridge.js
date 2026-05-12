@@ -323,6 +323,42 @@ function setup(htmlComponent) {
     });
 
     /*---------------------------------------------------------------------------------*/
+    // Listener para vincular eventos de clique em botões HTML dentro de TextView
+    // Propósito: Captura cliques em botões HTML renderizados em componentes TextView,
+    //           extrai os atributos data-* do botão, e envia para MATLAB via bridge
+    // Uso MATLAB: ui.TextView.bindButtons(jsBackDoor, siteId, selector, htmlEventName)
+    // dataTag: identificador único do componente TextView
+    // selector: seletor CSS para encontrar botões (ex: "button.repo-sfi-open-dock")
+    // htmlEventName: nome do evento a disparar em matlabJSBridge (ex: "repoSFI.openDock")
+    htmlComponent.addEventListener("bindTextViewButtons", function(customEvent) {
+        const { dataTag, selector, htmlEventName } = customEvent.Data;
+        const rootHandle = findComponentHandle(dataTag)?.children?.[0]?.children?.[0];
+        if (!rootHandle) {
+            return;
+        }
+
+        const buttonHandles = rootHandle.querySelectorAll(selector);
+        buttonHandles.forEach((buttonHandle) => {
+            if (buttonHandle.dataset.clickListenerBound === "1") {
+                return;
+            }
+
+            buttonHandle.dataset.clickListenerBound = "1";
+            buttonHandle.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+
+                const htmlEventData = {
+                    ...buttonHandle.dataset,
+                    text: buttonHandle.textContent?.trim() || ""
+                };
+
+                htmlComponent.sendEventToMATLAB(htmlEventName, htmlEventData);
+            });
+        });
+    });
+
+    /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("addStyle", function(customEvent) {
         let handle  = findComponentHandle(customEvent.Data.dataTag);
         const style = customEvent.Data.style;
