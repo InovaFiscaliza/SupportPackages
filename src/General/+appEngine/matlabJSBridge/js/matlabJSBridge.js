@@ -468,15 +468,34 @@ function setup(htmlComponent) {
         }
 
         if (sizing.type === "fluid") {
-            const scrollableNode = dockAppHandle.querySelector(".scrollableContentsNode");
-            if (scrollableNode) {
+            const removeGrandChildSizing = () => {
+                const scrollableNode = dockAppHandle.querySelector(".scrollableContentsNode");
+                if (!scrollableNode) return;
+                
                 Array.from(scrollableNode.children).forEach(child => {
                     Array.from(child.children).forEach(grandchild => {
+                        const hasInlineSize = grandchild.style.width || grandchild.style.height;
+                        if (!hasInlineSize) return;
+
                         grandchild.style.removeProperty("width");
                         grandchild.style.removeProperty("height");
                     });
                 });
-            }
+            };
+
+            removeGrandChildSizing();
+
+            let retryAttempts = 0;
+            const maxRetries = 3;
+
+            const retryInterval = setInterval(() => {
+                retryAttempts++;
+                removeGrandChildSizing();
+                
+                if (retryAttempts >= maxRetries) {
+                    clearInterval(retryInterval);
+                }
+            }, 300);
         }
 
         if (numCanvasElements > 0) {
