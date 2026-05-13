@@ -417,18 +417,30 @@ function setup(htmlComponent) {
         ## DOCK CONTAINER & CUSTOM FORM ##
     -----------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("dockContainer", function(customEvent) {
-        const { dockAppName, dockAppDataTag, dockAppContainerDataTag, width, height, zIndex, context, numCanvasElements } = customEvent.Data;
+        const { dockAppName, dockAppDataTag, dockAppContainerDataTag, sizing, zIndex, context, numCanvasElements } = customEvent.Data;
         
         const dockAppContainerHandle = findComponentHandle(dockAppContainerDataTag);
         const dockAppHandle = findComponentHandle(dockAppDataTag);
         if (!dockAppHandle) return;
 
-        const { content } = createModalContainer({ dockAppName, dataTag: dockAppDataTag, width, height, zIndex, context });
+        const { content } = createModalContainer({ dockAppName, dataTag: dockAppDataTag, sizing, zIndex, context });
 
         dockAppHandle.style.position = "inherit";
         const dockAppCanvasNode = dockAppHandle.querySelector(".canvasNode");
         if (dockAppCanvasNode) {
             dockAppCanvasNode.style.display = "none";
+        }
+
+        if (sizing.type === "fluid") {
+            const scrollableNode = dockAppHandle.querySelector(".scrollableContentsNode");
+            if (scrollableNode) {
+                Array.from(scrollableNode.children).forEach(child => {
+                    Array.from(child.children).forEach(grandchild => {
+                        grandchild.style.removeProperty("width");
+                        grandchild.style.removeProperty("height");
+                    });
+                });
+            }
         }
 
         if (numCanvasElements > 0) {
@@ -490,7 +502,8 @@ function setup(htmlComponent) {
         const nFields = Array.isArray(Fields) ? Fields.length : 1;
         const height = nFields <= 3 ? 155 : 85 + 20 * nFields + 5 * (nFields - 1);
 
-        const { overlay, dialog, content, closeBtn } = createModalContainer({ dataTag: UUID, width, height });
+        const sizing = { type: "fixed", width, height };
+        const { overlay, dialog, content, closeBtn } = createModalContainer({ dataTag: UUID, sizing });
 
         // --- Form ---
         const form = appWindow.document.createElement("form");
@@ -1111,14 +1124,18 @@ function setup(htmlComponent) {
     }
 
     /*---------------------------------------------------------------------------------*/
-    function createModalContainer({ dataTag, width, height, zIndex = 900, context = "", dockAppName = "" }) {
+    function createModalContainer({ dataTag, sizing, zIndex = 900, context = "", dockAppName = ""}) {
+        const isFluid = sizing.type === "fluid";
+        const dialogWidth  = isFluid ? `${sizing.width}%`  : `${sizing.width}px`;
+        const dialogHeight = isFluid ? `${sizing.height}%` : `${sizing.height}px`;
+
         const overlay = appWindow.document.createElement("div");
         overlay.dataset.tag = `${dataTag}_overlay`;
         overlay.style.cssText = `position: absolute; left:0; top:0; width:100%; height:100%; background: rgba(255,255,255,0.65); z-index:${zIndex};`;
 
         const wrapper = appWindow.document.createElement("div");
         wrapper.innerHTML = `
-            <div class="mwDialog mwAlertDialog mwModalDialog mw-theme-light mwModalDialogFg" data-tag="${dataTag}_dialog" style="width:${width}px; height:${height}px; visibility: visible; color-scheme: light; position: fixed; top:50%; left:50%; transform: translate(-50%, -50%);">
+            <div class="mwDialog mwAlertDialog mwModalDialog mw-theme-light mwModalDialogFg" data-tag="${dataTag}_dialog" style="width:${dialogWidth}; height:${dialogHeight}; visibility: visible; color-scheme: light; position: fixed; top:50%; left:50%; transform: translate(-50%, -50%);">
                 <div class="mwDialogTitleBar mwDraggableDialog" data-tag="${dataTag}_title">
                     <span class="mwTitleNode"></span>
                     <div class="mwControlNodeBar">
@@ -1132,7 +1149,7 @@ function setup(htmlComponent) {
                         </button>
                     </div>
                 </div>
-                <div data-tag="${dataTag}_content"></div>
+                <div data-tag="${dataTag}_content" style="width:100%; height:100%;"></div>
             </div>
         `;
 

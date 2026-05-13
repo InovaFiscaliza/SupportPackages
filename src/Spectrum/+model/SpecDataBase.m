@@ -16,7 +16,7 @@ classdef SpecDataBase < handle
     
     methods
         %-----------------------------------------------------------------%
-        function [obj, projectData] = read(obj, fileFullName, readType, varargin)
+        function obj = read(obj, fileFullName, readType, varargin)
             arguments
                 obj
                 fileFullName char {mustBeFile}
@@ -27,7 +27,6 @@ classdef SpecDataBase < handle
                 varargin
             end
 
-            projectData = [];
             [~, fileName, fileExt] = fileparts(fileFullName);
             
             switch lower(fileExt)
@@ -55,7 +54,7 @@ classdef SpecDataBase < handle
                     obj = model.fileReader.ArgusCSV(obj, fileFullName, readType);
 
                 case '.mat'
-                    [obj, projectData] = model.fileReader.MAT(fileFullName, readType);
+                    obj = model.fileReader.MAT(obj, fileFullName, readType, varargin{:});
 
                 otherwise
                     error('Unexpected file format "%s"\n%s', fileExt, [fileName, fileExt])
@@ -147,7 +146,7 @@ classdef SpecDataBase < handle
 
             for ii = 1:numel(fileList)
                 try
-                    tmpObj = read(model.SpecDataBase.empty, fileList{ii}, readType);
+                    tmpObj = read(eval([class(obj) '.empty']), fileList{ii}, readType);
 
                     if ~isempty(tmpObj)
                         obj(end+1) = tmpObj;
@@ -354,9 +353,11 @@ classdef SpecDataBase < handle
         %-----------------------------------------------------------------%
         function comparableData = comparableMetaData(specData, generalSettings)
             fieldsToRemove = {'Others'};
+
             if generalSettings.context.FILE.spectrumConsolidationPolicy.antennaPolicy == "remove"
                 fieldsToRemove{end+1} = 'Antenna';
             end
+
             if generalSettings.context.FILE.spectrumConsolidationPolicy.dataTypePolicy == "remove"
                 fieldsToRemove{end+1} = 'DataType';
             end
