@@ -13,8 +13,8 @@ classdef (Abstract) Geolocation
     %   ├── filterTriangulationPoints
     %   ├── estimateLocationViaPowerOfArrival
     %   ├── runTest
-    %   ├── buildReferenceData
-    %   ├── computeTriangulationResults
+    %   │   ├── buildReferenceData
+    %   │   └── computeTriangulationResults
     %   └── drawResults
 
     methods (Static = true)
@@ -138,6 +138,10 @@ classdef (Abstract) Geolocation
             % Georeferenciamento das varreduras e Data Binning...
             specRawTable = RF.Geolocation.createGeographicBins(specData, frequencyCenterMHz, bandWidthKHz, localizationParams);
 
+            % Transformando dBm em dBuV
+            if strcmp(specData.MetaData.LevelUnit,'dBm')
+                specRawTable.ChannelPower = specRawTable.ChannelPower + 107;
+            end
             % Função que encontra os indices dos pontos utilizados na
             % triangulação
             [estimatedLatitude, estimatedLongitude, uncertaintyRadius] = RF.Geolocation.estimateLocationViaPowerOfArrival(specRawTable);
@@ -286,10 +290,18 @@ classdef (Abstract) Geolocation
             rssiPercentileArray = 5:3:26; % percentual de pontos a serem utilizados no fit da curva dist X Pot
             latEmissor = zeros(height(rssiPercentileArray'),1);
             longEmissor = zeros(height(rssiPercentileArray'),1);
-            
-            minimumReceivedPowerThreshold = min(100, prctile(specRawTable.ChannelPower, 99));
 
-            pathLossConstant = 600; % constante livre da curva dist X Pot
+            % Bounding box geográfica das medições (com margem de 0.5° ~ 55 km)
+            latMargin = 0.25;
+            lonMargin = 0.25;
+            latBounds = [min(specRawTable.Latitude) - latMargin, max(specRawTable.Latitude) + latMargin];
+            lonBounds = [min(specRawTable.Longitude) - lonMargin, max(specRawTable.Longitude) + lonMargin];
+            
+            %pathLossConstant = 600; constante livre da curva dist x Pot
+            minimumReceivedPowerThreshold = min(100, prctile(specRawTable.ChannelPower, 98));
+            referenceReceivedPower = max(specRawTable.ChannelPower);
+            referenceDistanceMeters = 25;
+            pathLossExponent = 2.7;
             
             for ind = 1 : height(rssiPercentileArray')
                 % selecionando os 'ind' max valores de potência recebida
@@ -298,24 +310,27 @@ classdef (Abstract) Geolocation
                 % Filtrando rssi mínimo recebido
                 maxValuesIdxs = maxValuesIdxs(maxValues > minimumReceivedPowerThreshold);
                
-                if height(maxValues) < 3
+                if height(maxValuesIdxs) < height(maxValues)/2
                     % testa se todos os pontos max são maiores que o limite pré-estabelecido (minimumReceivedPowerThreshold)
                     %  - reduzir o limite mínimo para maxValue (para contemplar emissores de
                     % menor potência);
-                    minimumReceivedPowerThreshold = minimumReceivedPowerThreshold - 5;
+                    minimumReceivedPowerThreshold = minimumReceivedPowerThreshold - 0.05 * abs(minimumReceivedPowerThreshold);
                     %  - atualizar valores de linear Indices
-                    %  - reduzir o "pathLossConstant" da curva (dist X power) para ajustar à nova realidade
-                    pathLossConstant = pathLossConstant - 30;
+                    %  - ampliar a distância de referência do modelo para acomodar cenários mais fracos
+                    %pathLossConstant = pathLossConstant - 30;
+                    referenceDistanceMeters = referenceDistanceMeters * 1.05;
                     continue
 
                 else
                     % 1. Triangular ORIGEM PARA OS MaxValues calculados
                     pot = specRawTable.ChannelPower(maxValuesIdxs);
-                    distAferida = 10.^7.2*exp(-0.115*pot)+pathLossConstant;
+                    %distAferida = 10.^7.2*exp(-0.115*pot2)+pathLossConstant;
+                    distAferida = RF.Geolocation.estimateDistanceFromReceivedPower( ...
+                        pot, referenceReceivedPower, referenceDistanceMeters, pathLossExponent);
                     latMax = specRawTable.Latitude(maxValuesIdxs);
                     longMax = specRawTable.Longitude(maxValuesIdxs);
 
-                    [xpos,ypos,~] = matlab.deg2utm(latMax, longMax);
+                    [xpos,ypos,utmzone] = matlab.deg2utm(latMax, longMax);
                     txPosition = [xpos';ypos'];
                     rxPosition = matlab.blePositionEstimate(txPosition,"lateration", ... 
                     distAferida');
@@ -323,7 +338,14 @@ classdef (Abstract) Geolocation
                     % 2. Calcular distância de todos valores medidos no DT
                     % (specRawTable.Latitude e specRawTable.Longitude), para a fonte
                     % calculada em 1
-                    [lat_reverted, lon_reverted] = matlab.utm2deg(rxPosition(1), rxPosition(2), '24 L'); 
+                    [lat_reverted, lon_reverted] = matlab.utm2deg(rxPosition(1), rxPosition(2), utmzone(1,:));
+
+                    % Rejeitar posição fora da bounding box das medições
+                    if lat_reverted < latBounds(1) || lat_reverted > latBounds(2) || ...
+                       lon_reverted < lonBounds(1) || lon_reverted > lonBounds(2)
+                        continue
+                    end
+
                     tx = txsite(Name="Medido", ...
                         Latitude=specRawTable.Latitude, ...
                         Longitude=specRawTable.Longitude);
@@ -332,8 +354,10 @@ classdef (Abstract) Geolocation
                         Longitude=lon_reverted);
                     distEmissorParcial = distance(tx,rx);
 
-                    % 3. Filtrar pontos para todos valores de potência que se enquadre em "distAferida =  10.^7.2*exp(-0.115*x) + pathLossConstant" +/- Threshold     
-                    distAferidaTotal =  10.^7.2*exp(-0.115*specRawTable.ChannelPower)+pathLossConstant;
+                    % 3. Filtrar pontos para todos valores de potência usando um modelo log-distância genérico +/- threshold
+                    %distAferida = 10.^7.2*exp(-0.115*pot2)+pathLossConstant;
+                    distAferidaTotal = RF.Geolocation.estimateDistanceFromReceivedPower( ...
+                        specRawTable.ChannelPower, referenceReceivedPower, referenceDistanceMeters, pathLossExponent);
                     selectedMeasurementIndices = (distAferidaTotal>(distEmissorParcial'-distanceToleranceMeters))&(distAferidaTotal<(distEmissorParcial'+distanceToleranceMeters));
 
                     % 4. Se menos de 3 pontos foram filtrados,
@@ -347,11 +371,13 @@ classdef (Abstract) Geolocation
                 latMax = specRawTable.Latitude(selectedMeasurementIndices>0);
                 longMax = specRawTable.Longitude(selectedMeasurementIndices>0);
             
-                [xpos,ypos,~] = matlab.deg2utm(latMax, longMax);
+                [xpos,ypos,utmzone] = matlab.deg2utm(latMax, longMax);
                 txPosition = [xpos';ypos'];
 
                 pot2 = specRawTable.ChannelPower(selectedMeasurementIndices>0);
-                distAferida =  10.^7.2*exp(-0.115*pot2)+pathLossConstant;
+                %distAferida = 10.^7.2*exp(-0.115*pot2)+pathLossConstant;
+                distAferida = RF.Geolocation.estimateDistanceFromReceivedPower( ...
+                    pot2, referenceReceivedPower, referenceDistanceMeters, pathLossExponent);
 
                 localizationMethod = "lateration";
 
@@ -360,28 +386,68 @@ classdef (Abstract) Geolocation
                 rxPosition = matlab.blePositionEstimate(txPosition,localizationMethod, ... 
                     distAferida');
             
-                [lat_reverted, lon_reverted] = matlab.utm2deg(rxPosition(1), rxPosition(2), '24 L'); 
+                [lat_reverted, lon_reverted] = matlab.utm2deg(rxPosition(1), rxPosition(2), utmzone(1,:));
+
+                % Rejeitar posição fora da bounding box das medições
+                if lat_reverted < latBounds(1) || lat_reverted > latBounds(2) || ...
+                   lon_reverted < lonBounds(1) || lon_reverted > lonBounds(2)
+                    continue
+                end
+
                 latEmissor(ind) = lat_reverted;
                 longEmissor(ind) = lon_reverted;
             end
             
-            latEmissor = latEmissor(~(latEmissor==0));
-            medLat = median(latEmissor);
-            stdLat = std(latEmissor);
-            locLat = (latEmissor > (medLat + 1.0*stdLat))|(latEmissor < (medLat - 1.0*stdLat));
-            longEmissor = longEmissor(~(longEmissor==0));
+            latEmissor  = latEmissor(latEmissor ~= 0);
+            longEmissor = longEmissor(longEmissor ~= 0);
+
+            % Nenhuma iteração produziu uma estimativa válida
+            if isempty(latEmissor)
+                estimatedLatitude  = NaN;
+                estimatedLongitude = NaN;
+                uncertaintyRadius  = NaN;
+                return
+            end
+
+            % Com menos de 3 pontos, pular remoção de outliers
+            if numel(latEmissor) < 3
+                estimatedLatitude  = median(latEmissor);
+                estimatedLongitude = median(longEmissor);
+                uncertaintyRadius  = 0;
+                return
+            end
+
+            medLat  = median(latEmissor);
+            stdLat  = std(latEmissor);
+            locLat  = (latEmissor  > (medLat  + 1.0*stdLat)) | (latEmissor  < (medLat  - 1.0*stdLat));
             medLong = median(longEmissor);
             stdLong = std(longEmissor);
-            locLong = (longEmissor > (medLong + 1.0*stdLong))|(longEmissor < (medLong - 1.0*stdLong));   
-            
+            locLong = (longEmissor > (medLong + 1.0*stdLong)) | (longEmissor < (medLong - 1.0*stdLong));
+
             [~, IndOut] = rmoutliers(latEmissor, OutlierLocations=(locLong|locLat));
-            
+
+            % Se rmoutliers eliminar tudo, usar mediana bruta
+            if all(IndOut)
+                estimatedLatitude  = medLat;
+                estimatedLongitude = medLong;
+                uncertaintyRadius  = 5*(stdLat + stdLong) * (111320 * cosd(medLat));
+                return
+            end
+
             % Conversão para desenho de círculo de erro
-            estimatedLatitude = median(latEmissor(~IndOut));
+            estimatedLatitude  = median(latEmissor(~IndOut));
             estimatedLongitude = median(longEmissor(~IndOut));
             stdLat = std(latEmissor(~IndOut));
             stdLong = std(longEmissor(~IndOut));
-            uncertaintyRadius = (stdLat + stdLong) * 111000;
+            uncertaintyRadius = 5*(stdLat + stdLong) * (111320 * cosd(estimatedLatitude)); % Transformando erro em graus para metros
+        end
+
+
+        %-----------------------------------------------------------------%
+        function estimatedDistanceMeters = estimateDistanceFromReceivedPower(receivedPowerDbm, referenceReceivedPowerDbm, referenceDistanceMeters, pathLossExponent)
+            % Modelo log-distância genérico: d = d0 * 10^((Pr0 - Pr) / (10*n))
+            relativeDistance = 10.^((referenceReceivedPowerDbm - receivedPowerDbm) ./ (10 * pathLossExponent));
+            estimatedDistanceMeters = referenceDistanceMeters .* max(relativeDistance, 1);
         end
 
 
@@ -438,7 +504,7 @@ classdef (Abstract) Geolocation
                 classifications = emissionsTable.Classification;
 
                 validMask = arrayfun(@(classification) ...
-                    classification.AutoSuggested.Station > -1, classifications);
+                    classification.UserModified.Station > -1, classifications);
 
                 if any(validMask)
                     validSuggestions = [classifications(validMask).AutoSuggested];
@@ -568,14 +634,18 @@ classdef (Abstract) Geolocation
             if ~isempty(axesHandle)
                 estimatedLatitude = varargin{1};
                 estimatedLongitude = varargin{2};
-                uncertaintyRadius = max(0.01, varargin{3});
+                uncertaintyRadius = varargin{3} / (111320 * cosd(estimatedLatitude)); % Valor de varargin{3} em m transformado em graus
 
                 delete(findobj(axesHandle.Children, 'Tag', 'estimatedEmissorLocation'))
 
                 % [circleLatitudes, circleLongitudes] = scircle1(estimatedLatitude, estimatedLongitude, uncertaintyRadius);
                 % geoplot(axesHandle, circleLatitudes, circleLongitudes, 'Color', '#ffffff', 'LineWidth', 1, 'LineStyle', ':', 'Tag', 'estimatedEmissorLocation');
 
-                images.roi.Circle(axesHandle, 'Center', [estimatedLatitude, estimatedLongitude], 'Radius', 0.1, 'LineWidth', 1, 'Deletable', 0, 'FaceSelectable', 0, 'Color', 'red', 'Tag', 'estimatedEmissorLocation');
+                if any(isnan([estimatedLatitude,estimatedLongitude]))
+                    warning('o valor foi NAN')
+                    return
+                end
+                images.roi.Circle(axesHandle, 'Center', [estimatedLatitude, estimatedLongitude], 'Radius', uncertaintyRadius, 'LineWidth', 1, 'Deletable', 0, 'FaceSelectable', 0, 'Color', 'red', 'Tag', 'estimatedEmissorLocation');
                 geoplot(axesHandle, estimatedLatitude, estimatedLongitude, '^', 'Color', '#ffffff', 'LineWidth', 2.5, 'MarkerSize', 12, 'MarkerFaceColor', '#ffffff', 'Tag', 'estimatedEmissorLocation');
                 geolimits(axesHandle, 'auto')
 
