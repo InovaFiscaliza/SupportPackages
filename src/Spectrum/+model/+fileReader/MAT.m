@@ -1,76 +1,67 @@
-function [specData, prjInfo] = MAT(fileName, ReadType)
-
-    % Author.: Eric Magalhães Delgado
-    % Date...: February 20, 2025
-    % Version: 1.01
-
+function specData = MAT(specData, fileName, readType, varargin)
     arguments
+        specData
         fileName char
-        ReadType char = 'SingleFile'
+        readType (1,:) char {mustBeMember(readType, {'MetaData', 'SpecData', 'SingleFile'})}
     end
 
-    load(fileName, '-mat', 'prj_Type', 'prj_Version')
-    if ~ismember(prj_Type, {'Spectral data', 'Project data'})
-        error('Unexpected project type')
-    elseif prj_Version ~= 3
-        error('Unexpected project MAT-file version')
+    arguments (Repeating)
+        varargin
     end
 
-    switch ReadType
-        case 'MetaData'
-            specData = Fcn_MetaDataReader(fileName);
-            prjInfo  = [];
+    load(fileName, '-mat', 'out')
+    if ~isempty(varargin)
+        out = out(varargin{1});
+    end
+
+    switch readType
+        case {'MetaData', 'SingleFile'}
+            specData = Fcn_MetaDataReader(specData, out);
+
+            if strcmp(readType, 'SingleFile')
+                specData = Fcn_SpecDataReader(specData, out);
+            end
             
-        case {'SpecData', 'SingleFile'}
-            [specData, prjInfo] = Fcn_SpecDataReader(fileName);
+        case 'SpecData'
+            specData = copy(specData, {});
+            specData = Fcn_SpecDataReader(specData, out);
     end
 end
 
 %-------------------------------------------------------------------------%
-function specData = Fcn_MetaDataReader(fileName)
-    load(fileName, '-mat', 'prj_metaData')
+function specData = Fcn_MetaDataReader(specData, out)
+    for ii = 1:numel(out)
+        specData(end+1).Receiver = out(ii).Receiver;        
 
-    if isa(prj_metaData, 'class.specData')
-        prj_metaData = compatibilitityAdapter(prj_metaData, 'MetaData');
-    end
-    
-    specData = prj_metaData;
-    checkIfMissingMetaData(specData)
-end
-
-%-------------------------------------------------------------------------%
-function [specData, prjInfo] = Fcn_SpecDataReader(fileName)
-    load(fileName, '-mat', 'prj_specData', 'prj_Info')
-
-    specData = prj_specData;
-    prjInfo  = prj_Info;
-    
-    if isa(prj_specData, 'class.specData')
-        specData = compatibilitityAdapter(prj_specData, 'SpecData',    prj_Info);
-        prjInfo  = compatibilitityAdapter(prj_specData, 'ProjectInfo', prj_Info);
-    end
-
-    checkIfMissingMetaData(specData)
-end
-
-%-------------------------------------------------------------------------%
-function checkIfMissingMetaData(specData)
-    % Recentemente, foi inserido o parâmetro "VBW" dentre os metadados.
-    % Para que não ocorra incompatibilidade com o appAnalise, esse passo 
-    % garante que sejam incluídos os metadados com seus valores padrões
-    % sempre que a informação não estiver no .MAT (salvo numa versão antiga
-    % do app).
-
-    currentMetaData     = model.SpecDataBase.templateMetaData();
-    currentMetaDataList = fields(currentMetaData);
-    ProjectMetaDataList = fields(specData(1).MetaData);
-
-    checkIndex          = find(cellfun(@(x) ~ismember(x, ProjectMetaDataList), currentMetaDataList))';
-    if ~isempty(checkIndex)
-        for ii = 1:numel(specData)
-            for jj = checkIndex
-                specData(ii).MetaData.(currentMetaDataList{jj}) = currentMetaData.(currentMetaDataList{jj});
+        refMetaDataFields = fieldnames(specData(end).MetaData);
+        for jj = 1:numel(refMetaDataFields)
+            refField = refMetaDataFields{jj};
+            if isfield(out(ii).MetaData, refField)
+                specData(end).MetaData.(refField) = out(ii).MetaData.(refField);
             end
         end
+
+        refColumnNames  = specData(end).RelatedFiles.Properties.VariableNames;
+        fileColumnNames = out(ii).RelatedFiles.Properties.VariableNames;
+        if isempty(setdiff(refColumnNames, fileColumnNames))
+            specData(end).RelatedFiles = out(ii).RelatedFiles;
+        end
+
+        refGpsFields  = setdiff(fieldnames(gpsLib.getTemplate()), 'Matrix');
+        fileGpsFields = fieldnames(out(ii).GPS);
+        if isempty(setdiff(refGpsFields, fileGpsFields))
+            specData(end).GPS = out(ii).GPS;
+        end
+    end
+end
+
+%-------------------------------------------------------------------------%
+function specData = Fcn_SpecDataReader(specData, out)
+    if numel(specData) ~= numel(out)
+        error('model:fileReader:MAT:DimensionMismatch', 'Dimension mismatch between input objects')
+    end
+
+    for ii = 1:numel(specData)
+        specData(ii).Data = out(ii).Data;
     end
 end

@@ -323,6 +323,42 @@ function setup(htmlComponent) {
     });
 
     /*---------------------------------------------------------------------------------*/
+    // Listener para vincular eventos de clique em botões HTML dentro de TextView
+    // Propósito: Captura cliques em botões HTML renderizados em componentes TextView,
+    //           extrai os atributos data-* do botão, e envia para MATLAB via bridge
+    // Uso MATLAB: ui.TextView.bindButtons(jsBackDoor, siteId, selector, htmlEventName)
+    // dataTag: identificador único do componente TextView
+    // selector: seletor CSS para encontrar botões (ex: "button.repo-sfi-open-dock")
+    // htmlEventName: nome do evento a disparar em matlabJSBridge (ex: "repoSFI.openDock")
+    htmlComponent.addEventListener("bindTextViewButtons", function(customEvent) {
+        const { dataTag, selector, htmlEventName } = customEvent.Data;
+        const rootHandle = findComponentHandle(dataTag)?.children?.[0]?.children?.[0];
+        if (!rootHandle) {
+            return;
+        }
+
+        const buttonHandles = rootHandle.querySelectorAll(selector);
+        buttonHandles.forEach((buttonHandle) => {
+            if (buttonHandle.dataset.clickListenerBound === "1") {
+                return;
+            }
+
+            buttonHandle.dataset.clickListenerBound = "1";
+            buttonHandle.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+
+                const htmlEventData = {
+                    ...buttonHandle.dataset,
+                    text: buttonHandle.textContent?.trim() || ""
+                };
+
+                htmlComponent.sendEventToMATLAB(htmlEventName, htmlEventData);
+            });
+        });
+    });
+
+    /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("addStyle", function(customEvent) {
         let handle  = findComponentHandle(customEvent.Data.dataTag);
         const style = customEvent.Data.style;
@@ -417,18 +453,49 @@ function setup(htmlComponent) {
         ## DOCK CONTAINER & CUSTOM FORM ##
     -----------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("dockContainer", function(customEvent) {
-        const { dockAppName, dockAppDataTag, dockAppContainerDataTag, width, height, zIndex, context, numCanvasElements } = customEvent.Data;
+        const { dockAppName, dockAppDataTag, dockAppContainerDataTag, sizing, zIndex, context, numCanvasElements } = customEvent.Data;
         
         const dockAppContainerHandle = findComponentHandle(dockAppContainerDataTag);
         const dockAppHandle = findComponentHandle(dockAppDataTag);
         if (!dockAppHandle) return;
 
-        const { content } = createModalContainer({ dockAppName, dataTag: dockAppDataTag, width, height, zIndex, context });
+        const { content } = createModalContainer({ dockAppName, dataTag: dockAppDataTag, sizing, zIndex, context });
 
         dockAppHandle.style.position = "inherit";
         const dockAppCanvasNode = dockAppHandle.querySelector(".canvasNode");
         if (dockAppCanvasNode) {
             dockAppCanvasNode.style.display = "none";
+        }
+
+        if (sizing.type === "fluid") {
+            const removeGrandChildSizing = () => {
+                const scrollableNode = dockAppHandle.querySelector(".scrollableContentsNode");
+                if (!scrollableNode) return;
+                
+                Array.from(scrollableNode.children).forEach(child => {
+                    Array.from(child.children).forEach(grandchild => {
+                        const hasInlineSize = grandchild.style.width || grandchild.style.height;
+                        if (!hasInlineSize) return;
+
+                        grandchild.style.removeProperty("width");
+                        grandchild.style.removeProperty("height");
+                    });
+                });
+            };
+
+            removeGrandChildSizing();
+
+            let retryAttempts = 0;
+            const maxRetries = 3;
+
+            const retryInterval = setInterval(() => {
+                retryAttempts++;
+                removeGrandChildSizing();
+                
+                if (retryAttempts >= maxRetries) {
+                    clearInterval(retryInterval);
+                }
+            }, 300);
         }
 
         if (numCanvasElements > 0) {
@@ -490,7 +557,8 @@ function setup(htmlComponent) {
         const nFields = Array.isArray(Fields) ? Fields.length : 1;
         const height = nFields <= 3 ? 155 : 85 + 20 * nFields + 5 * (nFields - 1);
 
-        const { overlay, dialog, content, closeBtn } = createModalContainer({ dataTag: UUID, width, height });
+        const sizing = { type: "fixed", width, height };
+        const { overlay, dialog, content, closeBtn } = createModalContainer({ dataTag: UUID, sizing });
 
         // --- Form ---
         const form = appWindow.document.createElement("form");
@@ -1111,14 +1179,18 @@ function setup(htmlComponent) {
     }
 
     /*---------------------------------------------------------------------------------*/
-    function createModalContainer({ dataTag, width, height, zIndex = 900, context = "", dockAppName = "" }) {
+    function createModalContainer({ dataTag, sizing, zIndex = 900, context = "", dockAppName = ""}) {
+        const isFluid = sizing.type === "fluid";
+        const dialogWidth  = isFluid ? `${sizing.width}%`  : `${sizing.width}px`;
+        const dialogHeight = isFluid ? `${sizing.height}%` : `${sizing.height}px`;
+
         const overlay = appWindow.document.createElement("div");
         overlay.dataset.tag = `${dataTag}_overlay`;
         overlay.style.cssText = `position: absolute; left:0; top:0; width:100%; height:100%; background: rgba(255,255,255,0.65); z-index:${zIndex};`;
 
         const wrapper = appWindow.document.createElement("div");
         wrapper.innerHTML = `
-            <div class="mwDialog mwAlertDialog mwModalDialog mw-theme-light mwModalDialogFg" data-tag="${dataTag}_dialog" style="width:${width}px; height:${height}px; visibility: visible; color-scheme: light; position: fixed; top:50%; left:50%; transform: translate(-50%, -50%);">
+            <div class="mwDialog mwAlertDialog mwModalDialog mw-theme-light mwModalDialogFg" data-tag="${dataTag}_dialog" style="width:${dialogWidth}; height:${dialogHeight}; visibility: visible; color-scheme: light; position: fixed; top:50%; left:50%; transform: translate(-50%, -50%);">
                 <div class="mwDialogTitleBar mwDraggableDialog" data-tag="${dataTag}_title">
                     <span class="mwTitleNode"></span>
                     <div class="mwControlNodeBar">
@@ -1132,7 +1204,7 @@ function setup(htmlComponent) {
                         </button>
                     </div>
                 </div>
-                <div data-tag="${dataTag}_content"></div>
+                <div data-tag="${dataTag}_content" style="width:100%; height:100%;"></div>
             </div>
         `;
 
