@@ -97,7 +97,7 @@ classdef (Abstract) Geolocation
             % geograficas:
             [estimatedLatitude, estimatedLongitude] = eqa2grn(estPos(1), estPos(2), origin);
 
-            %%%% CALCULANDO O RAIO DO ERRO
+            %%%% CALCULANDO O RAIO DO ERRO — Opção B: GDOP geométrico
             tx = txsite(Name="Triangulado", ...
                 Latitude=estimatedLatitude, ...
                 Longitude=estimatedLongitude);
@@ -105,17 +105,39 @@ classdef (Abstract) Geolocation
                 Latitude=specRawTable.Latitude(selectedMeasurementIndices), ...
                 Longitude=specRawTable.Longitude(selectedMeasurementIndices));
             distanceToSource = distance(tx,rx);
-            
-            radiusScaleFactor = 20;
-            minimumRadiusMeters = 50;
-            confidenceWeightRadians = ((100 - confidenceLevel(channelCenter,selectedMeasurementIndices)').*(AoA)/100)*pi/180;
 
-            % E = raizQuadrada{[Sum[i=1 a n](dist_i*Sigma_i)^2]/n^2)
-            % distanceToSource: Distância entre a fonte estimada e o ponto de medição (metros).
-            % Sigma: Desvio padrão do azimute do ponto em radianos (grau de confiança: ).
-            % n: Número de pontos de medição.
-        
-            uncertaintyRadius = max(radiusScaleFactor*sqrt(sum((distanceToSource.*confidenceWeightRadians).^2)/(height(selectedMeasurementIndices)).^2), minimumRadiusMeters);
+            % Matriz de direção dos azimutes: cada linha é [cos(θ), sin(θ)]
+            AoA_rad = AoA * pi / 180;
+            A = [cos(AoA_rad), sin(AoA_rad)];
+
+            % GDOP = sqrt(trace(inv(A'*A))); mede degradação geométrica
+            % (valor alto → pontos colineares → estimativa instável)
+            AtA = A' * A;
+            if rcond(AtA) > 1e-10
+                gdop = sqrt(trace(inv(AtA)));
+            else
+                gdop = 10; % geometria degenerada: usar valor conservador
+            end
+
+            % Modelo conservador baseado em covariância angular e distância máxima
+            % Captura a propagação de erro angular para o ponto mais distante (maior alavancagem)
+            maxDistanceToSource = max(distanceToSource);
+            
+            % Desvio angular: usar amplitude (max-min) normalizado por range de confiança
+            % Isso evita subestimar quando confidenceLevel está em escala restrita (ex: 70-95%)
+            confidenceLevelLocal = confidenceLevel(channelCenter,selectedMeasurementIndices)';
+            confidenceRange = max(confidenceLevelLocal) - min(confidenceLevelLocal) + 1;  % evitar 0
+            
+            % σ_az_max = (100 / amplitude_confiança) × π/180 graus
+            % Quanto menor a variação de confiança, menos informação temos, logo maior erro
+            sigmaAzimuthMax = (100.0 / confidenceRange) * (pi/180);  % radianos
+            
+            % GDOP já captura geometria; agora propagar para distância cartesiana
+            % R = GDOP × d_max × σ_az × fator_escala_não_linear
+            % fator_escala ≈ 100-200 para absorver não-linearidades de triangulação
+            nonlinearScaleFactor = 25;
+            
+            uncertaintyRadius = max(gdop * maxDistanceToSource * sigmaAzimuthMax * nonlinearScaleFactor, 50);
         end
 
 
@@ -288,8 +310,9 @@ classdef (Abstract) Geolocation
 
             distanceToleranceMeters = 450; % threshold em torno da curva que delimita pontos a serem triangulados
             rssiPercentileArray = 5:3:26; % percentual de pontos a serem utilizados no fit da curva dist X Pot
-            latEmissor = zeros(height(rssiPercentileArray'),1);
-            longEmissor = zeros(height(rssiPercentileArray'),1);
+            latEmissor      = zeros(height(rssiPercentileArray'),1);
+            longEmissor     = zeros(height(rssiPercentileArray'),1);
+            residualEmissor = NaN(height(rssiPercentileArray'),1);  % resíduo médio |d_geom - d_model| por iteração
 
             % Bounding box geográfica das medições (com margem de 0.5° ~ 55 km)
             latMargin = 0.25;
@@ -301,7 +324,7 @@ classdef (Abstract) Geolocation
             minimumReceivedPowerThreshold = min(100, prctile(specRawTable.ChannelPower, 98));
             referenceReceivedPower = max(specRawTable.ChannelPower);
             referenceDistanceMeters = 25;
-            pathLossExponent = 2.7;
+            pathLossExponent = 1.2;%2.7;
             
             for ind = 1 : height(rssiPercentileArray')
                 % selecionando os 'ind' max valores de potência recebida
@@ -394,12 +417,22 @@ classdef (Abstract) Geolocation
                     continue
                 end
 
-                latEmissor(ind) = lat_reverted;
+                latEmissor(ind)  = lat_reverted;
                 longEmissor(ind) = lon_reverted;
+
+                % Opção E: resíduo médio |distância geométrica - distância modelada|
+                txResidual = txsite(Name="Triangulado", Latitude=lat_reverted, Longitude=lon_reverted);
+                rxResidual = rxsite(Name="Medidas", ...
+                    Latitude=latMax, ...
+                    Longitude=longMax);
+                distGeometrica = distance(txResidual, rxResidual);
+                residualEmissor(ind) = mean(abs(distGeometrica - distAferida));
             end
             
-            latEmissor  = latEmissor(latEmissor ~= 0);
-            longEmissor = longEmissor(longEmissor ~= 0);
+            validMask   = latEmissor ~= 0;
+            latEmissor      = latEmissor(validMask);
+            longEmissor     = longEmissor(validMask);
+            residualEmissor = residualEmissor(validMask);
 
             % Nenhuma iteração produziu uma estimativa válida
             if isempty(latEmissor)
@@ -430,16 +463,16 @@ classdef (Abstract) Geolocation
             if all(IndOut)
                 estimatedLatitude  = medLat;
                 estimatedLongitude = medLong;
-                uncertaintyRadius  = 5*(stdLat + stdLong) * (111320 * cosd(medLat));
+                uncertaintyRadius  = median(residualEmissor, 'omitnan');
                 return
             end
 
             % Conversão para desenho de círculo de erro
             estimatedLatitude  = median(latEmissor(~IndOut));
             estimatedLongitude = median(longEmissor(~IndOut));
-            stdLat = std(latEmissor(~IndOut));
-            stdLong = std(longEmissor(~IndOut));
-            uncertaintyRadius = 5*(stdLat + stdLong) * (111320 * cosd(estimatedLatitude)); % Transformando erro em graus para metros
+
+            % Opção E: raio = mediana dos resíduos |d_geom - d_model| das iterações válidas
+            uncertaintyRadius = max(median(residualEmissor(~IndOut), 'omitnan'), 200);
         end
 
 
