@@ -69,6 +69,29 @@ classdef (Abstract) imageUtil
                 figure, imshow(img);
             end
         end
+
+        %-----------------------------------------------------------------%
+        function faceColor = deriveFaceColor(edgeColor)
+            if ischar(edgeColor) || isstring(edgeColor)
+                hex = char(edgeColor);
+                if hex(1) == '#'
+                    hex = hex(2:end);
+                end
+                r = hex2dec(hex(1:2)) / 255;
+                g = hex2dec(hex(3:4)) / 255;
+                b = hex2dec(hex(5:6)) / 255;
+                rgb = [r g b];
+            else
+                rgb = edgeColor;
+            end
+        
+            hsv = rgb2hsv(rgb);
+        
+            hsv(2) = hsv(2) * 0.7;   % reduzir saturação
+            hsv(3) = hsv(3) * 0.7;   % reduzir brilho (escurecer)
+        
+            faceColor = hsv2rgb(hsv);
+        end
     end
 end
 
