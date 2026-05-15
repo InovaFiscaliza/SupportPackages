@@ -1156,7 +1156,7 @@ function setup(htmlComponent) {
             visibility: 'visible',
             position: 'fixed',
             inset: '0',
-            background: 'rgba(255, 255, 255, 0.65)',
+            background: 'rgba(255, 255, 255, 0.55)',
             opacity: '0',
             pointerEvents: 'auto',
             zIndex: `${zIndex}`,
@@ -1179,14 +1179,14 @@ function setup(htmlComponent) {
     }
 
     /*---------------------------------------------------------------------------------*/
-    function createModalContainer({ dataTag, sizing, zIndex = 900, context = "", dockAppName = ""}) {
+    function createModalContainer({ dataTag, sizing, zIndex = 900, context = "", dockAppName = "" }) {
         const isFluid = sizing.type === "fluid";
         const dialogWidth  = isFluid ? `${sizing.width}%`  : `${sizing.width}px`;
         const dialogHeight = isFluid ? `${sizing.height}%` : `${sizing.height}px`;
 
         const overlay = appWindow.document.createElement("div");
         overlay.dataset.tag = `${dataTag}_overlay`;
-        overlay.style.cssText = `position: absolute; left:0; top:0; width:100%; height:100%; background: rgba(255,255,255,0.65); z-index:${zIndex};`;
+        overlay.style.cssText = `position: absolute; left:0; top:0; width:100%; height:100%; background: rgba(255, 255, 255, 0.55); z-index:${zIndex};`;
 
         const wrapper = appWindow.document.createElement("div");
         wrapper.innerHTML = `
@@ -1342,6 +1342,10 @@ function setup(htmlComponent) {
     --mw-backgroundColor-selectedFocus: rgba(180, 222, 255, 0.45) !important;
     --mw-backgroundColor-list-hover: rgb(191, 191, 191) !important;
     --mw-backgroundColor-tab: rgb(255, 255, 255) !important;
+}
+
+.mwUnderlay {
+    opacity: 0.55 !important;
 }
 
 .mwDialog {
