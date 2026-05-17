@@ -137,7 +137,7 @@ classdef (Abstract) Geolocation
             % fator_escala ≈ 100-200 para absorver não-linearidades de triangulação
             nonlinearScaleFactor = 25;
             
-            uncertaintyRadius = max(gdop * maxDistanceToSource * sigmaAzimuthMax * nonlinearScaleFactor, 50);
+            uncertaintyRadius = min(max(gdop * maxDistanceToSource * sigmaAzimuthMax * nonlinearScaleFactor, 300), 1000);
         end
 
 
@@ -472,7 +472,7 @@ classdef (Abstract) Geolocation
             estimatedLongitude = median(longEmissor(~IndOut));
 
             % Opção E: raio = mediana dos resíduos |d_geom - d_model| das iterações válidas
-            uncertaintyRadius = max(median(residualEmissor(~IndOut), 'omitnan'), 200);
+            uncertaintyRadius = min(max(3 * median(residualEmissor(~IndOut), 'omitnan'), 300), 1000);
         end
 
 

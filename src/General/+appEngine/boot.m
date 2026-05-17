@@ -56,7 +56,7 @@ end
 %-------------------------------------------------------------------------%
 function initializeUI(app)
     if isprop(app, 'AppName')
-        app.AppName.Text = sprintf('%s v. %s\n<font style="font-size: 9px;">%s</font>', class.Constants.appName, class.Constants.appVersion, class.Constants.appRelease);
+        app.AppName.Text = sprintf('%s v. %s\n<font style="font-size: 9px;">%s</font>', class.Constants.appName, class.Constants.appVersion, matlabRelease.Release);
     end
 
     if isprop(app, 'SubTabGroup')
