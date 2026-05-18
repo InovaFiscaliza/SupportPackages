@@ -40,7 +40,7 @@ classdef (Abstract) textFormatGUI
             % cellstr >> char
             % {'name1', 'name2', 'name3'} >> '"name1", "name2" e "name3"'
             arguments
-                unformattedString cell
+                unformattedString {mustBeText}
             end
 
             if ~iscellstr(unformattedString)
