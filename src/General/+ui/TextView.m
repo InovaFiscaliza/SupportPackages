@@ -172,17 +172,24 @@ classdef (Abstract) TextView
             switch linkType
                 case 'link'
                     linkInnerHTML = '&#x1F517;'; % '🔗'
+
                 case 'question'
                     linkInnerHTML = '&#x2753;'; % '❓'
+
                 case 'edit'
                     linkInnerHTML = '&#x270F;&#xFE0F;'; % '✏️'
+
                 case 'customText'
                     linkInnerHTML = varargin{1};
+
                 case 'customImage'
                     imageFileName = varargin{1};
-                    generalSettings = varargin{2};
+                    imageWidth = varargin{2};
+                    imageHeight = varargin{3};
+                    generalSettings = varargin{4};
+
                     resourceURL = replace(generalSettings.AppVersion.application.resourceStaticURL, '{resourceName}', imageFileName);
-                    linkInnerHTML = sprintf('<img class="vc-imageIcon" src="%s" draggable="false" ondragstart="return false;" data-dojo-attach-point="iconNode" tabindex="-1" width="18" height="18">', resourceURL);
+                    linkInnerHTML = sprintf('<img class="vc-imageIcon" src="%s" draggable="false" ondragstart="return false;" data-dojo-attach-point="iconNode" tabindex="-1" width="%d" height="%d">', resourceURL, imageWidth, imageHeight);
             end
 
             htmlLink = sprintf('<a href="matlab:evalin(''base'', ''%s(%s, struct(''''HTMLEventName'''', ''''%s''''))'')">%s</a>', ipcJSEventHandlerName, appHandleNameInBase, eventName, linkInnerHTML);
