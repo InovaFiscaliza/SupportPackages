@@ -144,11 +144,12 @@ classdef (Abstract) TextView
         % se trate do "mainApp", ou "ipcSecondaryJSEventsHandler", caso se trate de
         % um "secondaryApp". 
         %------------------------------------------------------------------%
-        function htmlLink = createHTMLLink(linkType, appHandleNameInBase, eventName, varargin)
+        function htmlLink = createHTMLLink(linkType, appHandleNameInBase, eventName, eventData, varargin)
             arguments
                 linkType {mustBeMember(linkType, {'link', 'question', 'edit', 'customText', 'customImage'})}
                 appHandleNameInBase
                 eventName
+                eventData
             end
 
             arguments (Repeating)
@@ -192,7 +193,7 @@ classdef (Abstract) TextView
                     linkInnerHTML = sprintf('<img class="vc-imageIcon" src="%s" draggable="false" ondragstart="return false;" data-dojo-attach-point="iconNode" tabindex="-1" width="%d" height="%d">', resourceURL, imageWidth, imageHeight);
             end
 
-            htmlLink = sprintf('<a href="matlab:evalin(''base'', ''%s(%s, struct(''''HTMLEventName'''', ''''%s''''))'')">%s</a>', ipcJSEventHandlerName, appHandleNameInBase, eventName, linkInnerHTML);
+            htmlLink = sprintf('<a class="text-view-link" href="matlab:evalin(''base'', ''%s(%s, struct(''''HTMLEventName'''', ''''%s'''', ''''HTMLEventData'''', ''''%s''''))'')" style="pointer-events: auto;">%s</a>', ipcJSEventHandlerName, appHandleNameInBase, eventName, eventData, linkInnerHTML);
         end
     end
 
