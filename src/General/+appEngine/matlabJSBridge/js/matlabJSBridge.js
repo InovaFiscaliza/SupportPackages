@@ -1489,7 +1489,7 @@ a, a:hover {
     pointer-events: all;
 }
 
-.textview section[style*="background-color: rgba(255, 255, 255, 0.95)"] {
+.textview section[style*="overflow-y: auto"] {
     pointer-events: auto;
 }
 
