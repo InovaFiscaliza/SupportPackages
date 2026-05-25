@@ -187,8 +187,8 @@ function setup(htmlComponent) {
                     }
 
                     if (el.tooltip) {
-                        const {textContent, defaultPosition} = el.tooltip;
-                        createTooltip(handle, el.dataTag, textContent, defaultPosition);
+                        const {textContent, defaultPosition, zIndex} = el.tooltip;
+                        createTooltip(handle, el.dataTag, textContent, defaultPosition, zIndex);
                     }
 
                     if (el.stackorder && handle.parentElement) {
@@ -974,7 +974,7 @@ function setup(htmlComponent) {
     /*-----------------------------------------------------------------------------------
         ## TOOLTIP ##
     -----------------------------------------------------------------------------------*/
-    function createTooltip(target, targetDataTag, textContent, defaultPosition = "top") {
+    function createTooltip(target, targetDataTag, textContent, defaultPosition = "top", zIndex = 800) {
         let tooltip;
         const tooltipColor = getComputedStyle(appWindow.document.documentElement).getPropertyValue('--tooltip-backgroundColor').trim();
 
@@ -983,13 +983,13 @@ function setup(htmlComponent) {
             target.dataset.tooltipState = 'hidden';
         }
 
-        target.addEventListener('mouseenter', () => tooltip = tooltipShow(tooltip, target, targetDataTag, defaultPosition));
+        target.addEventListener('mouseenter', () => tooltip = tooltipShow(tooltip, target, targetDataTag, defaultPosition, zIndex));
         target.addEventListener('mouseleave', () => tooltipHide(tooltip, target));
 
         /*-----------------------------------------------------------------------------*/
-        function tooltipShow(tooltip, target, targetDataTag, defaultPosition) {
+        function tooltipShow(tooltip, target, targetDataTag, defaultPosition, zIndex) {
             if (!tooltip || target.dataset.tooltipState === 'hidden') {
-                tooltip = tooltipRender(target, targetDataTag, defaultPosition);
+                tooltip = tooltipRender(target, targetDataTag, defaultPosition, zIndex);
                 target.dataset.tooltipState = 'hover';
             }
 
@@ -1007,11 +1007,12 @@ function setup(htmlComponent) {
         }
 
         /*-----------------------------------------------------------------------------*/
-        function tooltipRender(target, targetDataTag, defaultPosition) {
+        function tooltipRender(target, targetDataTag, defaultPosition, zIndex) {
             let tooltip, tooltipArrow;
     
             tooltip = appWindow.document.createElement('div');
             tooltip.className = 'tooltip-container';
+            tooltip.style.zIndex = zIndex;
             tooltip.dataset.targetDataTag = targetDataTag;
             tooltip.innerHTML = target.dataset.tooltipText;;
     
@@ -1444,7 +1445,6 @@ a, a:hover {
     font-size: 12px;
     white-space: nowrap;
     pointer-events: none;
-    z-index: 800;
 }
 
 .tooltip-arrow {
