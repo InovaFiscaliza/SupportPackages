@@ -1,6 +1,6 @@
 classdef ProjectCommon < handle
 
-    % ## model.ProjectCommon (SCH + monitorRNI + monitorSPED) ##      
+    % ## model.ProjectCommon (SCH + monitorRNI + monitorSPED + appAnalise) ##      
     % PUBLIC
     %   ├── initialization
     %   |   └── readReportTemplatesFile
@@ -33,7 +33,7 @@ classdef ProjectCommon < handle
         hash
 
         modules
-        report = struct('templates', [], 'settings',  [])
+        report = struct('templates', [], 'settings', [])
         
         issueDetails = struct('system', {}, 'issue', {}, 'details', {}, 'timestamp', {})
         entityDetails = struct('id', {}, 'details', {}, 'timestamp', {})

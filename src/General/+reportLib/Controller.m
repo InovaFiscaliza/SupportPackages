@@ -87,7 +87,7 @@ function htmlReport = Controller(reportInfo, dataOverview)
                             vararginArgument = [];
 
                         case {'Image', 'Table'}
-                            vararginArgument = eval(sprintf('internalFcn_%s(reportInfo, dataOverview, analyzedData, childNode.Data, true)', childType));
+                            vararginArgument = eval(sprintf('internalFcn_%s(reportInfo, dataOverview, analyzedData, childNode.Data, parentNode.Recurrence)', childType));
 
                         otherwise
                             error('Unexpected type "%s"', childType)
@@ -192,7 +192,7 @@ end
 
 
 %-------------------------------------------------------------------------%
-function imgFullPath = internalFcn_Image(reportInfo, dataOverview, analyzedData, imgSettings, throwError)
+function imgFullPath = internalFcn_Image(reportInfo, dataOverview, analyzedData, imgSettings, recurrence)
     imgFullPath = '';
     imgOrigin   = imgSettings.Origin;
     imgSource   = imgSettings.Source;
@@ -210,16 +210,32 @@ function imgFullPath = internalFcn_Image(reportInfo, dataOverview, analyzedData,
             if ~isempty(imgIndex)
                 imgFullPath = analyzedData.HTML(imgIndex).Value;
             end
+
+        case 'External'
+            imgName = imgSettings.Name;
+
+            if recurrence
+                imgIndex  = find(strcmp(analyzedData.InfoSet.UserData.ReportAttachments.Type, 'Image') & strcmpi(analyzedData.InfoSet.UserData.ReportAttachments.Tag,  imgName), 1);
+                if ~isempty(imgIndex)
+                    imgFullPath = analyzedData.InfoSet.UserData.ReportAttachments.Filename{imgIndex};
+                end
+
+            else
+                imgIndex  = find(strcmp(reportInfo.Project.ReportAttachments.Type, 'Image') & strcmpi(reportInfo.Project.ReportAttachments.Tag,  imgName), 1);
+                if ~isempty(imgIndex)
+                    imgFullPath = reportInfo.Project.ReportAttachments.Filename{imgIndex};
+                end
+            end
     end
 
-    if throwError && ~isfile(imgFullPath)
+    if ~isfile(imgFullPath)
         error('Configuration file error message: %s', imgError)
     end
 end
 
 
 %-------------------------------------------------------------------------%
-function Table = internalFcn_Table(reportInfo, dataOverview, analyzedData, tableSettings, throwError)
+function Table = internalFcn_Table(reportInfo, dataOverview, analyzedData, tableSettings, recurrence)
     Table        = [];
     tableOrigin  = tableSettings.Origin;
     tableColumns = tableSettings.Columns;
@@ -269,13 +285,46 @@ function Table = internalFcn_Table(reportInfo, dataOverview, analyzedData, table
                         Table = Table(:, tableColumns);
                     end
                 end
+
+            case 'External'
+                tblFileName = '';
+
+                if recurrence
+                    tblIndex = find(strcmp(analyzedData.InfoSet.UserData.ReportAttachments.Type, 'Table') & strcmpi(analyzedData.InfoSet.UserData.ReportAttachments.Tag, tableSource), 1);
+                    if ~isempty(tblIndex)
+                        tblFileName = analyzedData.InfoSet.UserData.ReportAttachments.Filename{tblIndex};
+                        tblSheetId  = analyzedData.InfoSet.UserData.ReportAttachments.Id(tblIndex);
+                    end
+
+                else
+                    tblIndex  = find(strcmp(reportInfo.Project.ReportAttachments.Type, 'Table') & strcmpi(reportInfo.Project.ReportAttachments.Tag, tableSource), 1);
+                    if ~isempty(tblIndex)
+                        tblFileName = reportInfo.Project.ReportAttachments.Filename{tblIndex};
+                        tblSheetId  = reportInfo.Project.ReportAttachments.Id(tblIndex);
+                    end
+                end
+
+                if ~isempty(tblFileName)
+                    [~, ~, tblExt] = fileparts(tblFileName);
+
+                    switch lower(tblExt)
+                        case '.json'
+                            Table = struct2table(jsondecode(fileread(tblFileName)));
+                        case {'.xls', '.xlsx'}
+                            Table = readtable(tblFileName, "VariableNamingRule", "preserve", "Sheet", tblSheetId);
+                        otherwise
+                            Table = readtable(tblFileName, "VariableNamingRule", "preserve");
+                    end
+
+                    Table = Table(:, tableColumns);
+                end
         end
 
         Table.Properties.VariableNames = columnNames;
     catch
     end
 
-    if throwError && isempty(Table)
+    if isempty(Table)
         error('Configuration file error message: %s', tableError)
     end
 end
