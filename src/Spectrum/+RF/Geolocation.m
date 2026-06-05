@@ -143,7 +143,6 @@ classdef (Abstract) Geolocation
 
         %-----------------------------------------------------------------%
         function [estimatedLatitude, estimatedLongitude, uncertaintyRadius] = poA(specData, frequencyCenterMHz, bandWidthKHz, localizationParams)
-            % ...
             arguments
                 specData = []
                 frequencyCenterMHz = 10
@@ -667,18 +666,15 @@ classdef (Abstract) Geolocation
             if ~isempty(axesHandle)
                 estimatedLatitude = varargin{1};
                 estimatedLongitude = varargin{2};
-                uncertaintyRadius = varargin{3} / (111320 * cosd(estimatedLatitude)); % Valor de varargin{3} em m transformado em graus
+                uncertaintyRadius = varargin{3} / (111320 * cosd(estimatedLatitude)); % metros >> graus
 
                 delete(findobj(axesHandle.Children, 'Tag', 'estimatedEmissorLocation'))
-
-                % [circleLatitudes, circleLongitudes] = scircle1(estimatedLatitude, estimatedLongitude, uncertaintyRadius);
-                % geoplot(axesHandle, circleLatitudes, circleLongitudes, 'Color', '#ffffff', 'LineWidth', 1, 'LineStyle', ':', 'Tag', 'estimatedEmissorLocation');
 
                 if any(isnan([estimatedLatitude,estimatedLongitude]))
                     warning('o valor foi NAN')
                     return
                 end
-                images.roi.Circle(axesHandle, 'Center', [estimatedLatitude, estimatedLongitude], 'Radius', uncertaintyRadius, 'LineWidth', 1, 'Deletable', 0, 'FaceSelectable', 0, 'Color', 'red', 'Tag', 'estimatedEmissorLocation');
+                images.roi.Circle(axesHandle, 'Center', [estimatedLatitude, estimatedLongitude], 'Radius', uncertaintyRadius, 'LineWidth', 1, 'Deletable', 0, 'FaceSelectable', 0, 'InteractionsAllowed', 'none', 'Color', 'red', 'Tag', 'estimatedEmissorLocation');
                 geoplot(axesHandle, estimatedLatitude, estimatedLongitude, '^', 'Color', '#ffffff', 'LineWidth', 2.5, 'MarkerSize', 12, 'MarkerFaceColor', '#ffffff', 'Tag', 'estimatedEmissorLocation');
                 geolimits(axesHandle, 'auto')
 
