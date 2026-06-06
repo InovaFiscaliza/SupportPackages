@@ -227,12 +227,23 @@ classdef (Abstract) textFormatGUI
                     end
     
                     switch recurrenceLevel
-                        case 1; htmlCode = sprintf('%s\n•&thinsp;<font style="color: gray; font-size: 10px;">%s:</font> %s',                                 htmlCode, fieldName, fieldValue);
-                        case 2; htmlCode = sprintf('%s\n&thinsp;&thinsp;○&thinsp;<font style="color: gray; font-size: 10px;">%s:</font> %s',                 htmlCode, fieldName, fieldValue);
-                        case 3; htmlCode = sprintf('%s\n&thinsp;&thinsp;&thinsp;&thinsp;□&thinsp;<font style="color: gray; font-size: 10px;">%s:</font> %s', htmlCode, fieldName, fieldValue);
+                        case 1
+                            htmlCode = sprintf('%s\n•&thinsp;<font style="color: gray; font-size: 10px;">%s:</font> %s',                                 htmlCode, fieldName, getFieldValue(fieldValue));
+                        case 2
+                            htmlCode = sprintf('%s\n&thinsp;&thinsp;○&thinsp;<font style="color: gray; font-size: 10px;">%s:</font> %s',                 htmlCode, fieldName, getFieldValue(fieldValue));
+                        case 3
+                            htmlCode = sprintf('%s\n&thinsp;&thinsp;&thinsp;&thinsp;□&thinsp;<font style="color: gray; font-size: 10px;">%s:</font> %s', htmlCode, fieldName, getFieldValue(fieldValue));
                     end
                     
                 catch
+                end
+            end
+
+            function value = getFieldValue(value)
+                try
+                    mustBeText(value)
+                catch
+                    value = jsonencode(value);
                 end
             end
         end
