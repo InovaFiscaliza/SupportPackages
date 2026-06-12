@@ -243,7 +243,7 @@ classdef (Abstract) textFormatGUI
                 try
                     mustBeText(value)
                 catch
-                    value = jsonencode(value);
+                    value = matlab.jsonencode(value);
                 end
             end
         end

@@ -1411,10 +1411,6 @@ function setup(htmlComponent) {
     padding: 5px !important;
 }
 
-.mwHTMLMessageNode {
-    word-break: break-all;
-}
-
 a, a:hover {
     text-decoration: none !important;
 }
