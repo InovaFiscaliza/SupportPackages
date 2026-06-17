@@ -9,22 +9,26 @@ function specData = MAT(specData, fileName, readType, varargin)
         varargin
     end
 
-    load(fileName, '-mat', 'out')
-    if ~isempty(varargin)
-        out = out(varargin{1});
-    end
-
     switch readType
         case {'MetaData', 'SingleFile'}
+            out = Fcn_LoadData(fileName, varargin{:});
             specData = Fcn_MetaDataReader(specData, out);
-
-            if strcmp(readType, 'SingleFile')
-                specData = Fcn_SpecDataReader(specData, out);
-            end
             
         case 'SpecData'
             specData = copy(specData, {});
-            specData = Fcn_SpecDataReader(specData, out);
+
+            if ~isscalar(specData) || any(arrayfun(@(x) isempty(x.Data), specData))
+                out = Fcn_LoadData(fileName, varargin{:});
+                specData = Fcn_SpecDataReader(specData, out);
+            end
+    end
+end
+
+%-------------------------------------------------------------------------%
+function out = Fcn_LoadData(fileName, varargin)
+    load(fileName, '-mat', 'out')
+    if ~isempty(varargin)
+        out = out(varargin{1});
     end
 end
 
@@ -40,6 +44,8 @@ function specData = Fcn_MetaDataReader(specData, out)
                 specData(end).MetaData.(refField) = out(ii).MetaData.(refField);
             end
         end
+
+        specData(end).Data = out(ii).Data;
 
         refColumnNames  = specData(end).RelatedFiles.Properties.VariableNames;
         fileColumnNames = out(ii).RelatedFiles.Properties.VariableNames;

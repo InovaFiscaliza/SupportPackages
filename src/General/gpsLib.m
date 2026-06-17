@@ -79,21 +79,22 @@ classdef (Abstract) gpsLib
                 IBGE     table
             end
 
+            global locationObj
+            if isempty(locationObj)
+                locationObj = RF.Location();
+            end
+
             cityName     = '';
             cityDistance = -1;
             cityInfo     = '';
         
             try
-                cityInfo         = webread(replace(gpsLib.apiURL, {'<Latitude>', '<Longitude>'}, {num2str(refPoint.Latitude), num2str(refPoint.Longitude)}));
-                cityInfo.source  = 'API';
+                cityName = Get(locationObj, refPoint);
+                cityInfo = struct('source', 'API');
         
-                if ~isempty(cityInfo.(gpsLib.apiCityToken))
-                    cityName     = sprintf('%s/%s', cityInfo.(gpsLib.apiCityToken), cityInfo.(gpsLib.apiUnitToken)(end-1:end));
-                end
-        
-                idxCity = find(strcmp(IBGE.City, cityName), 1);
-                if ~isempty(idxCity)
-                    cityDistance = deg2km(distance(refPoint.Latitude, refPoint.Longitude, IBGE.Latitude(idxCity), IBGE.Longitude(idxCity)));
+                cityIdx = find(strcmpi(IBGE.City, cityName), 1);
+                if ~isempty(cityIdx)
+                    cityDistance = deg2km(distance(refPoint.Latitude, refPoint.Longitude, IBGE.Latitude(cityIdx), IBGE.Longitude(cityIdx)));
                 end            
             catch
             end
