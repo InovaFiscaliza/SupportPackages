@@ -18,12 +18,14 @@ classdef (Abstract) sourceCode
                     htmlContent = sprintf('<p class="%s"%s%s>%s</p>\n\n', txtClass, reportLib.sourceCode.Editable(componentData.Editable), txtStyle, componentData.Text);        
         
                 %---------------------------------------------------------%
-                case {'List', 'NonIndentedList'}
+                case {'NonIndentedList', 'List', 'DeepIndentedList'}
                     switch componentType
+                        case 'NonIndentedList'
+                            htmlContent = '<ul>';
                         case 'List'
                             htmlContent = '<ul style="margin-left: 80px;">';
-                        otherwise
-                            htmlContent = '<ul>';
+                        case 'DeepIndentedList'
+                            htmlContent = '<ul style="margin-left: 110px;">';
                     end
 
                     for ii = 1:numel(componentData)
@@ -138,7 +140,7 @@ classdef (Abstract) sourceCode
     methods (Static = true)
         %-----------------------------------------------------------------%
         function ComponentTypeCheck(componentType)
-            if ~ismember(componentType, {'ItemN1', 'ItemN2', 'ItemN3', 'Paragraph', 'Footnote', 'List', 'NonIndentedList', 'Image', 'Table'})
+            if ~ismember(componentType, {'ItemN1', 'ItemN2', 'ItemN3', 'Paragraph', 'Footnote', 'NonIndentedList', 'List', 'DeepIndentedList', 'Image', 'Table'})
                 error('report:sourceCode:ComponentTypeCheck', 'Lib supports only "ItemN1", "ItemN2", "ItemN3", "Paragraph", "Footnote", "List", "NonIndentedList", "Image" and "Table" HTML components.')
             end
         end
@@ -156,7 +158,7 @@ classdef (Abstract) sourceCode
                     txtClass   = 'Item_Nivel2';
                 case 'ItemN3'
                     txtClass   = 'Item_Nivel3';
-                case {'Paragraph', 'List', 'NonIndentedList'}
+                case {'Paragraph', 'NonIndentedList', 'List', 'DeepIndentedList'}
                     txtClass   = 'Texto_Justificado';
                 case 'Footnote'
                     txtClass   = 'Tabela_Texto_8';

@@ -77,7 +77,7 @@ function htmlReport = Controller(reportInfo, dataOverview)
                             htmlReport = [htmlReport, htmlReportTemp];
                             continue
 
-                        case {'ItemN2', 'ItemN3', 'Paragraph', 'List', 'NonIndentedList', 'Footnote'}
+                        case {'ItemN2', 'ItemN3', 'Paragraph', 'NonIndentedList', 'List', 'DeepIndentedList', 'Footnote'}
                             % Esse loop existe apenas por conta do componente do tipo "List"...
                             for ll = 1:numel(childNode.Data)
                                 if ~isempty(childNode.Data(ll).Variable)
