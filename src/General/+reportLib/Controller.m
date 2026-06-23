@@ -107,11 +107,21 @@ function htmlReport = Controller(reportInfo, dataOverview)
     end
 
     % HTML footnotes
-    FootnoteList = fields(reportInfo.Version);
+    appVersion = reportInfo.Version; % fieldnames(appVersion) >> {'machine', 'matlab', 'browser', 'application'}
+    
+    if ~isempty(appVersion.browser) && isfield(appVersion.browser, 'url')
+        appVersion.browser = rmfield(appVersion.browser, 'url');
+    end
+
+    if isfield(appVersion.application, 'resourceStaticURL')
+        appVersion.application = rmfield(appVersion.application, 'resourceStaticURL');
+    end
+
+    FootnoteList = fields(appVersion);
     FootnoteText = '';
         
     for ii = 1:numel(FootnoteList)
-        FootnoteVersion = reportInfo.Version.(FootnoteList{ii});
+        FootnoteVersion = appVersion.(FootnoteList{ii});
 
         if ~isempty(FootnoteVersion)
             FootnoteFields = fields(FootnoteVersion);
