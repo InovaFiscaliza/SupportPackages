@@ -18,12 +18,14 @@ classdef (Abstract) sourceCode
                     htmlContent = sprintf('<p class="%s"%s%s>%s</p>\n\n', txtClass, reportLib.sourceCode.Editable(componentData.Editable), txtStyle, componentData.Text);        
         
                 %---------------------------------------------------------%
-                case {'List', 'NonIndentedList'}
+                case {'NonIndentedList', 'List', 'DeepIndentedList'}
                     switch componentType
+                        case 'NonIndentedList'
+                            htmlContent = '<ul>';
                         case 'List'
                             htmlContent = '<ul style="margin-left: 80px;">';
-                        otherwise
-                            htmlContent = '<ul>';
+                        case 'DeepIndentedList'
+                            htmlContent = '<ul style="margin-left: 110px;">';
                     end
 
                     for ii = 1:numel(componentData)
@@ -45,12 +47,12 @@ classdef (Abstract) sourceCode
                         [imgExt, imgString] = imageUtil.img2base64(imgFullPath);
                         
                         htmlContent = reportLib.sourceCode.AuxiliarHTMLBlock(htmlContent, 'Introduction', componentIntro);                        
-                        htmlContent = sprintf(['%s<figure id="image_%.0f">\n'                                                                             ...
+                        htmlContent = sprintf(['%s<figure class="image">\n'                                                                                             ...
                                                '\t<p class="Texto_Centralizado"><img src="data:image/%s;base64,%s" style="width:%s; height:%s;" /></p>\n' ...
                                                '\t<figcaption>\n'                                                                                         ...
                                                '\t\t<p class="%s" style="text-align:center;"><strong>Imagem %.0f. %s</strong></p>\n'                      ...
                                                '\t</figcaption>\n'                                                                                        ...
-                                               '</figure>\n\n'], htmlContent, ID_img, imgExt, imgString, componentData.Settings.Width, componentData.Settings.Height, txtClass, ID_img, componentData.Caption);
+                                               '</figure>\n\n'], htmlContent, imgExt, imgString, componentData.Settings.Width, componentData.Settings.Height, txtClass, ID_img, componentData.Caption);
         
                         htmlContent = reportLib.sourceCode.AuxiliarHTMLBlock(htmlContent, 'LineBreak', componentLineBreak);
         
@@ -73,12 +75,10 @@ classdef (Abstract) sourceCode
                         htmlContent = reportLib.sourceCode.AuxiliarHTMLBlock(htmlContent, 'Introduction', componentIntro);
 
                         % HEADER
-                        htmlContent = sprintf(['%s<table class="%s" id="table_%.0f">\n'                 ...
-                                             '\t<caption>\n'                                            ...
-                                             '\t\t<p class="Tabela_Texto_8" style="text-align:center;"><strong>Tabela %.0f. %s</strong></p>\n' ...
-                                             '\t</caption>\n'                                           ...
-                                             '\t<thead>\n'                                              ...
-                                             '\t\t<tr>'], htmlContent, tableStyle, ID_tab, ID_tab, componentData.Caption);
+                        htmlContent = sprintf(['%s<table class="%s" style="width: 98%%;">\n' ...
+                                             '\t<caption>Tabela %.0f. %s</caption>\n' ...
+                                             '\t<thead>\n' ...
+                                             '\t\t<tr>'], htmlContent, tableStyle, ID_tab, componentData.Caption);
                     
                         rowTemplate = {};
                         for jj = 1:COLUMNS
@@ -138,7 +138,7 @@ classdef (Abstract) sourceCode
     methods (Static = true)
         %-----------------------------------------------------------------%
         function ComponentTypeCheck(componentType)
-            if ~ismember(componentType, {'ItemN1', 'ItemN2', 'ItemN3', 'Paragraph', 'Footnote', 'List', 'NonIndentedList', 'Image', 'Table'})
+            if ~ismember(componentType, {'ItemN1', 'ItemN2', 'ItemN3', 'Paragraph', 'Footnote', 'NonIndentedList', 'List', 'DeepIndentedList', 'Image', 'Table'})
                 error('report:sourceCode:ComponentTypeCheck', 'Lib supports only "ItemN1", "ItemN2", "ItemN3", "Paragraph", "Footnote", "List", "NonIndentedList", "Image" and "Table" HTML components.')
             end
         end
@@ -156,7 +156,7 @@ classdef (Abstract) sourceCode
                     txtClass   = 'Item_Nivel2';
                 case 'ItemN3'
                     txtClass   = 'Item_Nivel3';
-                case {'Paragraph', 'List', 'NonIndentedList'}
+                case {'Paragraph', 'NonIndentedList', 'List', 'DeepIndentedList'}
                     txtClass   = 'Texto_Justificado';
                 case 'Footnote'
                     txtClass   = 'Tabela_Texto_8';
@@ -165,7 +165,7 @@ classdef (Abstract) sourceCode
                     txtClass   = 'Tabela_Texto_8';
                 case 'Table'
                     txtClass   = 'Tabela_Texto_8';
-                    tableStyle = 'tabela_corpo';
+                    tableStyle = 'table tabela_corpo';
             end        
         end
 
