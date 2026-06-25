@@ -7,7 +7,7 @@ classdef RuntimeLog
     % Papel na arquitetura:
     %   - persiste eventos operacionais em disco
     %   - sobrevive enquanto o processo estiver vivo
-    %   - e pensado para diagnostico de excecoes, watchdog, timer,
+    %   - e pensado para diagnostico de excecoes, timer,
     %     listener TCP e falhas que nao ficam visiveis no console
     %
     % Nao confundir com server.ServerLogger:
@@ -53,7 +53,7 @@ classdef RuntimeLog
         % Registro simples informativo
         %------------------------------------------------------------------
         % Esse caminho atende eventos operacionais esperados, como
-        % inicializacao, heartbeat, reconexao e milestones do runtime.
+        % inicializacao, reconexao e milestones do runtime.
         function logInfo(source, message, details)
             if nargin < 3
                 details = [];

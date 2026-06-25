@@ -15,6 +15,7 @@ function main(varargin)
 
     tcpServer = [];
     instanceLock = createEmptyLockState();
+    cleanupMain = onCleanup(@finalizeMainResources); %#ok<NASGU>
 
     try
         % O banner e propositalmente simples: so identifica versao e
@@ -61,8 +62,9 @@ function main(varargin)
                 ME, ...
                 buildRuntimeDetails(tcpServer));
         end
+    end
 
-    finally
+    function finalizeMainResources()
         if ~isempty(tcpServer)
             try
                 delete(tcpServer);

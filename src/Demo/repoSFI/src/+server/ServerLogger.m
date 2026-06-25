@@ -98,19 +98,9 @@ classdef ServerLogger < handle
         %------------------------------------------------------------------
         % Retorna numero de entradas no log
         %------------------------------------------------------------------
-        % Usado pelo loop principal para saber quando houve nova atividade
-        % de request/response registrada no historico em memoria.
+        % Exposicao simples da quantidade atual de transacoes registradas.
         function count = getLogCount(obj)
             count = height(obj.logTable);
-        end
-
-        %------------------------------------------------------------------
-        % Limpa o log
-        %------------------------------------------------------------------
-        % Limpa o conteudo sem recriar a tabela e sem perder o schema das
-        % colunas para futuras insercoes.
-        function clearLog(obj)
-            obj.logTable = obj.logTable(false(height(obj.logTable), 1), :);
         end
 
         %------------------------------------------------------------------

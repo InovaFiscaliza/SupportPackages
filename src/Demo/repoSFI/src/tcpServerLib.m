@@ -3,23 +3,6 @@ classdef tcpServerLib < handle
     %
     % A classe concentra configuracao, reconexao do listener, validacao das
     % mensagens recebidas, delegacao para handlers e registro de log.
-    % tcpServerLib - Servidor TCP para processamento de requisicoes
-    %
-    % Gerencia comunicacao TCP com clientes, recebe requisicoes JSON,
-    % processa e retorna respostas. Mantem log de todas as operacoes.
-    %
-    % Arquitetura:
-    %   - MessageValidator: valida mensagens recebidas
-    %   - RequestFactory: decide qual handler atende cada Request
-    %   - ServerLogger: mantem em memoria o historico request/response
-    %   - RuntimeLog: persiste em disco eventos de saude, excecoes e
-    %     problemas do listener/timer
-    %
-    % Uso:
-    %   server = tcpServerLib()
-    %   server.GeneralSettingsPrint()
-    %   % Servidor executa em background via timer
-    %   while true; pause(1); end
     
     properties (Access = public)
         % Servidor TCP
@@ -36,12 +19,6 @@ classdef tcpServerLib < handle
         % Nao e o mesmo papel do RuntimeLog persistente em disco.
         Logger
         
-        % Estado da requisicao em andamento
-        CurrentRequestState
-
-        % Ultima requisicao concluida
-        LastRequestState
-
         % Timestamp de inicializacao
         Time
 
@@ -49,24 +26,6 @@ classdef tcpServerLib < handle
         TimerPeriodSeconds = 300
     end
 
-    properties (Access = private)
-        % Ultimo resumo de saude observado pelo watchdog
-        LastHealthStateKey = ""
-
-        % Bucket em minutos da ultima requisicao longa ja avisada
-        LastLongRunningRequestBucket = -1
-
-        % Contadores para diferenciar um evento isolado de uma degradacao
-        % recorrente do listener/timer ao longo da vida da instancia.
-        TotalWatchdogRecoveryCount = 0
-        ConsecutiveWatchdogRecoveryCount = 0
-        LastWatchdogRecoveryAt = ""
-    end
-    
-    properties (Constant)
-        % Período do timer em segundos
-        TimerPeriod = 300
-    end
     
     methods (Access = public)
         %==================================================================
@@ -82,8 +41,6 @@ classdef tcpServerLib < handle
             
             % Inicializa logger
             obj.Logger = server.ServerLogger();
-            obj.CurrentRequestState = obj.createEmptyRequestState();
-            obj.LastRequestState = obj.createEmptyRequestState();
             server.RuntimeLog.logInfo( ...
                 'tcpServerLib.constructor', ...
                 'Instancia do servidor criada.', ...
@@ -194,75 +151,8 @@ classdef tcpServerLib < handle
                 'ConfiguredIP', string(obj.safeGeneralField('IP')), ...
                 'ConfiguredPort', obj.safeGeneralPort(), ...
                 'CurrentLogCount', obj.getLogCount(), ...
-                'CurrentRequest', obj.getCurrentRequestSnapshot(), ...
-                'CurrentRequestAgeSeconds', obj.getCurrentRequestAgeSeconds(), ...
-                'LastRequest', obj.getLastRequestSnapshot(), ...
-                'TotalWatchdogRecoveryCount', obj.TotalWatchdogRecoveryCount, ...
-                'ConsecutiveWatchdogRecoveryCount', obj.ConsecutiveWatchdogRecoveryCount, ...
-                'LastWatchdogRecoveryAt', string(obj.LastWatchdogRecoveryAt), ...
                 'NumBytesAvailable', obj.safeNumBytesAvailable(), ...
                 'NumBytesWritten', obj.safeNumBytesWritten());
-        end
-
-        %------------------------------------------------------------------
-        % Watchdog leve de auto-recuperacao do listener
-        %------------------------------------------------------------------
-        % O processo principal pode continuar vivo mesmo quando o listener
-        % TCP ou o timer de reconexao se degradam. Esse watchdog tenta
-        % detectar esse estado "processo vivo, porta morta", registrar a
-        % transicao no log e aplicar a recuperacao mais simples possivel.
-        function health = runHealthWatchdog(obj)
-            health = obj.getRuntimeHealth();
-            issues = strings(0, 1);
-
-            if ~health.TimerValid
-                issues(end+1) = "TimerInvalid"; %#ok<AGROW>
-            elseif ~strcmpi(char(health.TimerRunning), 'on')
-                issues(end+1) = "TimerStopped"; %#ok<AGROW>
-            end
-
-            if ~health.ServerValid
-                issues(end+1) = "ServerInvalid"; %#ok<AGROW>
-            elseif ~health.ServerConnected
-                issues(end+1) = "ServerDisconnected"; %#ok<AGROW>
-            end
-
-            health.Issues = issues;
-            obj.logHealthStateTransition(health);
-            obj.logLongRunningRequestIfNeeded(health);
-
-            if isempty(issues)
-                % Estado voltou ao normal: zeramos apenas a sequencia
-                % consecutiva para detectar degradacoes persistentes.
-                obj.ConsecutiveWatchdogRecoveryCount = 0;
-                health = obj.getRuntimeHealth();
-                health.Issues = strings(0, 1);
-                health.RecoveryApplied = false;
-                health.RecoveryActions = strings(0, 1);
-                return
-            end
-
-            recoveryDetails = obj.recoverRuntimeHealth(health);
-            if ~isempty(recoveryDetails.Actions)
-                obj.TotalWatchdogRecoveryCount = obj.TotalWatchdogRecoveryCount + 1;
-                obj.ConsecutiveWatchdogRecoveryCount = obj.ConsecutiveWatchdogRecoveryCount + 1;
-                obj.LastWatchdogRecoveryAt = string(datetime('now', 'Format', 'dd/MM/yyyy HH:mm:ss'));
-            end
-
-            if ~isempty(recoveryDetails.Actions)
-                server.RuntimeLog.logWarning( ...
-                    'tcpServerLib.Watchdog', ...
-                    'Watchdog detectou listener degradado e aplicou tentativa de recuperacao.', ...
-                    recoveryDetails);
-            end
-
-            % O chamador recebe o estado ja atualizado para poder decidir
-            % se basta manter a auto-recuperacao local ou se vale reciclar
-            % a instancia inteira do servidor.
-            health = obj.getRuntimeHealth();
-            health.Issues = issues;
-            health.RecoveryApplied = ~isempty(recoveryDetails.Actions);
-            health.RecoveryActions = recoveryDetails.Actions;
         end
         
     end
@@ -289,8 +179,7 @@ classdef tcpServerLib < handle
                     struct('WarningMessage', string(msgWarning), 'RootFolder', string(rootFolder)));
             end
 
-            obj.General = server.RuntimeSettings.normalizeGeneralSettings(generalSettings);
-            obj.TimerPeriodSeconds = obj.General.runtime.TcpReconnectTimerPeriodSeconds;
+            obj.General = generalSettings;
         end
         
         %------------------------------------------------------------------
@@ -406,31 +295,24 @@ classdef tcpServerLib < handle
         %------------------------------------------------------------------
         % Faz o pipeline completo: decode, validate, dispatch e log.
         function processRawMessage(obj, rawMsg)
-            requestTimer = tic;
-            requestDetails = struct();
-
             try
-                % Decodifica JSON
                 decodedMsg = jsondecode(rawMsg);
-                requestDetails = obj.buildRequestDetails(decodedMsg);
-                obj.markRequestStarted(requestDetails);
-                requestCleanup = onCleanup(@() obj.clearCurrentRequestState());
-                server.RuntimeLog.logInfo( ...
-                    'tcpServerLib.processRawMessage', ...
-                    'Requisicao recebida para processamento.', ...
-                    requestDetails);
-                
-                % Valida mensagem (fields, tipos, auth, authz)
                 server.MessageValidator.validateMessage(decodedMsg, obj.General);
-                
-                % Processa requisição
-                requestType = decodedMsg.Request.type;
-                answer = handlers.RequestFactory.process(requestType, decodedMsg.Request, obj.General);
-                
-                % Envia resposta
+
+                requestType = string(decodedMsg.Request.type);
+                switch lower(requestType)
+                    case "diagnostic"
+                        answer = handlers.DiagnosticHandler.handle();
+
+                    case "fileread"
+                        answer = handlers.FileReadHandler.handle(decodedMsg.Request, obj.General);
+
+                    otherwise
+                        error('tcpServerLib:UnknownRequestType', ...
+                            sprintf('Unknown request type: "%s"', requestType))
+                end
+
                 obj.sendMessageToClient(struct('Request', decodedMsg.Request, 'Answer', answer))
-                
-                % Log bem-sucedido
                 obj.Logger.logTransaction( ...
                     obj.safeClientAddress(), ...
                     obj.safeClientPort(), ...
@@ -439,29 +321,7 @@ classdef tcpServerLib < handle
                     obj.safeNumBytesWritten(), ...
                     "success" ...
                     )
-                requestDetails.DurationSeconds = toc(requestTimer);
-                obj.markRequestFinished(requestDetails, requestDetails.DurationSeconds, "success");
-                server.RuntimeLog.logInfo( ...
-                    'tcpServerLib.processRawMessage', ...
-                    sprintf('Requisicao processada com sucesso em %.3f s.', requestDetails.DurationSeconds), ...
-                    requestDetails);
-                
             catch ME
-                if isempty(fieldnames(requestDetails))
-                    obj.markRequestStarted(struct( ...
-                        'RequestType', "", ...
-                        'ClientName', "", ...
-                        'FilePath', "", ...
-                        'Export', false));
-                    requestCleanup = onCleanup(@() obj.clearCurrentRequestState());
-                end
-
-                errorDetails = obj.buildExceptionDetails(ME, rawMsg);
-                errorDetails.Request = requestDetails;
-                errorDetails.DurationSeconds = toc(requestTimer);
-                obj.markRequestFinished(requestDetails, errorDetails.DurationSeconds, obj.buildErrorStatus(ME));
-
-                % Envia erro
                 try
                     obj.sendMessageToClient(struct('Request', rawMsg, 'Answer', ME.identifier))
                 catch replyError
@@ -470,8 +330,7 @@ classdef tcpServerLib < handle
                         replyError, ...
                         obj.buildExceptionDetails(replyError, rawMsg));
                 end
-                
-                % Log com erro
+
                 try
                     obj.Logger.logTransaction( ...
                         obj.safeClientAddress(), ...
@@ -479,7 +338,7 @@ classdef tcpServerLib < handle
                         string(rawMsg), ...
                         struct('Request', rawMsg), ...
                         obj.safeNumBytesWritten(), ...
-                        obj.buildErrorStatus(ME) ...
+                        string(ME.identifier) ...
                         )
                 catch logError
                     server.RuntimeLog.logException( ...
@@ -487,11 +346,6 @@ classdef tcpServerLib < handle
                         logError, ...
                         obj.buildExceptionDetails(logError, rawMsg));
                 end
-
-                server.RuntimeLog.logWarning( ...
-                    'tcpServerLib.processRawMessage', ...
-                    obj.buildErrorStatus(ME), ...
-                    errorDetails);
             end
         end
         
@@ -630,146 +484,6 @@ classdef tcpServerLib < handle
         end
 
         %------------------------------------------------------------------
-        % Resumo da requisicao atual para correlacao no log
-        %------------------------------------------------------------------
-        function details = buildRequestDetails(~, decodedMsg)
-            details = struct( ...
-                'RequestType', "", ...
-                'ClientName', "", ...
-                'FilePath', "", ...
-                'Export', false);
-
-            try
-                if isfield(decodedMsg, 'ClientName')
-                    details.ClientName = string(decodedMsg.ClientName);
-                end
-
-                if isfield(decodedMsg, 'Request') && isstruct(decodedMsg.Request)
-                    if isfield(decodedMsg.Request, 'type')
-                        details.RequestType = string(decodedMsg.Request.type);
-                    end
-
-                    if isfield(decodedMsg.Request, 'filepath')
-                        details.FilePath = string(decodedMsg.Request.filepath);
-                    end
-
-                    if isfield(decodedMsg.Request, 'export')
-                        details.Export = logical(decodedMsg.Request.export);
-                    end
-                end
-            catch
-            end
-        end
-
-        %------------------------------------------------------------------
-        % Estado padrao de requisicao para heartbeat e ultimo estado
-        %------------------------------------------------------------------
-        function requestState = createEmptyRequestState(~)
-            requestState = struct( ...
-                'IsActive', false, ...
-                'StartedAt', "", ...
-                'CompletedAt', "", ...
-                'DurationSeconds', NaN, ...
-                'Status', "", ...
-                'Details', struct());
-        end
-
-        %------------------------------------------------------------------
-        % Marca a requisicao como ativa
-        %------------------------------------------------------------------
-        function markRequestStarted(obj, requestDetails)
-            currentState = obj.createEmptyRequestState();
-            currentState.IsActive = true;
-            currentState.StartedAt = string(datetime('now', 'Format', 'dd/MM/yyyy HH:mm:ss'));
-            currentState.Status = "running";
-            currentState.Details = requestDetails;
-            obj.CurrentRequestState = currentState;
-        end
-
-        %------------------------------------------------------------------
-        % Marca a requisicao como concluida
-        %------------------------------------------------------------------
-        function markRequestFinished(obj, requestDetails, durationSeconds, status)
-            lastState = obj.createEmptyRequestState();
-            lastState.IsActive = false;
-            lastState.StartedAt = string(obj.getCurrentRequestStartedAt());
-            lastState.CompletedAt = string(datetime('now', 'Format', 'dd/MM/yyyy HH:mm:ss'));
-            lastState.DurationSeconds = durationSeconds;
-            lastState.Status = string(status);
-            lastState.Details = requestDetails;
-            obj.LastRequestState = lastState;
-        end
-
-        %------------------------------------------------------------------
-        % Limpa o estado da requisicao ativa
-        %------------------------------------------------------------------
-        function clearCurrentRequestState(obj)
-            obj.CurrentRequestState = obj.createEmptyRequestState();
-        end
-
-        %------------------------------------------------------------------
-        % Snapshot da requisicao atual
-        %------------------------------------------------------------------
-        function currentState = getCurrentRequestSnapshot(obj)
-            currentState = obj.createEmptyRequestState();
-
-            try
-                if ~isempty(obj.CurrentRequestState)
-                    currentState = obj.CurrentRequestState;
-                end
-            catch
-                currentState = obj.createEmptyRequestState();
-            end
-        end
-
-        %------------------------------------------------------------------
-        % Snapshot da ultima requisicao concluida
-        %------------------------------------------------------------------
-        function lastState = getLastRequestSnapshot(obj)
-            lastState = obj.createEmptyRequestState();
-
-            try
-                if ~isempty(obj.LastRequestState)
-                    lastState = obj.LastRequestState;
-                end
-            catch
-                lastState = obj.createEmptyRequestState();
-            end
-        end
-
-        %------------------------------------------------------------------
-        % Timestamp de inicio da requisicao atual
-        %------------------------------------------------------------------
-        function startedAt = getCurrentRequestStartedAt(obj)
-            startedAt = "";
-
-            try
-                if ~isempty(obj.CurrentRequestState) && isfield(obj.CurrentRequestState, 'StartedAt')
-                    startedAt = obj.CurrentRequestState.StartedAt;
-                end
-            catch
-                startedAt = "";
-            end
-        end
-
-        %------------------------------------------------------------------
-        % Idade da requisicao atual em segundos
-        %------------------------------------------------------------------
-        function ageSeconds = getCurrentRequestAgeSeconds(obj)
-            ageSeconds = NaN;
-
-            try
-                currentState = obj.getCurrentRequestSnapshot();
-                if currentState.IsActive && strlength(string(currentState.StartedAt)) > 0
-                    startedAt = datetime(char(currentState.StartedAt), 'InputFormat', 'dd/MM/yyyy HH:mm:ss');
-                    ageSeconds = seconds(datetime('now') - startedAt);
-                end
-            catch
-                ageSeconds = NaN;
-            end
-        end
-
-        %------------------------------------------------------------------
         % Detalhes do erro do timer
         %------------------------------------------------------------------
         function details = buildTimerErrorDetails(obj, eventData)
@@ -802,17 +516,6 @@ classdef tcpServerLib < handle
                 end
             catch
                 exceptionOrMessage = 'Falha ao extrair detalhes do erro do timer.';
-            end
-        end
-
-        %------------------------------------------------------------------
-        % Monta status conciso de erro
-        %------------------------------------------------------------------
-        function status = buildErrorStatus(~, ME)
-            if isempty(ME.identifier)
-                status = string(ME.message);
-            else
-                status = sprintf('[%s] %s', ME.identifier, ME.message);
             end
         end
 
@@ -906,20 +609,16 @@ classdef tcpServerLib < handle
         %------------------------------------------------------------------
         % Indica se a instancia esta pronta para nova requisicao
         %------------------------------------------------------------------
-        % Esse sinal e mais forte do que "porta abriu": ele exige que
-        % listener e timer estejam saudaveis e que nao exista outra
-        % requisicao ainda ocupando o callback unico do MATLAB.
+        % Esse sinal exige listener e timer saudaveis.
         function tf = isReadyForRequest(obj)
             tf = false;
 
             try
                 timerRunning = strcmpi(obj.safeTimerRunningState(), 'on');
-                currentRequest = obj.getCurrentRequestSnapshot();
                 tf = obj.isServerValid() && ...
                     obj.isServerConnected() && ...
                     obj.isTimerValid() && ...
-                    timerRunning && ...
-                    ~currentRequest.IsActive;
+                    timerRunning;
             catch
                 tf = false;
             end
@@ -1031,9 +730,8 @@ classdef tcpServerLib < handle
         %------------------------------------------------------------------
         % Reaplica terminador e callback ao listener atual
         %------------------------------------------------------------------
-        % O watchdog pode recriar o listener e, em alguns cenarios de
-        % reconexao, vale garantir explicitamente que o callback continua
-        % apontando para receivedMessage.
+        % Em alguns cenarios de reconexao, vale garantir explicitamente
+        % que o callback continua apontando para receivedMessage.
         function configureServerListener(obj)
             if ~obj.isServerValid()
                 return
@@ -1048,7 +746,7 @@ classdef tcpServerLib < handle
         %------------------------------------------------------------------
         % Quando um callback de leitura/escrita falha em baixo nivel, o
         % processo pode continuar vivo com um listener inutil. Limpar o
-        % handle permite que o watchdog ou o timer recriem a porta.
+        % handle permite recriar a porta com o caminho de reconexao.
         function disposeServer(obj)
             if isempty(obj.Server)
                 obj.Server = [];
@@ -1100,8 +798,7 @@ classdef tcpServerLib < handle
         %------------------------------------------------------------------
         % Tenta restabelecer o listener logo apos falha de transporte
         %------------------------------------------------------------------
-        % O watchdog de 15 s continua existindo como rede de seguranca,
-        % mas esse caminho reduz a janela em que o cliente veria
+        % Esse caminho reduz a janela em que o cliente veria
         % "connection refused" apos um erro de leitura/escrita.
         function attemptImmediateReconnect(obj, reason)
             server.RuntimeLog.logWarning( ...
@@ -1124,120 +821,13 @@ classdef tcpServerLib < handle
         %------------------------------------------------------------------
         function recreateTimer(obj, reason)
             server.RuntimeLog.logWarning( ...
-                'tcpServerLib.Watchdog', ...
+                'tcpServerLib.Timer', ...
                 reason, ...
                 obj.buildConnectionContext());
             obj.disposeTimer();
             obj.TimerCreation()
         end
 
-        %------------------------------------------------------------------
-        % Loga mudancas de saude do listener/timer
-        %------------------------------------------------------------------
-        function logHealthStateTransition(obj, health)
-            currentStateKey = obj.buildHealthStateKey(health);
-            if strlength(obj.LastHealthStateKey) == 0
-                obj.LastHealthStateKey = currentStateKey;
-                return
-            end
-
-            if strcmp(obj.LastHealthStateKey, currentStateKey)
-                return
-            end
-
-            obj.LastHealthStateKey = currentStateKey;
-            if isempty(health.Issues)
-                server.RuntimeLog.logInfo( ...
-                    'tcpServerLib.Watchdog', ...
-                    'Saude do listener voltou ao estado normal.', ...
-                    health);
-            else
-                server.RuntimeLog.logWarning( ...
-                    'tcpServerLib.Watchdog', ...
-                    'Mudanca de saude detectada no listener/timer.', ...
-                    health);
-            end
-        end
-
-        %------------------------------------------------------------------
-        % Resume a saude atual em uma chave comparavel
-        %------------------------------------------------------------------
-        function stateKey = buildHealthStateKey(~, health)
-            stateKey = sprintf('SV:%d|SC:%d|TV:%d|TR:%s', ...
-                logical(health.ServerValid), ...
-                logical(health.ServerConnected), ...
-                logical(health.TimerValid), ...
-                char(string(health.TimerRunning)));
-        end
-
-        %------------------------------------------------------------------
-        % Registra requisicoes excessivamente longas em buckets de minuto
-        %------------------------------------------------------------------
-        % Isso melhora a visibilidade dos casos em que o listener continua
-        % vivo, mas uma operacao fica muito tempo ocupando o callback.
-        function logLongRunningRequestIfNeeded(obj, health)
-            if ~isfield(health, 'CurrentRequest') || ~isstruct(health.CurrentRequest)
-                obj.LastLongRunningRequestBucket = -1;
-                return
-            end
-
-            if ~health.CurrentRequest.IsActive || ~isfinite(health.CurrentRequestAgeSeconds)
-                obj.LastLongRunningRequestBucket = -1;
-                return
-            end
-
-            if health.CurrentRequestAgeSeconds < 120
-                return
-            end
-
-            currentBucket = floor(double(health.CurrentRequestAgeSeconds) / 60);
-            if currentBucket <= obj.LastLongRunningRequestBucket
-                return
-            end
-
-            obj.LastLongRunningRequestBucket = currentBucket;
-            server.RuntimeLog.logWarning( ...
-                'tcpServerLib.Watchdog', ...
-                sprintf('Requisicao permanece ativa ha %.0f segundos.', double(health.CurrentRequestAgeSeconds)), ...
-                health);
-        end
-
-        %------------------------------------------------------------------
-        % Tenta recuperar timer e listener quando degradados
-        %------------------------------------------------------------------
-        function details = recoverRuntimeHealth(obj, health)
-            actions = strings(0, 1);
-            details = struct( ...
-                'Before', health, ...
-                'Actions', actions, ...
-                'After', struct());
-
-            if ~health.TimerValid
-                obj.recreateTimer('Timer invalido detectado pelo watchdog.');
-                actions(end+1) = "TimerRecreated"; %#ok<AGROW>
-            elseif ~strcmpi(char(health.TimerRunning), 'on')
-                try
-                    start(obj.Timer)
-                    actions(end+1) = "TimerStarted"; %#ok<AGROW>
-                catch
-                    obj.recreateTimer('Timer parado detectado pelo watchdog; o timer sera recriado.');
-                    actions(end+1) = "TimerRecreated"; %#ok<AGROW>
-                end
-            end
-
-            if ~health.ServerValid
-                obj.disposeServer();
-                obj.ConnectAttempt();
-                actions(end+1) = "ListenerRecreated"; %#ok<AGROW>
-            elseif ~health.ServerConnected
-                obj.ConnectAttempt();
-                actions(end+1) = "ListenerReconnectAttempted"; %#ok<AGROW>
-            end
-
-            details.Actions = actions;
-            details.After = obj.getRuntimeHealth();
-        end
-        
     end
     
     methods (Static)
