@@ -363,7 +363,7 @@ classdef (Abstract) util
 
             switch appName
                 case 'appAnalise'
-                    appGeneral.Plot.ClearWrite.Visible = 'on';
+                    appGeneral.plot.clearWrite.Visible = 'on';
                 otherwise
                     % ...
             end
