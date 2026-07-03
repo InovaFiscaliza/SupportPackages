@@ -147,9 +147,13 @@ classdef SpecDataBase < handle
             for ii = 1:numel(fileList)
                 try
                     tmpObj = read(eval([class(obj) '.empty']), fileList{ii}, readType);
-
+            
                     if ~isempty(tmpObj)
-                        obj(end+1) = tmpObj;
+                        % Percorre todos os espectros dentro de tmpObj e
+                        % insere em obj
+                        for jj=1:numel(tmpObj)
+                            obj(end+1) = tmpObj(jj);
+                        end
                     end
 
                 catch ME

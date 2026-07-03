@@ -6,8 +6,6 @@
 
 #define NOMINMAX
 
-#include <Windows.h>
-#include <stdlib.h> 
 #include <stdint.h>
 
 #ifdef IQWRAPPER_EXPORTS
@@ -16,14 +14,10 @@
 #define IQWRAPPER_API __declspec(dllimport)
 #endif
 
-#define IQ_file_ext	"IQ"
-#define dBm_file_ext "DBM"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#pragma pack(push, 1)  // Disable padding
 typedef struct CapturedRawBuffer_C {
 	double latitude;
 	double longitude;
@@ -62,7 +56,6 @@ typedef struct CapturedRawBuffer_C {
 	int32_t ext_SCS_kHz;
 	int32_t DuplexMode;
 } CapturedRawBuffer_C;
-#pragma pack(pop)
 
 
 // Funções exportadas pela DLL
@@ -72,11 +65,13 @@ IQWRAPPER_API void IQWrapper_Unload_Library(void);
 IQWRAPPER_API int  IQWrapper_OpenFile(char* fname, int* nBlocks);
 IQWRAPPER_API void IQWrapper_CloseFile(void);
 	
-IQWRAPPER_API int  IQWrapper_dBm_NextBlock(CapturedRawBuffer_C* dBm_Buffer, float* dBm, int* BlockNumber, int* length);
+IQWRAPPER_API int  IQWrapper_dBm_NextBlock(CapturedRawBuffer_C* dBm_Buffer, float* dBm, int* BlockNumber, int* length, uint32_t* exceptionCode);
 IQWRAPPER_API int  IQWrapper_MoreBlocksAvailable(void);
 
 IQWRAPPER_API int  IQWrapper_Get_DLL_Version(void);					// versão da DLL em C++
+IQWRAPPER_API void IQWrapper_ShowLog(bool enebled);
 
+IQWRAPPER_API bool IQWrapper_getBufferInfo(int* buffer_nElems);
 
 #ifdef __cplusplus
 }

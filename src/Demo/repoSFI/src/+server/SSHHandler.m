@@ -45,17 +45,31 @@ classdef SSHHandler
         %------------------------------------------------------------------
         % Baixa um arquivo remoto para uma copia local temporaria
         %------------------------------------------------------------------
-        function localPath = downloadFile(client, remotePath, localFolder)
+        function [client, localPath] = downloadFile(client, connectionSettings, remotePath, localFolder)
             [~, remoteFileName] = server.SSHHandler.validateRemotePath(remotePath);
 
             try
+                client = server.SSHHandler.ensureConnected(client, connectionSettings, remotePath);
                 mget(client, remoteFileName, localFolder);
             catch ME
+                if server.SSHHandler.isConnectionRelated(ME)
+                    client = server.SSHHandler.reopenClient(client, connectionSettings, remotePath);
+                    try
+                        mget(client, remoteFileName, localFolder);
+                    catch retryME
+                        server.SSHHandler.throwMappedRemoteError( ...
+                            'server:SSHHandler:DownloadFailed', ...
+                            'Falha ao baixar arquivo remoto.', ...
+                            remotePath, ...
+                            retryME);
+                    end
+                else
                 server.SSHHandler.throwMappedRemoteError( ...
                     'server:SSHHandler:DownloadFailed', ...
                     'Falha ao baixar arquivo remoto.', ...
                     remotePath, ...
                     ME);
+                end
             end
 
             localPath = fullfile(localFolder, remoteFileName);
@@ -70,20 +84,34 @@ classdef SSHHandler
         %------------------------------------------------------------------
         % Publica um arquivo local no diretorio remoto de destino
         %------------------------------------------------------------------
-        function uploadFile(client, localPath)
+        function client = uploadFile(client, connectionSettings, remotePath, localPath)
             if ~isfile(localPath)
                 error('server:SSHHandler:LocalFileNotFound', ...
                     'Arquivo local nao encontrado: %s', localPath);
             end
 
             try
+                client = server.SSHHandler.ensureConnected(client, connectionSettings, remotePath);
                 mput(client, localPath);
             catch ME
-                server.SSHHandler.throwMappedRemoteError( ...
-                    'server:SSHHandler:UploadFailed', ...
-                    'Falha ao enviar arquivo remoto.', ...
-                    localPath, ...
-                    ME);
+                if server.SSHHandler.isConnectionRelated(ME)
+                    client = server.SSHHandler.reopenClient(client, connectionSettings, remotePath);
+                    try
+                        mput(client, localPath);
+                    catch retryME
+                        server.SSHHandler.throwMappedRemoteError( ...
+                            'server:SSHHandler:UploadFailed', ...
+                            'Falha ao enviar arquivo remoto.', ...
+                            remotePath, ...
+                            retryME);
+                    end
+                else
+                    server.SSHHandler.throwMappedRemoteError( ...
+                        'server:SSHHandler:UploadFailed', ...
+                        'Falha ao enviar arquivo remoto.', ...
+                        remotePath, ...
+                        ME);
+                end
             end
         end
 
@@ -203,6 +231,71 @@ classdef SSHHandler
             tf = contains(messageText, 'not found') || ...
                 contains(messageText, 'no such file') || ...
                 contains(messageText, 'does not exist');
+        end
+
+        %------------------------------------------------------------------
+        % Heuristica para erro de conexao perdida
+        %------------------------------------------------------------------
+        function tf = isConnectionRelated(ME)
+            messageText = lower(server.SSHHandler.toChar(ME.message));
+            tf = contains(messageText, 'connection reset') || ...
+                contains(messageText, 'connection closed') || ...
+                contains(messageText, 'client is closed') || ...
+                contains(messageText, 'session is down') || ...
+                contains(messageText, 'broken pipe') || ...
+                contains(messageText, 'socket') || ...
+                contains(messageText, 'timeout') || ...
+                contains(messageText, 'timed out') || ...
+                contains(messageText, 'end of file') || ...
+                contains(messageText, 'channel closed') || ...
+                contains(messageText, 'connection refused') || ...
+                contains(messageText, 'network is unreachable') || ...
+                contains(messageText, 'no route to host');
+        end
+
+        %------------------------------------------------------------------
+        % Verifica se a sessao segue responsiva antes da transferencia
+        %------------------------------------------------------------------
+        function client = ensureConnected(client, connectionSettings, remotePath)
+            try
+                probeListing = dir(client, '.'); %#ok<NASGU>
+            catch ME
+                if ~server.SSHHandler.isConnectionRelated(ME)
+                    rethrow(ME)
+                end
+                client = server.SSHHandler.reopenClient(client, connectionSettings, remotePath);
+            end
+        end
+
+        %------------------------------------------------------------------
+        % Reabre cliente SFTP e reposiciona no diretorio remoto
+        %------------------------------------------------------------------
+        function client = reopenClient(client, connectionSettings, remotePath)
+            server.SSHHandler.tryCloseClient(client);
+
+            try
+                client = server.SSHHandler.openClient(connectionSettings, remotePath);
+            catch ME
+                server.SSHHandler.throwMappedRemoteError( ...
+                    'server:SSHHandler:ConnectionFailed', ...
+                    'Falha ao reabrir conexao SSH.', ...
+                    remotePath, ...
+                    ME);
+            end
+        end
+
+        %------------------------------------------------------------------
+        % Fecha cliente sem propagar erro
+        %------------------------------------------------------------------
+        function tryCloseClient(client)
+            if isempty(client)
+                return;
+            end
+
+            try
+                close(client);
+            catch
+            end
         end
 
         %------------------------------------------------------------------
