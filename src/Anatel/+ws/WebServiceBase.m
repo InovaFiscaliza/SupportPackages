@@ -15,8 +15,9 @@ classdef (Abstract, AllowedSubclasses={?ws.eFiscaliza, ?ws.ReceitaFederal}) WebS
                 % header = matlab.net.http.field.GenericField(header{:});
             end
 
+            options = matlab.net.http.HTTPOptions('CertificateFilename', '');
             request  = matlab.net.http.RequestMessage(method, header, body);
-            response = request.send(url);
+            response = request.send(url, options);
 
             if ~isa(response, 'matlab.net.http.ResponseMessage')
                 error('Unexpected response type')
