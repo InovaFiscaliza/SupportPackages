@@ -29,12 +29,12 @@ classdef FileReadHandler
             try
                 client = server.SSHHandler.openClient(generalSettings,remoteFilePath);
                 cleanupClient = onCleanup(@() close(client)); %#ok<NASGU>
-                localTempPath = server.SSHHandler.downloadFile(client, remoteFilePath, tempFolder);
+                [client, localTempPath] = server.SSHHandler.downloadFile(client, generalSettings, remoteFilePath, tempFolder);
                 if exportRequested
                     specData = handlers.FileReadHandler.readFile(localTempPath, 'SingleFile');
                     localOutputPath = handlers.FileReadHandler.exportMatFile(specData, localTempPath);
                     answerPath = handlers.FileReadHandler.buildRemoteMatPath(remoteFilePath);
-                    server.SSHHandler.uploadFile(client, localOutputPath);
+                    client = server.SSHHandler.uploadFile(client, generalSettings, answerPath, localOutputPath);
                 else
                     specData = handlers.FileReadHandler.readFile(localTempPath, 'MetaData');
                     localOutputPath = localTempPath;

@@ -34,7 +34,25 @@ function specData = CellPlanDBM(specData, fileName, readType)
     setenv('PATH', [dllFolder pathsep prevPath]);
 
     if ~libisloaded('IQWrapper')
-        loadlibrary('IQWrapper.dll', @IQWrapperProto);
+        protoFile = fullfile(dllFolder, 'IQWrapperProto.m');
+        thunkFile = fullfile(dllFolder, 'IQWrapper_thunk_win64.dll');
+
+        if exist(protoFile, 'file') && exist(thunkFile, 'file')
+            loadlibrary('IQWrapper.dll', @IQWrapperProto);
+        elseif exist(protoFile, 'file')
+            if isdeployed
+                error('model:fileReader:CellPlanDBM:MissingThunk', ...
+                    ['IQWrapper must be loaded via IQWrapperProto.m, but the thunk library is missing. ' ...
+                     'Expected file: %s'], thunkFile);
+            end
+
+            Fcn_GenerateThunk(dllFolder, thunkFile);
+            loadlibrary('IQWrapper.dll', @IQWrapperProto);
+        else
+            error('model:fileReader:CellPlanDBM:MissingPrototype', ...
+                ['IQWrapper must be loaded via IQWrapperProto.m, but the prototype file is missing. ' ...
+                 'Expected file: %s'], protoFile);
+        end
     end
 
     if ~calllib('IQWrapper', 'IQWrapper_Load_Library')
@@ -72,6 +90,41 @@ function specData = CellPlanDBM(specData, fileName, readType)
 end
 
 %-------------------------------------------------------------------------%
+function Fcn_GenerateThunk(dllFolder, thunkFile)
+    tempProtoName = 'IQWrapperProto_buildtmp';
+    tempProtoFile = fullfile(dllFolder, [tempProtoName '.m']);
+    tempThunkCFile = fullfile(dllFolder, 'IQWrapper_thunk_win64.c');
+
+    cleanupProto = onCleanup(@() Fcn_DeleteIfExists(tempProtoFile)); %#ok<NASGU>
+    cleanupThunkC = onCleanup(@() Fcn_DeleteIfExists(tempThunkCFile)); %#ok<NASGU>
+
+    [~, warnings] = loadlibrary('IQWrapper.dll', 'IQWrapper.h', ...
+        'mfilename', tempProtoName, ...
+        'thunkfilename', 'IQWrapper_thunk_win64');
+
+    if ~isempty(strtrim(warnings))
+        warning('model:fileReader:CellPlanDBM:ThunkGenerationWarnings', '%s', warnings)
+    end
+
+    if ~isfile(thunkFile)
+        error('model:fileReader:CellPlanDBM:ThunkGenerationFailed', ...
+            ['MATLAB failed to generate the IQWrapper thunk library. ' ...
+             'Expected file: %s'], thunkFile);
+    end
+
+    if libisloaded('IQWrapper')
+        unloadlibrary('IQWrapper');
+    end
+end
+
+%-------------------------------------------------------------------------%
+function Fcn_DeleteIfExists(fileName)
+    if isfile(fileName)
+        delete(fileName);
+    end
+end
+
+%-------------------------------------------------------------------------%
 function Fcn_PrecheckDbmHeader(fileName)
     fileInfo = dir(fileName);
     if isempty(fileInfo) || fileInfo.bytes == 0
@@ -98,7 +151,7 @@ function Fcn_PrecheckDbmHeader(fileName)
 end
 
 %-------------------------------------------------------------------------%
-function [hdrPtr, dBmPtr, totPtr, medPtr] = Fcn_InitPointers()
+function [hdrPtr, dBmPtr, totPtr, medPtr, expPtr] = Fcn_InitPointers()
     hdr = struct( ...
         'latitude',                double(0), ...
         'longitude',               double(0), ...
@@ -131,11 +184,24 @@ function [hdrPtr, dBmPtr, totPtr, medPtr] = Fcn_InitPointers()
         'ext_SCS_kHz',             int32(0),  ...
         'DuplexMode',              int32(0)   ...
         );
-
-    hdrPtr = libpointer('CapturedRawBuffer_C', hdr);
-    dBmPtr = libpointer('singlePtr', single(zeros(1, 10000)));
-    totPtr = libpointer('int32Ptr', 0);   % 3º arg = comprimento (nº de bins)
-    medPtr = libpointer('int32Ptr', 0);   % 4º arg = indicador de bloco médio (0 ou 1)
+    
+    nElemsPtr = libpointer('int32Ptr', 0);
+    try 
+        ok = calllib('IQWrapper', 'IQWrapper_getBufferInfo', nElemsPtr);
+        if ~ok || (nElemsPtr.Value <= 0)
+            error('model:fileReader:CellPlanDBM:IQWrapper_getBufferInfo', ...
+                'IQWrapper returned an invalid buffer length (%d).', nElemsPtr.Value)
+        end
+        hdrPtr = libpointer('CapturedRawBuffer_C', hdr);        % gera ponteiro para header (hdr) com o formato na DLL (CaptureRawBuffer_C)
+        dBm    = single(zeros(1, nElemsPtr.Value));             % inicia vetor de amostras espectrais na medida. Por não saber a quantidade a priori esta é sobre-estimada em 10000
+        dBmPtr = libpointer('singlePtr', dBm);                  % ponteiro para o vetor de amostras espectrais (FFT bin) na medida
+        totPtr = libpointer('int32Ptr', 0);                     % 3º arg = comprimento (nº de bins)
+        medPtr = libpointer('int32Ptr', 0);                     % 4º arg = indicador de bloco médio (0 ou 1)
+        expPtr = libpointer('uint32Ptr', 0);                    % ponteiro para o código de excessão com valor != 0, se valor = 0 não ocorreu problema algum
+    
+    catch
+        error('model:fileReader:CellPlanDBM:IQWrapper_getBufferInfo', 'Failed to query IQWrapper buffer length.')
+    end
 end
 
 %-------------------------------------------------------------------------%
@@ -175,7 +241,7 @@ function specData = Fcn_MetaDataReader(specData, fileName, ReadType)
         error('model:fileReader:CellPlanDBM:OpenFileFailed', 'Failed to open file.')
     end
 
-    [hdrPtr, dBmPtr, totPtr, medPtr] = Fcn_InitPointers();
+    [hdrPtr, dBmPtr, totPtr, medPtr, expPtr] = Fcn_InitPointers();
 
     % tempTS{idx}  – datetime row vector (um timestamp por sweep)
     % tempLvl{idx} – single matrix (DataPoints × nSweeps), apenas para SingleFile
@@ -183,9 +249,9 @@ function specData = Fcn_MetaDataReader(specData, fileName, ReadType)
     tempLvl  = {};
 
     try
-        while calllib('IQWrapper', 'IQWrapper_MoreBlocksAvailable')
-            calllib('IQWrapper', 'IQWrapper_dBm_NextBlock', hdrPtr, dBmPtr, totPtr, medPtr);
-
+        while calllib('IQWrapper', 'IQWrapper_MoreBlocksAvailable') && (expPtr.Value == 0)
+            calllib('IQWrapper', 'IQWrapper_dBm_NextBlock', hdrPtr, dBmPtr, totPtr, medPtr, expPtr);
+            
             hdr = hdrPtr.Value;
             tot = double(totPtr.Value);   % número de bins (DataPoints) neste bloco
 
@@ -291,16 +357,16 @@ function specData = Fcn_SpecDataReader(specData, fileName)
         error('model:fileReader:CellPlanDBM:OpenFileFailed', 'Failed to open file.')
     end
 
-    [hdrPtr, dBmPtr, totPtr, medPtr] = Fcn_InitPointers();
+    [hdrPtr, dBmPtr, totPtr, medPtr, expPtr] = Fcn_InitPointers();
 
     nEntries      = numel(specData);
     subBandBuffer = cell(nEntries, 1);   % níveis por sub-faixa de frequência
     tempTS        = cell(nEntries, 1);   % timestamps por entrada
 
     try
-        while calllib('IQWrapper', 'IQWrapper_MoreBlocksAvailable')
-            calllib('IQWrapper', 'IQWrapper_dBm_NextBlock', hdrPtr, dBmPtr, totPtr, medPtr);
-
+        while calllib('IQWrapper', 'IQWrapper_MoreBlocksAvailable') && (expPtr.Value == 0)
+            calllib('IQWrapper', 'IQWrapper_dBm_NextBlock', hdrPtr, dBmPtr, totPtr, medPtr, expPtr);
+           
             hdr = hdrPtr.Value;
             tot = double(totPtr.Value);
 
