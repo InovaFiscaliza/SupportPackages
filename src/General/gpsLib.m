@@ -159,7 +159,7 @@ classdef (Abstract) gpsLib
         %-----------------------------------------------------------------%
         function gpsSummary = summary(gpsData)
             arguments
-                gpsData struct %  struct('Status', {}, 'Latitude', {}, 'Longitude', {})
+                gpsData struct % struct('Status', 1, 'Matrix', [5176 x 2 single])
             end
 
             gpsSummary = gpsLib.getTemplate();

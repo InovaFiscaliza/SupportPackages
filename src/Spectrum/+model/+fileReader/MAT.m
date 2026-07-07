@@ -49,14 +49,21 @@ function specData = Fcn_MetaDataReader(specData, out)
 
         refColumnNames  = specData(end).RelatedFiles.Properties.VariableNames;
         fileColumnNames = out(ii).RelatedFiles.Properties.VariableNames;
-        if isempty(setdiff(refColumnNames, fileColumnNames))
-            specData(end).RelatedFiles = out(ii).RelatedFiles;
+        if all(ismember(refColumnNames, fileColumnNames))
+            specData(end).RelatedFiles = out(ii).RelatedFiles(:, refColumnNames);
         end
 
         refGpsFields  = setdiff(fieldnames(gpsLib.getTemplate()), 'Matrix');
         fileGpsFields = fieldnames(out(ii).GPS);
         if isempty(setdiff(refGpsFields, fileGpsFields))
             specData(end).GPS = out(ii).GPS;
+        end
+
+        for kk = 1:height(specData(end).RelatedFiles)
+            if isempty(specData(end).RelatedFiles.GPS{kk}) && specData(end).GPS.Count
+                gpsData = struct('Status', specData(end).GPS.Status, 'Matrix', [specData(end).GPS.Latitude, specData(end).GPS.Longitude]);
+                specData(end).RelatedFiles.GPS{kk} = gpsLib.summary(gpsData);
+            end
         end
     end
 end
