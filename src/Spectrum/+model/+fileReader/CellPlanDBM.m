@@ -1,8 +1,12 @@
 function specData = CellPlanDBM(specData, fileName, readType)
     %---------------------------------------------------------------------%
     % Leitura de arquivos .dBm gerados por estação de monitoração fornecida 
-    % pela CellPlan usando a DLL IQWrapper. Para tanto, a DLL IQWrapper deve 
-    % estar presente em subpasta "CellPlanDBM".
+    % pela CellPlan. Arquivos comprimidos (CelZip) são descomprimidos via
+    % CelZip64.dll; a leitura binária do formato .dBm é feita em MATLAB.
+    % A DLL CelZip64.dll deve estar presente na subpasta "CellPlanDBM".
+    % Author.: Eric Magalhães Delgado / Marcelo Lúcio Nuness
+    % Date...: July 08, 2026
+    % Version: 2.10
     %---------------------------------------------------------------------%
     arguments
         specData
@@ -10,111 +14,102 @@ function specData = CellPlanDBM(specData, fileName, readType)
         readType (1,:) char {mustBeMember(readType, {'MetaData', 'SpecData', 'SingleFile'})}  = 'SingleFile'
     end
 
-    % Garantia de retorno ao diretório original mesmo em caso de erro durante
-    % a leitura DLL.
+    % Garante retorno ao diretório original mesmo em caso de erro.
     initFolder = pwd;
-    cleanupCD = onCleanup(@() cd(initFolder));
+    cleanupCD  = onCleanup(@() cd(initFolder));
 
-    % Antes de entrar na IQWrapper, fazemos um pre-check barato do arquivo.
-    % A intenção é barrar DBMs vazios ou com cabeçalho claramente inválido
-    % antes de chamar a DLL, evitando popup modal gerado pela DLL.
-    Fcn_PrecheckDbmHeader(fileName);
-
-    % A DLL IQWrapper é carregada dinamicamente a partir da pasta 'CellPlanDBM'
-    % localizada no mesmo diretório deste arquivo.
+    % Localiza a subpasta com a DLL e ajusta o PATH do Windows para que
+    % as dependências de runtime da CelZip64 sejam encontradas.
     dllFolder = fullfile(fileparts(mfilename('fullpath')), 'CellPlanDBM');
     cd(dllFolder)
 
-    % Garante que as dependências internas da DLL sejam encontradas pelo
-    % Windows tanto em modo interpretado quanto compilado, visto que
-    % "IQWrapper_Load_Library" tenta carregar DLLs adicionais em tempo 
-    % de execução.
-    prevPath = getenv('PATH');
+    prevPath    = getenv('PATH');
     cleanupPath = onCleanup(@() setenv('PATH', prevPath));
     setenv('PATH', [dllFolder pathsep prevPath]);
 
-    if ~libisloaded('IQWrapper')
-        protoFile = fullfile(dllFolder, 'IQWrapperProto.m');
-        thunkFile = fullfile(dllFolder, 'IQWrapper_thunk_win64.dll');
+    % Descomprime o arquivo caso necessário e retorna o path legível.
+    [readableFile, cleanupTemp] = Fcn_DecompressIfNeeded(fileName, dllFolder);
 
-        if exist(protoFile, 'file') && exist(thunkFile, 'file')
-            loadlibrary('IQWrapper.dll', @IQWrapperProto);
-        elseif exist(protoFile, 'file')
-            if isdeployed
-                error('model:fileReader:CellPlanDBM:MissingThunk', ...
-                    ['IQWrapper must be loaded via IQWrapperProto.m, but the thunk library is missing. ' ...
-                     'Expected file: %s'], thunkFile);
-            end
+    switch readType
+        case {'MetaData', 'SingleFile'}
+            specData = Fcn_MetaDataReader(specData, readableFile, fileName, readType);
 
-            Fcn_GenerateThunk(dllFolder, thunkFile);
-            loadlibrary('IQWrapper.dll', @IQWrapperProto);
-        else
-            error('model:fileReader:CellPlanDBM:MissingPrototype', ...
-                ['IQWrapper must be loaded via IQWrapperProto.m, but the prototype file is missing. ' ...
-                 'Expected file: %s'], protoFile);
-        end
-    end
-
-    if ~calllib('IQWrapper', 'IQWrapper_Load_Library')
-        error('model:fileReader:CellPlanDBM:LoadLibraryFailed', 'Failed to load IQWrapper library.')
-    end
-
-    try
-        switch readType
-            case {'MetaData', 'SingleFile'}
-                specData = Fcn_MetaDataReader(specData, fileName, readType);
-
-            case 'SpecData'
-                specData = copy(specData, {});
-                specData = Fcn_SpecDataReader(specData, fileName);
-        end
-
-    catch ME
-        try
-            evalc('calllib("IQWrapper", "IQWrapper_CloseFile");');
-        catch
-        end
-
-        try
-            calllib('IQWrapper', 'IQWrapper_Unload_Library');
-        catch
-        end
-
-        rethrow(ME)
-    end
-
-    try
-        calllib('IQWrapper', 'IQWrapper_Unload_Library');
-    catch
+        case 'SpecData'
+            specData = copy(specData, {});
+            specData = Fcn_SpecDataReader(specData, readableFile);
     end
 end
 
 %-------------------------------------------------------------------------%
-function Fcn_GenerateThunk(dllFolder, thunkFile)
-    tempProtoName = 'IQWrapperProto_buildtmp';
-    tempProtoFile = fullfile(dllFolder, [tempProtoName '.m']);
-    tempThunkCFile = fullfile(dllFolder, 'IQWrapper_thunk_win64.c');
+function [readableFile, cleanupTemp] = Fcn_DecompressIfNeeded(fileName, dllFolder)
+    % Retorna o path de um arquivo .dBm diretamente legível (header ASCII
+    % '[CellSpec RawBuffer 009]'). Se o arquivo original já for legível,
+    % devolve-o sem modificação. Caso contrário, descomprime via
+    % CelZip64.dll para um arquivo temporário e registra onCleanup para
+    % sua remoção automática.
 
-    cleanupProto = onCleanup(@() Fcn_DeleteIfExists(tempProtoFile)); %#ok<NASGU>
-    cleanupThunkC = onCleanup(@() Fcn_DeleteIfExists(tempThunkCFile)); %#ok<NASGU>
-
-    [~, warnings] = loadlibrary('IQWrapper.dll', 'IQWrapper.h', ...
-        'mfilename', tempProtoName, ...
-        'thunkfilename', 'IQWrapper_thunk_win64');
-
-    if ~isempty(strtrim(warnings))
-        warning('model:fileReader:CellPlanDBM:ThunkGenerationWarnings', '%s', warnings)
+    fileInfo = dir(fileName);
+    if isempty(fileInfo) || fileInfo.bytes == 0
+        error('model:fileReader:CellPlanDBM:EmptyFile', 'File empty.')
     end
 
-    if ~isfile(thunkFile)
-        error('model:fileReader:CellPlanDBM:ThunkGenerationFailed', ...
-            ['MATLAB failed to generate the IQWrapper thunk library. ' ...
-             'Expected file: %s'], thunkFile);
+    fileId = fopen(fileName, 'r', 'ieee-le');
+    if fileId == -1
+        error('model:fileReader:CellPlanDBM:FileNotFound', 'File not found or access denied.')
+    end
+    fclose(fileId);
+
+    if Fcn_IsRawDbm(fileName)
+        % Arquivo já está no formato binário legível — sem decompressão.
+        readableFile = fileName;
+        cleanupTemp  = [];
+        return
     end
 
-    if libisloaded('IQWrapper')
-        unloadlibrary('IQWrapper');
+    % Arquivo não legível diretamente: precisa da DLL de descompressão.
+    if ~libisloaded('CelZip64')
+        loadlibrary(fullfile(dllFolder, 'CelZip64.dll'), @CelZip64Proto);
     end
+
+    % Arquivo comprimido: descomprime para arquivo temporário.
+    tempFile = [tempname '.dBm'];
+    cleanupTemp = onCleanup(@() Fcn_DeleteIfExists(tempFile));
+
+    bufferPtr    = libpointer('voidPtr', 0);
+    bufferPtrPtr = libpointer('voidPtrPtr', bufferPtr);
+
+    outputSize = calllib('CelZip64', 'FullDecompression', bufferPtrPtr, fileName, tempFile);
+    calllib('CelZip64', 'FreeComprMem', bufferPtr);
+
+    if outputSize <= 0 || ~isfile(tempFile)
+        error('model:fileReader:CellPlanDBM:DecompressionFailed', ...
+            'CelZip64.dll falha ao descomprimir o arquivo (returned %d bytes): %s', outputSize, fileName)
+    end
+
+    if ~Fcn_IsRawDbm(tempFile)
+        error('model:fileReader:CellPlanDBM:InvalidHeader', ...
+            'Arquivo descomprimido não possui o header esperado "[CellSpec RawBuffer 009]": %s', fileName)
+    end
+
+    readableFile = tempFile;
+end
+
+%-------------------------------------------------------------------------%
+function value = Fcn_IsRawDbm(fileName)
+    % Retorna true se o arquivo já possui o header ASCII da CellPlan.
+    fid = fopen(fileName, 'r', 'ieee-le');
+    if fid < 0
+        value = false;
+        return
+    end
+    cleanupFid = onCleanup(@() fclose(fid));
+    declaredLen = fread(fid, 1, 'uint8=>double');
+    if isempty(declaredLen) || declaredLen <= 0 || declaredLen > 64
+        value = false;
+        return
+    end
+    raw = fread(fid, declaredLen, '*uint8')';
+    value = strcmp(char(raw), '[CellSpec RawBuffer 009]');
 end
 
 %-------------------------------------------------------------------------%
@@ -125,94 +120,10 @@ function Fcn_DeleteIfExists(fileName)
 end
 
 %-------------------------------------------------------------------------%
-function Fcn_PrecheckDbmHeader(fileName)
-    fileInfo = dir(fileName);
-    if isempty(fileInfo) || fileInfo.bytes == 0
-        error('model:fileReader:CellPlanDBM:EmptyFile', 'File empty.')
-    end
-
-    fileId = fopen(fileName, 'r');
-    if fileId == -1
-        error('model:fileReader:CellPlanDBM:FileNotFound', 'File not found or access denied.')
-    end
-    cleanupFile = onCleanup(@() fclose(fileId));
-
-    % Avaliar se arquivo possui no seu cabeçalho o identificador definido
-    % pela CellPlan.
-    expectedIdentifier = '[CellSpec RawBuffer 009]';
-
-    headerBytes = fread(fileId, [1, min(fileInfo.bytes, 256)], 'uint8=>uint8');
-    headerBytes(headerBytes == 0) = [];
-    headerText = char(headerBytes);
-    
-    if isempty(headerText) || ~contains(headerText, expectedIdentifier, 'IgnoreCase', true)
-        error('model:fileReader:CellPlanDBM:InvalidHeader', 'Invalid binary file header. Expected: "%s". Found: "%s".', expectedIdentifier, headerText)
-    end
-end
-
-%-------------------------------------------------------------------------%
-function [hdrPtr, dBmPtr, totPtr, medPtr, expPtr] = Fcn_InitPointers()
-    hdr = struct( ...
-        'latitude',                double(0), ...
-        'longitude',               double(0), ...
-        'altitude',                double(0), ...
-        'year',                    uint16(0), ...
-        'month',                   uint16(0), ...
-        'dayOfWeek',               uint16(0), ...
-        'day',                     uint16(0), ...
-        'hour',                    uint16(0), ...
-        'minute',                  uint16(0), ...
-        'second',                  uint16(0), ...
-        'milliseconds',            uint16(0), ...
-        'packet_timeStamp_sec',    uint32(0), ...
-        'packet_timeStamp_psec',   uint64(0), ...
-        'ext_NoiseLevelOffset',    double(0), ...
-        'ext_Tech',                int32(0),  ...
-        'ext_Band',                int32(0),  ...
-        'ext_Channel',             int32(0),  ...
-        'ext_freq',                double(0), ...
-        'ext_ReducedFreqSpan_MHz', double(0), ...
-        'ext_FullFreqSpan_MHz',    double(0), ...
-        'ext_ResBw_kHz',           double(0), ...
-        'ext_Decimation',          int32(0),  ...
-        'ext_SamplesPerPacket',    int32(0),  ...
-        'ext_PacketsPerBlock',     int32(0),  ...
-        'ext_ppm',                 double(0), ...
-        'ext_NominalGain',         int32(0),  ...
-        'RecordSize',              int32(0),  ...
-        'Buffer_nElems',           int32(0),  ...
-        'ext_SCS_kHz',             int32(0),  ...
-        'DuplexMode',              int32(0)   ...
-        );
-    
-    nElemsPtr = libpointer('int32Ptr', 0);
-    try 
-        ok = calllib('IQWrapper', 'IQWrapper_getBufferInfo', nElemsPtr);
-        if ~ok || (nElemsPtr.Value <= 0)
-            error('model:fileReader:CellPlanDBM:IQWrapper_getBufferInfo', ...
-                'IQWrapper returned an invalid buffer length (%d).', nElemsPtr.Value)
-        end
-        hdrPtr = libpointer('CapturedRawBuffer_C', hdr);        % gera ponteiro para header (hdr) com o formato na DLL (CaptureRawBuffer_C)
-        dBm    = single(zeros(1, nElemsPtr.Value));             % inicia vetor de amostras espectrais na medida. Por não saber a quantidade a priori esta é sobre-estimada em 10000
-        dBmPtr = libpointer('singlePtr', dBm);                  % ponteiro para o vetor de amostras espectrais (FFT bin) na medida
-        totPtr = libpointer('int32Ptr', 0);                     % 3º arg = comprimento (nº de bins)
-        medPtr = libpointer('int32Ptr', 0);                     % 4º arg = indicador de bloco médio (0 ou 1)
-        expPtr = libpointer('uint32Ptr', 0);                    % ponteiro para o código de excessão com valor != 0, se valor = 0 não ocorreu problema algum
-    
-    catch
-        error('model:fileReader:CellPlanDBM:IQWrapper_getBufferInfo', 'Failed to query IQWrapper buffer length.')
-    end
-end
-
-%-------------------------------------------------------------------------%
-function specData = Fcn_MetaDataReader(specData, fileName, ReadType)
+function specData = Fcn_MetaDataReader(specData, readableFile, originalFileName, ReadType)
     gpsData = struct('Status', 0, 'Matrix', []);
 
-    % INFORMAÇÕES EXTRAÍDAS DO NOME DO ARQUIVO
-    % 'CWSM21100020_E1_A1_Spec Frq=98.000 Span=20.000 RBW=10.000 [2022-09-25,22-51-30-090-8012].dbm'
-    % 'CWSM21100020_E2_A2_Peak Frq=98.000 Span=20.000 RBW=20.000 [2022-09-25,22-51-29-089-2962].dBm'
-    % 'CWSM21100020_E2_A3_Mean Frq=98.000 Span=20.000 RBW=20.000 [2022-09-25,22-51-34-097-8392].dBm'
-    [~, file, ext] = fileparts(fileName);
+    [~, file, ext] = fileparts(originalFileName);
     fileNameToken  = regexpi(file, '(?<Receiver>CWSM2\d{6,7})_E(?<Scan>\d*)_A(?<Operation>\d*)_(?<TraceMode>\w*).*', 'names');
 
     if isempty(fileNameToken)
@@ -235,60 +146,56 @@ function specData = Fcn_MetaDataReader(specData, fileName, ReadType)
     metaDataInfo.TraceMode = traceMode;
     metaDataInfo.Detector  = 'Sample';
 
-    % Abertura do arquivo via DLL
-    nBlocksPtr = libpointer('int32Ptr', 0);
-    if ~calllib('IQWrapper', 'IQWrapper_OpenFile', fileName, nBlocksPtr)
-        error('model:fileReader:CellPlanDBM:OpenFileFailed', 'Failed to open file.')
+    % Leitura binária pura do arquivo .dBm descomprimido.
+    fid = fopen(readableFile, 'r', 'ieee-le');
+    if fid == -1
+        error('model:fileReader:CellPlanDBM:OpenFileFailed', 'Falha ao abrir o arquivo: %s', readableFile)
     end
+    cleanupFid = onCleanup(@() fclose(fid));
 
-    [hdrPtr, dBmPtr, totPtr, medPtr, expPtr] = Fcn_InitPointers();
+    fileHeader = Fcn_ReadDbmFileHeader(fid);
 
     % tempTS{idx}  – datetime row vector (um timestamp por sweep)
     % tempLvl{idx} – single matrix (DataPoints × nSweeps), apenas para SingleFile
-    tempTS   = {};
-    tempLvl  = {};
+    tempTS  = {};
+    tempLvl = {};
 
-    try
-        while calllib('IQWrapper', 'IQWrapper_MoreBlocksAvailable') && (expPtr.Value == 0)
-            calllib('IQWrapper', 'IQWrapper_dBm_NextBlock', hdrPtr, dBmPtr, totPtr, medPtr, expPtr);
-            
-            hdr = hdrPtr.Value;
-            tot = double(totPtr.Value);   % número de bins (DataPoints) neste bloco
+    for sweepIdx = 1:fileHeader.numberOfRecords
+        sweep = Fcn_ReadDbmSweep(fid, fileHeader, sweepIdx);
 
-            ext_freq_Hz  = hdr.ext_freq;
-            ext_ResBw_Hz = double(hdr.ext_ResBw_kHz) * 1000;
+        ext_freq_Hz  = sweep.frequencyHz;
+        ext_ResBw_Hz = sweep.resolutionBandwidthkHz * 1000;
+        bufferElements = sweep.bufferNumberOfElements;
+        tot            = Fcn_ExpectedDataPoints(fileHeader.frequencySpanMHz, ext_ResBw_Hz, bufferElements);
+        cropStartIdx   = Fcn_CenterCropStartIndex(bufferElements, tot);
 
-            metaDataInfo.FreqStart  = ext_freq_Hz - ext_ResBw_Hz * tot / 2;
-            metaDataInfo.FreqStop   = ext_freq_Hz + ext_ResBw_Hz * (tot/2 - 1);
-            metaDataInfo.DataPoints = tot;
-            metaDataInfo.Resolution = ext_ResBw_Hz;
+        metaDataInfo.FreqStart  = ext_freq_Hz - ext_ResBw_Hz * tot / 2;
+        metaDataInfo.FreqStop   = ext_freq_Hz + ext_ResBw_Hz * (tot/2 - 1);
+        metaDataInfo.DataPoints = tot;
+        metaDataInfo.Resolution = ext_ResBw_Hz;
 
-            [specData, idx] = findOrCreateFlow(specData, metaDataInfo);
-            gpsData = appendValidGPSData(gpsData, hdr);
+        [specData, idx] = findOrCreateFlow(specData, metaDataInfo);
+        gpsData = appendValidGPSData(gpsData, sweep);
 
-            ts = extractTimestamp(hdr);
-            if numel(tempTS) < idx || isempty(tempTS{idx})
-                tempTS{idx} = ts;
-            else
-                tempTS{idx}(end+1) = ts;
-            end
-
-            if strcmp(ReadType, 'SingleFile')
-                lvl = single(dBmPtr.Value(1:tot))';
-                if numel(tempLvl) < idx || isempty(tempLvl{idx})
-                    tempLvl{idx} = lvl;
-                else
-                    tempLvl{idx}(:, end+1) = lvl;
-                end
-            end
+        ts = extractTimestamp(sweep);
+        if numel(tempTS) < idx || isempty(tempTS{idx})
+            tempTS{idx} = ts;
+        else
+            tempTS{idx}(end+1) = ts;
         end
 
-    catch ME
-        evalc('calllib("IQWrapper", "IQWrapper_CloseFile");');
-        rethrow(ME)
+        if strcmp(ReadType, 'SingleFile')
+            lvl = single(sweep.spectrumData)';
+            if numel(lvl) > tot
+                lvl = lvl(cropStartIdx:cropStartIdx + tot - 1);
+            end
+            if numel(tempLvl) < idx || isempty(tempLvl{idx})
+                tempLvl{idx} = lvl;
+            else
+                tempLvl{idx}(:, end+1) = lvl;
+            end
+        end
     end
-
-    evalc('calllib("IQWrapper", "IQWrapper_CloseFile");');
 
     if isempty(specData)
         return
@@ -351,73 +258,68 @@ function specData = Fcn_MetaDataReader(specData, fileName, ReadType)
 end
 
 %-------------------------------------------------------------------------%
-function specData = Fcn_SpecDataReader(specData, fileName)
-    nBlocksPtr = libpointer('int32Ptr', 0);
-    if ~calllib('IQWrapper', 'IQWrapper_OpenFile', fileName, nBlocksPtr)
-        error('model:fileReader:CellPlanDBM:OpenFileFailed', 'Failed to open file.')
+function specData = Fcn_SpecDataReader(specData, readableFile)
+    fid = fopen(readableFile, 'r', 'ieee-le');
+    if fid == -1
+        error('model:fileReader:CellPlanDBM:OpenFileFailed', 'Failed to open file: %s', readableFile)
     end
+    cleanupFid = onCleanup(@() fclose(fid));
 
-    [hdrPtr, dBmPtr, totPtr, medPtr, expPtr] = Fcn_InitPointers();
+    fileHeader = Fcn_ReadDbmFileHeader(fid);
 
     nEntries      = numel(specData);
     subBandBuffer = cell(nEntries, 1);   % níveis por sub-faixa de frequência
     tempTS        = cell(nEntries, 1);   % timestamps por entrada
 
-    try
-        while calllib('IQWrapper', 'IQWrapper_MoreBlocksAvailable') && (expPtr.Value == 0)
-            calllib('IQWrapper', 'IQWrapper_dBm_NextBlock', hdrPtr, dBmPtr, totPtr, medPtr, expPtr);
-           
-            hdr = hdrPtr.Value;
-            tot = double(totPtr.Value);
+    for sweepIdx = 1:fileHeader.numberOfRecords
+        sweep = Fcn_ReadDbmSweep(fid, fileHeader, sweepIdx);
 
-            ext_freq_Hz  = hdr.ext_freq;
-            ext_ResBw_Hz = double(hdr.ext_ResBw_kHz) * 1000;
-            blkFreqStart = ext_freq_Hz - ext_ResBw_Hz * tot / 2;
-            blkFreqStop  = ext_freq_Hz + ext_ResBw_Hz * (tot/2 - 1);
+        ext_ResBw_Hz = sweep.resolutionBandwidthkHz * 1000;
+        bufferElements = sweep.bufferNumberOfElements;
+        tot            = Fcn_ExpectedDataPoints(fileHeader.frequencySpanMHz, ext_ResBw_Hz, bufferElements);
+        cropStartIdx   = Fcn_CenterCropStartIndex(bufferElements, tot);
+        blkFreqStart = sweep.frequencyHz - ext_ResBw_Hz * tot / 2;
+        blkFreqStop  = sweep.frequencyHz + ext_ResBw_Hz * (tot/2 - 1);
 
-            % Associa o bloco à entrada de specData correspondente
-            jj = find(arrayfun(@(x) ...
-                abs(x.MetaData.FreqStart - blkFreqStart) < 1 || ...
-                (blkFreqStart >= x.MetaData.FreqStart - 1 && blkFreqStop <= x.MetaData.FreqStop + 1), ...
-                specData), 1);
+        % Associa o sweep à entrada de specData correspondente
+        jj = find(arrayfun(@(x) ...
+            abs(x.MetaData.FreqStart - blkFreqStart) < 1 || ...
+            (blkFreqStart >= x.MetaData.FreqStart - 1 && blkFreqStop <= x.MetaData.FreqStop + 1), ...
+            specData), 1);
 
-            if isempty(jj)
-                continue
-            end
-
-            lvl = single(dBmPtr.Value(1:tot))';
-
-            % Localiza ou cria slot de sub-faixa no buffer
-            sbIdx = [];
-            if ~isempty(subBandBuffer{jj})
-                sbIdx = find(abs([subBandBuffer{jj}.freqStart] - blkFreqStart) < 1, 1);
-            end
-
-            if isempty(sbIdx)
-                sbIdx = numel(subBandBuffer{jj}) + 1;
-                subBandBuffer{jj}(sbIdx).freqStart = blkFreqStart;
-                subBandBuffer{jj}(sbIdx).levels    = lvl;
-            else
-                subBandBuffer{jj}(sbIdx).levels(:, end+1) = lvl;
-            end
-
-            % Timestamp registrado pela sub-faixa de menor frequência
-            if blkFreqStart <= specData(jj).MetaData.FreqStart + 1
-                ts = extractTimestamp(hdr);
-                if isempty(tempTS{jj})
-                    tempTS{jj} = ts;
-                else
-                    tempTS{jj}(end+1) = ts;
-                end
-            end
+        if isempty(jj)
+            continue
         end
 
-    catch ME
-        evalc('calllib("IQWrapper", "IQWrapper_CloseFile");');
-        rethrow(ME)
-    end
+        lvl = single(sweep.spectrumData)';
+        if numel(lvl) > tot
+            lvl = lvl(cropStartIdx:cropStartIdx + tot - 1);
+        end
 
-    evalc('calllib("IQWrapper", "IQWrapper_CloseFile");');
+        % Localiza ou cria slot de sub-faixa no buffer
+        sbIdx = [];
+        if ~isempty(subBandBuffer{jj})
+            sbIdx = find(abs([subBandBuffer{jj}.freqStart] - blkFreqStart) < 1, 1);
+        end
+
+        if isempty(sbIdx)
+            sbIdx = numel(subBandBuffer{jj}) + 1;
+            subBandBuffer{jj}(sbIdx).freqStart = blkFreqStart;
+            subBandBuffer{jj}(sbIdx).levels    = lvl;
+        else
+            subBandBuffer{jj}(sbIdx).levels(:, end+1) = lvl;
+        end
+
+        % Timestamp registrado pela sub-faixa de menor frequência
+        if blkFreqStart <= specData(jj).MetaData.FreqStart + 1
+            ts = extractTimestamp(sweep);
+            if isempty(tempTS{jj})
+                tempTS{jj} = ts;
+            else
+                tempTS{jj}(end+1) = ts;
+            end
+        end
+    end
 
     for jj = 1:nEntries
         if specData(jj).Enable && ~isempty(tempTS{jj})
@@ -455,20 +357,111 @@ function [specData, idx] = findOrCreateFlow(specData, metaDataInfo)
 end
 
 %-------------------------------------------------------------------------%
-function timeStamp = extractTimestamp(hdr)
+function timeStamp = extractTimestamp(sweep)
+    t = sweep.systemTime;
     timeStamp = datetime([ ...
-        double(hdr.year), ...
-        double(hdr.month), ...
-        double(hdr.day), ...
-        double(hdr.hour), ...
-        double(hdr.minute), ...
-        double(hdr.second) + double(hdr.milliseconds)/1000 ...
+        double(t.year), ...
+        double(t.month), ...
+        double(t.day), ...
+        double(t.hour), ...
+        double(t.minute), ...
+        double(t.second) + double(t.millisecond)/1000 ...
     ]);
 end
 
 %-------------------------------------------------------------------------%
-function gpsData = appendValidGPSData(gpsData, hdr)
-    if (hdr.latitude ~= -200) && (hdr.longitude ~= -200)
-        gpsData.Matrix(end+1,:) = [hdr.latitude, hdr.longitude];
+function gpsData = appendValidGPSData(gpsData, sweep)
+    if (sweep.latitude ~= -200) && (sweep.longitude ~= -200)
+        gpsData.Matrix(end+1,:) = [sweep.latitude, sweep.longitude];
     end
+end
+
+%-------------------------------------------------------------------------%
+function fileHeader = Fcn_ReadDbmFileHeader(fid)
+    maxCenterFrequencies = 8192;
+
+    fileHeader = struct();
+    fileHeader.fileIdentifier        = Fcn_ReadPrefixedString(fid, 0,   33);
+    fileHeader.headerSize            = Fcn_ReadScalar(fid,  36, 'int32');
+    fileHeader.numberOfRecords       = Fcn_ReadScalar(fid,  40, 'int32');
+    fileHeader.recordSize            = Fcn_ReadScalar(fid,  44, 'int32');
+    fileHeader.frequencySpanMHz      = Fcn_ReadScalar(fid, 136, 'double');
+    fileHeader.resolutionBandwidthkHz = Fcn_ReadScalar(fid, 152, 'double');
+    fileHeader.spectrumBufferType    = Fcn_ReadScalar(fid, 193, 'uint8');
+    fileHeader.totalCenterFrequencies = Fcn_ReadScalar(fid, 200, 'int32');
+
+    fseek(fid, 208, 'bof');
+    centerFrequencies = fread(fid, maxCenterFrequencies, 'double=>double')';
+    fileHeader.centerFrequenciesMHz = centerFrequencies(1:fileHeader.totalCenterFrequencies);
+end
+
+%-------------------------------------------------------------------------%
+function sweep = Fcn_ReadDbmSweep(fid, fileHeader, sweepIndex)
+    r = fileHeader.headerSize + (sweepIndex - 1) * fileHeader.recordSize;  % base offset
+
+    sweep.latitude   = Fcn_ReadScalar(fid, r +  0, 'double');
+    sweep.longitude  = Fcn_ReadScalar(fid, r +  8, 'double');
+
+    sweep.systemTime = struct( ...
+        'year',        Fcn_ReadScalar(fid, r + 24, 'uint16'), ...
+        'month',       Fcn_ReadScalar(fid, r + 26, 'uint16'), ...
+        'day',         Fcn_ReadScalar(fid, r + 30, 'uint16'), ...
+        'hour',        Fcn_ReadScalar(fid, r + 32, 'uint16'), ...
+        'minute',      Fcn_ReadScalar(fid, r + 34, 'uint16'), ...
+        'second',      Fcn_ReadScalar(fid, r + 36, 'uint16'), ...
+        'millisecond', Fcn_ReadScalar(fid, r + 38, 'uint16') ...
+        );
+
+    sweep.frequencyHz             = Fcn_ReadScalar(fid, r +  80, 'double');
+    sweep.resolutionBandwidthkHz  = Fcn_ReadScalar(fid, r + 104, 'double');
+    sweep.bufferNumberOfElements  = double(Fcn_ReadScalar(fid, r + 144, 'int32'));
+
+    sweep.spectrumData = Fcn_ReadSpectrumBuffer( ...
+        fid, r + 156, fileHeader.spectrumBufferType, sweep.bufferNumberOfElements);
+end
+
+%-------------------------------------------------------------------------%
+function data = Fcn_ReadSpectrumBuffer(fid, offset, bufferType, elementCount)
+    fseek(fid, offset, 'bof');
+    switch double(bufferType)
+        case 0   % Spectrum_2Bytes_dBm: int16 / 100
+            raw  = fread(fid, elementCount, 'int16=>double')';
+            data = raw / 100;
+        case 1   % Spectrum_1Byte_dBm: int8 - 220
+            raw  = fread(fid, elementCount, 'int8=>double')';
+            data = raw - 220;
+        otherwise
+            error('model:fileReader:CellPlanDBM:UnsupportedBufferType', ...
+                'Unsupported spectrum buffer type: %d', bufferType)
+    end
+end
+
+%-------------------------------------------------------------------------%
+function value = Fcn_ReadScalar(fid, offset, precision)
+    fseek(fid, offset, 'bof');
+    value = fread(fid, 1, [precision '=>' precision]);
+end
+
+%-------------------------------------------------------------------------%
+function value = Fcn_ReadPrefixedString(fid, offset, fieldSize)
+    fseek(fid, offset, 'bof');
+    declaredLen = fread(fid, 1, 'uint8=>double');
+    raw         = fread(fid, fieldSize - 1, '*uint8')';
+    actualLen   = min(declaredLen, numel(raw));
+    value       = char(raw(1:actualLen));
+end
+
+%-------------------------------------------------------------------------%
+function tot = Fcn_ExpectedDataPoints(frequencySpanMHz, resolutionBandwidthHz, bufferElements)
+    if frequencySpanMHz > 0 && resolutionBandwidthHz > 0
+        tot = round((frequencySpanMHz * 1e6) / resolutionBandwidthHz) + 2;
+    else
+        tot = bufferElements;
+    end
+end
+
+%-------------------------------------------------------------------------%
+function cropStartIdx = Fcn_CenterCropStartIndex(bufferElements, tot)
+    cropStartIdx = floor((bufferElements - tot) / 2) + 1;
+    cropStartIdx = max(cropStartIdx, 1);
 end
