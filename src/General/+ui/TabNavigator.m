@@ -42,13 +42,17 @@ classdef TabNavigator < handle
 
     methods
         %-----------------------------------------------------------------%
-        function obj = TabNavigator(menuGrid, tabGroup, progressDialog)
+        function obj = TabNavigator(menuGrid, tabGroup, progressDialog, jsBackDoor)
             obj.UIFigure        = ancestor(menuGrid, 'figure');
             obj.MenuGrid        = menuGrid;
             obj.TabGroup        = tabGroup;
             obj.executionMode   = obj.UIFigure.RunningAppInstance.executionMode;
             obj.progressDialog  = progressDialog;
             obj.MenuSubGrid     = findobj(menuGrid.Children, 'Tag', 'MenuSubGrid');
+
+            if exist('jsBackDoor', 'var')
+                obj.jsBackDoor  = jsBackDoor;
+            end
 
             % Delimitar os valores que são aceitos em algumas das colunas.
             obj.Components.Type = categorical(obj.Components.Type, {'Built-in', 'External'});
