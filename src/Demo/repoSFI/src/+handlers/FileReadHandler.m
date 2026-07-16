@@ -87,6 +87,8 @@ classdef FileReadHandler
                         filepath, mode)
                 end
 
+                specData = handlers.FileReadHandler.checkGPSMatrix(specData);
+
                 for ii = 1:numel(specData)
                     specData(ii).FileMap = [];
                 end
@@ -167,7 +169,65 @@ classdef FileReadHandler
                 rethrow(ME)
             end
         end
+        
+        % Devido a um problema de consistencia entre dados da matriz de GPS
+        % inseri um check nos dados parseados
+        function specData = checkGPSMatrix(specData)
+            
+            if ~isempty(specData)
+                validSpecData = true(1, numel(specData));
+                
+                % Alarme de erro quando a matriz de GPS estiver inconsistente
+                for ii=1:numel(specData)
+                    try
+                        gpsInfo = specData(ii).RelatedFiles.GPS;
+                        if iscell(gpsInfo)
+                            if isempty(gpsInfo)
+                                validSpecData(ii) = false;
+                                continue;
+                            end
+                            gpsInfo = gpsInfo{1};
+                        end
 
+                        if ~isstruct(gpsInfo)
+                            validSpecData(ii) = false;
+                            continue;
+                        end
+
+                        % Avalia consistencia apenas para posicoes automaticas.
+                        if isfield(gpsInfo, 'Status') && gpsInfo.Status == 1
+                            hasMatrix = isfield(gpsInfo, 'Matrix') && size(gpsInfo.Matrix, 1) >= 1;
+                            hasFallbackStdRange = isfield(gpsInfo, 'stdRange') && isequal(double(gpsInfo.stdRange(:).'), [100 100 100]);
+
+                            if ~hasMatrix || hasFallbackStdRange
+                                validSpecData(ii) = false;
+                            end
+                        end
+                    catch
+                        % Estrutura inesperada de GPS: descarta apenas este espectro.
+                        validSpecData(ii) = false;
+                    end
+                end
+                
+                % Checa o resultao da varredura
+                if ~all(validSpecData)
+                    
+                    % Preservo apenas leituras validas
+                    if any(validSpecData)
+                        specData = specData(validSpecData);
+                    else
+                    % Se tudo falhar admito
+                    % que esta é a causa raiz
+                    % e devolvo o erro ao RF.Fusion
+                        error('handlers:FileReadHandler:EmptyGPSData', ...
+                            'GPS Matrix is empty.')
+                    end
+                end
+            
+            end
+        end
+
+        
         %------------------------------------------------------------------
         % Constroi resposta com metadados
         %------------------------------------------------------------------
@@ -176,6 +236,8 @@ classdef FileReadHandler
                 error('handlers:FileReadHandler:EmptySpecData', ...
                     'SpecData is empty.')
             end
+            
+            
 
             [folderPath, fileName, extension] = fileparts(remoteOutputPath);
 
