@@ -412,10 +412,10 @@ function gpsData = Read_DataType02(gpsData, rawArray)
     Latitude  = double(typecast(rawArray(27:30), 'int32'));
     Longitude = double(typecast(rawArray(31:34), 'int32'));
 
-    if Status
+    if ismember(Status, [1, 2])
         gpsData.Status          = 1;
         gpsData.Matrix(end+1,:) = [Latitude, Longitude] ./ 1e+6;
-    end    
+    end
 end
 
 % DataType 40
@@ -425,10 +425,10 @@ function gpsData = Read_DataType40(gpsData, rawArray)
     Latitude  = double(typecast(rawArray(37:40), 'int32'));
     Longitude = double(typecast(rawArray(41:44), 'int32'));
 
-    if Status
+    if ismember(Status, [1, 2])
         gpsData.Status          = 1;
         gpsData.Matrix(end+1,:) = [Latitude, Longitude] ./ 1e+6;
-    end    
+    end
 end
 
 
