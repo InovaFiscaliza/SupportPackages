@@ -1,51 +1,59 @@
-function [chPower, chPowerUnit, PowerSpectralDensity] = ChannelPower(specData, idxThread, chLimits)
+function [chPower, chPowerUnit, chDensity, chAzimuth] = ChannelPower(specData, flowIdx, chLimits)
 
-    FreqStart  = specData(idxThread).MetaData.FreqStart;
-    FreqStop   = specData(idxThread).MetaData.FreqStop;
-    DataPoints = specData(idxThread).MetaData.DataPoints;
-    RBW        = specData(idxThread).MetaData.Resolution;
+    freqStart  = specData(flowIdx).MetaData.FreqStart;
+    freqStop   = specData(flowIdx).MetaData.FreqStop;
+    dataPoints = specData(flowIdx).MetaData.DataPoints;
+    resolution = specData(flowIdx).MetaData.Resolution;
     
-    if (chLimits(1) > FreqStop) || (chLimits(2) < FreqStart)
+    if (chLimits(1) > freqStop) || (chLimits(2) < freqStart)
         error('RF:ChannelPower:OutOfRange', 'Out of range')
     end
     
     % Freq_Hz = aCoef*idx + bCoef;
-    aCoef  = (FreqStop - FreqStart) ./ (DataPoints - 1);
-    bCoef  = FreqStart - aCoef;    
-    xData  = linspace(FreqStart, FreqStop, DataPoints)';
+    aCoef  = (freqStop - freqStart) ./ (dataPoints - 1);
+    bCoef  = freqStart - aCoef;    
+    xData  = linspace(freqStart, freqStop, dataPoints)';
 
     % Channel Limits (idx)
-    chLimits(1) = max(chLimits(1), FreqStart);
-    chLimits(2) = min(chLimits(2), FreqStop);
+    chLimits(1) = max(chLimits(1), freqStart);
+    chLimits(2) = min(chLimits(2), freqStop);
 
-    idx1 = round((chLimits(1) - bCoef)/aCoef);
-    idx2 = round((chLimits(2) - bCoef)/aCoef);
+    chLim1Idx = round((chLimits(1) - bCoef)/aCoef);
+    chLim2Idx = round((chLimits(2) - bCoef)/aCoef);
 
-    switch specData(idxThread).MetaData.LevelUnit
+    switch specData(flowIdx).MetaData.LevelUnit
         case {'dBm', 'dBµV', 'dBµV/m'}
-            chPowerUnit = specData(idxThread).MetaData.LevelUnit;
-            yData = specData(idxThread).Data{2};
+            chPowerUnit = specData(flowIdx).MetaData.LevelUnit;
+            yData = specData(flowIdx).Data{2};
+
         % case 'dBµV'
         %     chPowerUnit = 'dBm';
         %     yData = specData(idxThread).Data{2} - 107; % 'dBµV' >> 'dBm' (50 Ohm system)
+
         otherwise
             error('RF:ChannelPower:UnexpectedLevelUnit', 'Unexpected level unit')
     end
 
-    xData_ch = xData(idx1:idx2);
-    yData_ch = double(yData(idx1:idx2,:));
+    xData_ch = xData(chLim1Idx:chLim2Idx);
+    yData_ch = double(yData(chLim1Idx:chLim2Idx, :));
 
-    if idx1 ~= idx2
+    if chLim1Idx ~= chLim2Idx
         switch chPowerUnit
             case 'dBm'
-                chPower = pow2db((trapz(xData_ch, db2pow(yData_ch), 1)/RBW))';
+                chPower = pow2db((trapz(xData_ch, db2pow(yData_ch), 1)/resolution))';
+
             case {'dBµV', 'dBµV/m'}
-                chPower = mag2db((trapz(xData_ch, db2mag(yData_ch), 1)/RBW))';
+                chPower = mag2db((trapz(xData_ch, db2mag(yData_ch), 1)/resolution))';
         end
     else
         chPower = yData_ch';
     end
 
     chBandWidth = range(chLimits);
-    PowerSpectralDensity = chPower - 10*log10(chBandWidth);
+    chDensity = chPower - 10*log10(chBandWidth);
+
+    chAzimuth = [];
+    if numel(specData(flowIdx).Data) > 3
+        chAzimuth = median(double(specData(flowIdx).Data{4}(chLim1Idx:chLim2Idx, :)))';
+    end
 end

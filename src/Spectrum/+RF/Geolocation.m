@@ -32,7 +32,7 @@ classdef (Abstract) Geolocation
                     'minimumPointsPerBin', 1 ...
                 )
             end
-            
+
             [powerLevel, azimuthAngle, confidenceLevel] = RF.Geolocation.extractSpectralData(specData, frequencyCenterMHz, bandWidthkHz);
 
             % Centro do canal em análise 
@@ -265,6 +265,7 @@ classdef (Abstract) Geolocation
             
             % Calcular desvio padrão de azimute por bin (variabilidade angular)
             azimuthStandardDeviation = cellfun(@std,azMeasCenter);
+            
             % Contar número de medições por bin
             binMeasurementCount = cellfun(@height,powerByBin,'UniformOutput',false);
 
@@ -276,18 +277,21 @@ classdef (Abstract) Geolocation
             % Identificar os 10% maiores grupos de potência em cada região
             nSelectedGroups = floor(height(potGroups)/10);
             [~, ind] = maxk(potGroups,nSelectedGroups);
+
             % Calcular média das potências máximas para normalização
             maxPotGroups = mean(maxk(potGroups,nSelectedGroups));
+
             % Selecionar os 10 grupos com maior potência média
             [~,linearIndices] = maxk(maxPotGroups,10);
 
             % Aplicar filtro de potência mínima baseado em desvio padrão
             % Limiar = máxima potência - (fator × desvio padrão)
             % Isto garante apenas pontos com potência significativa
-            minLevel = max(maxPotGroups(1,linearIndices))- ...
-                        localizationParams.powerStandardDeviationFactor*std(maxPotGroups(1,linearIndices));
+            minLevel = max(maxPotGroups(1, linearIndices)) - localizationParams.powerStandardDeviationFactor * std(maxPotGroups(1,linearIndices));
+            
             % Manter apenas índices acima do limiar
             index = linearIndices(maxPotGroups(1,linearIndices) > minLevel);
+            
             % Converter índices de grupo 2D para índices lineares 1D
             selectedMeasurementIndices = (index-1)*floor(height(powerWithHighConfidence')/20)+ind(:,index);
             selectedMeasurementIndices = reshape(selectedMeasurementIndices,[],1);
@@ -296,9 +300,46 @@ classdef (Abstract) Geolocation
             % Manter pontos onde:
             % 1) Desvio de azimute < máximo permitido (robustez angular)
             % 2) Número de pontos no bin > mínimo (confiabilidade estatística)
-            selectedMeasurementIndices = selectedMeasurementIndices( ...
-                (azimuthStandardDeviation(binIndices(selectedMeasurementIndices)) < localizationParams.maximumAzimuthStandardDeviation) & ...
-                (cell2mat(binMeasurementCount(binIndices(selectedMeasurementIndices))) > localizationParams.minimumPointsPerBin));
+            %
+            % triangulateLOS exige ao menos 2 detecções, portanto a função
+            % garante o retorno de no mínimo 2 índices.
+            minimumRequiredPoints = 2;
+            candidateMeasurementIndices = selectedMeasurementIndices;
+
+            % Se a seleção por potência não produziu candidatos suficientes,
+            % usar como fallback os pontos de maior potência (com confiança
+            % acima do limiar).
+            if numel(candidateMeasurementIndices) < minimumRequiredPoints
+                [~, powerRankedIndices] = sort(powerWithHighConfidence(:), 'descend');
+                nKeep = min(minimumRequiredPoints, numel(powerRankedIndices));
+                selectedMeasurementIndices = sort(powerRankedIndices(1:nKeep));
+                return
+            end
+
+            candidateBinIndices = binIndices(candidateMeasurementIndices);
+            candidateAzimuthStd = azimuthStandardDeviation(candidateBinIndices);
+            candidatePointCount = cell2mat(binMeasurementCount(candidateBinIndices));
+
+            qualityMask = ...
+                (candidateAzimuthStd < localizationParams.maximumAzimuthStandardDeviation) & ...
+                (candidatePointCount > localizationParams.minimumPointsPerBin);
+
+            if sum(qualityMask) >= minimumRequiredPoints
+                % Caso normal: há candidatos suficientes que satisfazem todos os critérios
+                selectedMeasurementIndices = candidateMeasurementIndices(qualityMask);
+            else
+                % Fallback: menos de 2 candidatos passaram no filtro estrito de
+                % qualidade (típico de medição fixa, onde o azimute é ruidoso e o
+                % desvio por bin é alto). Para garantir as 2 detecções exigidas
+                % por triangulateLOS, ordena-se os candidatos por qualidade
+                % angular (menor desvio padrão de azimute; empate resolvido pelo
+                % maior número de medições no bin) e mantêm-se os melhores.
+                candidateAzimuthStd(isnan(candidateAzimuthStd)) = inf;
+                rankingMetric = candidateAzimuthStd - 1e-6 * candidatePointCount;
+                [~, rankingOrder] = sort(rankingMetric, 'ascend');
+                nKeep = min(minimumRequiredPoints, numel(candidateMeasurementIndices));
+                selectedMeasurementIndices = sort(candidateMeasurementIndices(rankingOrder(1:nKeep)));
+            end
         end
 
 

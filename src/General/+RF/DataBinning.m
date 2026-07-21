@@ -2,54 +2,58 @@ classdef (Abstract) DataBinning
     
     methods (Static = true)
         %-----------------------------------------------------------------%
-        function [specRawTable, ChannelPowerUnit] = RawTableCreation(specData, idxThread, chAssigned)
+        function [specRawTable, chPowerUnit] = RawTableCreation(specData, flowIdx, chAssigned)
             arguments
                 specData
-                idxThread  double {mustBeInteger, mustBePositive, mustBeFinite}
+                flowIdx  double {mustBeInteger, mustBePositive, mustBeFinite}
                 chAssigned struct
             end
-            Timestamp = specData(idxThread).Data{1}';
             
-            Latitude  = [];
-            Longitude = [];
-            for ii = 1:height(specData(idxThread).RelatedFiles)
-                if ~isempty(specData(idxThread).RelatedFiles.GPS{ii}.Matrix)
-                    Latitude  = [Latitude;  specData(idxThread).RelatedFiles.GPS{ii}.Matrix(:,1)];
-                    Longitude = [Longitude; specData(idxThread).RelatedFiles.GPS{ii}.Matrix(:,2)];
+            timestamp = specData(flowIdx).Data{1}';
+            
+            lats = [];
+            lngs = [];
+            for ii = 1:height(specData(flowIdx).RelatedFiles)
+                if ~isempty(specData(flowIdx).RelatedFiles.GPS{ii}.Matrix)
+                    lats = [lats; specData(flowIdx).RelatedFiles.GPS{ii}.Matrix(:, 1)];
+                    lngs = [lngs; specData(flowIdx).RelatedFiles.GPS{ii}.Matrix(:, 2)];
                 end
             end
             
-            nCoordinates = height(Latitude);
-            if nCoordinates == 0
+            numCoordinates = height(lats);
+            if numCoordinates == 0
                 error('RF:DataBinning:RawTableCreation:ExpectedAtLeastOnePairOfLatLng', 'Expected at least one pair of [lat, lng] coordinates.')
             end
             
-            Frequency = chAssigned.Frequency * 1e+6; % MHz >> Hz
-            ChannelBW = chAssigned.ChannelBW * 1e+3; % kHz >> Hz
-            [ChannelPower, ...
-             ChannelPowerUnit] = RF.ChannelPower(specData, idxThread, [Frequency-ChannelBW/2, Frequency+ChannelBW/2]);
+            chFrequency = chAssigned.Frequency * 1e+6; % MHz >> Hz
+            chBandWidth = chAssigned.ChannelBW * 1e+3; % kHz >> Hz
+            [chPower, chPowerUnit, ~, chAzimuhth] = RF.ChannelPower(specData, flowIdx, [chFrequency-chBandWidth/2, chFrequency+chBandWidth/2]);
 
             % MATLAB R2024a tem um BUG que produz resultado não esperado p/
             % o método inROI quando Latitude/Longitude estão como "single". 
             % Aberto registro de BUG na Mathworks, e recebida resposta de que 
             % isso estaria resolvido na R2024b. 
-            Latitude  = double(Latitude);
-            Longitude = double(Longitude);
+            lats = double(lats);
+            lngs = double(lngs);
 
             % Modo de compatibilidade, interpolando os vetores de Latitude
             % e Longitude, de forma que a razão entre varreduras e coordenadas 
             % geográficas seja 1:1.
-            nSweeps = numel(Timestamp);            
+            numSweeps = numel(timestamp);            
             
-            if nCoordinates == 1
-                Latitude  = repmat(Latitude,  nSweeps, 1);
-                Longitude = repmat(Longitude, nSweeps, 1);
-            elseif nSweeps ~= nCoordinates
-                Latitude  = interp1(linspace(1, nSweeps, nCoordinates)', Latitude,  (1:nSweeps)', 'linear', 'extrap');
-                Longitude = interp1(linspace(1, nSweeps, nCoordinates)', Longitude, (1:nSweeps)', 'linear', 'extrap');
+            if numCoordinates == 1
+                lats = repmat(lats, numSweeps, 1);
+                lngs = repmat(lngs, numSweeps, 1);
+            elseif numSweeps ~= numCoordinates
+                lats = interp1(linspace(1, numSweeps, numCoordinates)', lats, (1:numSweeps)', 'linear', 'extrap');
+                lngs = interp1(linspace(1, numSweeps, numCoordinates)', lngs, (1:numSweeps)', 'linear', 'extrap');
             end
 
-            specRawTable = table(Timestamp, Latitude, Longitude, ChannelPower);
+            specRawTable = table(timestamp, lats, lngs, chPower, 'VariableNames', {'Timestamp', 'Latitude', 'Longitude', 'ChannelPower'});
+
+            if ~isempty(chAzimuhth)
+                specRawTable.Azimuth = chAzimuhth;
+            end
         end
 
         %-----------------------------------------------------------------%
@@ -94,9 +98,18 @@ classdef (Abstract) DataBinning
                 case 'max';           binFcn = @max;
             end
             binPower = splitapply(binFcn, specFilteredTable.(columnName), specFilteredTable.BinIndex);
+
+            binAzimuth = [];
+            if ismember('Azimuth', specFilteredTable.Properties.VariableNames)
+                binAzimuth = splitapply(@median, specFilteredTable.('Azimuth'), specFilteredTable.BinIndex);
+            end
             
             specFilteredTable = removevars(specFilteredTable, {'xyLatitude', 'xyLongitude'});
-            specBinTable      = table(binLatitude, binLongitude, binPower, binMeasures, 'VariableNames', {'Latitude', 'Longitude', columnName, 'Measures'});            
+            specBinTable = table(binLatitude, binLongitude, binPower, binMeasures, 'VariableNames', {'Latitude', 'Longitude', columnName, 'Measures'});
+
+            if ~isempty(binAzimuth)
+                specBinTable.Azimuth = binAzimuth;
+            end
 
             % Sumário do processo:
             binningSummary = RF.DataBinning.About(specRawTable, specFilteredTable, specBinTable, binningLength, binningFcn);
@@ -153,7 +166,7 @@ classdef (Abstract) DataBinning
             specRawTable.Filtered = idy;
         
             % A tabela com os dados filtrados - specFilteredTable...
-            specFilteredTable     = specRawTable(idy,1:4);
+            specFilteredTable = specRawTable(idy, setdiff(specRawTable.Properties.VariableNames, 'Filtered', 'stable'));
             [specFilteredTable.xyLatitude, ...
              specFilteredTable.xyLongitude] = grn2eqa(specFilteredTable.Latitude, specFilteredTable.Longitude);
         
