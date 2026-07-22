@@ -54,6 +54,7 @@ function [chPower, chPowerUnit, chDensity, chAzimuth] = ChannelPower(specData, f
 
     chAzimuth = [];
     if numel(specData(flowIdx).Data) > 3
-        chAzimuth = median(double(specData(flowIdx).Data{4}(chLim1Idx:chLim2Idx, :)))';
+        chFreqCenterIdx = round(mean([chLim1Idx, chLim2Idx]));
+        chAzimuth = double(specData(flowIdx).Data{4}(chFreqCenterIdx, :))';
     end
 end

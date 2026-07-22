@@ -20,7 +20,7 @@ classdef (Abstract) Geolocation
     methods (Static = true)
         %-----------------------------------------------------------------%
         function [estimatedLatitude, estimatedLongitude, uncertaintyRadius] = aoA(specData, frequencyCenterMHz, bandWidthkHz, localizationParams)
-            arguments    
+            arguments
                 specData = []
                 frequencyCenterMHz = 10
                 bandWidthkHz = 10
@@ -35,47 +35,63 @@ classdef (Abstract) Geolocation
 
             [powerLevel, azimuthAngle, confidenceLevel] = RF.Geolocation.extractSpectralData(specData, frequencyCenterMHz, bandWidthkHz);
 
-            % Centro do canal em análise 
-            channelCenter = round(height(powerLevel)/2);
+            % Linha correspondente à frequência central do canal (powerLevel tem
+            % uma linha por bin de frequência e uma coluna por varredura).
+            chFreqCenterIdx = round(height(powerLevel)/2);
 
-            % Georeferenciamento das varreduras e Data Binning...
+            % Georreferencia as varreduras e agrupa os pontos em quadrículas (data binning).
             [specRawTable, specBinTable] = RF.Geolocation.createGeographicBins(specData, frequencyCenterMHz, bandWidthkHz, localizationParams);
 
-            % Função que encontra os indices dos pontos utilizados na
-            % triangulação
+            % Seleciona os índices das medidas usadas na triangulação
+            % (filtragem por potência, confiança e dispersão de azimute).
             selectedMeasurementIndices = RF.Geolocation.filterTriangulationPoints(specBinTable, localizationParams, powerLevel, confidenceLevel, azimuthAngle);
 
-            % Suavizando dados de AZIMUTES e recuperando apenas pontos
-            % escolhidos (selectedMeasurementIndices)
-            % Número de pontos = fração dos pontos amostrados  ou 50 - Testar o
-            % timeStamp
-            carHeadVector = min(50,ceil(size(powerLevel,2)/100));
-            azMeasCenter =smoothdata(azimuthAngle(channelCenter,1:end-carHeadVector),'rloes',10)';
+            % Passo (em nº de amostras) usado adiante para estimar a proa do
+            % veículo: 1% das varreduras, limitado a 50.
+            carHeadVector = min(50, ceil(width(powerLevel)/100));
+
+            % Suaviza a série de azimutes da frequência central (regressão local
+            % robusta) e retém apenas os pontos escolhidos para a triangulação.
+            azMeasCenter = smoothdata(azimuthAngle(chFreqCenterIdx, :), 'rloes', 10)';
             angMaxPwr = azMeasCenter(selectedMeasurementIndices);
             
-            % % Cálculo do eixo do carro:
-            vehicleHeadingAngle = azimuth(specRawTable.Latitude(1:end-carHeadVector),specRawTable.Longitude(1:end-carHeadVector), ...
-                specRawTable.Latitude(carHeadVector + 1:end),specRawTable.Longitude(carHeadVector + 1:end));
+            % Cálculo da proa (eixo longitudinal) do veículo:
+            % O heading é estimado como o azimute entre a posição da amostra i
+            % e a posição carHeadVector amostras à frente. Isso gera apenas
+            % (N - carHeadVector) valores; as últimas carHeadVector posições — 
+            % que não possuem ponto "à frente" — recebem o último heading válido.
+            vehicleHeadingAngle = zeros(height(specRawTable), 1);
+            vehicleHeadingAngle(1:end-carHeadVector) = azimuth( ...
+                specRawTable.Latitude(1:end-carHeadVector), ...
+                specRawTable.Longitude(1:end-carHeadVector), ...
+                specRawTable.Latitude(carHeadVector+1:end), ...
+                specRawTable.Longitude(carHeadVector+1:end) ...
+            );
+            vehicleHeadingAngle(end-carHeadVector+1:end) = vehicleHeadingAngle(end-carHeadVector);
 
-            % CORRIGIR AZIMUTES RECUPERADOS (selectedMeasurementIndices) CONFORME EIXO DO CARRO:
+            % Converte o azimute medido (relativo ao eixo do veículo) em azimute
+            % absoluto referenciado ao Norte, somando a proa do carro em cada
+            % ponto selecionado. Isso é válido se e somente se o azimuthAngle é 
+            % medido RELATIVO ao eixo longitudinal do veículo (proa = 0°).
             angMaxPwr = mod(vehicleHeadingAngle(selectedMeasurementIndices) + angMaxPwr, 360);
         
-            % Transferindo referência de Norte para Leste e sentido horário para
-            % anti-horário conforme utilizado na função triangulateLOS
+            % Converte de rumo (horário a partir do Norte) para ângulo matemático
+            % (anti-horário a partir do Leste), convenção esperada por triangulateLOS.
             AoA = mod(90 - angMaxPwr, 360);
-
             
-            %%% TRIANGULANDO.....%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-            %transformar coordenadas geograficas da tabela specRawTable em coordenadas cartesianas:
+            % Converte as coordenadas geográficas dos pontos selecionados em
+            % coordenadas cartesianas (projeção equal-area), usando a 1ª medida
+            % como origem do referencial.
             origin = [specRawTable.Latitude(1), specRawTable.Longitude(1), 0];
-            [xpos, ypos] = grn2eqa(specRawTable.Latitude(selectedMeasurementIndices),specRawTable.Longitude(selectedMeasurementIndices), origin);
+            [xpos, ypos] = grn2eqa(specRawTable.Latitude(selectedMeasurementIndices), specRawTable.Longitude(selectedMeasurementIndices), origin);
             zpos = zeros(height(xpos),1);
 
-            detectionSetDT = cell(1,height(selectedMeasurementIndices)); % Initialize an empty array for object detections
+            % Conjunto de detecções (uma por ponto de medida) para o triangulador.
+            detectionSetDT = cell(1,height(selectedMeasurementIndices));
 
-            for indx = 1 : height(selectedMeasurementIndices) %height(az)%
-                mp = struct('Frame','Spherical', ...
+            for indx = 1:height(selectedMeasurementIndices)
+                mp = struct( ...
+                    'Frame','Spherical', ...
                     'OriginPosition',[xpos(indx), ypos(indx), zpos(indx)], ...
                     'OriginVelocity',zeros(1,3), ...
                     'Orientation', eye(3), ...
@@ -83,21 +99,23 @@ classdef (Abstract) Geolocation
                     'HasElevation', true, ...
                     'HasRange', false, ...
                     'HasVelocity', false, ...
-                    'IsParentToChild', true);
-                detectionDT = objectDetection(indx, [AoA(indx);0], 'MeasurementNoise',0.01*eye(2),...
-                    'SensorIndex', indx, 'MeasurementParameters', mp);
+                    'IsParentToChild', true ...
+                );
 
-                detectionSetDT{indx} = detectionDT; % Append the detection to the set
+                detectionDT = objectDetection(indx, [AoA(indx); 0], 'MeasurementNoise',0.01*eye(2), 'SensorIndex', indx, 'MeasurementParameters', mp);
+                detectionSetDT{indx} = detectionDT; % adiciona a detecção ao conjunto
             end
 
-            % Triangular o emissor:
+            % Triangula a posição do emissor a partir das linhas de visada (LOS).
             [estPos,~] = triangulateLOS(detectionSetDT');
             
-            % reverter as coordenadas cartesianas do emissor para coordenadas
-            % geograficas:
+            % Reverte as coordenadas cartesianas do emissor para coordenadas
+            % geográficas (lat/lon).
             [estimatedLatitude, estimatedLongitude] = eqa2grn(estPos(1), estPos(2), origin);
 
-            %%%% CALCULANDO O RAIO DO ERRO — Opção B: GDOP geométrico
+            % CÁLCULO DO RAIO DE INCERTEZA (abordagem por GDOP geométrico).
+            % Cria os sites de Tx (emissor triangulado) e Rx (pontos medidos)
+            % e obtém a distância de cada medida ao emissor estimado.
             tx = txsite(Name="Triangulado", ...
                 Latitude=estimatedLatitude, ...
                 Longitude=estimatedLongitude);
@@ -106,12 +124,12 @@ classdef (Abstract) Geolocation
                 Longitude=specRawTable.Longitude(selectedMeasurementIndices));
             distanceToSource = distance(tx,rx);
 
-            % Matriz de direção dos azimutes: cada linha é [cos(θ), sin(θ)]
+            % Matriz de direção dos azimutes: cada linha é [cos(θ), sin(θ)].
             AoA_rad = AoA * pi / 180;
             A = [cos(AoA_rad), sin(AoA_rad)];
 
-            % GDOP = sqrt(trace(inv(A'*A))); mede degradação geométrica
-            % (valor alto → pontos colineares → estimativa instável)
+            % GDOP = sqrt(trace(inv(A'*A))): mede a degradação geométrica
+            % (valor alto → pontos quase colineares → estimativa instável).
             AtA = A' * A;
             if rcond(AtA) > 1e-10
                 gdop = sqrt(trace(inv(AtA)));
@@ -119,24 +137,28 @@ classdef (Abstract) Geolocation
                 gdop = 10; % geometria degenerada: usar valor conservador
             end
 
-            % Modelo conservador baseado em covariância angular e distância máxima
-            % Captura a propagação de erro angular para o ponto mais distante (maior alavancagem)
+            % Modelo conservador baseado na covariância angular e na distância máxima.
+            % Captura a propagação do erro angular até o ponto mais distante
+            % (onde a alavancagem — e portanto o erro de posição — é maior).
             maxDistanceToSource = max(distanceToSource);
             
-            % Desvio angular: usar amplitude (max-min) normalizado por range de confiança
-            % Isso evita subestimar quando confidenceLevel está em escala restrita (ex: 70-95%)
-            confidenceLevelLocal = confidenceLevel(channelCenter,selectedMeasurementIndices)';
-            confidenceRange = max(confidenceLevelLocal) - min(confidenceLevelLocal) + 1;  % evitar 0
+            % Desvio angular: usa a amplitude (max-min) da confiança como proxy.
+            % Normalizar pela amplitude evita subestimar o erro quando o
+            % confidenceLevel varia numa faixa estreita (ex.: 70-95%).
+            confidenceLevelLocal = confidenceLevel(chFreqCenterIdx, selectedMeasurementIndices)';
+            confidenceRange = max(confidenceLevelLocal) - min(confidenceLevelLocal) + 1;  % +1 evita divisão por 0
             
-            % σ_az_max = (100 / amplitude_confiança) × π/180 graus
-            % Quanto menor a variação de confiança, menos informação temos, logo maior erro
+            % σ_az_max = (100 / amplitude_confiança) × π/180 [rad].
+            % Quanto menor a variação de confiança, menos informação temos e,
+            % portanto, maior o erro angular assumido.
             sigmaAzimuthMax = (100.0 / confidenceRange) * (pi/180);  % radianos
             
-            % GDOP já captura geometria; agora propagar para distância cartesiana
-            % R = GDOP × d_max × σ_az × fator_escala_não_linear
-            % fator_escala ≈ 100-200 para absorver não-linearidades de triangulação
+            % O GDOP já captura a geometria; aqui propagamos para a distância cartesiana:
+            %   R = GDOP × d_max × σ_az × fator_escala_não_linear
+            % O fator empírico absorve não-linearidades da triangulação.
             nonlinearScaleFactor = 25;
             
+            % Raio final saturado no intervalo [300, 1000] metros.
             uncertaintyRadius = min(max(gdop * maxDistanceToSource * sigmaAzimuthMax * nonlinearScaleFactor, 300), 1000);
         end
 
@@ -173,32 +195,29 @@ classdef (Abstract) Geolocation
         function [powerLevel, azimuthValue, confidenceLevel] = extractSpectralData(specData, frequencyCenterMHz, bandWidthKHz)
             % Calcula potência do canal por varredura, mas a função espera que seja
             % passado "chLimits", com os limites em "Hertz" do canal.
-            channelFrequencyHertz = frequencyCenterMHz * 1e+6; % MHz >> Hertz
-            chBandWidth_Hertz = bandWidthKHz * 1e+3; % kHz >> Hertz
-            idx = 1;
+            chFrequencyHertz = frequencyCenterMHz * 1e+6; % MHz >> Hertz
+            chBandWidthHertz = bandWidthKHz * 1e+3; % kHz >> Hertz
             
-            chInferiorLimit   = channelFrequencyHertz - chBandWidth_Hertz/2; 
-            chSuperiorLimit   = channelFrequencyHertz + chBandWidth_Hertz/2; 
+            chInferiorLimit = chFrequencyHertz - chBandWidthHertz/2; 
+            chSuperiorLimit = chFrequencyHertz + chBandWidthHertz/2; 
             
             chLimits = [chInferiorLimit, chSuperiorLimit];
-            chLimits(1) = max(chLimits(1), specData(idx).MetaData.FreqStart);
-            chLimits(2) = min(chLimits(2), specData(idx).MetaData.FreqStop);
+            chLimits(1) = max(chLimits(1), specData.MetaData.FreqStart);
+            chLimits(2) = min(chLimits(2), specData.MetaData.FreqStop);
             
-            aCoef  = (specData(idx).MetaData.FreqStop - specData(idx).MetaData.FreqStart) ./ (specData(idx).MetaData.DataPoints - 1);
-            bCoef  = specData(idx).MetaData.FreqStart - aCoef;   
+            aCoef = (specData.MetaData.FreqStop - specData.MetaData.FreqStart) ./ (specData.MetaData.DataPoints - 1);
+            bCoef = specData.MetaData.FreqStart - aCoef;
             idx1 = round((chLimits(1) - bCoef)/aCoef);
             idx2 = round((chLimits(2) - bCoef)/aCoef);
-            levelData = specData(idx).Data{2};
+            
+            powerLevel = double(specData.Data{2}(idx1:idx2, :));
 
             azimuthValue = [];
             confidenceLevel = [];
-            if numel(specData(idx).Data)>3
-                yData = specData(idx).Data{4};
-                zData =specData(idx).Data{5};
-                azimuthValue = double(yData(idx1:idx2,:)); 
-                confidenceLevel = double(zData(idx1:idx2,:)); 
-            end
-            powerLevel = double(levelData(idx1:idx2,:));
+            if numel(specData.Data) > 3
+                azimuthValue = double(specData.Data{4}(idx1:idx2, :)); 
+                confidenceLevel = double(specData.Data{5}(idx1:idx2, :)); 
+            end            
         end
 
 
@@ -235,13 +254,13 @@ classdef (Abstract) Geolocation
             binIndices = repelem((1:height(specBinTable))', specBinTable.Measures);
      
             % Centro do canal em análise 
-            channelCenter = round(height(powerLevel)/2);
+            chFreqCenterIdx = round(height(powerLevel)/2);
             
             % indices nos quais a confiança reportada é menor que o threshold
             % confFilter são retirados
-            lowConfidenceMask = confidenceLevel(channelCenter,1:end) < localizationParams.confidenceThreshold;
+            lowConfidenceMask = confidenceLevel(chFreqCenterIdx, :) < localizationParams.confidenceThreshold;
             
-            powerWithHighConfidence = powerLevel(channelCenter,:);
+            powerWithHighConfidence = powerLevel(chFreqCenterIdx, :);
             powerWithHighConfidence(lowConfidenceMask) = 0;
 
             grouping = @(x){x};
@@ -252,9 +271,9 @@ classdef (Abstract) Geolocation
             % Filtrar pontos a serem triangulados por ordem de maior potência recebida,
             % usando Desvio Padrão (ou outras medidas) para determinar quantos pontos serão
             % utilizados automaticamente
-            smoothFunc = @(x){smoothdata(x,'rloes',10)};
-            center = azimuthAngle(channelCenter,1:end);
-            azMeasCenter = splitapply(smoothFunc,center',binIndices);
+            smoothFunc = @(x){smoothdata(x, 'rloes', 10)};
+            center = azimuthAngle(chFreqCenterIdx, :);
+            azMeasCenter = splitapply(smoothFunc, center', binIndices);
             
             % substituir por um cellarray
             for index = 1:height(powerByBin)
@@ -568,9 +587,8 @@ classdef (Abstract) Geolocation
 
                 if isempty(specData.UserData.Emissions)
                     [newIndex, newFreq, newBW_MHz, Method] = util.Detection.findPeaksPlusOCC(specData);
-                    idx = 1;
                     channelObj = class.ChannelLib('appAnalise');
-                    update(specData(idx), 'UserData:Emissions', 'Add', newIndex, newFreq, newBW_MHz*1000, Method, [], channelObj)
+                    update(specData, 'UserData:Emissions', 'Add', newIndex, newFreq, newBW_MHz*1000, Method, [], channelObj)
                 end
 
                 emissionsTable = specData(1).UserData.Emissions;

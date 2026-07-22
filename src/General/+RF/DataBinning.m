@@ -52,7 +52,22 @@ classdef (Abstract) DataBinning
             specRawTable = table(timestamp, lats, lngs, chPower, 'VariableNames', {'Timestamp', 'Latitude', 'Longitude', 'ChannelPower'});
 
             if ~isempty(chAzimuhth)
-                specRawTable.Azimuth = chAzimuhth;
+                carHeadVector = min(50, ceil(numSweeps/100));
+
+                vehicleHeadingAngle = zeros(numSweeps, 1);
+                vehicleHeadingAngle(1:end-carHeadVector) = azimuth( ...
+                    specRawTable.Latitude(1:end-carHeadVector), ...
+                    specRawTable.Longitude(1:end-carHeadVector), ...
+                    specRawTable.Latitude(carHeadVector+1:end), ...
+                    specRawTable.Longitude(carHeadVector+1:end) ...
+                );
+                vehicleHeadingAngle(end-carHeadVector+1:end) = vehicleHeadingAngle(end-carHeadVector);
+    
+                % Converte o azimute medido (relativo ao eixo do veículo) em azimute
+                % absoluto referenciado ao Norte, somando a proa do carro em cada
+                % ponto selecionado. Isso é válido se e somente se o azimuthAngle é 
+                % medido RELATIVO ao eixo longitudinal do veículo (proa = 0°).
+                specRawTable.Azimuth = smoothdata(mod(vehicleHeadingAngle + chAzimuhth, 360), 'rloes', 10);
             end
         end
 
