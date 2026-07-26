@@ -5,7 +5,7 @@ function reportInfo = inputParser(reportInfo, dataOverview)
         error('reportInfo must be a struct with at least the fields "App", "Version", "Path", "Model", and "Function".')
     end
 
-    reportInfo.Version.reportLib     = reportLib.Constants.ReportLib();
+    reportInfo.Version.reportLib     = reportLib.Constants.getVersion();
     reportInfo.Path.libFolder        = reportLib.Path();
     reportInfo.Function.var_Index    = '-1';
 

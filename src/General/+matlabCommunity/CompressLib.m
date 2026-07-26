@@ -32,9 +32,9 @@ classdef CompressLib
 
 			% Primary: Java GZIP. Fallback (catch): .NET GZIP.
             try
-                out = matlabCommunity.CompressLib.gzipJAVA("decompress", in);
-            catch
                 out = matlabCommunity.CompressLib.gzipNET("decompress", in);
+            catch
+                out = matlabCommunity.CompressLib.gzipJAVA("decompress", in);
             end
 
             % Decompressed byte array >> Matlab data type
@@ -63,9 +63,9 @@ classdef CompressLib
 
             % Primary: Java GZIP. Fallback (catch): .NET GZIP.
             try
-                out = matlabCommunity.CompressLib.gzipJAVA("compress", bytes);
-            catch
                 out = matlabCommunity.CompressLib.gzipNET("compress", bytes);
+            catch
+                out = matlabCommunity.CompressLib.gzipJAVA("compress", bytes);
             end
         end
 

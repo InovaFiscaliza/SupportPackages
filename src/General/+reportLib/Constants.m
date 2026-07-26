@@ -2,43 +2,17 @@ classdef (Abstract) Constants
 
     properties (Constant)
         %-----------------------------------------------------------------%
-        libName       = 'reportLib'
-        libRelease    = 'R2024a'
-        libVersion    = '0.03'
+        libName = 'reportLib'
+        libVersion = '0.03'
     end
 
 
     methods (Static=true)
         %-----------------------------------------------------------------%
-        function libVersion = ReportLib()
-            libVersion = struct('name',    reportLib.Constants.libName,    ...
-                                'release', reportLib.Constants.libRelease, ...
+        function libVersion = getVersion()
+            libVersion = struct('name',    reportLib.Constants.libName, ...
                                 'version', reportLib.Constants.libVersion);
         end
-
-
-        %-----------------------------------------------------------------%
-        function machineVersion = MachineVersion()
-            machineVersion = struct('name',         'MACHINE',                                   ...
-                                    'platform',     appEngine.util.OperationSystem('platform'),     ...
-                                    'version',      appEngine.util.OperationSystem('ver'),          ...
-                                    'computerName', appEngine.util.OperationSystem('computerName'), ...
-                                    'userName',     appEngine.util.OperationSystem('userName'));
-        end
-
-
-        %-----------------------------------------------------------------%
-        function matlabVersion = MatlabVersion()
-            matVersion    = version;    
-            matProducts   = struct2table(ver);
-
-            matlabVersion = struct('name',        'MATLAB',                                   ...
-                                   'release',     char(extractBetween(matVersion, '(', ')')), ...
-                                   'version',     extractBefore(matVersion, ' '),             ...
-                                   'path',        matlabroot,                                 ...
-                                   'productList', char(strjoin(matProducts.Name + " v. " + matProducts.Version, ', ')));
-        end
-
 
         %-----------------------------------------------------------------%
         function s = logical2String(l, sClass)
