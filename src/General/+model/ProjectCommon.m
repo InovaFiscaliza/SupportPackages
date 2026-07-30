@@ -378,6 +378,34 @@ classdef ProjectCommon < handle
         function hash = computeUploadedFileHash(system, issue, status)
             hash = Hash.sha1(strjoin({system, num2str(issue), status}, ' - '));
         end
+
+        %-----------------------------------------------------------------%
+        function updateSeiReport(jsonFile, seiReport)
+            try
+                jsonData = jsondecode(fileread(jsonFile));
+                jsonData.project.seiReport = seiReport;
+
+                writematrix(jsonencode(jsonData, 'PrettyPrint', true),  jsonFile,  "FileType", "text", "QuoteStrings", "none", "WriteMode", "overwrite", "Encoding", "UTF-8")
+            catch
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function correlationKey = extractCorrelationKey(fileFullName)
+            [~, fileName] = fileparts(fileFullName);
+            
+            try
+                tokens = regexp(lower(fileName), '^[^_]+_\d{8}_(?<key>[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$', 'names');
+            
+                if isempty(tokens)
+                    error('Unexpected file name')
+                end
+            
+                correlationKey = tokens.key;
+            catch
+                correlationKey = '';
+            end
+        end
     end
 
 end

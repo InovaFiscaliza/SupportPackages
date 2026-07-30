@@ -29,7 +29,7 @@ classdef eFiscaliza < ws.WebServiceBase
         end
 
         %-----------------------------------------------------------------%
-        function msg = run(obj, env, operation, issue, varargin)
+        function [msg, seiReport] = run(obj, env, operation, issue, varargin)
             arguments
                 obj
                 env       char {mustBeMember(env, {'DS', 'HM', 'TS', 'PD'})}
@@ -44,6 +44,8 @@ classdef eFiscaliza < ws.WebServiceBase
             if strcmp(env, 'DS')
                 operation = [operation '-DS'];
             end
+
+            seiReport = '';
 
             try
                 if ~strcmp(issue.type, 'ATIVIDADE DE INSPEÇÃO')
@@ -120,15 +122,12 @@ classdef eFiscaliza < ws.WebServiceBase
                             error('ws:eFiscaliza:RequestFailed', '%s\n%s', response.show, jsonencode(response.Body.Data))
                         end
         
-                        sei  = response.Body.Data.sei.documentoFormatado;
+                        seiReport = response.Body.Data.sei.documentoFormatado;
                         link = response.Body.Data.sei.linkAcesso;
-                        msg  = sprintf( ...
-                            '<b>%s: %s</b>\nDocumento cadastrado no SEI sob o nº <a href="%s" target="_blank">%s</a>', ...
-                            response.StatusCode, ...
-                            response.StatusLine, ...
-                            link, ...
-                            sei ...
-                        );
+                        msg = sprintf([ ...
+                            '<b>%s: %s</b>\nDocumento cadastrado no SEI sob ' ...
+                            'o nº <a href="%s" target="_blank">%s</a>' ...
+                        ], response.StatusCode, response.StatusLine, link, seiReport);
 
                     %-----------------------------------------------------%
                     % ## eFiscaliza DS ##
