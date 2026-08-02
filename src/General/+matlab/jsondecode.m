@@ -1,17 +1,53 @@
-function [s, d] = jsondecode(jsonStr)
+function [s, d] = jsondecode(jsonStr, outputFormat)
+    arguments
+        jsonStr
+        outputFormat {mustBeMember(outputFormat, {'struct', 'table'})} = 'struct'
+    end
 
     s = jsondecode(jsonStr);
+    d = buildKeyMap(jsonStr);
 
+    if strcmp(outputFormat, 'table')
+        s = structToFieldValueTable(s, d);
+    end
+end
+
+
+%-------------------------------------------------------------------------%
+function d = buildKeyMap(jsonStr)
     keyList = extractKeysFromJson(jsonStr);
     keyList = string(keyList);
     d = dictionary(keyList, matlab.lang.makeValidName(keyList));
+end
+
+
+%-------------------------------------------------------------------------%
+function t = structToFieldValueTable(s, d)
+    if ~isscalar(s)
+        error('A entrada deve ser uma estrutura escalar.')
+    end
+
+    convertedFields = fieldnames(s);
+    originalFields = convertedFields;
+    
+    keyList = keys(d);
+    valueList = values(d);
+
+    for ii = 1:numel(convertedFields)
+        idx = find(strcmp(valueList, convertedFields{ii}), 1);
+        if ~isempty(idx)
+            originalFields{ii} = char(keyList(idx));
+        end
+    end
+
+    valueCell = struct2cell(s);
+    t = table(originalFields, valueCell, 'VariableNames', {'field', 'value'});
 
 end
 
 
 %-------------------------------------------------------------------------%
 function keyList = extractKeysFromJson(jsonStr)
-
     jsonStr = strtrim(char(jsonStr));
     keyList = {};
 
@@ -49,8 +85,7 @@ end
 
 
 %-------------------------------------------------------------------------%
-function [idx, keyList] = skipValue(jsonStr, idx, keyList)
-    
+function [idx, keyList] = skipValue(jsonStr, idx, keyList)    
     % Pular espaços
     while jsonStr(idx) == ' ' || jsonStr(idx) == ':'
         idx = idx + 1;
