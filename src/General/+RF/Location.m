@@ -30,7 +30,11 @@ classdef Location < handle
     methods
         %-----------------------------------------------------------------%
         function [obj, warningMsg] = Location()
-            obj.CacheFolder = fullfile(appEngine.util.OperationSystem('programData'), 'ANATEL', 'Location');
+            if ispc
+                obj.CacheFolder = fullfile(appEngine.util.OperationSystem('programData'), 'ANATEL', 'Location');
+            else
+                obj.CacheFolder = fullfile('/tmp', 'ANATEL', 'Location');
+            end
 
             if ~isfolder(obj.CacheFolder)
                 mkdir(obj.CacheFolder)
