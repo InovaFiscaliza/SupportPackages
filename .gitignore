@@ -2,6 +2,7 @@
 src/Demo/repoSFI/src/wsSpectrumReader/
 
 # List of untracked files to ignore:
+tests/rgcheck.txt
 src/Anatel/+ws/Fiscaliza.m
 src/Anatel/+ws/Fiscaliza.p
 src/Anatel/+ws/SEI.m
