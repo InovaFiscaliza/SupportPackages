@@ -146,7 +146,7 @@ classdef (Abstract) TextView
         %------------------------------------------------------------------%
         function htmlLink = createHTMLLink(linkType, appHandleNameInBase, eventName, eventData, varargin)
             arguments
-                linkType {mustBeMember(linkType, {'link', 'question', 'edit', 'customText', 'customImage'})}
+                linkType {mustBeMember(linkType, {'link', 'question', 'edit', 'screenshot', 'customText', 'customImage'})}
                 appHandleNameInBase
                 eventName
                 eventData
@@ -179,6 +179,9 @@ classdef (Abstract) TextView
 
                 case 'edit'
                     linkInnerHTML = '&#x270F;&#xFE0F;'; % '✏️'
+
+                case 'screenshot'
+                    linkInnerHTML = '&#x1F5BC;&#xFE0F;'; % '🖼️'
 
                 case 'customText'
                     linkInnerHTML = varargin{1};

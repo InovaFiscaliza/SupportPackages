@@ -26,9 +26,10 @@ classdef WordCloud < handle
         %-----------------------------------------------------------------%
         function obj = WordCloud(jsBackDoor, parentPanel, algorithm)
             obj.jsBackDoor = jsBackDoor;
-            obj.Panel      = parentPanel;
-            obj.Algorithm  = algorithm;
+            obj.Panel = parentPanel;
+            obj.Algorithm = algorithm;
 
+            ui.CustomizationBase.getElementsDataTag({parentPanel});
             CreateCanvas(obj)
         end
 
@@ -79,7 +80,7 @@ classdef WordCloud < handle
         function CreateCanvas(obj)
             switch obj.Algorithm
                 case 'D3.js'
-                    sendEventToHTMLSource(obj.jsBackDoor, 'wordcloud')
+                    sendEventToHTMLSource(obj.jsBackDoor, 'wordcloud', struct('dataTag', obj.Panel.UserData.id))
                     obj.Chart  = [];
 
                 case 'MATLAB built-in'
@@ -112,10 +113,10 @@ classdef WordCloud < handle
         function TableUpdate(obj, Table)
             switch obj.Algorithm
                 case 'D3.js'
-                    if ~isempty(Table)
-                        sendEventToHTMLSource(obj.jsBackDoor, 'drawWordCloud', struct('words', Table.Word, 'weights', Table.Count));
+                    if isempty(Table)
+                        sendEventToHTMLSource(obj.jsBackDoor, 'drawWordCloud', struct('words', {{}}, 'weights', {{}}));
                     else
-                        sendEventToHTMLSource(obj.jsBackDoor, 'eraseWordCloud');
+                        sendEventToHTMLSource(obj.jsBackDoor, 'drawWordCloud', struct('words', Table.Word, 'weights', Table.Count));
                     end
 
                 case 'MATLAB built-in'

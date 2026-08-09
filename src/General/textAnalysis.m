@@ -17,8 +17,7 @@ classdef (Abstract) textAnalysis
     methods (Static = true)
         %-----------------------------------------------------------------%
         function editedWords = normalizeWords(rawWords)
-            editedWords = strtrim(replace(lower(rawWords), [textAnalysis.specialChars, textAnalysis.specialPont], ...
-                                                           [textAnalysis.replaceChars, textAnalysis.replacePont]));
+            editedWords = strtrim(regexprep(replace(lower(rawWords), [textAnalysis.specialChars, textAnalysis.specialPont], [textAnalysis.replaceChars, textAnalysis.replacePont]), '\s+', ' '));
         end
 
         %-----------------------------------------------------------------%

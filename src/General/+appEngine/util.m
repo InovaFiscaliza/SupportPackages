@@ -14,7 +14,18 @@ classdef (Abstract) util
             warning('off', 'MATLAB:opengl:unableToSelectHWGL')
             warning('off', 'MATLAB:class:DestructorError')
             warning('off', 'transportlib:legacy:PropertyNotSupported')
-             warning('off', 'MATLAB:uitable:ColumnFormatNotSupported')
+            warning('off', 'MATLAB:uitable:ColumnFormatNotSupported')
+        end
+
+        %-----------------------------------------------------------------%
+        function safeSaveMAT(fileName, variableNames, variableValues, compressionMode)
+            s = cell2struct(variableValues, variableNames, 2);
+            lastwarn('')
+            save(fileName, '-struct', 's', '-v7', compressionMode{:});
+            [~, warnID] = lastwarn;
+            if strcmp(warnID, 'MATLAB:save:sizeTooBigForMATFile')
+                save(fileName, '-struct', 's', '-v7.3', compressionMode{:});
+            end
         end
 
         %-----------------------------------------------------------------%
@@ -265,8 +276,8 @@ classdef (Abstract) util
                 files2Keep  cell = {}
             end
         
-            generalSettings     = [];
-            msgWarning          = '';
+            generalSettings = [];
+            msgWarning = '';
         
             [projectFolder, ...
              programDataFolder] = appEngine.util.Path(appName, rootFolder);
@@ -314,7 +325,7 @@ classdef (Abstract) util
         
                         appEngine.util.copyConfigFiles(programDataFolder, programDataFolder_backup, files2Keep, 'move')
                         appEngine.util.copyConfigFiles(projectFolder,     programDataFolder,        files2Keep, 'copy')
-                        writematrix(jsonencode(projectFileContent, "PrettyPrint", true), programDataFilePath, "FileType", "text", "QuoteStrings", "none", "WriteMode", "overwrite")
+                        writematrix(jsonencode(projectFileContent, "PrettyPrint", true), programDataFilePath, "FileType", "text", "QuoteStrings", "none", "WriteMode", "overwrite", "Encoding", "UTF-8")
                         
                         msgWarning = ['Os arquivos de configuração do app hospedado na pasta de configuração local, ' ...
                                       'incluindo "GeneralSettings.json", foram atualizados. As versões antigas dos '  ...
@@ -338,14 +349,14 @@ classdef (Abstract) util
         end
 
         %-------------------------------------------------------------------------%
-        function generalSettingsSave(appName, rootFolder, appGeneral, executionMode, fields2Remove)
+        function generalSettingsSave(appName, rootFolder, generalSettings, executionMode, fields2Remove)
             % Aplicável apenas à versão desktop do app. Dessa forma, o parâmetro
             % de configuração alterado por um usuário do webapp terá efeito apenas 
             % na própria sessão do webapp.
             arguments
-                appName       char
-                rootFolder    char
-                appGeneral    struct
+                appName char
+                rootFolder char
+                generalSettings struct
                 executionMode char
                 fields2Remove cell = {}
             end
@@ -355,15 +366,17 @@ classdef (Abstract) util
             end
         
             if ~isempty(fields2Remove)
-                appGeneral = rmfield(appGeneral, fields2Remove);
+                generalSettings = rmfield(generalSettings, fields2Remove);
             end
 
-            appGeneral.fileFolder.MFilePath = '';
-            appGeneral.fileFolder.tempPath  = '';
+            generalSettings.fileFolder.MFilePath = '';
+            generalSettings.fileFolder.tempPath  = '';
 
             switch appName
                 case 'appAnalise'
-                    appGeneral.plot.clearWrite.Visible = 'on';
+                    generalSettings.plot.clearWrite.Visible = 'on';
+                case 'appColeta'
+                    generalSettings.stationInfo.Computer = '';
                 otherwise
                     % ...
             end
@@ -373,7 +386,7 @@ classdef (Abstract) util
             programDataFilePath = fullfile(programDataFolder, 'GeneralSettings.json');
         
             try
-                writematrix(jsonencode(appGeneral, 'PrettyPrint', true, 'ConvertInfAndNaN', false), programDataFilePath, "FileType", "text", "QuoteStrings", "none", "WriteMode", "overwrite")
+                writematrix(jsonencode(generalSettings, 'PrettyPrint', true, 'ConvertInfAndNaN', false), programDataFilePath, "FileType", "text", "QuoteStrings", "none", "WriteMode", "overwrite", "Encoding", "UTF-8")
             catch
             end
         end

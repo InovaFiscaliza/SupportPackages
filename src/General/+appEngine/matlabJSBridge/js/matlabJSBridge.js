@@ -239,28 +239,6 @@ function setup(htmlComponent) {
     });
 
     /*---------------------------------------------------------------------------------*/
-    htmlComponent.addEventListener("getCssPropertyValue", function(customEvent) {
-        const auxAppTag     = customEvent.Data.auxAppTag;
-        const componentName = customEvent.Data.componentName;
-        const dataTag       = customEvent.Data.dataTag
-        const childClass    = customEvent.Data.childClass;
-        const propertyName  = customEvent.Data.propertyName;
-
-        let handle = findComponentHandle(dataTag);
-        if (!handle) return;
-        
-        if (childClass) {
-            const child = handle.getElementsByClassName(childClass)[0];
-            if (child) {
-                handle = child;
-            }
-        }
-        
-        const propertyValue = appWindow.getComputedStyle(handle).getPropertyValue(propertyName);
-        htmlComponent.sendEventToMATLAB("getCssPropertyValue", { auxAppTag, componentName, propertyName, propertyValue });
-    });
-
-    /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("getTableColumnWidth", function(customEvent) {
         const { tableId, dataTag, displayedColumnCount } = customEvent.Data;
         const handle  = findComponentHandle(dataTag);
@@ -275,43 +253,6 @@ function setup(htmlComponent) {
         if (columnWidths.length) {
             htmlComponent.sendEventToMATLAB("getTableColumnWidth", { tableId, displayedColumnCount, columnWidths });
         }
-    });
-
-    /*---------------------------------------------------------------------------------*/
-    htmlComponent.addEventListener("changeTableRowHeight", function(customEvent) {
-        let styleElement = appWindow.document.getElementById('matlab-js-bridge-uitable');
-        if (styleElement) {
-            styleElement.remove();
-        }
-
-        const rowHeight = customEvent.Data;
-        if (rowHeight == "default") {
-            return
-        }
-
-        const cssText = `/*
-  ## Customizações gerais (MATLAB Built-in uitable) ##
-*/
-.mw-table-row-header-cell {
-    height: ${rowHeight}px !important;
-    max-height: ${rowHeight}px !important;
-}
-
-.mw-table-row {
-    height: ${rowHeight}px !important;
-}
-
-.mw-table-cell {
-    height: 100% !important;
-    white-space: pre-line !important;
-}`;
-        
-        styleElement = appWindow.document.createElement("style");
-        styleElement.type = "text/css";
-        styleElement.id = "matlab-js-bridge-uitable";
-        styleElement.innerHTML = `${cssText}`;
-
-        appWindow.document.head.appendChild(styleElement);
     });
 
     /*---------------------------------------------------------------------------------*/
@@ -720,6 +661,56 @@ function setup(htmlComponent) {
     });
 
     /*-----------------------------------------------------------------------------------
+        ## IMAGE HIGHLIGHT ##
+        Exibe, em destaque e quase em tela cheia, a <img> filha do elemento "dataTag",
+        reaproveitando o "matlab-js-bridge-ui-blocker" como fundo.
+    -----------------------------------------------------------------------------------*/
+    htmlComponent.addEventListener("imageHighlight", function(customEvent) {
+        const { dataTag } = customEvent.Data;
+
+        const imgSrc = findComponentHandle(dataTag)?.querySelector("img")?.getAttribute("src");
+        if (!imgSrc) return;
+
+        const zBaseIndex = 905;
+
+        // Background layer
+        let u = appWindow.document.getElementById('matlab-js-bridge-ui-blocker');
+        if (!u) {
+            u = createUIBlocker(appWindow, 'matlab-js-bridge-ui-blocker');
+        }
+        Object.assign(u.style, { visibility: 'visible', opacity: '1' });
+
+        const highlight = appWindow.document.createElement('img');
+        highlight.id  = 'matlab-js-bridge-image-highlight';
+        highlight.src = imgSrc;
+        Object.assign(highlight.style, {
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            maxWidth: '92vw',
+            maxHeight: '92vh',
+            objectFit: 'contain',
+            boxShadow: '0 4px 24px rgba(0, 0, 0, 0.4)',
+            zIndex: `${zBaseIndex}`,
+            cursor: 'zoom-out',
+            borderRadius: '10px'
+        });
+
+        // Fecha ao clicar na imagem ou no fundo, removendo-a do DOM e deixando o blocker transparente.
+        const closeHighlight = () => {
+            highlight.remove();
+            Object.assign(u.style, { visibility: 'hidden', opacity: '0' });
+            u.removeEventListener('click', closeHighlight);
+        };
+
+        highlight.addEventListener('click', closeHighlight);
+        u.addEventListener('click', closeHighlight);
+
+        appWindow.document.body.appendChild(highlight);
+    });
+
+    /*-----------------------------------------------------------------------------------
         ## INDEXED DB ##
         No webapp e na execução direta no MATLAB, o indexedDB é persistente. Na versão desktop
         compilada, ele existe apenas durante a sessão, pois o sandbox do MATLAB (configuração
@@ -848,35 +839,48 @@ function setup(htmlComponent) {
 
     /*-----------------------------------------------------------------------------------
         ## WORDCLOUD ##
-        O wordcloud é renderizada na própria window do uihtml.
+        O wordcloud é renderizada em window.parent (appWindow), dentro do elemento
+        identificado por "dataTag" (o "container" substitui quaisquer filhos existentes
+        desse elemento). A biblioteca D3 é injetada em "window" (uihtml), pois é lá que
+        se encontra o caminho estático do servidor, mas atua sobre o DOM de "appWindow".
     -----------------------------------------------------------------------------------*/
-    htmlComponent.addEventListener("wordcloud", () => {
-        injectScript(window.document, "matlab-js-bridge-wordcloud", ["js/d3.v7.min.js", "js/d3.layout.cloud.min.js"]);
+    htmlComponent.addEventListener("wordcloud", (customEvent) => {
+        const { dataTag } = customEvent.Data;
 
-        let canvas = window.document.getElementById('wordcloudCanvas');
+        const parentHandle = findComponentHandle(dataTag);
+        if (!parentHandle) return;
+
+        let canvas = appWindow.document.getElementById('wordcloudCanvas');
         if (!canvas) {
-            canvas = window.document.createElement('canvas');
+            canvas = appWindow.document.createElement('canvas');
             canvas.id = 'wordcloudCanvas';
             canvas.style.display = "none";
             canvas.getContext('2d', { willReadFrequently: true });
 
-            window.document.body.appendChild(canvas);
+            appWindow.document.body.appendChild(canvas);
         }
 
-        let container = window.document.getElementById('wordcloud');
+        let container = appWindow.document.getElementById('wordcloud');
         if (!container) {
-            container = window.document.createElement("div");
+            container = appWindow.document.createElement("div");
             container.id = "wordcloud";
             Object.assign(container.style, {
-                height: "100vh",
-                width: "100vw"
+                height: "100%",
+                width: "100%",
+                userSelect: "text"
             });
-            window.document.body.appendChild(container);
         }
 
-        let containerStyle = window.document.getElementById("wordcloud-style");
+        while (parentHandle.firstChild) {
+            parentHandle.removeChild(parentHandle.firstChild);
+        }
+        parentHandle.appendChild(container);
+
+        // drawEmptyCloud() usa d3, então só pode ser chamada após o carregamento assíncrono do script.
+        let containerStyle = appWindow.document.getElementById("wordcloud-style");
+        const isFirstInit = !containerStyle;
         if (!containerStyle) {
-            containerStyle = window.document.createElement("style");
+            containerStyle = appWindow.document.createElement("style");
             containerStyle.id = "wordcloud-style";
             containerStyle.innerHTML = `
 #wordcloud text::selection {
@@ -884,13 +888,20 @@ function setup(htmlComponent) {
     fill: white !important;
     color: white !important;
 }`;
-            window.document.head.appendChild(containerStyle);
+            appWindow.document.head.appendChild(containerStyle);
         }
+
+        injectScript(window.document, "matlab-js-bridge-wordcloud", ["js/d3.v7.min.js", "js/d3.layout.cloud.min.js"], () => {
+            if (isFirstInit) {
+                drawEmptyCloud();
+            }
+        });
 
         if (!appWindow.app.wordcloud) {
             appWindow.app.wordcloud = { 
                 canvas, 
-                container,                
+                container,
+                drawEmptyCloud,
                 drawCloud, 
                 eraseCloud, 
                 data: [] 
@@ -898,11 +909,22 @@ function setup(htmlComponent) {
         }
 
         htmlComponent.addEventListener("drawWordCloud", (event) => {
-            const { words, weights } = event.Data;        
-            const currentWords = words.map((word, index) => {
+            const { words, weights } = event.Data;
+
+            // MATLAB serializa colunas de 1 elemento como escalar, não como array de tamanho 1.
+            const wordList   = Array.isArray(words)   ? words   : (words   != null ? [words]   : []);
+            const weightList = Array.isArray(weights) ? weights : (weights != null ? [weights] : []);
+
+            if (wordList.length === 0 || weightList.length === 0 || wordList.length !== weightList.length) {
+                drawEmptyCloud();
+                appWindow.app.wordcloud.data = [];
+                return;
+            }
+
+            const currentWords = wordList.map((word, index) => {
                 return {
                     text: word,
-                    size: weights[index]
+                    size: weightList[index]
                 };
             });
 
@@ -912,13 +934,37 @@ function setup(htmlComponent) {
 
         htmlComponent.addEventListener("eraseWordCloud", () => {
             eraseCloud();
-            appWindow.app.wordcloud.data = [];        
+            appWindow.app.wordcloud.data = [];
         });
+
+        function drawEmptyCloud() {
+            eraseCloud();
+
+            const wrapper = appWindow.document.createElement("div");
+            wrapper.innerHTML = `
+<svg class="empty-cloud-svg" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);" width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Cloud -->
+  <path d="M12.5 30.5H30.5C35.2 30.5 38.5 27.2 38.5 22.8C38.5 18.8 35.4 15.7 31.5 15.4C30.2 10.8 26.1 7.5 21.2 7.5C15.9 7.5 11.5 11.4 10.7 16.5C6.7 16.9 3.5 20.2 3.5 24.3C3.5 27.8 6.3 30.5 12.5 30.5Z"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+  <!-- Diagonal slash -->
+  <path d="M8 36L36 8"
+        stroke="currentColor"
+        stroke-width="3"
+        stroke-linecap="round"/>
+</svg>`;
+
+            container.appendChild(wrapper.firstElementChild);
+        }
 
         function drawCloud(words) {
             eraseCloud();
 
-            const { innerWidth: width, innerHeight: height } = window;        
+            const width  = container.clientWidth;
+            const height = container.clientHeight;
             const scale = getFontScale(words, width, height);
             const layout = d3.layout.cloud()
                 .size([width, height])
@@ -933,9 +979,9 @@ function setup(htmlComponent) {
             layout.start();
 
             function draw(words) {
-                const svg = d3.select("#wordcloud").append("svg")
-                    .attr("width", width)
-                    .attr("height", height)
+                const svg = d3.select(container).append("svg")
+                    .attr("width", "100%")
+                    .attr("height", "100%")
                     .attr("viewBox", `0 0 ${width} ${height}`)
                     .attr("preserveAspectRatio", "xMidYMid meet")
                     .append("g")
@@ -967,7 +1013,7 @@ function setup(htmlComponent) {
         }
 
         function eraseCloud() {
-            d3.select("#wordcloud").selectAll("*").remove();
+            d3.select(container).selectAll("*").remove();
         }
     });
 
@@ -1115,7 +1161,7 @@ function setup(htmlComponent) {
     }
 
     /*---------------------------------------------------------------------------------*/
-    function createUIBlocker(parentWindow, id, zIndex = 925, delay = 50) {
+    function createUIBlocker(parentWindow, id, zIndex = 901, delay = 50) {
         const uiBlocker = parentWindow.document.createElement("div");
         Object.assign(uiBlocker.style, {
             visibility: 'visible',
@@ -1335,6 +1381,27 @@ function setup(htmlComponent) {
     color: var(--mw-color-secondary,#616161) !important;
     font-weight: var(--mw-fontWeight-table-header-index) !important;
     text-align: center !important;
+}
+
+.mw-table-row {
+    height: auto !important;
+}
+
+.mw-table-row > td.mw-table-cell-clean-focus.mw-table-cell.mw-table-cell-background-input {
+    height: auto !important;
+}
+
+.mw-table-row > td.mw-table-cell-clean-focus.mw-table-cell.mw-table-cell-background-input .mw-string-renderer {
+    display: flex !important;
+    align-items: center !important;
+    height: auto !important;
+    min-height: 100% !important;
+    white-space: pre-line !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+    line-height: 1.25 !important;
 }
 
 .treenode.selected {
@@ -1597,17 +1664,25 @@ a, a:hover {
     }
 
     /*---------------------------------------------------------------------------------*/
-    function injectScript(parentDocument, className, fileList) {
+    function injectScript(parentDocument, className, fileList, onload) {
         const scriptElement = parentDocument.getElementsByClassName(className);
         if (scriptElement.length > 0) {
+            onload?.();
             return;
         }
 
+        let pendingCount = fileList.length;
         fileList.forEach((file) => {
             const scriptElement = parentDocument.createElement("script");
             scriptElement.className = className;
             scriptElement.type = "text/javascript";
             scriptElement.src  = new URL(file, appWindow.app.staticBaseURL).href;
+            scriptElement.onload = () => {
+                pendingCount--;
+                if (pendingCount === 0) {
+                    onload?.();
+                }
+            };
 
             parentDocument.head.appendChild(scriptElement);
         });
