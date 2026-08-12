@@ -3,15 +3,13 @@ classdef WordCloud < handle
     properties (Access = private)
         %-----------------------------------------------------------------%
         jsBackDoor
-        Panel
-        Chart
+        Container
     end
 
 
     properties
         %-----------------------------------------------------------------%
-        Algorithm {mustBeMember(Algorithm, {'D3.js', 'MATLAB built-in'})} = 'D3.js'
-        Table
+        Table = table('Size', [0,2], 'VariableTypes', {'string', 'double'}, 'VariableNames', {'Word', 'Count'})
     end
 
 
@@ -19,111 +17,57 @@ classdef WordCloud < handle
         %-----------------------------------------------------------------%
         UUID = char(matlab.lang.internal.uuid())
         Type = 'ui.WordCloud'
+        Algorithm = 'D3.js'
     end
 
     
     methods
         %-----------------------------------------------------------------%
-        function obj = WordCloud(jsBackDoor, parentPanel, algorithm)
-            obj.jsBackDoor = jsBackDoor;
-            obj.Panel = parentPanel;
-            obj.Algorithm = algorithm;
-
-            ui.CustomizationBase.getElementsDataTag({parentPanel});
-            CreateCanvas(obj)
-        end
-
-        %-----------------------------------------------------------------%
-        function onAlgorithmValueChanged(obj, algorithm)
-            if ~strcmp(obj.Algorithm, algorithm)
-                refTable = obj.Table;                
-                if ~isempty(refTable)    
-                    DeleteCanvas(obj)
-                end
-
-                obj.Algorithm = algorithm;
-                obj.Table = [];
-                CreateCanvas(obj)
-                obj.Table = refTable;
+        function obj = WordCloud(jsBackDoor, gridContainer)
+            arguments
+                jsBackDoor    matlab.ui.control.HTML
+                gridContainer matlab.ui.container.GridLayout
             end
+
+            obj.jsBackDoor = jsBackDoor;
+            obj.Container = gridContainer;
+
+            ui.CustomizationBase.getElementsDataTag({gridContainer});
+            createCanvas(obj)
         end
 
         %-----------------------------------------------------------------%
-        function set.Table(obj, value)
-            if ~isequal(obj.Table, value)
-                TableUpdate(obj, value)
-                obj.Table = value;
+        function set.Table(obj, tbl)
+            if ~isequal(obj.Table, tbl)
+                updateCanvas(obj, tbl)
+                obj.Table = tbl;
             end
         end
 
         %-----------------------------------------------------------------%
         function delete(obj)
-            DeleteCanvas(obj)
+            eraseCanvas(obj)
         end
     end
 
 
     methods (Access = protected)
         %-----------------------------------------------------------------%
-        function path = Path(obj)
-            path = fileparts(mfilename('fullpath'));
+        function createCanvas(obj)
+            sendEventToHTMLSource(obj.jsBackDoor, 'wordcloud', struct('dataTag', obj.Container.UserData.id))
         end
 
         %-----------------------------------------------------------------%
-        function emptyTable = EmptyTable(obj)
-            emptyTable = table('Size',          [0,2],                ...
-                               'VariableTypes', {'string', 'double'}, ...
-                               'VariableNames', {'Word', 'Count'});
+        function eraseCanvas(obj)
+            sendEventToHTMLSource(obj.jsBackDoor, 'eraseWordCloud', struct('dataTag', obj.Container.UserData.id));
         end
 
         %-----------------------------------------------------------------%
-        function CreateCanvas(obj)
-            switch obj.Algorithm
-                case 'D3.js'
-                    sendEventToHTMLSource(obj.jsBackDoor, 'wordcloud', struct('dataTag', obj.Panel.UserData.id))
-                    obj.Chart  = [];
-
-                case 'MATLAB built-in'
-                    emptyTable = EmptyTable(obj);
-
-                    parentGrid = tiledlayout(obj.Panel, 1, 1, 'Padding', 'tight');
-                    obj.Chart  = matlab.graphics.chart.WordCloudChart('Parent',          parentGrid,   ...
-                                                                      'Title',           '',           ...
-                                                                      'SourceTable',     emptyTable,   ...
-                                                                      'WordVariable',    'Word',       ...
-                                                                      'SizeVariable',    'Count',      ...
-                                                                      'MaxDisplayWords', 25);
-            end
-            drawnow
-        end
-
-        %-----------------------------------------------------------------%
-        function DeleteCanvas(obj)
-            switch obj.Algorithm
-                case 'D3.js'
-                    sendEventToHTMLSource(obj.jsBackDoor, 'eraseWordCloud');
-                case 'MATLAB built-in'
-                    if isa(obj.Chart, 'matlab.graphics.chart.WordCloudChart') && isvalid(obj.Chart)
-                        delete(obj.Chart.Parent)
-                    end
-            end
-        end
-
-        %-----------------------------------------------------------------%
-        function TableUpdate(obj, Table)
-            switch obj.Algorithm
-                case 'D3.js'
-                    if isempty(Table)
-                        sendEventToHTMLSource(obj.jsBackDoor, 'drawWordCloud', struct('words', {{}}, 'weights', {{}}));
-                    else
-                        sendEventToHTMLSource(obj.jsBackDoor, 'drawWordCloud', struct('words', Table.Word, 'weights', Table.Count));
-                    end
-
-                case 'MATLAB built-in'
-                    if isempty(Table)
-                        Table = EmptyTable(obj);
-                    end
-                    obj.Chart.SourceTable = Table;
+        function updateCanvas(obj, tbl)
+            if isempty(tbl)
+                sendEventToHTMLSource(obj.jsBackDoor, 'drawWordCloud', struct('dataTag', obj.Container.UserData.id, 'words', {{}}, 'weights', {{}}));
+            else
+                sendEventToHTMLSource(obj.jsBackDoor, 'drawWordCloud', struct('dataTag', obj.Container.UserData.id, 'words', tbl.Word, 'weights', tbl.Count));
             end
         end
     end

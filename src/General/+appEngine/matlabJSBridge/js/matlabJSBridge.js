@@ -35,8 +35,7 @@ function setup(htmlComponent) {
                 isMobile,
                 camelToKebab
             },
-            indexedDB: null,
-            wordcloud: null
+            indexedDB: null
         };
     }
 
@@ -876,20 +875,25 @@ function setup(htmlComponent) {
         const parentHandle = findComponentHandle(dataTag)?.getElementsByClassName("gbtGridContents")[0];
         if (!parentHandle) return;
 
-        let canvas = appWindow.document.getElementById('wordcloudCanvas');
+        const containerId = `wordcloud-container-${dataTag}`;
+
+        // O canvas é único e compartilhado, pois os wordclouds são atualizados em momentos diferentes.
+        let canvas = appWindow.document.getElementById("wordcloud-canvas");
         if (!canvas) {
             canvas = appWindow.document.createElement('canvas');
-            canvas.id = 'wordcloudCanvas';
+            canvas.id = "wordcloud-canvas";
             canvas.style.display = "none";
             canvas.getContext('2d', { willReadFrequently: true });
 
             appWindow.document.body.appendChild(canvas);
         }
 
-        let container = appWindow.document.getElementById('wordcloud');
+        let container = appWindow.document.getElementById(containerId);
+        const isFirstInit = !container;
         if (!container) {
             container = appWindow.document.createElement("div");
-            container.id = "wordcloud";
+            container.id = containerId;
+            container.classList.add("wordcloud");
             Object.assign(container.style, {
                 height: "100%",
                 width: "100%",
@@ -902,14 +906,13 @@ function setup(htmlComponent) {
         
         parentHandle.appendChild(container);
 
-        // drawEmptyCloud() usa d3, então só pode ser chamada após o carregamento assíncrono do script.
+        // Estilo compartilhado entre todas as instâncias de wordcloud (identificadas pela classe "wordcloud").
         let containerStyle = appWindow.document.getElementById("wordcloud-style");
-        const isFirstInit = !containerStyle;
         if (!containerStyle) {
             containerStyle = appWindow.document.createElement("style");
             containerStyle.id = "wordcloud-style";
             containerStyle.innerHTML = `
-#wordcloud text::selection {
+.wordcloud text::selection {
     background: #0078d4 !important;
     fill: white !important;
     color: white !important;
@@ -917,57 +920,55 @@ function setup(htmlComponent) {
             appWindow.document.head.appendChild(containerStyle);
         }
 
+        // drawEmptyCloud() usa d3, então só pode ser chamada após o carregamento assíncrono do script.
         injectScript(window.document, "matlab-js-bridge-wordcloud", ["js/d3.v7.min.js", "js/d3.layout.cloud.min.js"], () => {
             if (isFirstInit) {
-                drawEmptyCloud();
+                drawEmptyCloud(dataTag);
             }
         });
+    });
 
-        if (!appWindow.app.wordcloud) {
-            appWindow.app.wordcloud = { 
-                canvas, 
-                container,
-                drawEmptyCloud,
-                drawCloud, 
-                eraseCloud, 
-                data: [] 
-            };
+    htmlComponent.addEventListener("drawWordCloud", (event) => {
+        const { dataTag, words, weights } = event.Data;
+
+        // MATLAB serializa colunas de 1 elemento como escalar, não como array de tamanho 1.
+        const wordList   = Array.isArray(words)   ? words   : (words   != null ? [words]   : []);
+        const weightList = Array.isArray(weights) ? weights : (weights != null ? [weights] : []);
+
+        if (wordList.length === 0 || weightList.length === 0 || wordList.length !== weightList.length) {
+            drawEmptyCloud(dataTag);
+            return;
         }
 
-        htmlComponent.addEventListener("drawWordCloud", (event) => {
-            const { words, weights } = event.Data;
-
-            // MATLAB serializa colunas de 1 elemento como escalar, não como array de tamanho 1.
-            const wordList   = Array.isArray(words)   ? words   : (words   != null ? [words]   : []);
-            const weightList = Array.isArray(weights) ? weights : (weights != null ? [weights] : []);
-
-            if (wordList.length === 0 || weightList.length === 0 || wordList.length !== weightList.length) {
-                drawEmptyCloud();
-                appWindow.app.wordcloud.data = [];
-                return;
-            }
-
-            const currentWords = wordList.map((word, index) => {
-                return {
-                    text: word,
-                    size: weightList[index]
-                };
-            });
-
-            drawCloud(currentWords);
-            appWindow.app.wordcloud.data = currentWords;
+        const currentWords = wordList.map((word, index) => {
+            return {
+                text: word,
+                size: weightList[index]
+            };
         });
 
-        htmlComponent.addEventListener("eraseWordCloud", () => {
-            eraseCloud();
-            appWindow.app.wordcloud.data = [];
-        });
+        drawCloud(dataTag, currentWords);
+    });
 
-        function drawEmptyCloud() {
-            eraseCloud();
+    htmlComponent.addEventListener("eraseWordCloud", (event) => {
+        const { dataTag } = event.Data;
+        eraseCloud(dataTag);
+    });
 
-            const wrapper = appWindow.document.createElement("div");
-            wrapper.innerHTML = `
+    /*-----------------------------------------------------------------------------------*/
+    function findWordCloudContainer(dataTag) {
+        return appWindow.document.getElementById(`wordcloud-container-${dataTag}`);
+    }
+
+    /*-----------------------------------------------------------------------------------*/
+    function drawEmptyCloud(dataTag) {
+        eraseCloud(dataTag);
+
+        const container = findWordCloudContainer(dataTag);
+        if (!container) return;
+
+        const wrapper = appWindow.document.createElement("div");
+        wrapper.innerHTML = `
 <svg class="empty-cloud-svg" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);" width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
   <!-- Cloud -->
   <path d="M12.5 30.5H30.5C35.2 30.5 38.5 27.2 38.5 22.8C38.5 18.8 35.4 15.7 31.5 15.4C30.2 10.8 26.1 7.5 21.2 7.5C15.9 7.5 11.5 11.4 10.7 16.5C6.7 16.9 3.5 20.2 3.5 24.3C3.5 27.8 6.3 30.5 12.5 30.5Z"
@@ -983,65 +984,73 @@ function setup(htmlComponent) {
         stroke-linecap="round"/>
 </svg>`;
 
-            container.appendChild(wrapper.firstElementChild);
+        container.appendChild(wrapper.firstElementChild);
+    }
+
+    /*-----------------------------------------------------------------------------------*/
+    function drawCloud(dataTag, words) {
+        eraseCloud(dataTag);
+
+        const container = findWordCloudContainer(dataTag);
+        const canvas = appWindow.document.getElementById("wordcloud-canvas");
+        if (!container || !canvas) return;
+
+        const width  = container.clientWidth;
+        const height = container.clientHeight;
+        const scale = getFontScale(words, width, height);
+        const layout = d3.layout.cloud()
+            .size([width, height])
+            .words(words.map(d => ({text: d.text, size: scale(d.size)})))
+            .padding(2)
+            .rotate(0)
+            .font("Helvetica")
+            .fontSize(d => d.size)
+            .canvas(() => canvas)
+            .on("end", draw);
+
+        layout.start();
+
+        function draw(words) {
+            const svg = d3.select(container).append("svg")
+                .attr("width", "100%")
+                .attr("height", "100%")
+                .attr("viewBox", `0 0 ${width} ${height}`)
+                .attr("preserveAspectRatio", "xMidYMid meet")
+                .append("g")
+                .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+
+            const topWords = words.slice(0, 3).map(d => d.text);
+
+            svg.selectAll("text")
+                .data(words, d => d.text)
+                .join(
+                    enter => enter.append("text")
+                        .attr("text-anchor", "middle")
+                        .style("font-family", "Helvetica")
+                        .style("fill", d => topWords.includes(d.text) ? "#d95319" : "black")
+                        .text(d => d.text),
+                    update => update,
+                    exit => exit.remove()
+                )
+                .style("font-size", d => d.size + "px")
+                .attr("transform", d => `translate(${d.x},${d.y})rotate(0)`);
         }
 
-        function drawCloud(words) {
-            eraseCloud();
+        function getFontScale(words, width, height) {
+            const maxSize = d3.max(words, d => d.size);
+            const minSize = d3.min(words, d => d.size);
 
-            const width  = container.clientWidth;
-            const height = container.clientHeight;
-            const scale = getFontScale(words, width, height);
-            const layout = d3.layout.cloud()
-                .size([width, height])
-                .words(words.map(d => ({text: d.text, size: scale(d.size)})))
-                .padding(2)
-                .rotate(0)
-                .font("Helvetica")
-                .fontSize(d => d.size)
-                .canvas(() => canvas)
-                .on("end", draw);
-
-            layout.start();
-
-            function draw(words) {
-                const svg = d3.select(container).append("svg")
-                    .attr("width", "100%")
-                    .attr("height", "100%")
-                    .attr("viewBox", `0 0 ${width} ${height}`)
-                    .attr("preserveAspectRatio", "xMidYMid meet")
-                    .append("g")
-                    .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
-
-                const topWords = words.slice(0, 3).map(d => d.text);
-
-                svg.selectAll("text")
-                    .data(words, d => d.text)
-                    .join(
-                        enter => enter.append("text")
-                            .attr("text-anchor", "middle")
-                            .style("font-family", "Helvetica")
-                            .style("fill", d => topWords.includes(d.text) ? "#d95319" : "black")
-                            .text(d => d.text),
-                        update => update,
-                        exit => exit.remove()
-                    )
-                    .style("font-size", d => d.size + "px")
-                    .attr("transform", d => `translate(${d.x},${d.y})rotate(0)`);
-            }
-
-            function getFontScale(words, width, height) {
-                const maxSize = d3.max(words, d => d.size);
-                const minSize = d3.min(words, d => d.size);
-
-                return d3.scalePow().exponent(0.5).domain([minSize, maxSize]).range([10, Math.min(width, height) / 3]);
-            }
+            return d3.scalePow().exponent(0.5).domain([minSize, maxSize]).range([10, Math.min(width, height) / 3]);
         }
+    }
 
-        function eraseCloud() {
-            d3.select(container).selectAll("*").remove();
-        }
-    });
+    /*-----------------------------------------------------------------------------------*/
+    function eraseCloud(dataTag) {
+        const container = findWordCloudContainer(dataTag);
+        if (!container) return;
+
+        d3.select(container).selectAll("*").remove();
+    }
 
     /*-----------------------------------------------------------------------------------
         ## TOOLTIP ##
