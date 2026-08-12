@@ -35,7 +35,11 @@ function setup(htmlComponent) {
                 isMobile,
                 camelToKebab
             },
-            indexedDB: null
+            indexedDB: null,
+            wordcloud: {
+                d3Ready: false,
+                canvasElement: null
+            }
         };
     }
 
@@ -877,15 +881,13 @@ function setup(htmlComponent) {
 
         const containerId = `wordcloud-container-${dataTag}`;
 
-        // O canvas é único e compartilhado, pois os wordclouds são atualizados em momentos diferentes.
-        let canvas = appWindow.document.getElementById("wordcloud-canvas");
+        // O canvas é único e compartilhado (fora do DOM), pois os wordclouds são atualizados em momentos diferentes.
+        let canvas = appWindow.app.wordcloud.canvasElement;
         if (!canvas) {
             canvas = appWindow.document.createElement('canvas');
-            canvas.id = "wordcloud-canvas";
-            canvas.style.display = "none";
             canvas.getContext('2d', { willReadFrequently: true });
 
-            appWindow.document.body.appendChild(canvas);
+            appWindow.app.wordcloud.canvasElement = canvas;
         }
 
         let container = appWindow.document.getElementById(containerId);
@@ -962,13 +964,12 @@ function setup(htmlComponent) {
 
     /*-----------------------------------------------------------------------------------*/
     function drawEmptyCloud(dataTag) {
-        eraseCloud(dataTag);
+        eraseCloud(dataTag, () => {
+            const container = findWordCloudContainer(dataTag);
+            if (!container) return;
 
-        const container = findWordCloudContainer(dataTag);
-        if (!container) return;
-
-        const wrapper = appWindow.document.createElement("div");
-        wrapper.innerHTML = `
+            const wrapper = appWindow.document.createElement("div");
+            wrapper.innerHTML = `
 <svg class="empty-cloud-svg" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);" width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
   <!-- Cloud -->
   <path d="M12.5 30.5H30.5C35.2 30.5 38.5 27.2 38.5 22.8C38.5 18.8 35.4 15.7 31.5 15.4C30.2 10.8 26.1 7.5 21.2 7.5C15.9 7.5 11.5 11.4 10.7 16.5C6.7 16.9 3.5 20.2 3.5 24.3C3.5 27.8 6.3 30.5 12.5 30.5Z"
@@ -984,72 +985,123 @@ function setup(htmlComponent) {
         stroke-linecap="round"/>
 </svg>`;
 
-        container.appendChild(wrapper.firstElementChild);
+            container.appendChild(wrapper.firstElementChild);
+        });
     }
 
     /*-----------------------------------------------------------------------------------*/
     function drawCloud(dataTag, words) {
-        eraseCloud(dataTag);
+        eraseCloud(dataTag, () => {
+            const container = findWordCloudContainer(dataTag);
+            const canvas = appWindow.app.wordcloud.canvasElement;
+            if (!container || !canvas) return;
 
-        const container = findWordCloudContainer(dataTag);
-        const canvas = appWindow.document.getElementById("wordcloud-canvas");
-        if (!container || !canvas) return;
+            const width  = container.clientWidth;
+            const height = container.clientHeight;
+            const scale = getFontScale(words, width, height);
+            const layout = d3.layout.cloud()
+                .size([width, height])
+                .words(words.map(d => ({text: d.text, size: scale(d.size)})))
+                .padding(2)
+                .rotate(0)
+                .font("Helvetica")
+                .fontSize(d => d.size)
+                .canvas(() => canvas)
+                .on("end", draw);
 
-        const width  = container.clientWidth;
-        const height = container.clientHeight;
-        const scale = getFontScale(words, width, height);
-        const layout = d3.layout.cloud()
-            .size([width, height])
-            .words(words.map(d => ({text: d.text, size: scale(d.size)})))
-            .padding(2)
-            .rotate(0)
-            .font("Helvetica")
-            .fontSize(d => d.size)
-            .canvas(() => canvas)
-            .on("end", draw);
+            layout.start();
 
-        layout.start();
+            function draw(words) {
+                const svg = d3.select(container).append("svg")
+                    .attr("width", "100%")
+                    .attr("height", "100%")
+                    .attr("viewBox", `0 0 ${width} ${height}`)
+                    .attr("preserveAspectRatio", "xMidYMid meet")
+                    .append("g")
+                    .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
 
-        function draw(words) {
-            const svg = d3.select(container).append("svg")
-                .attr("width", "100%")
-                .attr("height", "100%")
-                .attr("viewBox", `0 0 ${width} ${height}`)
-                .attr("preserveAspectRatio", "xMidYMid meet")
-                .append("g")
-                .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+                const topWords = words.slice(0, 3).map(d => d.text);
 
-            const topWords = words.slice(0, 3).map(d => d.text);
+                svg.selectAll("text")
+                    .data(words, d => d.text)
+                    .join(
+                        enter => enter.append("text")
+                            .attr("text-anchor", "middle")
+                            .style("font-family", "Helvetica")
+                            .style("fill", d => topWords.includes(d.text) ? "#d95319" : "black")
+                            .text(d => d.text),
+                        update => update,
+                        exit => exit.remove()
+                    )
+                    .style("font-size", d => d.size + "px")
+                    .attr("transform", d => `translate(${d.x},${d.y})rotate(0)`);
+            }
 
-            svg.selectAll("text")
-                .data(words, d => d.text)
-                .join(
-                    enter => enter.append("text")
-                        .attr("text-anchor", "middle")
-                        .style("font-family", "Helvetica")
-                        .style("fill", d => topWords.includes(d.text) ? "#d95319" : "black")
-                        .text(d => d.text),
-                    update => update,
-                    exit => exit.remove()
-                )
-                .style("font-size", d => d.size + "px")
-                .attr("transform", d => `translate(${d.x},${d.y})rotate(0)`);
-        }
+            function getFontScale(words, width, height) {
+                const maxSize = d3.max(words, d => d.size);
+                const minSize = d3.min(words, d => d.size);
 
-        function getFontScale(words, width, height) {
-            const maxSize = d3.max(words, d => d.size);
-            const minSize = d3.min(words, d => d.size);
-
-            return d3.scalePow().exponent(0.5).domain([minSize, maxSize]).range([10, Math.min(width, height) / 3]);
-        }
+                return d3.scalePow().exponent(0.5).domain([minSize, maxSize]).range([10, Math.min(width, height) / 3]);
+            }
+        });
     }
 
-    /*-----------------------------------------------------------------------------------*/
-    function eraseCloud(dataTag) {
+    /*-----------------------------------------------------------------------------------
+        Ponto de entrada comum a toda operação dependente de D3: só limpa e chama "onReady"
+        depois de confirmar (via waitForD3) que a biblioteca está de fato carregada, evitando
+        a condição de corrida entre a injeção assíncrona do script e os eventos do MATLAB.
+    -----------------------------------------------------------------------------------*/
+    function eraseCloud(dataTag, onReady) {
         const container = findWordCloudContainer(dataTag);
         if (!container) return;
 
-        d3.select(container).selectAll("*").remove();
+        waitForD3(() => {
+            d3.select(container).selectAll("*").remove();
+            onReady?.();
+        });
+    }
+
+    /*-----------------------------------------------------------------------------------*/
+    function isD3Loaded() {
+        return typeof d3 !== "undefined" && typeof d3.layout !== "undefined";
+    }
+
+    /*-----------------------------------------------------------------------------------*/
+    function waitForD3(callback, isRetry = false) {
+        if (appWindow.app.wordcloud.d3Ready || isD3Loaded()) {
+            appWindow.app.wordcloud.d3Ready = true;
+            callback();
+            return;
+        }
+
+        const timeoutMs = 3000;
+        let elapsedMs = 0;
+
+        const checkInterval = setInterval(() => {
+            elapsedMs += 100;
+
+            if (isD3Loaded()) {
+                clearInterval(checkInterval);
+                appWindow.app.wordcloud.d3Ready = true;
+                callback();
+                return;
+            }
+
+            if (elapsedMs >= timeoutMs) {
+                clearInterval(checkInterval);
+
+                if (isRetry) {
+                    consoleLog("D3: script ainda não carregado após nova tentativa, operação de wordcloud cancelada");
+                    return;
+                }
+
+                consoleLog("D3: script não carregado em 3s, tentando reinjetar");
+                Array.from(window.document.getElementsByClassName("matlab-js-bridge-wordcloud")).forEach(el => el.remove());
+                injectScript(window.document, "matlab-js-bridge-wordcloud", ["js/d3.v7.min.js", "js/d3.layout.cloud.min.js"]);
+
+                waitForD3(callback, true);
+            }
+        }, 100);
     }
 
     /*-----------------------------------------------------------------------------------
