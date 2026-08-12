@@ -142,6 +142,46 @@ function setup(htmlComponent) {
                         })
                     }
 
+                    if (el.tableMultiline) {
+                        const styleElement = appWindow.document.createElement("style");
+                        styleElement.type = "text/css";
+                        styleElement.id = `matlab-js-bridge-table-multiline-${el.dataTag}`;
+
+                        styleElement.innerHTML = `[data-tag="${el.dataTag}"] .mw-table-row {
+    height: auto !important;
+}
+
+[data-tag="${el.dataTag}"] .mw-table-row > td.mw-table-cell-clean-focus.mw-table-cell.mw-table-cell-background-input {
+    height: auto !important;
+}
+
+[data-tag="${el.dataTag}"] .mw-table-row > td.mw-table-cell-clean-focus.mw-table-cell.mw-table-cell-background-input .mw-string-renderer {
+    display: flex !important;
+    align-items: center !important;
+    height: auto !important;
+    min-height: 100% !important;
+    white-space: pre-line !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+    line-height: 1.25 !important;
+}`;
+                        appWindow.document.head.appendChild(styleElement);
+                    }
+
+                    if (el.tableSelectionStyle) {
+                        const styleElement = appWindow.document.createElement("style");
+                        styleElement.type = "text/css";
+                        styleElement.id = `matlab-js-bridge-table-selection-style-${el.dataTag}`;
+
+                        styleElement.innerHTML = `[data-tag="${el.dataTag}"] tr.mw-table-row-selected > td {
+    color: ${el.tableSelectionStyle.color} !important;
+    background-color: ${el.tableSelectionStyle.backgroundColor} !important;
+}`;
+                        appWindow.document.head.appendChild(styleElement);
+                    }
+
                     if (el.dropDownBackgroundColor) {
                         injectStyleForDropDown(appWindow.document, el.dataTag, el.dropDownBackgroundColor);
                     }
@@ -189,23 +229,6 @@ function setup(htmlComponent) {
                     if (el.tooltip) {
                         const {textContent, defaultPosition, zIndex} = el.tooltip;
                         createTooltip(handle, el.dataTag, textContent, defaultPosition, zIndex);
-                    }
-
-                    if (el.stackorder && handle.parentElement) {
-                        const parent = handle.parentElement;
-
-                        if (el.stackorder === "top") {
-                            const last = parent.children[parent.children.length - 1];
-                            if (handle !== last) {
-                                parent.appendChild(handle);
-                            }
-
-                        } else if (el.stackorder === "bottom") {
-                            const first = parent.children[0];
-                            if (handle !== first) {
-                                parent.insertBefore(handle, first);
-                            }
-                        }
                     }
 
                     if (el.child) {
@@ -314,7 +337,7 @@ function setup(htmlComponent) {
     /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("setFocus", function(customEvent) {
         const dataTag = customEvent.Data.dataTag;
-        const handle  = findComponentHandle(dataTag).querySelector("input");
+        const handle  = findComponentHandle(dataTag)?.querySelector("input");
 
         try {
             handle.focus();
@@ -688,13 +711,16 @@ function setup(htmlComponent) {
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
+            minWidth: '50vw',
+            minHeight: '50vh',
             maxWidth: '92vw',
             maxHeight: '92vh',
             objectFit: 'contain',
             boxShadow: '0 4px 24px rgba(0, 0, 0, 0.4)',
             zIndex: `${zBaseIndex}`,
             cursor: 'zoom-out',
-            borderRadius: '10px'
+            borderRadius: '10px',
+            backgroundColor: 'rgb(255, 255, 255)'
         });
 
         // Fecha ao clicar na imagem ou no fundo, removendo-a do DOM e deixando o blocker transparente.
@@ -847,7 +873,7 @@ function setup(htmlComponent) {
     htmlComponent.addEventListener("wordcloud", (customEvent) => {
         const { dataTag } = customEvent.Data;
 
-        const parentHandle = findComponentHandle(dataTag);
+        const parentHandle = findComponentHandle(dataTag)?.getElementsByClassName("gbtGridContents")[0];
         if (!parentHandle) return;
 
         let canvas = appWindow.document.getElementById('wordcloudCanvas');
@@ -867,13 +893,13 @@ function setup(htmlComponent) {
             Object.assign(container.style, {
                 height: "100%",
                 width: "100%",
-                userSelect: "text"
+                userSelect: "text",
+                position: "relative",
+                gridArea: "1 / 1 / 2 / 2",
+                margin: "0"
             });
         }
-
-        while (parentHandle.firstChild) {
-            parentHandle.removeChild(parentHandle.firstChild);
-        }
+        
         parentHandle.appendChild(container);
 
         // drawEmptyCloud() usa d3, então só pode ser chamada após o carregamento assíncrono do script.
@@ -1381,27 +1407,6 @@ function setup(htmlComponent) {
     color: var(--mw-color-secondary,#616161) !important;
     font-weight: var(--mw-fontWeight-table-header-index) !important;
     text-align: center !important;
-}
-
-.mw-table-row {
-    height: auto !important;
-}
-
-.mw-table-row > td.mw-table-cell-clean-focus.mw-table-cell.mw-table-cell-background-input {
-    height: auto !important;
-}
-
-.mw-table-row > td.mw-table-cell-clean-focus.mw-table-cell.mw-table-cell-background-input .mw-string-renderer {
-    display: flex !important;
-    align-items: center !important;
-    height: auto !important;
-    min-height: 100% !important;
-    white-space: pre-line !important;
-    overflow: visible !important;
-    text-overflow: clip !important;
-    overflow-wrap: anywhere !important;
-    word-break: break-word !important;
-    line-height: 1.25 !important;
 }
 
 .treenode.selected {

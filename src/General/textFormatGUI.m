@@ -92,13 +92,14 @@ classdef (Abstract) textFormatGUI
         end
 
         %-----------------------------------------------------------------%
-        function htmlCode = struct2PrettyPrintList(dataStruct, invalidStatus, freeInitialText, outputFormat, dataGroupStyle)
+        function htmlCode = struct2PrettyPrintList(dataStruct, invalidStatus, freeInitialText, outputFormat, dataGroupStyle, additionalInlineStyle)
             arguments
                 dataStruct      struct
                 invalidStatus   char {mustBeMember(invalidStatus, {'print -1', 'delete'})} = 'print -1'
                 freeInitialText char = ''
                 outputFormat    char {mustBeMember(outputFormat, {'popup', 'textview'})} = 'textview'
                 dataGroupStyle  char {mustBeMember(dataGroupStyle, {'upper', 'normal+gray'})} = 'upper'
+                additionalInlineStyle char = ''
             end
 
             % dataStruct é uma estrutura com os campos "group" e "value". O
@@ -130,7 +131,7 @@ classdef (Abstract) textFormatGUI
                     inlineStyle = 'user-select: text; font-family: &quot;Helvetica Neue&quot;, Helvetica, Arial, sans-serif; font-size: 11px; font-weight: normal; font-style: normal; color: rgb(0, 0, 0); text-align: justify;';
             end
             
-            htmlCode = sprintf('<p style="%s">%s', inlineStyle, freeInitialText);
+            htmlCode = sprintf('<p style="%s%s">%s', additionalInlineStyle, inlineStyle, freeInitialText);
             for ii = 1:numel(dataStruct)
                 dataGroup = dataStruct(ii).group;
                 if ~isempty(d) && isKey(d, dataGroup)
