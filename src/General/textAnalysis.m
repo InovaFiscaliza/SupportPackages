@@ -4,20 +4,36 @@ classdef (Abstract) textAnalysis
 
     properties (Constant)
         %-----------------------------------------------------------------%
-        stopWords    = {'a', 'as', 'e', 'o', 'os', 'da', 'das', 'de', 'do', 'dos', 'em', 'um', 'uma', 'para', 'com', 'que', 'na', 'nas', 'no', 'nos', 'mas'}
-        
-        specialMain  = {'ç', 'ã', 'á', 'é', 'í', 'ó', 'ú'}
-        specialChars = {'ç', 'ã', 'á', 'à', 'â', 'ê', 'é', 'í', 'î', 'ì', 'ó', 'ò', 'ô', 'õ', 'ú', 'ù', 'û', 'ü'}
-        replaceChars = {'c', 'a', 'a', 'a', 'a', 'e', 'e', 'i', 'i', 'i', 'o', 'o', 'o', 'o', 'u', 'u', 'u', 'u'}
+        stopWords = struct( ...
+            'pt', {{'a', 'as', 'e', 'o', 'os', 'da', 'das', 'de', 'do', 'dos', 'em', 'um', 'uma', 'para', 'com', 'que', 'na', 'nas', 'no', 'nos', 'mas'}}, ...
+            'pt_eng', {{'ao', 'aos', 'com', 'como', 'da', 'das', 'de', 'do', 'dos', 'em', 'na', 'nas', 'no', 'nos', 'ou', 'para', 'por', 'que', 'to', 'for', 'in', 'and'}} ...
+        )
 
-        specialPont  = {',', ';', '.', ':', '?', '!', '"', '''', '(', ')', '[', ']', '{', '}'}
-        replacePont  = {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',  ' ', ' ', ' ', ' ', ' ', ' '}
+        accentedChars = {'á', 'à', 'â', 'ã', 'ä', 'é', 'è', 'ê', 'ë', 'í', 'ì', 'î', 'ï', 'ó', 'ò', 'ô', 'õ', 'ö', 'ú', 'ù', 'û', 'ü', 'ç', 'ñ'}
+        plainChars = {'a', 'a', 'a', 'a', 'a', 'e', 'e', 'e', 'e', 'i', 'i', 'i', 'i', 'o', 'o', 'o', 'o', 'o', 'u', 'u', 'u', 'u', 'c', 'n'}
+        
+        commonAccentedChars = {'ç', 'ã', 'á', 'é', 'í', 'ó', 'ú'}
     end
 
     methods (Static = true)
         %-----------------------------------------------------------------%
-        function editedWords = normalizeWords(rawWords)
-            editedWords = strtrim(regexprep(replace(lower(rawWords), [textAnalysis.specialChars, textAnalysis.specialPont], [textAnalysis.replaceChars, textAnalysis.replacePont]), '\s+', ' '));
+        function normalizedWords = normalizeWords(rawWords, stopWordsLanguage)
+            arguments
+                rawWords
+                stopWordsLanguage {mustBeMember(stopWordsLanguage, {'', 'pt', 'pt_eng'})} = ''
+            end
+
+            text = lower(rawWords);
+            text = replace(text, textAnalysis.accentedChars, textAnalysis.plainChars);
+            text = regexprep(text, '[^a-z0-9 ]', ' ');
+
+            if ~isempty(stopWordsLanguage)
+                text = regexprep(text, ['\<(' strjoin(textAnalysis.stopWords.(stopWordsLanguage), '|') ')\>'], ' ');
+            end
+            
+            text = regexprep(text, '\s+', ' ');
+
+            normalizedWords = strtrim(text);
         end
 
         %-----------------------------------------------------------------%
@@ -45,19 +61,28 @@ classdef (Abstract) textAnalysis
         end
 
         %-----------------------------------------------------------------%
-        function [list, index] = sort(list, direction)
-            arguments
-                list
-                direction {mustBeMember(direction, {'ascend', 'descend'})} = 'ascend'
-            end
-
+        function [list, index] = sort(list)
             if ~iscellstr(list)
                 list = cellstr(list);
             end
 
-            normalizedList = strtrim(replace(lower(list), textAnalysis.specialChars, textAnalysis.replaceChars));
+            normalizedList = textAnalysis.normalizeWords(list);
             [~, index] = sort(normalizedList);
             list = list(index);
+        end
+
+        %-----------------------------------------------------------------%
+        function words = getStopWords(language, englishContext)
+            arguments
+                language {mustBeMember(language, {'pt', 'pt_eng'})} = 'pt'
+                englishContext {mustBeMember(englishContext, {'', 'MATLAB Built-in'})} = ''
+            end
+
+            words = textAnalysis.stopWords.(language);
+            if ~isempty(englishContext)
+                englishWords = cellstr(stopWords('Language', 'en'));
+                words = unique([words, englishWords], 'stable');
+            end
         end
     end
 

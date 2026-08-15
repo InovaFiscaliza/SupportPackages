@@ -43,12 +43,17 @@ classdef (Abstract) textFormatGUI
                 unformattedString {mustBeText}
             end
 
+            if isempty(unformattedString)
+                formattedString = '';
+                return
+            end
+
             if ~iscellstr(unformattedString)
                 unformattedString = cellstr(unformattedString);
             end
 
             formattedString = strcat({'"'}, unformattedString, {'"'});
-
+            
             if isscalar(formattedString)
                 formattedString = formattedString{1};
             else
