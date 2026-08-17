@@ -383,6 +383,8 @@ classdef ProjectCommon < handle
         function updateSeiReport(jsonFile, seiReport)
             try
                 jsonData = jsondecode(fileread(jsonFile));
+
+                jsonData.createdAt = datestr(now, 'yyyy-mm-ddTHH:MM:SS');
                 jsonData.project.seiReport = seiReport;
 
                 writematrix(jsonencode(jsonData, 'PrettyPrint', true),  jsonFile,  "FileType", "text", "QuoteStrings", "none", "WriteMode", "overwrite", "Encoding", "UTF-8")
