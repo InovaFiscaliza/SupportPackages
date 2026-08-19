@@ -27,6 +27,7 @@ function setup(htmlComponent) {
                 createUIBlocker,
                 createModalContainer,
                 createTooltip,
+                updateTooltip,
                 findComponentHandle,
                 injectBaseStyles,
                 injectStyle,
@@ -232,6 +233,11 @@ function setup(htmlComponent) {
                     if (el.tooltip) {
                         const {textContent, defaultPosition, zIndex} = el.tooltip;
                         createTooltip(handle, el.dataTag, textContent, defaultPosition, zIndex);
+                    }
+
+                    if (el.tooltipUpdate) {
+                        const textContent = el.tooltipUpdate.textContent;
+                        updateTooltip(handle, textContent);
                     }
 
                     if (el.child) {
@@ -1121,7 +1127,12 @@ function setup(htmlComponent) {
 
         /*-----------------------------------------------------------------------------*/
         function tooltipShow(tooltip, target, targetDataTag, defaultPosition, zIndex) {
-            if (!tooltip || target.dataset.tooltipState === 'hidden') {
+            if (tooltip) {
+                tooltip.remove();
+                tooltip = null;
+            }
+
+            if (target.dataset.tooltipText !== "") {
                 tooltip = tooltipRender(target, targetDataTag, defaultPosition, zIndex);
                 target.dataset.tooltipState = 'hover';
             }
@@ -1202,6 +1213,13 @@ function setup(htmlComponent) {
             });
     
             return tooltip;
+        }
+    }
+
+    function updateTooltip(target, textContent) {
+        if (target.dataset.tooltipText != textContent ) {
+            target.dataset.tooltipText  = textContent;
+            target.dataset.tooltipState = 'hidden';
         }
     }
 
