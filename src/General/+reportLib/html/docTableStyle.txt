@@ -23,7 +23,8 @@
 		vertical-align: top;
 		padding: 2px;
 		padding-bottom: 2px;
-        word-break: break-all;
+        word-break: break-word;
+        overflow-wrap: break-word;
 	}
 	table.tabela_corpo tr:nth-child(even) {
 		background-color: #f8f8f8;

@@ -3,9 +3,9 @@ classdef tableFiltering < handle
     properties
         %-----------------------------------------------------------------%
         filterRules = table( ...
-            'Size', [0, 6], ...
-            'VariableTypes', {'cell', 'cell', 'cell', 'cell', 'cell', 'logical'}, ...
-            'VariableNames', {'Hash', 'Field', 'Operators', 'Values', 'Connector', 'Enable'} ...
+            'Size', [0, 7], ...
+            'VariableTypes', {'cell', 'cell', 'cell', 'cell', 'cell', 'logical', 'logical'}, ...
+            'VariableNames', {'Hash', 'Field', 'Operators', 'Values', 'Connector', 'Enable', 'Deletable'} ...
         )
     end
 
@@ -74,26 +74,37 @@ classdef tableFiltering < handle
         end
 
         %-----------------------------------------------------------------%
-        function addFilterRule(obj, Field, Operators, Values, Connector)
+        function addFilterRule(obj, field, operators, values, connector, deletable)
             arguments
                 obj 
-                Field     (1,:) char
-                Operators (1,:) cell
-                Values    (1,:) cell
-                Connector (1,:) char
+                field     (1,:) char
+                operators (1,:) cell
+                values    (1,:) cell
+                connector (1,:) char
+                deletable (1,1) logical = true
             end
 
-            hash = Hash.sha1(sprintf('%s - %s - %s - %s', Field, strjoin(Operators, '+'), strjoin(cellfun(@string, Values), '+'), Connector));
+            hash = Hash.sha1(sprintf('%s - %s - %s - %s', field, strjoin(operators, '+'), strjoin(cellfun(@string, values), '+'), connector));
             if ismember(hash, obj.filterRules.("Hash"))
                 error('Filter already exists')
             end
 
-            obj.filterRules(end+1,:) = {hash, Field, {Operators}, {Values}, Connector, true};
+            obj.filterRules(end+1,:) = {hash, field, {operators}, {values}, connector, true, deletable};
             obj.filterRules = sortrows(obj.filterRules, 'Field');
         end
 
         %-----------------------------------------------------------------%
-        function removeFilterRule(obj, idx)
+        function removeFilterRule(obj, idx, forceDelete)
+            arguments
+                obj
+                idx
+                forceDelete (1,1) logical = false
+            end
+
+            if ~forceDelete && ~obj.filterRules.Deletable(idx)
+                return
+            end
+
             obj.filterRules(idx, :) = [];
         end
 
