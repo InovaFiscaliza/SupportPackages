@@ -19,11 +19,17 @@ classdef Location < handle
     end
 
 
-    properties (Access = private, Constant)
+    properties (Constant)
         %-----------------------------------------------------------------%
         CACHE_INDEX_FILE = 'cacheMapping.xlsx'
-        URL_MAX_LENGTH   = 2048
-        COORD_TOLERANCE  = 1e-5
+        
+        URL_MAX_LENGTH = 2048
+        COORD_TOLERANCE = 1e-5
+
+        BRAZIL_BOUNDING_BOX = struct( ...
+            'lat', [-33.7500, 5.2700], ...
+            'lng', [-73.9900, -34.7900] ...
+        )
     end
 
 
@@ -45,25 +51,26 @@ classdef Location < handle
         end
 
         %-----------------------------------------------------------------%
-        function [city, warningMsg] = Get(obj, point, forceSearch, server)
+        function [city, warningMsg] = Get(obj, point, forceSearch, server, validateBrazil)
             arguments
                 obj
                 point struct % struct('Latitude', {}, 'Longitude', {})
                 forceSearch logical = false
                 server char {mustBeMember(server, {'bigdatacloud'})} = 'bigdatacloud'
+                validateBrazil (1, 1) logical = true
             end
 
             lat = point.Latitude;
             lng = point.Longitude;
 
             if forceSearch
-                [city, warningMsg] = FetchLocation(obj, server, lat, lng);
+                [city, warningMsg] = FetchLocation(obj, server, lat, lng, validateBrazil);
             
             else
                 city = LookupCache(obj, lat, lng);
                 warningMsg = '';                
                 if isempty(city)
-                    [city, warningMsg] = FetchLocation(obj, server, lat, lng);
+                    [city, warningMsg] = FetchLocation(obj, server, lat, lng, validateBrazil);
                 end
             end
         end
@@ -80,12 +87,13 @@ classdef Location < handle
 
     methods (Access = private)
         %-----------------------------------------------------------------%
-        function [city, warningMsg] = FetchLocation(obj, server, lat, lng)
+        function [city, warningMsg] = FetchLocation(obj, server, lat, lng, validateBrazil)
             arguments
                 obj
                 server char {mustBeMember(server, {'bigdatacloud'})}
                 lat
                 lng
+                validateBrazil (1, 1) logical = true
             end
 
             IBGE = gpsLib.checkIfIBGEIsGlobal();
@@ -107,8 +115,16 @@ classdef Location < handle
                             end
                         end
 
-                        cityIdx = find(ismember(cityOptions, IBGE.City), 1);
-                        if ~isempty(cityIdx)
+                        if ~isempty(cityOptions)
+                            cityIdx = 1;
+
+                            if validateBrazil
+                                brazilCityIdx = find(ismember(cityOptions, IBGE.City), 1);
+                                if ~isempty(brazilCityIdx)
+                                    cityIdx = brazilCityIdx;
+                                end
+                            end
+
                             city = cityOptions{cityIdx};
                         end
 

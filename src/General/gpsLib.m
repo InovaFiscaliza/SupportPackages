@@ -1,11 +1,5 @@
 classdef (Abstract) gpsLib
 
-    properties (Constant)
-        apiURL       = 'https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=<Latitude>&longitude=<Longitude>&localityLanguage=pt'
-        apiCityToken = 'city'
-        apiUnitToken = 'principalSubdivisionCode'
-    end
-
     methods (Static = true)
         %-----------------------------------------------------------------%
         function path = path()
@@ -52,9 +46,15 @@ classdef (Abstract) gpsLib
             arguments (Repeating)
                 varargin
             end
+
+            isRefPointInBrazil = gpsLib.isRefPointInBrazil(refPoint);
+            if ~isRefPointInBrazil
+                method = 'API';
+                IBGE = [];
+            else
+                IBGE = gpsLib.checkIfIBGEIsGlobal();
+            end
             
-            IBGE = gpsLib.checkIfIBGEIsGlobal();
-        
             switch method
                 case 'API/IBGE'
                     [cityName, cityDistance, cityInfo] = gpsLib.findNearestCity(refPoint, 'API');
@@ -64,7 +64,7 @@ classdef (Abstract) gpsLib
                     end
         
                 case 'API'
-                    [cityName, cityDistance, cityInfo] = gpsLib.getCityFromAPI(refPoint, IBGE);
+                    [cityName, cityDistance, cityInfo] = gpsLib.getCityFromAPI(refPoint, isRefPointInBrazil, IBGE);
         
                 case 'IBGE'
                     cityInfo = varargin{1};
@@ -73,10 +73,11 @@ classdef (Abstract) gpsLib
         end
 
         %-----------------------------------------------------------------%
-        function [cityName, cityDistance, cityInfo] = getCityFromAPI(refPoint, IBGE)
+        function [cityName, cityDistance, cityInfo] = getCityFromAPI(refPoint, isRefPointInBrazil, IBGE)
             arguments
                 refPoint struct % struct('Latitude', {}, 'Longitude', {})
-                IBGE     table
+                isRefPointInBrazil (1, 1) logical
+                IBGE
             end
 
             global locationObj
@@ -84,27 +85,29 @@ classdef (Abstract) gpsLib
                 locationObj = RF.Location();
             end
 
-            cityName     = '';
+            cityName = '';
             cityDistance = -1;
-            cityInfo     = '';
+            cityInfo = '';
         
             try
-                cityName = Get(locationObj, refPoint);
+                cityName = Get(locationObj, refPoint, falltime, 'bigdatacloud', isRefPointInBrazil);
                 cityInfo = struct('source', 'API');
         
-                cityIdx = find(strcmpi(IBGE.City, cityName), 1);
-                if ~isempty(cityIdx)
-                    cityDistance = deg2km(distance(refPoint.Latitude, refPoint.Longitude, IBGE.Latitude(cityIdx), IBGE.Longitude(cityIdx)));
-                end            
+                if isRefPointInBrazil
+                    cityIdx = find(strcmpi(IBGE.City, cityName), 1);
+                    if ~isempty(cityIdx)
+                        cityDistance = deg2km(distance(refPoint.Latitude, refPoint.Longitude, IBGE.Latitude(cityIdx), IBGE.Longitude(cityIdx)));
+                    end
+                end
             catch
             end
-        end        
+        end
         
         %-----------------------------------------------------------------%
         function [cityName, cityDistance, cityInfo] = getCityFromIBGE(refPoint, IBGE, cityInfo)
             arguments
                 refPoint struct % struct('Latitude', {}, 'Longitude', {})
-                IBGE     table
+                IBGE
                 cityInfo = ''
             end
 
@@ -115,12 +118,25 @@ classdef (Abstract) gpsLib
         end
 
         %-----------------------------------------------------------------%
-        function gpsData = interpolation(gpsArray)
+        function status = isRefPointInBrazil(refPoint)
             arguments
-                gpsArray (:,3) single % Status | Latitude | Longitude
+                refPoint struct % struct('Latitude', {}, 'Longitude', {})
             end
 
-            gpsData   = struct('Status', 0, 'Matrix', []);
+            status = ...
+                refPoint.Latitude  >= RF.Location.BRAZIL_BOUNDING_BOX.lat(1) && ...
+                refPoint.Latitude  <= RF.Location.BRAZIL_BOUNDING_BOX.lat(2) && ...
+                refPoint.Longitude >= RF.Location.BRAZIL_BOUNDING_BOX.lng(1) && ...
+                refPoint.Longitude <= RF.Location.BRAZIL_BOUNDING_BOX.lng(2);
+        end
+
+        %-----------------------------------------------------------------%
+        function gpsData = interpolation(gpsArray)
+            arguments
+                gpsArray (:, 3) single % Status | Latitude | Longitude
+            end
+
+            gpsData = struct('Status', 0, 'Matrix', []);
             gpsStatus = max(gpsArray(:,1));
             
             if gpsStatus > 0
@@ -142,17 +158,17 @@ classdef (Abstract) gpsLib
         %-----------------------------------------------------------------%
         function template = getTemplate()
             template = struct( ...
-                'Status',          0, ...
-                'Count',           0, ...
-                'Latitude',       -1, ...
-                'Longitude',      -1, ...
-                'Latitude_std',   -1, ...
-                'Longitude_std',  -1, ...
-                'stdRange',       -1, ...
-                'Location',       '', ...
+                'Status', 0, ...
+                'Count', 0, ...
+                'Latitude', -1, ...
+                'Longitude', -1, ...
+                'Latitude_std', -1, ...
+                'Longitude_std', -1, ...
+                'stdRange', -1, ...
+                'Location', '', ...
                 'LocationSource', '', ...
-                'Matrix',         [], ...
-                'Edited',         false ...
+                'Matrix', [], ...
+                'Edited', false ...
             );
         end
 
@@ -217,10 +233,10 @@ classdef (Abstract) gpsLib
             metersPerDegLat = 111000;
             metersPerDegLon = 111000 * cosd(gpsSummary.Latitude);
         
-            latStdMeters    = gpsSummary.Latitude_std  * metersPerDegLat;
-            lonStdMeters    = gpsSummary.Longitude_std * metersPerDegLon;
+            latStdMeters = gpsSummary.Latitude_std  * metersPerDegLat;
+            lonStdMeters = gpsSummary.Longitude_std * metersPerDegLon;
 
-            radiusMeters    = hypot(latStdMeters, lonStdMeters);
+            radiusMeters = hypot(latStdMeters, lonStdMeters);
         
             if radiusMeters <= 30 % meters
                 monitoringType = 'fixed';
