@@ -6,7 +6,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
     % para navegar por outras URLs do mesmo host via cliente HTTP do MATLAB.
 
     properties (Access = private)
-        Session ws.auth.F5Session
+        Session
 
         UIFigure    matlab.ui.Figure
         URLDropDown matlab.ui.control.DropDown
@@ -17,13 +17,20 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
     properties (Constant, Access = private)
         DefaultURLs = {'https://fiscalizacao.anatel.gov.br/rffusion/debug/headers', ...
                        'https://fiscalizacao.anatel.gov.br/rffusion/server/zabbix_metrics', ...
-                       'https://fiscalizacao.anatel.gov.br/rffusion/server/runtime-health'}
+                       'https://fiscalizacao.anatel.gov.br/rffusion/server/runtime-health', ...
+                       'https://fiscalizacao.anatel.gov.br/rffusion/api/map/stations', ...
+                       'https://fiscalizacao.anatel.gov.br/rffusion/api/map/stations?start_date=2026-09-01&end_date=2026-09-07', ...
+                       'https://fiscalizacao.anatel.gov.br/downloads/2024/RO/1100205/176/p-1f25532e--rfeye002210_240819_T175952.bin', ...
+                       'https://fiscalizacao.anatel.gov.br/downloads/2026/SP/3549805/79/p-6b9f7d03--rfeye002266_260901_T073300.bin'}
     end
 
 
     methods
         %-----------------------------------------------------------------%
         function app = F5BrowserTestApp()
+            appFolder = fileparts(mfilename('fullpath'));
+            addpath(fullfile(fileparts(fileparts(appFolder)), 'src', 'Anatel'))
+
             createComponents(app)
             registerApp(app, app.UIFigure)
 
@@ -113,7 +120,25 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             progressCleanup = onCleanup(@() close(progressDialog));
 
             filePath = fullfile(folderName, fileName);
-            app.writeBytes(filePath, readBytes(app.Session, url, true, @(receivedBytes, totalBytes) app.updateProgress(progressDialog, receivedBytes, totalBytes)))
+            logPath = [filePath, '.log'];
+            F5BrowserTestApp.writeDownloadLog(logPath, sprintf('START\nURL: %s\nDestination: %s\nSession: %s\n', ...
+                                                            url, filePath, app.sessionDebugText()));
+            try
+                info = app.Session.downloadToFile(url, filePath, true, ...
+                                                  @(receivedBytes, totalBytes) F5BrowserTestApp.updateProgress(progressDialog, receivedBytes, totalBytes));
+                F5BrowserTestApp.writeDownloadLog(logPath, sprintf('RESPONSE: HTTP %d %s\nContent-Length: %s\nBytes received: %d\nEND\n', ...
+                                                                  info.StatusCode, info.StatusMessage, F5BrowserTestApp.formatBytes(info.ContentLength), info.BytesReceived));
+            catch ME
+                if isfile(filePath)
+                    delete(filePath)
+                end
+
+                F5BrowserTestApp.writeDownloadLog(logPath, sprintf('ERROR\n%s\nEND\n', ...
+                                                                   getReport(ME, 'extended', 'hyperlinks', 'off')));
+
+                error('F5BrowserTestApp:downloadFailed', ...
+                      '%s', F5BrowserTestApp.downloadErrorReport(ME, filePath, logPath))
+            end
 
             render(app, sprintf('Arquivo salvo em:\n%s', filePath))
         end
@@ -177,6 +202,13 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             baseURL = strtrim(app.URLDropDown.Value);
             app.HTMLView.HTMLSource = sprintf('<html><head><base href="%s"></head><body>%s</body></html>', ...
                                               app.escapeHTML(baseURL), app.sanitizeHTML(content));
+        end
+
+        %-----------------------------------------------------------------%
+        function text = sessionDebugText(app)
+            info = app.Session.debugInfo();
+            text = sprintf('Authenticated: %d, Cookie count: %d, Cookie names: %s', ...
+                           info.IsAuthenticated, info.CookieCount, strjoin(info.CookieNames, ', '));
         end
     end
 
@@ -242,14 +274,39 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
         end
 
         %-----------------------------------------------------------------%
-        function writeBytes(filePath, data)
-            fileID = fopen(filePath, 'w');
+        function report = downloadErrorReport(exception, filePath, logPath)
+            report = sprintf('Falha ao baixar o arquivo para "%s".\n\nIdentificador: %s\nMensagem: %s\n\nLog: %s\n\nStack:\n%s', ...
+                             filePath, exception.identifier, exception.message, logPath, ...
+                             getReport(exception, 'extended', 'hyperlinks', 'off'));
+
+            if ispc
+                try
+                    memoryInfo = memory;
+                    report = sprintf('%s\nMemória disponível: %.1f MB', ...
+                                     report, memoryInfo.MemAvailableAllArrays/2^20);
+                catch
+                end
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function writeDownloadLog(filePath, text)
+            fileID = fopen(filePath, 'a');
             if fileID == -1
-                error('Não foi possível gravar em "%s".', filePath)
+                return
             end
             fileCleanup = onCleanup(@() fclose(fileID));
 
-            fwrite(fileID, data, 'uint8');
+            fprintf(fileID, '[%s] %s\n', datestr(now, 'yyyy-mm-dd HH:MM:SS.FFF'), text);
+        end
+
+        %-----------------------------------------------------------------%
+        function text = formatBytes(value)
+            if nargin == 0 || isempty(value)
+                text = 'unknown';
+            else
+                text = sprintf('%.0f', value);
+            end
         end
 
         %-----------------------------------------------------------------%
