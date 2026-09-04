@@ -167,6 +167,42 @@ classdef F5Session < handle
         end
 
         %-----------------------------------------------------------------%
+        function info = downloadToFile(obj, url, filePath, autoReauthenticate, progressFcn)
+            % DOWNLOADTOFILE Transfere o payload em blocos diretamente para disco.
+            % Evita manter arquivos grandes inteiros na memória do MATLAB.
+
+            arguments
+                obj
+                url                (1,:) char {mustBeNonempty}
+                filePath           (1,:) char {mustBeNonempty}
+                autoReauthenticate (1,1) logical = true
+                progressFcn                      = []
+            end
+
+            assertAuthenticated(obj)
+            info = streamToFile(obj, url, filePath, progressFcn);
+
+            if (info.StatusCode >= 300 && info.StatusCode < 400) || info.StatusCode == 401 || info.StatusCode == 403
+                if ~autoReauthenticate
+                    error('ws:auth:F5Session:sessionExpired', 'Sessão F5 expirada ou invalidada. Refaça a autenticação.')
+                end
+
+                if isfile(filePath)
+                    delete(filePath)
+                end
+                login(obj)
+                info = streamToFile(obj, url, filePath, progressFcn);
+            end
+
+            if info.StatusCode < 200 || info.StatusCode >= 300
+                if isfile(filePath)
+                    delete(filePath)
+                end
+                error('ws:auth:F5Session:httpError', 'Requisição retornou HTTP %d (%s).', info.StatusCode, info.StatusMessage)
+            end
+        end
+
+        %-----------------------------------------------------------------%
         function info = debugInfo(obj)
             % DEBUGINFO Diagnóstico da sessão. Expõe nomes e quantidade de
             % cookies - nunca seus valores, que não saem desta classe.
@@ -181,6 +217,57 @@ classdef F5Session < handle
 
 
     methods (Access = private)
+        %-----------------------------------------------------------------%
+        function info = streamToFile(obj, url, filePath, progressFcn)
+            connection = java.net.URL(url).openConnection();
+            connection.setConnectTimeout(30000);
+            connection.setReadTimeout(30000);
+            connection.setInstanceFollowRedirects(false);
+            connection.setRequestProperty('Cookie', obj.CookieHeader);
+
+            statusCode = connection.getResponseCode();
+            statusMessage = char(connection.getResponseMessage());
+            contentLength = double(connection.getContentLengthLong());
+            if contentLength < 0
+                contentLength = [];
+            end
+
+            info = struct('StatusCode', statusCode, ...
+                          'StatusMessage', statusMessage, ...
+                          'ContentLength', contentLength);
+            if statusCode < 200 || statusCode >= 300
+                return
+            end
+
+            inputStream = connection.getInputStream();
+            inputCleanup = onCleanup(@() inputStream.close());
+            fileID = fopen(filePath, 'wb');
+            if fileID == -1
+                error('ws:auth:F5Session:fileOpenFailed', 'Não foi possível gravar em "%s".', filePath)
+            end
+            fileCleanup = onCleanup(@() fclose(fileID));
+
+            buffer = zeros(1, 1024*1024, 'uint8');
+            bytesReceived = 0;
+            while true
+                bytesRead = inputStream.read(buffer, 0, numel(buffer));
+                if bytesRead < 0
+                    break
+                end
+
+                fwrite(fileID, buffer(1:bytesRead), 'uint8');
+                bytesReceived = bytesReceived + bytesRead;
+                if ~isempty(progressFcn)
+                    try
+                        progressFcn(bytesReceived, contentLength)
+                    catch
+                    end
+                end
+            end
+
+            info.BytesReceived = bytesReceived;
+        end
+
         %-----------------------------------------------------------------%
         function openBrowser(obj)
             if ~exist('matlab.internal.webwindow', 'class')

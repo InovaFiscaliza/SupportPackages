@@ -1,42 +1,35 @@
 # tests/auth
 
-Exemplos e validação de [`ws.auth.F5Session`](../../src/Anatel/+ws/+auth/README.md), o módulo
-de autenticação SAML 2.0 + MFA através do proxy reverso F5 BIG-IP APM.
+Exemplos e validação de [`ws.auth.F5Session`](../../src/Anatel/+ws/+auth/README.md), o módulo de autenticação SAML 2.0 + MFA através do proxy reverso F5 BIG-IP APM.
 
 | Arquivo | Tipo | Finalidade |
 |---|---|---|
 | [checkF5Auth.m](checkF5Auth.m) | Script por seções | Validação passo a passo do fluxo |
 | [F5BrowserTestApp.m](F5BrowserTestApp.m) | App `uifigure` | Integração completa em uma aplicação |
 
-Ambos exigem um login humano real, com aprovação do push no Microsoft Authenticator.
-Não há como executá-los de forma desassistida — é uma característica do desenho, não uma
-limitação a contornar.
+Ambos exigem um login real, com aprovação do push no Microsoft Authenticator.
+
+Não há como executá-los de forma desassistida.
 
 ---
 
 ## checkF5Auth.m
 
-Script organizado em seções (`%%`), pensado para execução com **Ctrl+Enter**, uma de cada
-vez. O cabeçalho define `targetURL` e acrescenta `src/Anatel` ao path.
+Script organizado em seções (`%%`), pensado para execução com **Ctrl+Enter**, uma de cada vez. O cabeçalho define `targetURL` e acrescenta `src/Anatel` ao path.
+
+O path provido refere-se a exemplo simples que 
 
 ### Test1 — Login interativo
 
-Cria a `F5Session` e chama `login`. A janela do navegador só aparece quando o fluxo é
-redirecionado ao Azure AD; conclua o login e aprove o push. Ao final, `debugInfo` imprime
-`IsAuthenticated`, a quantidade e os **nomes** dos cookies capturados — nunca os valores.
+Cria a `F5Session` e chama `login`. A janela do navegador só aparece quando o fluxo é redirecionado ao Azure AD; conclua o login e aprove o push. Ao final, `debugInfo` imprime `IsAuthenticated`, a quantidade e os **nomes** dos cookies capturados — nunca os valores.
 
-Esperado: `IsAuthenticated = 1` e `LastMRH_Session`, `F5_ST` (e normalmente `MRHSession`)
-entre os nomes.
+Esperado: `IsAuthenticated = 1` e `LastMRH_Session`, `F5_ST` (e normalmente `MRHSession`) entre os nomes.
 
 ### Test2 — Round-trip fora do navegador embarcado
 
-Este é o teste que valida a premissa central do módulo: que o cookie obtido no navegador
-embarcado é **portável para o cliente HTTP do MATLAB**, ou seja, que o F5 não vincula a
-sessão a um *fingerprint* de navegador (User-Agent, IP, sessão TLS).
+Este é o teste que valida a premissa central do módulo: que o cookie obtido no navegador embarcado é **portável para o cliente HTTP do MATLAB**, ou seja, que o F5 não vincula a sessão a um *fingerprint* de navegador (User-Agent, IP, sessão TLS).
 
-Faz um `read` no mesmo endpoint e verifica que a resposta é JSON. Se voltasse a página de
-login em vez do payload, a abordagem inteira seria inviável e exigiria replicar cabeçalhos
-do navegador.
+Faz um `read` no mesmo endpoint e verifica que a resposta é JSON. Se voltasse a página de login em vez do payload, a abordagem inteira seria inviável e exigiria replicar cabeçalhos do navegador.
 
 Esperado: struct com os campos `X_User_*` que o APM injeta.
 
@@ -64,9 +57,7 @@ Esperado: `HTTP 302`, `Location: /my.policy`, `Detectado como sessão inválida:
 
 ## F5BrowserTestApp.m
 
-Mini-navegador em `uifigure` que demonstra o uso do módulo dentro de uma aplicação: autentica
-uma vez e reaproveita a sessão para navegar por várias URLs do mesmo host, sempre pelo
-cliente HTTP do MATLAB.
+Mini-navegador em `uifigure` que demonstra o uso do módulo dentro de uma aplicação: autentica uma vez e reaproveita a sessão para navegar por várias URLs do mesmo host, sempre pelo cliente HTTP do MATLAB.
 
 ```matlab
 F5BrowserTestApp
@@ -74,9 +65,7 @@ F5BrowserTestApp
 
 ### Interface
 
-- **Combo box de URL** (editável), pré-populado com endpoints de teste. Navega tanto ao
-  pressionar Enter sobre uma URL digitada quanto ao selecionar um item — ambos disparam o
-  mesmo `ValueChangedFcn`. URLs novas são acrescentadas ao histórico.
+- **Combo box de URL** (editável), pré-populado com endpoints de teste. Navega tanto ao   pressionar Enter sobre uma URL digitada quanto ao selecionar um item. URLs novas são acrescentadas ao histórico mas não serão recuperadas entre sessões.
 - **Rótulo de status**, à direita: `Conectado` / `Desconectado`.
 - **Área de conteúdo** (`uihtml`), ocupando o restante da figura.
 
@@ -95,15 +84,20 @@ o host for o mesmo, nenhuma nova autenticação ocorre.
 ### Download de arquivos
 
 Quando o último segmento do caminho da URL contém extensão — por exemplo
-`.../p-a2d86905--rfeye002126_260902_T161700.bin` — o conteúdo é gravado em disco em vez de
-renderizado. Abre-se um `uiputfile` já posicionado na pasta `Downloads` do usuário e com o
-nome sugerido pela própria URL (sanitizado contra separadores e caracteres inválidos). O
-download usa `readBytes`, que desliga a conversão de payload do `matlab.net.http` e devolve
-`uint8` — garantindo integridade do binário mesmo que o servidor rotule o arquivo como texto.
+`.../p-a2d86905--rfeye002126_260902_T161700.bin` — o conteúdo é gravado diretamente em disco,
+em vez de ser renderizado. Abre-se um `uiputfile` já posicionado na pasta `Downloads` do
+usuário e com o nome sugerido pela própria URL (sanitizado contra separadores e caracteres
+inválidos).
 
-O progresso é exibido na barra a partir do `Content-Length` da resposta. Se o servidor usar
-transferência *chunked*, o total é desconhecido e a barra permanece indeterminada, mostrando
-apenas quantos MB já foram recebidos.
+A implementação atual usa `ws.auth.F5Session.downloadToFile`, que mantém a sessão autenticada,
+abre a resposta HTTP com o cookie do F5 e grava o payload em blocos em um arquivo local. Isso
+permite baixar arquivos grandes sem materializar o conteúdo inteiro em memória no MATLAB.
+
+O progresso é exibido na barra a partir do `Content-Length` da resposta. Quando o total não é
+conhecido, a barra fica indeterminada e informa apenas quantos MB foram recebidos até o momento.
+Além disso, o app salva um arquivo de log ao lado do download (`<arquivo>.log`) com URL,
+identificação da sessão, código HTTP, `Content-Length`, bytes recebidos e stack de erro quando
+houver falha.
 
 Endpoints sem extensão no último segmento (`debug/headers`, `server/runtime-health`) seguem
 sendo renderizados normalmente.
