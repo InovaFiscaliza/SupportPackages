@@ -255,6 +255,12 @@ classdef F5Session < handle
 
         %-----------------------------------------------------------------%
         function info = streamToFile(obj, url, filePath, progressFcn, resumeOffset)
+            % Usa matlab.net.http (mesma API já empregada em sendRequest) em vez
+            % de java.net/java.io: FileConsumer grava o corpo da resposta em
+            % disco em blocos, sem o risco do antigo código Java, cujas leituras
+            % em java.io.InputStream.read(byte[]) eram descartadas silenciosamente
+            % (arrays MATLAB passados a métodos Java são convertidos por valor).
+
             arguments
                 obj
                 url          (1,:) char
@@ -263,39 +269,20 @@ classdef F5Session < handle
                 resumeOffset (1,1) double = 0
             end
 
-            connection = java.net.URL(url).openConnection();
-            connection.setConnectTimeout(30000);
-            connection.setReadTimeout(30000);
-            connection.setInstanceFollowRedirects(false);
-            connection.setRequestProperty('Cookie', obj.CookieHeader);
+            header = matlab.net.http.HeaderField('Cookie', obj.CookieHeader);
             if resumeOffset > 0
-                connection.setRequestProperty('Range', sprintf('bytes=%d-', resumeOffset));
+                header(end+1) = matlab.net.http.HeaderField('Range', sprintf('bytes=%d-', resumeOffset));
+            end
+            request = matlab.net.http.RequestMessage('GET', header);
+
+            % MaxRedirects=0 mantém visível o 302 do F5 para a página de login.
+            options = matlab.net.http.HTTPOptions('MaxRedirects', 0, 'ConnectTimeout', 30);
+            if ~isempty(progressFcn)
+                options.ProgressMonitorFcn = @() ws.auth.DownloadProgressMonitor(progressFcn);
+                options.UseProgressMonitor = true;
             end
 
-            statusCode = connection.getResponseCode();
-            statusMessage = char(connection.getResponseMessage());
-            contentLength = double(connection.getContentLengthLong());
-            if contentLength < 0
-                contentLength = [];
-            end
-
-            % Servidor pode ignorar o Range e devolver o conteúdo inteiro (200);
-            % nesse caso não há como retomar e o arquivo parcial é descartado.
-            resumed = resumeOffset > 0 && statusCode == 206;
-            if resumeOffset > 0 && statusCode == 200
-                resumeOffset = 0;
-            end
-
-            info = struct('StatusCode', statusCode, ...
-                          'StatusMessage', statusMessage, ...
-                          'ContentLength', contentLength);
-            if statusCode < 200 || statusCode >= 300
-                return
-            end
-
-            inputStream = connection.getInputStream();
-            inputCleanup = onCleanup(@() inputStream.close());
-            if resumed
+            if resumeOffset > 0
                 fileID = fopen(filePath, 'ab');
             else
                 fileID = fopen(filePath, 'wb');
@@ -305,43 +292,35 @@ classdef F5Session < handle
             end
             fileCleanup = onCleanup(@() fclose(fileID));
 
-            totalLength = contentLength;
-            if resumed && ~isempty(contentLength)
-                totalLength = contentLength + resumeOffset;
+            consumer = matlab.net.http.io.FileConsumer(fileID);
+            response = request.send(url, options, consumer);
+
+            statusCode = double(response.StatusCode);
+            contentLengthField = response.getFields('Content-Length');
+            if isempty(contentLengthField)
+                contentLength = [];
+            else
+                contentLength = str2double(contentLengthField.Value);
             end
 
-            % InputStream.read(byte[]) does NOT work here: MATLAB arrays passed
-            % to Java methods are converted by value, so the filled bytes never
-            % come back into a plain MATLAB buffer (the file would be padded
-            % with zeros). A channel + ByteBuffer is used instead because
-            % ByteBuffer.array() hands the data back as an actual return value.
-            channel = java.nio.channels.Channels.newChannel(inputStream);
-            byteBuffer = java.nio.ByteBuffer.allocate(1024*1024);
-            bytesReceived = resumeOffset * resumed;
-            while true
-                byteBuffer.clear();
-                bytesRead = channel.read(byteBuffer);
-                if bytesRead < 0
-                    break
-                end
-                if bytesRead == 0
-                    continue
-                end
-
-                % typecast (not uint8()) preserves bytes >= 128: uint8() would
-                % saturate Java's signed byte range instead of reinterpreting it.
-                chunk = typecast(byteBuffer.array(), 'uint8');
-                fwrite(fileID, chunk(1:bytesRead), 'uint8');
-                bytesReceived = bytesReceived + bytesRead;
-                if ~isempty(progressFcn)
-                    try
-                        progressFcn(bytesReceived, totalLength)
-                    catch
-                    end
-                end
+            info = struct('StatusCode', statusCode, ...
+                          'StatusMessage', char(response.StatusCode), ...
+                          'ContentLength', contentLength);
+            if statusCode < 200 || statusCode >= 300
+                return
             end
 
-            info.BytesReceived = bytesReceived;
+            % Servidor pode ignorar o Range e devolver o conteúdo inteiro (200);
+            % nesse caso o arquivo ficou com o conteúdo completo duplicado após
+            % os bytes já gravados, então é descartado e o download reinicia.
+            if resumeOffset > 0 && statusCode == 200
+                fileCleanup = []; %#ok<NASGU> fecha o arquivo antes de apagá-lo
+                delete(filePath)
+                info = streamToFile(obj, url, filePath, progressFcn, 0);
+                return
+            end
+
+            info.BytesReceived = ftell(fileID) - resumeOffset;
         end
 
         %-----------------------------------------------------------------%
