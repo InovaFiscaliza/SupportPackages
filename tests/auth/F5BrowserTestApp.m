@@ -267,7 +267,8 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
                 homeFolder = getenv('HOME');
             end
 
-            folderName = fullfile(homeFolder, 'Downloads');
+            % folderName = fullfile(homeFolder, 'Downloads');
+            folderName = 'c:\GitHub\SupportPackages\tests\auth';
             if ~isfolder(folderName)
                 folderName = homeFolder;
             end
