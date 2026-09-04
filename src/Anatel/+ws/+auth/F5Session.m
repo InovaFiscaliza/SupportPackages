@@ -167,9 +167,15 @@ classdef F5Session < handle
         end
 
         %-----------------------------------------------------------------%
-        function info = downloadToFile(obj, url, filePath, autoReauthenticate, progressFcn)
+        function info = downloadToFile(obj, url, filePath, autoReauthenticate, progressFcn, maxRetries, retryDelay)
             % DOWNLOADTOFILE Transfere o payload em blocos diretamente para disco.
             % Evita manter arquivos grandes inteiros na memória do MATLAB.
+            %
+            % Em caso de queda de conexão durante a transferência, a operação
+            % é reiniciada automaticamente (até maxRetries vezes, com espera
+            % crescente de retryDelay segundos). O download é retomado a
+            % partir dos bytes já gravados via cabeçalho Range, caso o
+            % servidor suporte; caso contrário, reinicia do zero.
 
             arguments
                 obj
@@ -177,10 +183,12 @@ classdef F5Session < handle
                 filePath           (1,:) char {mustBeNonempty}
                 autoReauthenticate (1,1) logical = true
                 progressFcn                      = []
+                maxRetries         (1,1) double {mustBeInteger, mustBeNonnegative} = 3
+                retryDelay         (1,1) double {mustBeNonnegative} = 2
             end
 
             assertAuthenticated(obj)
-            info = streamToFile(obj, url, filePath, progressFcn);
+            info = streamToFileWithRetry(obj, url, filePath, progressFcn, maxRetries, retryDelay);
 
             if (info.StatusCode >= 300 && info.StatusCode < 400) || info.StatusCode == 401 || info.StatusCode == 403
                 if ~autoReauthenticate
@@ -191,7 +199,7 @@ classdef F5Session < handle
                     delete(filePath)
                 end
                 login(obj)
-                info = streamToFile(obj, url, filePath, progressFcn);
+                info = streamToFileWithRetry(obj, url, filePath, progressFcn, maxRetries, retryDelay);
             end
 
             if info.StatusCode < 200 || info.StatusCode >= 300
@@ -218,18 +226,64 @@ classdef F5Session < handle
 
     methods (Access = private)
         %-----------------------------------------------------------------%
-        function info = streamToFile(obj, url, filePath, progressFcn)
+        function info = streamToFileWithRetry(obj, url, filePath, progressFcn, maxRetries, retryDelay)
+            % Reinicia a transferência (retomando via Range quando possível)
+            % até maxRetries vezes se a conexão cair no meio do download.
+            % Erros HTTP (4xx/5xx) não geram exceção aqui - streamToFile os
+            % devolve em info.StatusCode - e portanto não são reexecutados.
+
+            attempt = 0;
+            while true
+                resumeOffset = 0;
+                if isfile(filePath)
+                    fileInfo = dir(filePath);
+                    resumeOffset = fileInfo.bytes;
+                end
+
+                try
+                    info = streamToFile(obj, url, filePath, progressFcn, resumeOffset);
+                    return
+                catch downloadError
+                    if strcmp(downloadError.identifier, 'ws:auth:F5Session:fileOpenFailed') || attempt >= maxRetries
+                        rethrow(downloadError)
+                    end
+                    attempt = attempt + 1;
+                    pause(retryDelay * attempt)
+                end
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function info = streamToFile(obj, url, filePath, progressFcn, resumeOffset)
+            arguments
+                obj
+                url          (1,:) char
+                filePath     (1,:) char
+                progressFcn
+                resumeOffset (1,1) double = 0
+            end
+
             connection = java.net.URL(url).openConnection();
             connection.setConnectTimeout(30000);
             connection.setReadTimeout(30000);
             connection.setInstanceFollowRedirects(false);
             connection.setRequestProperty('Cookie', obj.CookieHeader);
+            if resumeOffset > 0
+                connection.setRequestProperty('Range', sprintf('bytes=%d-', resumeOffset));
+            end
 
             statusCode = connection.getResponseCode();
             statusMessage = char(connection.getResponseMessage());
             contentLength = double(connection.getContentLengthLong());
             if contentLength < 0
                 contentLength = [];
+            end
+
+            % Servidor pode ignorar o Range e devolver o conteúdo inteiro (200);
+            % nesse caso não há como retomar e o arquivo parcial é descartado.
+            resumed = resumeOffset > 0 && statusCode == 206;
+            if resumeOffset > 0 && statusCode == 200
+                resumeOffset = 0;
             end
 
             info = struct('StatusCode', statusCode, ...
@@ -241,25 +295,47 @@ classdef F5Session < handle
 
             inputStream = connection.getInputStream();
             inputCleanup = onCleanup(@() inputStream.close());
-            fileID = fopen(filePath, 'wb');
+            if resumed
+                fileID = fopen(filePath, 'ab');
+            else
+                fileID = fopen(filePath, 'wb');
+            end
             if fileID == -1
                 error('ws:auth:F5Session:fileOpenFailed', 'Não foi possível gravar em "%s".', filePath)
             end
             fileCleanup = onCleanup(@() fclose(fileID));
 
-            buffer = zeros(1, 1024*1024, 'uint8');
-            bytesReceived = 0;
+            totalLength = contentLength;
+            if resumed && ~isempty(contentLength)
+                totalLength = contentLength + resumeOffset;
+            end
+
+            % InputStream.read(byte[]) does NOT work here: MATLAB arrays passed
+            % to Java methods are converted by value, so the filled bytes never
+            % come back into a plain MATLAB buffer (the file would be padded
+            % with zeros). A channel + ByteBuffer is used instead because
+            % ByteBuffer.array() hands the data back as an actual return value.
+            channel = java.nio.channels.Channels.newChannel(inputStream);
+            byteBuffer = java.nio.ByteBuffer.allocate(1024*1024);
+            bytesReceived = resumeOffset * resumed;
             while true
-                bytesRead = inputStream.read(buffer, 0, numel(buffer));
+                byteBuffer.clear();
+                bytesRead = channel.read(byteBuffer);
                 if bytesRead < 0
                     break
                 end
+                if bytesRead == 0
+                    continue
+                end
 
-                fwrite(fileID, buffer(1:bytesRead), 'uint8');
+                % typecast (not uint8()) preserves bytes >= 128: uint8() would
+                % saturate Java's signed byte range instead of reinterpreting it.
+                chunk = typecast(byteBuffer.array(), 'uint8');
+                fwrite(fileID, chunk(1:bytesRead), 'uint8');
                 bytesReceived = bytesReceived + bytesRead;
                 if ~isempty(progressFcn)
                     try
-                        progressFcn(bytesReceived, contentLength)
+                        progressFcn(bytesReceived, totalLength)
                     catch
                     end
                 end
