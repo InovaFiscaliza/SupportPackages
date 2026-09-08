@@ -171,49 +171,9 @@ classdef F5Session < handle
         end
 
         %-----------------------------------------------------------------%
-        function info = downloadToFile(obj, url, filePath, autoReauthenticate, progressFcn, maxRetries, retryDelay)
-            % DOWNLOADTOFILE Transfers the payload in blocks directly to disk.
-            % Avoids keeping large files entirely in MATLAB's memory.
-            %
-            % In case of connection drop during transfer, the operation
-            % is automatically restarted (up to maxRetries times, with increasing
-            % wait of retryDelay seconds). The download resumes from
-            % already written bytes via Range header, if the
-            % server supports it; otherwise, restarts from zero.
-
-            arguments
-                obj
-                url                (1,:) char {mustBeNonempty}
-                filePath           (1,:) char {mustBeNonempty}
-                autoReauthenticate (1,1) logical = true
-                progressFcn                      = []
-                maxRetries         (1,1) double {mustBeInteger, mustBeNonnegative} = 3
-                retryDelay         (1,1) double {mustBeNonnegative} = 2
-            end
-
+        function context = getDownloadContext(obj)
             assertAuthenticated(obj)
-            info = streamToFileWithRetry(obj, url, filePath, progressFcn, maxRetries, retryDelay);
-
-            if (info.StatusCode >= 300 && info.StatusCode < 400) || info.StatusCode == 401 || info.StatusCode == 403
-                if ~autoReauthenticate
-                    error('ws:auth:F5Session:sessionExpired', '%s', ...
-                          ws.auth.getMessage('auth:F5Session:sessionExpired'))
-                end
-
-                if isfile(filePath)
-                    delete(filePath)
-                end
-                login(obj)
-                info = streamToFileWithRetry(obj, url, filePath, progressFcn, maxRetries, retryDelay);
-            end
-
-            if info.StatusCode < 200 || info.StatusCode >= 300
-                if isfile(filePath)
-                    delete(filePath)
-                end
-                error('ws:auth:F5Session:httpError', '%s', ...
-                      ws.auth.getMessage('auth:F5Session:httpError', info.StatusCode, info.StatusMessage))
-            end
+            context = struct('CookieHeader', obj.CookieHeader);
         end
 
         %-----------------------------------------------------------------%
@@ -231,105 +191,6 @@ classdef F5Session < handle
 
 
     methods (Access = private)
-        %-----------------------------------------------------------------%
-        function info = streamToFileWithRetry(obj, url, filePath, progressFcn, maxRetries, retryDelay)
-            % Restarts the transfer (resuming via Range when possible)
-            % up to maxRetries times if the connection drops during download.
-            % HTTP errors (4xx/5xx) do not generate exceptions here - streamToFile
-            % returns them in info.StatusCode - and therefore are not re-executed.
-
-            attempt = 0;
-            while true
-                resumeOffset = 0;
-                if isfile(filePath)
-                    fileInfo = dir(filePath);
-                    resumeOffset = fileInfo.bytes;
-                end
-
-                try
-                    info = streamToFile(obj, url, filePath, progressFcn, resumeOffset);
-                    return
-                catch downloadError
-                    if strcmp(downloadError.identifier, 'ws:auth:F5Session:fileOpenFailed') || attempt >= maxRetries
-                        rethrow(downloadError)
-                    end
-                    attempt = attempt + 1;
-                    pause(retryDelay * attempt)
-                end
-            end
-        end
-
-        %-----------------------------------------------------------------%
-        function info = streamToFile(obj, url, filePath, progressFcn, resumeOffset)
-            % Uses matlab.net.http (same API already used in sendRequest) instead of
-            % java.net/java.io: FileConsumer writes the response body to
-            % disk in blocks, without the risk of the old Java code, whose readings
-            % in java.io.InputStream.read(byte[]) were silently discarded
-            % (MATLAB arrays passed to Java methods are converted by value).
-
-            arguments
-                obj
-                url          (1,:) char
-                filePath     (1,:) char
-                progressFcn
-                resumeOffset (1,1) double = 0
-            end
-
-            header = matlab.net.http.HeaderField('Cookie', obj.CookieHeader);
-            if resumeOffset > 0
-                header(end+1) = matlab.net.http.HeaderField('Range', sprintf('bytes=%d-', resumeOffset));
-            end
-            request = matlab.net.http.RequestMessage('GET', header);
-
-            % MaxRedirects=0 keeps the F5's 302 to the login page visible.
-            options = matlab.net.http.HTTPOptions('MaxRedirects', 0, 'ConnectTimeout', 30);
-            if ~isempty(progressFcn)
-                options.ProgressMonitorFcn = @() ws.auth.DownloadProgressMonitor(progressFcn);
-                options.UseProgressMonitor = true;
-            end
-
-            if resumeOffset > 0
-                fileID = fopen(filePath, 'ab');
-            else
-                fileID = fopen(filePath, 'wb');
-            end
-            if fileID == -1
-                error('ws:auth:F5Session:fileOpenFailed', '%s', ...
-                      ws.auth.getMessage('auth:F5Session:fileOpenFailed', filePath))
-            end
-            fileCleanup = onCleanup(@() fclose(fileID));
-
-            consumer = matlab.net.http.io.FileConsumer(fileID);
-            response = request.send(url, options, consumer);
-
-            statusCode = double(response.StatusCode);
-            contentLengthField = response.getFields('Content-Length');
-            if isempty(contentLengthField)
-                contentLength = [];
-            else
-                contentLength = str2double(contentLengthField.Value);
-            end
-
-            info = struct('StatusCode', statusCode, ...
-                          'StatusMessage', char(response.StatusCode), ...
-                          'ContentLength', contentLength);
-            if statusCode < 200 || statusCode >= 300
-                return
-            end
-
-            % Server may ignore Range and return the entire content (200);
-            % in this case the file ended up with the complete content duplicated after
-            % the bytes already written, so it is discarded and the download restarts.
-            if resumeOffset > 0 && statusCode == 200
-                fileCleanup = []; %#ok<NASGU> closes the file before deleting it
-                delete(filePath)
-                info = streamToFile(obj, url, filePath, progressFcn, 0);
-                return
-            end
-
-            info.BytesReceived = ftell(fileID) - resumeOffset;
-        end
-
         %-----------------------------------------------------------------%
         function openBrowser(obj)
             if ~exist('matlab.internal.webwindow', 'class')

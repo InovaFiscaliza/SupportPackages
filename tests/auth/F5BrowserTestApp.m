@@ -12,6 +12,17 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
         URLDropDown matlab.ui.control.DropDown
         StatusLabel matlab.ui.control.Label
         HTMLView    matlab.ui.control.HTML
+        DownloadDialog
+        DownloadStatusLabel
+        DownloadBytesLabel
+        DownloadProgressTrack
+        DownloadProgressFill
+        DownloadFileName = ''
+        Downloader
+        PauseButton
+        StopButton
+        IsDownloadPaused = false
+        IsDownloadStopped = false
     end
 
     properties (Constant, Access = private)
@@ -41,6 +52,11 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
 
         %-----------------------------------------------------------------%
         function delete(app)
+            app.IsDownloadStopped = true;
+            if ~isempty(app.Downloader) && isvalid(app.Downloader)
+                delete(app.Downloader)
+            end
+            app.closeDownloadDialog()
             delete(app.Session)
 
             if ~isempty(app.UIFigure) && isvalid(app.UIFigure)
@@ -109,6 +125,11 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             % URLs cujo último segmento tem extensão são baixadas para disco,
             % em vez de renderizadas.
 
+            if ~isempty(app.Downloader) && isvalid(app.Downloader) && app.Downloader.IsRunning
+                uialert(app.UIFigure, 'Já há um download em andamento.', 'Download')
+                return
+            end
+
             [fileName, folderName] = uiputfile('*.*', 'Salvar arquivo', fullfile(app.downloadFolder(), app.fileNameFromURL(url)));
             figure(app.UIFigure)
 
@@ -116,31 +137,210 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
                 return
             end
 
-            progressDialog = uiprogressdlg(app.UIFigure, 'Indeterminate', 'on', 'Message', sprintf('Baixando %s', fileName));
-            progressCleanup = onCleanup(@() close(progressDialog));
+            filePath = resolveExistingFile(app, fullfile(folderName, fileName));
+            if isempty(filePath)
+                return
+            end
+            [~, baseName, extension] = fileparts(filePath);
 
-            filePath = fullfile(folderName, fileName);
+            app.createDownloadDialog([baseName, extension])
+
             logPath = [filePath, '.log'];
             F5BrowserTestApp.writeDownloadLog(logPath, sprintf('START\nURL: %s\nDestination: %s\nSession: %s\n', ...
                                                             url, filePath, app.sessionDebugText()));
-            try
-                info = app.Session.downloadToFile(url, filePath, true, ...
-                                                  @(receivedBytes, totalBytes) F5BrowserTestApp.updateProgress(progressDialog, receivedBytes, totalBytes));
-                F5BrowserTestApp.writeDownloadLog(logPath, sprintf('RESPONSE: HTTP %d %s\nContent-Length: %s\nBytes received: %d\nEND\n', ...
-                                                                  info.StatusCode, info.StatusMessage, F5BrowserTestApp.formatBytes(info.ContentLength), info.BytesReceived));
-            catch ME
-                if isfile(filePath)
-                    delete(filePath)
+
+            % O download roda em backgroundPool: esta função retorna
+            % imediatamente e a aplicação segue utilizável.
+            app.Downloader = ws.auth.FileDownload(app.Session, url, filePath);
+            app.Downloader.ProgressFcn  = @(receivedBytes, totalBytes) app.updateProgress(receivedBytes, totalBytes);
+            app.Downloader.CompletedFcn = @(info) app.onDownloadCompleted(info, logPath);
+            app.Downloader.ErrorFcn     = @(ME) app.onDownloadFailed(ME, filePath, logPath);
+            start(app.Downloader)
+        end
+
+        %-----------------------------------------------------------------%
+        function onDownloadCompleted(app, info, logPath)
+            if ~isvalid(app)
+                return
+            end
+            F5BrowserTestApp.writeDownloadLog(logPath, sprintf('Bytes received: %d\nEND\n', info.BytesReceived));
+            app.closeDownloadDialog()
+            render(app, sprintf('Arquivo salvo em:\n%s', info.FilePath))
+        end
+
+        %-----------------------------------------------------------------%
+        function onDownloadFailed(app, exception, filePath, logPath)
+            if ~isvalid(app)
+                return
+            end
+            F5BrowserTestApp.writeDownloadLog(logPath, sprintf('ERROR\n%s\nEND\n', ...
+                                                               getReport(exception, 'extended', 'hyperlinks', 'off')));
+            app.closeDownloadDialog()
+
+            % O arquivo parcial é preservado para permitir a retomada.
+            uialert(app.UIFigure, ...
+                    F5BrowserTestApp.downloadErrorReport(exception, filePath, logPath), ...
+                    'Falha no download')
+        end
+
+        %-----------------------------------------------------------------%
+        function filePath = resolveExistingFile(app, filePath)
+            % Um arquivo já existente pode ser um download interrompido: o
+            % usuário decide entre retomar, recomeçar ou salvar em outro nome.
+
+            while isfile(filePath)
+                fileInfo = dir(filePath);
+                choice = uiconfirm(app.UIFigure, ...
+                                   sprintf(['O arquivo "%s" já existe (%s gravados).\n\n', ...
+                                            'Continuar retoma o download a partir do que já está em disco.'], ...
+                                           filePath, F5BrowserTestApp.formatBytes(fileInfo.bytes)), ...
+                                   'Arquivo existente', ...
+                                   'Options', {'Continuar', 'Reiniciar', 'Outro nome', 'Cancelar'}, ...
+                                   'DefaultOption', 1, 'CancelOption', 4);
+
+                switch choice
+                    case 'Continuar'
+                        return
+
+                    case 'Reiniciar'
+                        delete(filePath)
+                        return
+
+                    case 'Outro nome'
+                        [fileName, folderName] = uiputfile('*.*', 'Salvar arquivo', filePath);
+                        figure(app.UIFigure)
+                        if isequal(fileName, 0)
+                            filePath = '';
+                            return
+                        end
+                        filePath = fullfile(folderName, fileName);
+
+                    otherwise
+                        filePath = '';
+                        return
                 end
+            end
+        end
 
-                F5BrowserTestApp.writeDownloadLog(logPath, sprintf('ERROR\n%s\nEND\n', ...
-                                                                   getReport(ME, 'extended', 'hyperlinks', 'off')));
+        %-----------------------------------------------------------------%
+        function createDownloadDialog(app, fileName)
+            app.IsDownloadPaused = false;
+            app.IsDownloadStopped = false;
+            app.DownloadFileName = fileName;
 
-                error('F5BrowserTestApp:downloadFailed', ...
-                      '%s', F5BrowserTestApp.downloadErrorReport(ME, filePath, logPath))
+            app.DownloadDialog = uifigure('Name', 'Download', ...
+                                          'Position', [480, 420, 420, 155], ...
+                                          'Resize', 'off', ...
+                                          'CloseRequestFcn', @(src, ~) app.stopDownload(src));
+            gridLayout = uigridlayout(app.DownloadDialog, [3, 3]);
+            gridLayout.RowHeight = {22, 18, 30};
+            gridLayout.ColumnWidth = {'1x', 90, 90};
+
+            app.DownloadStatusLabel = uilabel(gridLayout, ...
+                                              'Text', sprintf('Baixando %s', fileName), ...
+                                              'WordWrap', 'on');
+            app.DownloadStatusLabel.Layout.Row = 1;
+            app.DownloadStatusLabel.Layout.Column = [1, 3];
+
+            % Barra simples: uma faixa azul preenchendo a trilha, sem escala
+            % nem marcações (uigauge desenha régua e ponteiro).
+            app.DownloadProgressTrack = uipanel(gridLayout, ...
+                                                'BorderType', 'line', ...
+                                                'BackgroundColor', [1, 1, 1]);
+            app.DownloadProgressTrack.Layout.Row = 2;
+            app.DownloadProgressTrack.Layout.Column = [1, 3];
+
+            app.DownloadProgressFill = uipanel(app.DownloadProgressTrack, ...
+                                               'BorderType', 'none', ...
+                                               'BackgroundColor', [0, 0.447, 0.741], ...
+                                               'Units', 'pixels', ...
+                                               'Position', [0, 0, 0, 1]);
+
+            app.DownloadBytesLabel = uilabel(gridLayout, 'Text', '');
+            app.DownloadBytesLabel.Layout.Row = 3;
+            app.DownloadBytesLabel.Layout.Column = 1;
+
+            app.PauseButton = uibutton(gridLayout, 'Text', 'Pausar', ...
+                                       'ButtonPushedFcn', @(~, ~) app.toggleDownloadPause());
+            app.PauseButton.Layout.Row = 3;
+            app.PauseButton.Layout.Column = 2;
+
+            app.StopButton = uibutton(gridLayout, 'Text', 'Parar', ...
+                                      'ButtonPushedFcn', @(src, ~) app.stopDownload(src));
+            app.StopButton.Layout.Row = 3;
+            app.StopButton.Layout.Column = 3;
+            drawnow
+        end
+
+        %-----------------------------------------------------------------%
+        function updateProgress(app, receivedBytes, totalBytes)
+            % Sem Content-Length não há total conhecido: a barra fica vazia e
+            % apenas o volume recebido é informado.
+
+            if ~isvalid(app)
+                return
+            end
+            if isempty(app.DownloadProgressTrack) || ~isvalid(app.DownloadProgressTrack)
+                return
             end
 
-            render(app, sprintf('Arquivo salvo em:\n%s', filePath))
+            if isempty(totalBytes) || totalBytes <= 0
+                fraction = 0;
+                app.DownloadBytesLabel.Text = F5BrowserTestApp.formatBytes(receivedBytes);
+            else
+                fraction = min(receivedBytes/totalBytes, 1);
+                app.DownloadBytesLabel.Text = sprintf('%s / %s', ...
+                                                      F5BrowserTestApp.formatBytes(receivedBytes), ...
+                                                      F5BrowserTestApp.formatBytes(totalBytes));
+            end
+
+            trackSize = app.DownloadProgressTrack.InnerPosition;
+            app.DownloadProgressFill.Position = [0, 0, fraction*trackSize(3), trackSize(4)];
+
+            drawnow limitrate
+        end
+
+        %-----------------------------------------------------------------%
+        function toggleDownloadPause(app)
+            if app.IsDownloadStopped
+                return
+            end
+
+            app.IsDownloadPaused = ~app.IsDownloadPaused;
+            if app.IsDownloadPaused
+                pause(app.Downloader)
+                app.PauseButton.Text = 'Continuar';
+                app.DownloadStatusLabel.Text = sprintf('Pausado - %s', app.DownloadFileName);
+            else
+                resume(app.Downloader)
+                app.PauseButton.Text = 'Pausar';
+                app.DownloadStatusLabel.Text = sprintf('Baixando %s', app.DownloadFileName);
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function stopDownload(app, ~)
+            app.IsDownloadStopped = true;
+            app.IsDownloadPaused = false;
+
+            if ~isempty(app.Downloader) && isvalid(app.Downloader)
+                stop(app.Downloader)
+            end
+            app.closeDownloadDialog()
+        end
+
+        %-----------------------------------------------------------------%
+        function closeDownloadDialog(app)
+            if ~isempty(app.DownloadDialog) && isvalid(app.DownloadDialog)
+                delete(app.DownloadDialog)
+            end
+            app.DownloadDialog = [];
+            app.DownloadStatusLabel = [];
+            app.DownloadBytesLabel = [];
+            app.DownloadProgressTrack = [];
+            app.DownloadProgressFill = [];
+            app.PauseButton = [];
+            app.StopButton = [];
         end
 
         %-----------------------------------------------------------------%
@@ -214,26 +414,6 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
 
 
     methods (Static, Access = private)
-        %-----------------------------------------------------------------%
-        function updateProgress(progressDialog, receivedBytes, totalBytes)
-            % Sem Content-Length não há total conhecido: mantém a barra
-            % indeterminada e informa apenas o recebido.
-
-            if ~isvalid(progressDialog)
-                return
-            end
-
-            if isempty(totalBytes) || totalBytes <= 0
-                progressDialog.Message = sprintf('Baixando... %.1f MB', receivedBytes/2^20);
-            else
-                progressDialog.Indeterminate = 'off';
-                progressDialog.Value   = min(receivedBytes/totalBytes, 1);
-                progressDialog.Message = sprintf('%.1f de %.1f MB', receivedBytes/2^20, totalBytes/2^20);
-            end
-
-            drawnow limitrate
-        end
-
         %-----------------------------------------------------------------%
         function tf = isDownloadURL(url)
             tf = false;
