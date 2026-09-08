@@ -6,6 +6,8 @@ Módulo compartilhado de autenticação para aplicações MATLAB desktop que con
 |---|---|
 | `F5Session.m` | Sessão autenticada reutilizável (`ws.auth.F5Session`) |
 | `DownloadProgressMonitor.m` | Reporta o andamento das transferências ao chamador |
+| `getMessage.m` | Carrega as mensagens localizadas do módulo |
+| `resources/{en,pt}/catalog.m` | Catálogos de mensagens em inglês e português |
 
 ## Por que este módulo existe
 
@@ -56,6 +58,47 @@ Pontos-chave da implementação:
 - Usuário com acesso autorizado ao serviço para concluir o login e aprovar o push a cada nova sessão.
 
 A aplicação publicada atrás do APM deve estar configurada como *SP-initiated SAML 2.0*, com o ACS no próprio F5 e o repasse de identidade ao backend por cabeçalhos `X-User-*`.
+
+## Aplicações compiladas
+
+O módulo carrega os catálogos em `+ws/+auth/resources` durante a execução. O MATLAB Compiler não garante a inclusão automática desses arquivos porque o caminho é resolvido dinamicamente. Cada aplicação compilada deve, portanto, adicionar explicitamente essa pasta aos arquivos do pacote.
+
+O próprio módulo não pode configurar essa dependência: as opções de empacotamento pertencem ao ponto de entrada da aplicação consumidora. No script de compilação, localize a pasta sem depender do caminho do repositório:
+
+```matlab
+authFolder = fileparts(which('ws.auth.F5Session'));
+authResources = fullfile(authFolder, 'resources');
+```
+
+Com `compiler.build.standaloneApplication`:
+
+```matlab
+compiler.build.standaloneApplication(appFile, ...
+    'AdditionalFiles', authResources);
+```
+
+Se a aplicação já inclui outros arquivos adicionais, preserve-os na mesma lista:
+
+```matlab
+additionalFiles = [string(existingAdditionalFiles), string(authResources)];
+compiler.build.standaloneApplication(appFile, ...
+    'AdditionalFiles', additionalFiles);
+```
+
+Com `mcc`:
+
+```matlab
+mcc('-m', appFile, '-a', authResources)
+```
+
+No Application Compiler, adicione `authResources` em **Files installed for your end user**. A pasta deve conter os dois arquivos abaixo no pacote final:
+
+```text
+resources/en/catalog.m
+resources/pt/catalog.m
+```
+
+Essa inclusão deve ser repetida no projeto ou script de compilação de cada aplicação que utiliza `ws.auth.F5Session`.
 
 ## Uso
 
