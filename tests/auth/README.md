@@ -89,12 +89,12 @@ em vez de ser renderizado. Abre-se um `uiputfile` já posicionado na pasta `Down
 usuário e com o nome sugerido pela própria URL (sanitizado contra separadores e caracteres
 inválidos).
 
-A implementação atual usa `ws.auth.F5Session.downloadToFile`, que mantém a sessão autenticada,
-abre a resposta HTTP com o cookie do F5 e grava o payload em blocos em um arquivo local. Isso
-permite baixar arquivos grandes sem materializar o conteúdo inteiro em memória no MATLAB.
+A implementação atual usa `ws.auth.FileDownload`, que executa as requisições por blocos em
+`backgroundPool`. A interface permanece livre para outras requisições durante o download, e um
+arquivo parcial pode ser retomado a partir do ponto em que foi interrompido.
 
-O progresso é exibido na barra a partir do `Content-Length` da resposta. Quando o total não é
-conhecido, a barra fica indeterminada e informa apenas quantos MB foram recebidos até o momento.
+O progresso é exibido na barra a partir do tamanho total informado pelo servidor. O contador mostra
+os bytes recebidos e o total; quando o total não é conhecido, mostra apenas os bytes recebidos.
 Além disso, o app salva um arquivo de log ao lado do download (`<arquivo>.log`) com URL,
 identificação da sessão, código HTTP, `Content-Length`, bytes recebidos e stack de erro quando
 houver falha.

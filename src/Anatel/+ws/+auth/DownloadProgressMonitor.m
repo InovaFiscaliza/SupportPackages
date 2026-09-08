@@ -32,7 +32,11 @@ classdef DownloadProgressMonitor < matlab.net.http.ProgressMonitor
             %              2. Maximum expected value (total bytes expected)
 
             arguments
-                callback (1,1) function_handle
+                callback = []
+            end
+
+            if isempty(callback)
+                callback = @(~, ~) [];
             end
 
             obj.Interval = 0.25;
@@ -83,8 +87,8 @@ classdef DownloadProgressMonitor < matlab.net.http.ProgressMonitor
             % notifyCaller Notifies the callback function with current progress
             %
             % Calls the callback function with the current progress values if
-            % the direction is Response. Any errors during callback execution
-            % are silently ignored.
+            % the direction is Response. Callback errors remain isolated, except
+            % for the explicit cancellation signal used by controlled downloads.
             %
             % Input:
             %   obj - The DownloadProgressMonitor object
