@@ -52,7 +52,8 @@ classdef F5Session < handle
             end
 
             if ~startsWith(loginURL, 'https://', 'IgnoreCase', true)
-                error('ws:auth:F5Session:insecureURL', 'Login URL must use HTTPS.')
+                error('ws:auth:F5Session:insecureURL', '%s', ...
+                      ws.auth.getMessage('auth:F5Session:insecureURL'))
             end
             obj.LoginURL = loginURL;
         end
@@ -88,11 +89,13 @@ classdef F5Session < handle
             startTime = tic;
             while true
                 if ~isBrowserAlive(obj)
-                    error('ws:auth:F5Session:windowClosed', 'Authentication window closed before login completion.')
+                    error('ws:auth:F5Session:windowClosed', '%s', ...
+                          ws.auth.getMessage('auth:F5Session:windowClosed'))
                 end
 
                 if toc(startTime) > timeout
-                    error('ws:auth:F5Session:timeout', 'Time expired (%d s) waiting for login completion.', round(timeout))
+                    error('ws:auth:F5Session:timeout', '%s', ...
+                          ws.auth.getMessage('auth:F5Session:timeout', round(timeout)))
                 end
 
                 state = probeBrowser(obj);
@@ -162,7 +165,8 @@ classdef F5Session < handle
             [data, response] = fetch(obj, url, false, autoReauthenticate, progressFcn);
 
             if ~isa(data, 'uint8')
-                error('ws:auth:F5Session:unexpectedPayload', 'Unexpected payload (%s) in raw reading.', class(data))
+                error('ws:auth:F5Session:unexpectedPayload', '%s', ...
+                      ws.auth.getMessage('auth:F5Session:unexpectedPayload', class(data)))
             end
         end
 
@@ -192,7 +196,8 @@ classdef F5Session < handle
 
             if (info.StatusCode >= 300 && info.StatusCode < 400) || info.StatusCode == 401 || info.StatusCode == 403
                 if ~autoReauthenticate
-                    error('ws:auth:F5Session:sessionExpired', 'F5 session expired or invalidated. Re-authenticate.')
+                    error('ws:auth:F5Session:sessionExpired', '%s', ...
+                          ws.auth.getMessage('auth:F5Session:sessionExpired'))
                 end
 
                 if isfile(filePath)
@@ -206,7 +211,8 @@ classdef F5Session < handle
                 if isfile(filePath)
                     delete(filePath)
                 end
-                error('ws:auth:F5Session:httpError', 'Request returned HTTP %d (%s).', info.StatusCode, info.StatusMessage)
+                error('ws:auth:F5Session:httpError', '%s', ...
+                      ws.auth.getMessage('auth:F5Session:httpError', info.StatusCode, info.StatusMessage))
             end
         end
 
@@ -288,7 +294,8 @@ classdef F5Session < handle
                 fileID = fopen(filePath, 'wb');
             end
             if fileID == -1
-                error('ws:auth:F5Session:fileOpenFailed', 'Could not write to "%s".', filePath)
+                error('ws:auth:F5Session:fileOpenFailed', '%s', ...
+                      ws.auth.getMessage('auth:F5Session:fileOpenFailed', filePath))
             end
             fileCleanup = onCleanup(@() fclose(fileID));
 
@@ -326,11 +333,12 @@ classdef F5Session < handle
         %-----------------------------------------------------------------%
         function openBrowser(obj)
             if ~exist('matlab.internal.webwindow', 'class')
-                error('ws:auth:F5Session:unsupportedRelease', 'matlab.internal.webwindow unavailable in this MATLAB version.')
+                error('ws:auth:F5Session:unsupportedRelease', '%s', ...
+                      ws.auth.getMessage('auth:F5Session:unsupportedRelease'))
             end
 
             obj.Browser = matlab.internal.webwindow(obj.LoginURL);
-            obj.Browser.Title = 'Authentication';
+            obj.Browser.Title = ws.auth.getMessage('auth:F5Session:authenticationWindowTitle');
             obj.Browser.CustomWindowClosingCallback = @(src, ~) src.close();
 
             screenSize = get(groot, 'ScreenSize');
@@ -437,7 +445,8 @@ classdef F5Session < handle
         %-----------------------------------------------------------------%
         function assertAuthenticated(obj)
             if ~obj.IsAuthenticated
-                error('ws:auth:F5Session:notAuthenticated', 'Session not authenticated. Execute login(session) first.')
+                error('ws:auth:F5Session:notAuthenticated', '%s', ...
+                      ws.auth.getMessage('auth:F5Session:notAuthenticated'))
             end
         end
 
@@ -452,19 +461,22 @@ classdef F5Session < handle
             response = sendRequest(obj, url, convertResponse, progressFcn);
             if ws.auth.F5Session.isSessionExpired(response)
                 if ~autoReauthenticate
-                    error('ws:auth:F5Session:sessionExpired', 'F5 session expired or invalidated. Re-authenticate.')
+                    error('ws:auth:F5Session:sessionExpired', '%s', ...
+                          ws.auth.getMessage('auth:F5Session:sessionExpired'))
                 end
 
                 login(obj)
                 response = sendRequest(obj, url, convertResponse, progressFcn);
 
                 if ws.auth.F5Session.isSessionExpired(response)
-                    error('ws:auth:F5Session:sessionExpired', 'F5 session expired or invalidated even after new authentication.')
+                    error('ws:auth:F5Session:sessionExpired', '%s', ...
+                          ws.auth.getMessage('auth:F5Session:sessionExpiredAfterAuth'))
                 end
             end
 
             if response.StatusCode ~= matlab.net.http.StatusCode.OK
-                error('ws:auth:F5Session:httpError', 'Request returned HTTP %d (%s).', double(response.StatusCode), char(response.StatusCode))
+                error('ws:auth:F5Session:httpError', '%s', ...
+                      ws.auth.getMessage('auth:F5Session:httpError', double(response.StatusCode), char(response.StatusCode)))
             end
             data = response.Body.Data;
         end
