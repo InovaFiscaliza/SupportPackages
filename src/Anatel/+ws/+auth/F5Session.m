@@ -1,25 +1,25 @@
 classdef F5Session < handle
 
     % ws.auth.F5Session
-    % Sessão autenticada em aplicações publicadas atrás do proxy reverso
-    % F5 BIG-IP APM (federação SAML 2.0 com Azure AD + MFA).
+    % Authenticated session in applications published behind the F5 BIG-IP APM
+    % reverse proxy (SAML 2.0 federation with Azure AD + MFA).
     %
-    % O login é SEMPRE interativo: uma janela de navegador embarcada
-    % (matlab.internal.webwindow, runtime CEF do próprio MATLAB) é aberta na
-    % URL protegida, o usuário completa o fluxo SAML e aprova o push do
-    % Microsoft Authenticator. Concluído o login, os cookies de sessão do F5
-    % (LastMRH_Session, F5_ST e demais presentes) são lidos via document.cookie
-    % e mantidos EXCLUSIVAMENTE EM MEMÓRIA, pelo tempo de vida deste objeto.
-    % Nada é gravado em disco nem reaproveitado entre execuções.
+    % Login is ALWAYS interactive: an embedded browser window
+    % (matlab.internal.webwindow, MATLAB's own CEF runtime) is opened at the
+    % protected URL, the user completes the SAML flow and approves the Microsoft
+    % Authenticator push. Once login is completed, the F5 session cookies
+    % (LastMRH_Session, F5_ST and others present) are read via document.cookie
+    % and maintained EXCLUSIVELY IN MEMORY, for the lifetime of this object.
+    % Nothing is written to disk or reused between executions.
     %
-    % Exemplo:
+    % Example:
     %   session = ws.auth.F5Session('https://host/app');
     %   login(session)
     %   data = read(session, 'https://host/app/api/v1/lookup?locations=-24,-52');
     %   delete(session)
 
     properties (SetAccess = immutable)
-        %LoginURL URL protegida usada para disparar o fluxo SAML.
+        %LoginURL Protected URL used to trigger the SAML flow.
         LoginURL (1,:) char
     end
 
@@ -38,8 +38,8 @@ classdef F5Session < handle
         RequiredCookies = ["LastMRH_Session", "F5_ST"]
         PollInterval    = 0.25
 
-        % Tempo tolerado antes de exibir a janela: sessão ainda válida no CEF
-        % faz o landing ocorrer sem qualquer interação do usuário.
+        % Time tolerated before displaying the window: a still valid session in CEF
+        % makes the landing occur without any user interaction.
         SilentLoginGracePeriod = 2
     end
 
@@ -52,7 +52,7 @@ classdef F5Session < handle
             end
 
             if ~startsWith(loginURL, 'https://', 'IgnoreCase', true)
-                error('ws:auth:F5Session:insecureURL', 'A URL de login deve usar HTTPS.')
+                error('ws:auth:F5Session:insecureURL', 'Login URL must use HTTPS.')
             end
             obj.LoginURL = loginURL;
         end
@@ -72,8 +72,8 @@ classdef F5Session < handle
     methods
         %-----------------------------------------------------------------%
         function login(obj, timeout)
-            % LOGIN Abre a janela de autenticação e aguarda o usuário concluir
-            % o fluxo SAML + MFA. Bloqueia até obter os cookies de sessão.
+            % LOGIN Opens the authentication window and waits for the user to complete
+            % the SAML + MFA flow. Blocks until session cookies are obtained.
 
             arguments
                 obj
@@ -88,11 +88,11 @@ classdef F5Session < handle
             startTime = tic;
             while true
                 if ~isBrowserAlive(obj)
-                    error('ws:auth:F5Session:windowClosed', 'Janela de autenticação fechada antes da conclusão do login.')
+                    error('ws:auth:F5Session:windowClosed', 'Authentication window closed before login completion.')
                 end
 
                 if toc(startTime) > timeout
-                    error('ws:auth:F5Session:timeout', 'Tempo esgotado (%d s) aguardando a conclusão do login.', round(timeout))
+                    error('ws:auth:F5Session:timeout', 'Time expired (%d s) waiting for login completion.', round(timeout))
                 end
 
                 state = probeBrowser(obj);
@@ -102,8 +102,8 @@ classdef F5Session < handle
                 end
 
                 if obj.IsBrowserVisible
-                    % Oculta já no retorno ao host protegido (POST do SAMLResponse
-                    % ao ACS), antes que a página final chegue a ser pintada.
+                    % Hides already on return to the protected host (POST of SAMLResponse
+                    % to ACS), before the final page is even painted.
                     if isOnTargetHost(obj, state)
                         hideBrowser(obj)
                     end
@@ -119,19 +119,19 @@ classdef F5Session < handle
 
         %-----------------------------------------------------------------%
         function logout(obj)
-            % LOGOUT Descarta a sessão em memória e fecha a janela embarcada.
+            % LOGOUT Discards the in-memory session and closes the embedded window.
 
             closeBrowser(obj)
 
-            % Sobrescreve o buffer antes de liberá-lo.
+            % Overwrites the buffer before releasing it.
             obj.CookieHeader(:) = ' ';
             obj.CookieHeader    = '';
         end
 
         %-----------------------------------------------------------------%
         function [data, response] = read(obj, url, autoReauthenticate)
-            % READ Requisição GET autenticada, com o payload convertido pelo
-            % tipo de conteúdo (JSON vira struct, texto vira char).
+            % READ Authenticated GET request, with payload converted by
+            % content type (JSON becomes struct, text becomes char).
 
             arguments
                 obj
@@ -144,12 +144,12 @@ classdef F5Session < handle
 
         %-----------------------------------------------------------------%
         function [data, response] = readBytes(obj, url, autoReauthenticate, progressFcn)
-            % READBYTES Requisição GET autenticada sem conversão do payload,
-            % devolvendo uint8. Uso obrigatório para conteúdo binário, que
-            % seria corrompido caso o servidor o rotulasse como texto.
+            % READBYTES Authenticated GET request without payload conversion,
+            % returning uint8. Mandatory for binary content, which
+            % would be corrupted if the server labeled it as text.
             %
-            % progressFcn, se informado, é chamado como f(bytesRecebidos,
-            % bytesTotais). O total fica vazio se o servidor não enviar
+            % progressFcn, if provided, is called as f(bytesReceived,
+            % totalBytes). Total is empty if the server does not send
             % Content-Length.
 
             arguments
@@ -162,20 +162,20 @@ classdef F5Session < handle
             [data, response] = fetch(obj, url, false, autoReauthenticate, progressFcn);
 
             if ~isa(data, 'uint8')
-                error('ws:auth:F5Session:unexpectedPayload', 'Payload inesperado (%s) em leitura crua.', class(data))
+                error('ws:auth:F5Session:unexpectedPayload', 'Unexpected payload (%s) in raw reading.', class(data))
             end
         end
 
         %-----------------------------------------------------------------%
         function info = downloadToFile(obj, url, filePath, autoReauthenticate, progressFcn, maxRetries, retryDelay)
-            % DOWNLOADTOFILE Transfere o payload em blocos diretamente para disco.
-            % Evita manter arquivos grandes inteiros na memória do MATLAB.
+            % DOWNLOADTOFILE Transfers the payload in blocks directly to disk.
+            % Avoids keeping large files entirely in MATLAB's memory.
             %
-            % Em caso de queda de conexão durante a transferência, a operação
-            % é reiniciada automaticamente (até maxRetries vezes, com espera
-            % crescente de retryDelay segundos). O download é retomado a
-            % partir dos bytes já gravados via cabeçalho Range, caso o
-            % servidor suporte; caso contrário, reinicia do zero.
+            % In case of connection drop during transfer, the operation
+            % is automatically restarted (up to maxRetries times, with increasing
+            % wait of retryDelay seconds). The download resumes from
+            % already written bytes via Range header, if the
+            % server supports it; otherwise, restarts from zero.
 
             arguments
                 obj
@@ -192,7 +192,7 @@ classdef F5Session < handle
 
             if (info.StatusCode >= 300 && info.StatusCode < 400) || info.StatusCode == 401 || info.StatusCode == 403
                 if ~autoReauthenticate
-                    error('ws:auth:F5Session:sessionExpired', 'Sessão F5 expirada ou invalidada. Refaça a autenticação.')
+                    error('ws:auth:F5Session:sessionExpired', 'F5 session expired or invalidated. Re-authenticate.')
                 end
 
                 if isfile(filePath)
@@ -206,14 +206,14 @@ classdef F5Session < handle
                 if isfile(filePath)
                     delete(filePath)
                 end
-                error('ws:auth:F5Session:httpError', 'Requisição retornou HTTP %d (%s).', info.StatusCode, info.StatusMessage)
+                error('ws:auth:F5Session:httpError', 'Request returned HTTP %d (%s).', info.StatusCode, info.StatusMessage)
             end
         end
 
         %-----------------------------------------------------------------%
         function info = debugInfo(obj)
-            % DEBUGINFO Diagnóstico da sessão. Expõe nomes e quantidade de
-            % cookies - nunca seus valores, que não saem desta classe.
+            % DEBUGINFO Session diagnostics. Exposes names and quantity of
+            % cookies - never their values, which do not leave this class.
 
             cookies = ws.auth.F5Session.parseCookieHeader(obj.CookieHeader);
             info = struct('LoginURL',        obj.LoginURL,       ...
@@ -227,10 +227,10 @@ classdef F5Session < handle
     methods (Access = private)
         %-----------------------------------------------------------------%
         function info = streamToFileWithRetry(obj, url, filePath, progressFcn, maxRetries, retryDelay)
-            % Reinicia a transferência (retomando via Range quando possível)
-            % até maxRetries vezes se a conexão cair no meio do download.
-            % Erros HTTP (4xx/5xx) não geram exceção aqui - streamToFile os
-            % devolve em info.StatusCode - e portanto não são reexecutados.
+            % Restarts the transfer (resuming via Range when possible)
+            % up to maxRetries times if the connection drops during download.
+            % HTTP errors (4xx/5xx) do not generate exceptions here - streamToFile
+            % returns them in info.StatusCode - and therefore are not re-executed.
 
             attempt = 0;
             while true
@@ -255,11 +255,11 @@ classdef F5Session < handle
 
         %-----------------------------------------------------------------%
         function info = streamToFile(obj, url, filePath, progressFcn, resumeOffset)
-            % Usa matlab.net.http (mesma API já empregada em sendRequest) em vez
-            % de java.net/java.io: FileConsumer grava o corpo da resposta em
-            % disco em blocos, sem o risco do antigo código Java, cujas leituras
-            % em java.io.InputStream.read(byte[]) eram descartadas silenciosamente
-            % (arrays MATLAB passados a métodos Java são convertidos por valor).
+            % Uses matlab.net.http (same API already used in sendRequest) instead of
+            % java.net/java.io: FileConsumer writes the response body to
+            % disk in blocks, without the risk of the old Java code, whose readings
+            % in java.io.InputStream.read(byte[]) were silently discarded
+            % (MATLAB arrays passed to Java methods are converted by value).
 
             arguments
                 obj
@@ -275,7 +275,7 @@ classdef F5Session < handle
             end
             request = matlab.net.http.RequestMessage('GET', header);
 
-            % MaxRedirects=0 mantém visível o 302 do F5 para a página de login.
+            % MaxRedirects=0 keeps the F5's 302 to the login page visible.
             options = matlab.net.http.HTTPOptions('MaxRedirects', 0, 'ConnectTimeout', 30);
             if ~isempty(progressFcn)
                 options.ProgressMonitorFcn = @() ws.auth.DownloadProgressMonitor(progressFcn);
@@ -288,7 +288,7 @@ classdef F5Session < handle
                 fileID = fopen(filePath, 'wb');
             end
             if fileID == -1
-                error('ws:auth:F5Session:fileOpenFailed', 'Não foi possível gravar em "%s".', filePath)
+                error('ws:auth:F5Session:fileOpenFailed', 'Could not write to "%s".', filePath)
             end
             fileCleanup = onCleanup(@() fclose(fileID));
 
@@ -310,11 +310,11 @@ classdef F5Session < handle
                 return
             end
 
-            % Servidor pode ignorar o Range e devolver o conteúdo inteiro (200);
-            % nesse caso o arquivo ficou com o conteúdo completo duplicado após
-            % os bytes já gravados, então é descartado e o download reinicia.
+            % Server may ignore Range and return the entire content (200);
+            % in this case the file ended up with the complete content duplicated after
+            % the bytes already written, so it is discarded and the download restarts.
             if resumeOffset > 0 && statusCode == 200
-                fileCleanup = []; %#ok<NASGU> fecha o arquivo antes de apagá-lo
+                fileCleanup = []; %#ok<NASGU> closes the file before deleting it
                 delete(filePath)
                 info = streamToFile(obj, url, filePath, progressFcn, 0);
                 return
@@ -326,11 +326,11 @@ classdef F5Session < handle
         %-----------------------------------------------------------------%
         function openBrowser(obj)
             if ~exist('matlab.internal.webwindow', 'class')
-                error('ws:auth:F5Session:unsupportedRelease', 'matlab.internal.webwindow indisponível nesta versão do MATLAB.')
+                error('ws:auth:F5Session:unsupportedRelease', 'matlab.internal.webwindow unavailable in this MATLAB version.')
             end
 
             obj.Browser = matlab.internal.webwindow(obj.LoginURL);
-            obj.Browser.Title = 'Autenticação';
+            obj.Browser.Title = 'Authentication';
             obj.Browser.CustomWindowClosingCallback = @(src, ~) src.close();
 
             screenSize = get(groot, 'ScreenSize');
@@ -360,9 +360,9 @@ classdef F5Session < handle
 
         %-----------------------------------------------------------------%
         function tf = needsUserInteraction(obj, state, elapsedTime)
-            % A janela só é exibida quando o fluxo sai do host protegido
-            % (redirecionamento ao Azure AD ou ao /my.policy do APM) ou
-            % quando o landing silencioso demora mais que o tolerado.
+            % The window is only displayed when the flow leaves the protected host
+            % (redirect to Azure AD or to the APM's /my.policy) or
+            % when silent landing takes longer than tolerated.
 
             tf = true;
             if elapsedTime > obj.SilentLoginGracePeriod
@@ -398,8 +398,8 @@ classdef F5Session < handle
 
         %-----------------------------------------------------------------%
         function state = probeBrowser(obj)
-            % Durante os redirecionamentos do fluxo SAML a avaliação pode
-            % falhar - nesse caso a próxima iteração do polling tenta de novo.
+            % During SAML flow redirects the evaluation may
+            % fail - in this case the next polling iteration tries again.
 
             state = [];
             try
@@ -437,34 +437,34 @@ classdef F5Session < handle
         %-----------------------------------------------------------------%
         function assertAuthenticated(obj)
             if ~obj.IsAuthenticated
-                error('ws:auth:F5Session:notAuthenticated', 'Sessão não autenticada. Execute login(session) antes.')
+                error('ws:auth:F5Session:notAuthenticated', 'Session not authenticated. Execute login(session) first.')
             end
         end
 
         %-----------------------------------------------------------------%
         function [data, response] = fetch(obj, url, convertResponse, autoReauthenticate, progressFcn)
-            % Redirecionamentos para a página de login (sessão expirada ou
-            % invalidada) são detectados e, por padrão, disparam nova
-            % autenticação interativa.
+            % Redirects to the login page (session expired or
+            % invalidated) are detected and, by default, trigger new
+            % interactive authentication.
 
             assertAuthenticated(obj)
 
             response = sendRequest(obj, url, convertResponse, progressFcn);
             if ws.auth.F5Session.isSessionExpired(response)
                 if ~autoReauthenticate
-                    error('ws:auth:F5Session:sessionExpired', 'Sessão F5 expirada ou invalidada. Refaça a autenticação.')
+                    error('ws:auth:F5Session:sessionExpired', 'F5 session expired or invalidated. Re-authenticate.')
                 end
 
                 login(obj)
                 response = sendRequest(obj, url, convertResponse, progressFcn);
 
                 if ws.auth.F5Session.isSessionExpired(response)
-                    error('ws:auth:F5Session:sessionExpired', 'Sessão F5 expirada ou invalidada mesmo após nova autenticação.')
+                    error('ws:auth:F5Session:sessionExpired', 'F5 session expired or invalidated even after new authentication.')
                 end
             end
 
             if response.StatusCode ~= matlab.net.http.StatusCode.OK
-                error('ws:auth:F5Session:httpError', 'Requisição retornou HTTP %d (%s).', double(response.StatusCode), char(response.StatusCode))
+                error('ws:auth:F5Session:httpError', 'Request returned HTTP %d (%s).', double(response.StatusCode), char(response.StatusCode))
             end
             data = response.Body.Data;
         end
@@ -474,7 +474,7 @@ classdef F5Session < handle
             header  = matlab.net.http.HeaderField('Cookie', obj.CookieHeader);
             request = matlab.net.http.RequestMessage('GET', header);
 
-            % MaxRedirects=0 mantém visível o 302 do F5 para a página de login.
+            % MaxRedirects=0 keeps the F5's 302 to the login page visible.
             options = matlab.net.http.HTTPOptions('MaxRedirects', 0, 'ConnectTimeout', 30, 'ConvertResponse', convertResponse);
 
             if ~isempty(progressFcn)
@@ -490,8 +490,8 @@ classdef F5Session < handle
     methods (Static, Access = private)
         %-----------------------------------------------------------------%
         function value = decodeJSResult(rawValue)
-            % executeJS devolve o resultado codificado em JSON - e aqui o
-            % próprio resultado já é uma string JSON, daí a dupla decodificação.
+            % executeJS returns the result encoded in JSON - and here the
+            % result itself is already a JSON string, hence the double decoding.
 
             value = rawValue;
             for ii = 1:2
@@ -523,9 +523,9 @@ classdef F5Session < handle
     methods (Static)
         %-----------------------------------------------------------------%
         function tf = isSessionExpired(response)
-            % ISSESSIONEXPIRED Identifica resposta de sessão inválida: 401/403,
-            % redirecionamento do APM para o login, ou HTML de login no lugar
-            % do payload da API.
+            % ISSESSIONEXPIRED Identifies invalid session response: 401/403,
+            % APM redirect to login, or login HTML instead of
+            % API payload.
 
             arguments
                 response (1,1) matlab.net.http.ResponseMessage
@@ -543,7 +543,7 @@ classdef F5Session < handle
                     payload = char(response.Body.Data);
 
                 elseif isa(response.Body.Data, 'uint8')
-                    % Em leitura crua o HTML de login também chega como bytes.
+                    % In raw reading the login HTML also arrives as bytes.
                     payload = char(response.Body.Data(1:min(end, 2048))');
                 end
             end
