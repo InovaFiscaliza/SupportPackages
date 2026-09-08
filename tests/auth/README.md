@@ -91,7 +91,9 @@ inválidos).
 
 A implementação atual usa `ws.auth.FileDownload`, que executa as requisições por blocos em
 `backgroundPool`. A interface permanece livre para outras requisições durante o download, e um
-arquivo parcial pode ser retomado a partir do ponto em que foi interrompido.
+arquivo parcial pode ser retomado a partir do ponto em que foi interrompido. Downloads diferentes
+podem permanecer ativos ao mesmo tempo dentro de uma janela de downloads compartilhada, em painéis
+empilhados que redimensionam o contêiner conforme novas tarefas são adicionadas ou concluídas.
 
 O progresso é exibido na barra a partir do tamanho total informado pelo servidor. O contador mostra
 os bytes recebidos e o total; quando o total não é conhecido, mostra apenas os bytes recebidos.

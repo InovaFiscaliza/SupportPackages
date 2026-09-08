@@ -122,7 +122,7 @@ delete(session)    % descarta a sessão da memória
 | `logout(obj)` | Descarta os cookies da memória e fecha a janela. |
 | `read(obj, url, autoReauthenticate)` | GET autenticado, com o payload convertido pelo tipo de conteúdo. Em caso de sessão expirada, dispara nova autenticação (padrão) ou lança erro. |
 | `readBytes(obj, url, autoReauthenticate, progressFcn)` | Idem, sem conversão do payload: devolve `uint8`. Útil para pequenos payloads binários ou diagnósticos. `progressFcn` é chamado como `f(bytesRecebidos, bytesTotais)`. |
-| `FileDownload(session, url, filePath, chunkSize, maxRetries)` | Cria um download assíncrono retomável. Use `start`, `pause`, `resume` e `stop`; `ProgressFcn` recebe `f(bytesRecebidos, bytesTotais)`, `CompletedFcn` recebe o resumo e `ErrorFcn` recebe a exceção. |
+| `FileDownload(session, url, filePath, chunkSize, maxRetries)` | Cria um download assíncrono retomável. Várias instâncias podem executar simultaneamente. Use `start`, `pause`, `resume` e `stop`; `ProgressFcn` recebe `f(bytesRecebidos, bytesTotais)`, `CompletedFcn` recebe o resumo e `ErrorFcn` recebe a exceção. |
 | `debugInfo(obj)` | Diagnóstico: `LoginURL`, `IsAuthenticated`, `CookieCount` e `CookieNames`. |
 | `IsAuthenticated` | Propriedade somente leitura. |
 | `isSessionExpired(response)` | Estático. Avalia uma `ResponseMessage` já obtida. |

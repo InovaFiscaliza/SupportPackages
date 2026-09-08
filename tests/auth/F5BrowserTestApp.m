@@ -13,16 +13,9 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
         StatusLabel matlab.ui.control.Label
         HTMLView    matlab.ui.control.HTML
         DownloadDialog
-        DownloadStatusLabel
-        DownloadBytesLabel
-        DownloadProgressTrack
-        DownloadProgressFill
-        DownloadFileName = ''
-        Downloader
-        PauseButton
-        StopButton
-        IsDownloadPaused = false
-        IsDownloadStopped = false
+        DownloadStack
+        DownloadTasks = {}
+        NextDownloadID (1,1) double = 0
     end
 
     properties (Constant, Access = private)
@@ -52,11 +45,18 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
 
         %-----------------------------------------------------------------%
         function delete(app)
-            app.IsDownloadStopped = true;
-            if ~isempty(app.Downloader) && isvalid(app.Downloader)
-                delete(app.Downloader)
+            for taskID = 1:numel(app.DownloadTasks)
+                task = app.DownloadTasks{taskID};
+                if isempty(task)
+                    continue
+                end
+                if ~isempty(task.Downloader) && isvalid(task.Downloader)
+                    delete(task.Downloader)
+                end
+                app.closeDownloadDialog(taskID)
             end
-            app.closeDownloadDialog()
+            app.DownloadTasks = {};
+            app.closeDownloadContainer()
             delete(app.Session)
 
             if ~isempty(app.UIFigure) && isvalid(app.UIFigure)
@@ -125,11 +125,6 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             % URLs cujo último segmento tem extensão são baixadas para disco,
             % em vez de renderizadas.
 
-            if ~isempty(app.Downloader) && isvalid(app.Downloader) && app.Downloader.IsRunning
-                uialert(app.UIFigure, 'Já há um download em andamento.', 'Download')
-                return
-            end
-
             [fileName, folderName] = uiputfile('*.*', 'Salvar arquivo', fullfile(app.downloadFolder(), app.fileNameFromURL(url)));
             figure(app.UIFigure)
 
@@ -141,45 +136,60 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             if isempty(filePath)
                 return
             end
+            if app.isDownloadPathActive(filePath)
+                uialert(app.UIFigure, ...
+                        sprintf('O arquivo "%s" já está sendo baixado.', filePath), ...
+                        'Download')
+                return
+            end
             [~, baseName, extension] = fileparts(filePath);
 
-            app.createDownloadDialog([baseName, extension])
+            app.NextDownloadID = app.NextDownloadID + 1;
+            taskID = app.NextDownloadID;
+            task = app.createDownloadDialog(taskID, [baseName, extension]);
+            task.FilePath = filePath;
 
-            logPath = [filePath, '.log'];
-            F5BrowserTestApp.writeDownloadLog(logPath, sprintf('START\nURL: %s\nDestination: %s\nSession: %s\n', ...
-                                                            url, filePath, app.sessionDebugText()));
+            task.LogPath = [filePath, '.log'];
+            app.DownloadTasks{taskID} = task;
+            F5BrowserTestApp.writeDownloadLog(task.LogPath, sprintf('START\nURL: %s\nDestination: %s\nSession: %s\n', ...
+                                                                     url, filePath, app.sessionDebugText()));
 
             % O download roda em backgroundPool: esta função retorna
             % imediatamente e a aplicação segue utilizável.
-            app.Downloader = ws.auth.FileDownload(app.Session, url, filePath);
-            app.Downloader.ProgressFcn  = @(receivedBytes, totalBytes) app.updateProgress(receivedBytes, totalBytes);
-            app.Downloader.CompletedFcn = @(info) app.onDownloadCompleted(info, logPath);
-            app.Downloader.ErrorFcn     = @(ME) app.onDownloadFailed(ME, filePath, logPath);
-            start(app.Downloader)
+            task.Downloader = ws.auth.FileDownload(app.Session, url, filePath);
+            task.Downloader.ProgressFcn  = @(receivedBytes, totalBytes) app.onDownloadProgress(taskID, receivedBytes, totalBytes);
+            task.Downloader.CompletedFcn = @(info) app.onDownloadCompleted(taskID, info);
+            task.Downloader.ErrorFcn     = @(ME) app.onDownloadFailed(taskID, ME);
+            app.DownloadTasks{taskID} = task;
+            app.refreshDownloadContainer()
+            start(task.Downloader)
         end
 
         %-----------------------------------------------------------------%
-        function onDownloadCompleted(app, info, logPath)
-            if ~isvalid(app)
+        function onDownloadCompleted(app, taskID, info)
+            task = app.getDownloadTask(taskID);
+            if isempty(task)
                 return
             end
-            F5BrowserTestApp.writeDownloadLog(logPath, sprintf('Bytes received: %d\nEND\n', info.BytesReceived));
-            app.closeDownloadDialog()
-            render(app, sprintf('Arquivo salvo em:\n%s', info.FilePath))
+            F5BrowserTestApp.writeDownloadLog(task.LogPath, sprintf('Bytes received: %d\nEND\n', info.BytesReceived));
+            app.closeDownloadDialog(taskID)
+            app.DownloadTasks{taskID} = [];
         end
 
         %-----------------------------------------------------------------%
-        function onDownloadFailed(app, exception, filePath, logPath)
-            if ~isvalid(app)
+        function onDownloadFailed(app, taskID, exception)
+            task = app.getDownloadTask(taskID);
+            if isempty(task)
                 return
             end
-            F5BrowserTestApp.writeDownloadLog(logPath, sprintf('ERROR\n%s\nEND\n', ...
-                                                               getReport(exception, 'extended', 'hyperlinks', 'off')));
-            app.closeDownloadDialog()
+            F5BrowserTestApp.writeDownloadLog(task.LogPath, sprintf('ERROR\n%s\nEND\n', ...
+                                                                     getReport(exception, 'extended', 'hyperlinks', 'off')));
+            app.closeDownloadDialog(taskID)
+            app.DownloadTasks{taskID} = [];
 
             % O arquivo parcial é preservado para permitir a retomada.
             uialert(app.UIFigure, ...
-                    F5BrowserTestApp.downloadErrorReport(exception, filePath, logPath), ...
+                    F5BrowserTestApp.downloadErrorReport(exception, task.FilePath, task.LogPath), ...
                     'Falha no download')
         end
 
@@ -223,124 +233,259 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
         end
 
         %-----------------------------------------------------------------%
-        function createDownloadDialog(app, fileName)
-            app.IsDownloadPaused = false;
-            app.IsDownloadStopped = false;
-            app.DownloadFileName = fileName;
+        function task = createDownloadDialog(app, taskID, fileName)
+            task = struct('Downloader', [], ...
+                          'Dialog', [], ...
+                          'StatusLabel', [], ...
+                          'BytesLabel', [], ...
+                          'ProgressTrack', [], ...
+                          'ProgressFill', [], ...
+                          'PauseButton', [], ...
+                          'StopButton', [], ...
+                          'FileName', fileName, ...
+                          'FilePath', '', ...
+                          'LogPath', '', ...
+                          'IsPaused', false, ...
+                          'IsStopped', false);
 
-            app.DownloadDialog = uifigure('Name', 'Download', ...
-                                          'Position', [480, 420, 420, 155], ...
-                                          'Resize', 'off', ...
-                                          'CloseRequestFcn', @(src, ~) app.stopDownload(src));
-            gridLayout = uigridlayout(app.DownloadDialog, [3, 3]);
+                    app.ensureDownloadContainer()
+                    task.Dialog = uipanel(app.DownloadStack, ...
+                              'BorderType', 'line', ...
+                              'Title', fileName);
+            gridLayout = uigridlayout(task.Dialog, [3, 3]);
             gridLayout.RowHeight = {22, 18, 30};
             gridLayout.ColumnWidth = {'1x', 90, 90};
 
-            app.DownloadStatusLabel = uilabel(gridLayout, ...
+            task.StatusLabel = uilabel(gridLayout, ...
                                               'Text', sprintf('Baixando %s', fileName), ...
                                               'WordWrap', 'on');
-            app.DownloadStatusLabel.Layout.Row = 1;
-            app.DownloadStatusLabel.Layout.Column = [1, 3];
+            task.StatusLabel.Layout.Row = 1;
+            task.StatusLabel.Layout.Column = [1, 3];
 
             % Barra simples: uma faixa azul preenchendo a trilha, sem escala
             % nem marcações (uigauge desenha régua e ponteiro).
-            app.DownloadProgressTrack = uipanel(gridLayout, ...
+            task.ProgressTrack = uipanel(gridLayout, ...
                                                 'BorderType', 'line', ...
                                                 'BackgroundColor', [1, 1, 1]);
-            app.DownloadProgressTrack.Layout.Row = 2;
-            app.DownloadProgressTrack.Layout.Column = [1, 3];
+            task.ProgressTrack.Layout.Row = 2;
+            task.ProgressTrack.Layout.Column = [1, 3];
 
-            app.DownloadProgressFill = uipanel(app.DownloadProgressTrack, ...
+            task.ProgressFill = uipanel(task.ProgressTrack, ...
                                                'BorderType', 'none', ...
                                                'BackgroundColor', [0, 0.447, 0.741], ...
                                                'Units', 'pixels', ...
                                                'Position', [0, 0, 0, 1]);
 
-            app.DownloadBytesLabel = uilabel(gridLayout, 'Text', '');
-            app.DownloadBytesLabel.Layout.Row = 3;
-            app.DownloadBytesLabel.Layout.Column = 1;
+            task.BytesLabel = uilabel(gridLayout, 'Text', '');
+            task.BytesLabel.Layout.Row = 3;
+            task.BytesLabel.Layout.Column = 1;
 
-            app.PauseButton = uibutton(gridLayout, 'Text', 'Pausar', ...
-                                       'ButtonPushedFcn', @(~, ~) app.toggleDownloadPause());
-            app.PauseButton.Layout.Row = 3;
-            app.PauseButton.Layout.Column = 2;
+            task.PauseButton = uibutton(gridLayout, 'Text', 'Pausar', ...
+                                        'ButtonPushedFcn', @(~, ~) app.toggleDownloadPause(taskID));
+            task.PauseButton.Layout.Row = 3;
+            task.PauseButton.Layout.Column = 2;
 
-            app.StopButton = uibutton(gridLayout, 'Text', 'Parar', ...
-                                      'ButtonPushedFcn', @(src, ~) app.stopDownload(src));
-            app.StopButton.Layout.Row = 3;
-            app.StopButton.Layout.Column = 3;
+            task.StopButton = uibutton(gridLayout, 'Text', 'Parar', ...
+                                       'ButtonPushedFcn', @(src, ~) app.stopDownload(taskID, src));
+            task.StopButton.Layout.Row = 3;
+            task.StopButton.Layout.Column = 3;
+            task.Dialog.Layout.Row = 1;
+            task.Dialog.Layout.Column = 1;
             drawnow
         end
 
         %-----------------------------------------------------------------%
-        function updateProgress(app, receivedBytes, totalBytes)
+        function onDownloadProgress(app, taskID, receivedBytes, totalBytes)
             % Sem Content-Length não há total conhecido: a barra fica vazia e
             % apenas o volume recebido é informado.
 
-            if ~isvalid(app)
+            task = app.getDownloadTask(taskID);
+            if isempty(task) || task.IsStopped || ~isvalid(app)
                 return
             end
-            if isempty(app.DownloadProgressTrack) || ~isvalid(app.DownloadProgressTrack)
+            if isempty(task.ProgressTrack) || ~isvalid(task.ProgressTrack)
                 return
             end
 
             if isempty(totalBytes) || totalBytes <= 0
                 fraction = 0;
-                app.DownloadBytesLabel.Text = F5BrowserTestApp.formatBytes(receivedBytes);
+                task.BytesLabel.Text = F5BrowserTestApp.formatBytes(receivedBytes);
             else
                 fraction = min(receivedBytes/totalBytes, 1);
-                app.DownloadBytesLabel.Text = sprintf('%s / %s', ...
-                                                      F5BrowserTestApp.formatBytes(receivedBytes), ...
-                                                      F5BrowserTestApp.formatBytes(totalBytes));
+                task.BytesLabel.Text = sprintf('%s / %s', ...
+                                               F5BrowserTestApp.formatBytes(receivedBytes), ...
+                                               F5BrowserTestApp.formatBytes(totalBytes));
             end
 
-            trackSize = app.DownloadProgressTrack.InnerPosition;
-            app.DownloadProgressFill.Position = [0, 0, fraction*trackSize(3), trackSize(4)];
+            trackSize = task.ProgressTrack.InnerPosition;
+            task.ProgressFill.Position = [0, 0, fraction*trackSize(3), trackSize(4)];
 
             drawnow limitrate
         end
 
         %-----------------------------------------------------------------%
-        function toggleDownloadPause(app)
-            if app.IsDownloadStopped
+        function toggleDownloadPause(app, taskID)
+            task = app.getDownloadTask(taskID);
+            if isempty(task) || task.IsStopped
                 return
             end
 
-            app.IsDownloadPaused = ~app.IsDownloadPaused;
-            if app.IsDownloadPaused
-                pause(app.Downloader)
-                app.PauseButton.Text = 'Continuar';
-                app.DownloadStatusLabel.Text = sprintf('Pausado - %s', app.DownloadFileName);
+            task.IsPaused = ~task.IsPaused;
+            if task.IsPaused
+                pause(task.Downloader)
+                task.PauseButton.Text = 'Continuar';
+                task.StatusLabel.Text = sprintf('Pausado - %s', task.FileName);
             else
-                resume(app.Downloader)
-                app.PauseButton.Text = 'Pausar';
-                app.DownloadStatusLabel.Text = sprintf('Baixando %s', app.DownloadFileName);
+                resume(task.Downloader)
+                task.PauseButton.Text = 'Pausar';
+                task.StatusLabel.Text = sprintf('Baixando %s', task.FileName);
             end
+            app.DownloadTasks{taskID} = task;
         end
 
         %-----------------------------------------------------------------%
-        function stopDownload(app, ~)
-            app.IsDownloadStopped = true;
-            app.IsDownloadPaused = false;
-
-            if ~isempty(app.Downloader) && isvalid(app.Downloader)
-                stop(app.Downloader)
+        function stopDownload(app, taskID, ~)
+            task = app.getDownloadTask(taskID);
+            if isempty(task)
+                return
             end
-            app.closeDownloadDialog()
+
+            task.IsStopped = true;
+            task.IsPaused = false;
+            if ~isempty(task.Downloader) && isvalid(task.Downloader)
+                stop(task.Downloader)
+            end
+            app.DownloadTasks{taskID} = task;
+            app.closeDownloadDialog(taskID)
         end
 
         %-----------------------------------------------------------------%
-        function closeDownloadDialog(app)
+        function closeDownloadDialog(app, taskID)
+            task = app.getDownloadTask(taskID);
+            if isempty(task)
+                return
+            end
+            if ~isempty(task.Dialog) && isvalid(task.Dialog)
+                delete(task.Dialog)
+            end
+            task.Dialog = [];
+            task.StatusLabel = [];
+            task.BytesLabel = [];
+            task.ProgressTrack = [];
+            task.ProgressFill = [];
+            task.PauseButton = [];
+            task.StopButton = [];
+            app.DownloadTasks{taskID} = task;
+            app.refreshDownloadContainer()
+        end
+
+        %-----------------------------------------------------------------%
+        function ensureDownloadContainer(app)
+            if ~isempty(app.DownloadDialog) && isvalid(app.DownloadDialog)
+                return
+            end
+
+            app.DownloadDialog = uifigure('Name', 'Downloads', ...
+                                          'Position', [430, 320, 560, 200], ...
+                                          'Resize', 'on', ...
+                                          'CloseRequestFcn', @(src, ~) app.stopAllDownloads(src));
+            app.DownloadStack = uigridlayout(app.DownloadDialog, [1, 1]);
+            app.DownloadStack.Padding = [8, 8, 8, 8];
+            app.DownloadStack.RowSpacing = 8;
+            app.DownloadStack.ColumnWidth = {'1x'};
+            app.DownloadStack.RowHeight = {150};
+        end
+
+        %-----------------------------------------------------------------%
+        function closeDownloadContainer(app)
             if ~isempty(app.DownloadDialog) && isvalid(app.DownloadDialog)
                 delete(app.DownloadDialog)
             end
             app.DownloadDialog = [];
-            app.DownloadStatusLabel = [];
-            app.DownloadBytesLabel = [];
-            app.DownloadProgressTrack = [];
-            app.DownloadProgressFill = [];
-            app.PauseButton = [];
-            app.StopButton = [];
+            app.DownloadStack = [];
+        end
+
+        %-----------------------------------------------------------------%
+        function refreshDownloadContainer(app)
+            if isempty(app.DownloadDialog) || ~isvalid(app.DownloadDialog)
+                app.DownloadDialog = [];
+                app.DownloadStack = [];
+                return
+            end
+
+            activeIDs = [];
+            for taskID = 1:numel(app.DownloadTasks)
+                task = app.DownloadTasks{taskID};
+                if ~isempty(task) && ~isempty(task.Dialog) && isvalid(task.Dialog)
+                    activeIDs(end+1) = taskID; %#ok<AGROW>
+                end
+            end
+
+            if isempty(activeIDs)
+                delete(app.DownloadDialog)
+                app.DownloadDialog = [];
+                app.DownloadStack = [];
+                return
+            end
+
+            app.DownloadStack.RowHeight = repmat({150}, 1, numel(activeIDs));
+            for row = 1:numel(activeIDs)
+                task = app.DownloadTasks{activeIDs(row)};
+                task.Dialog.Layout.Row = row;
+                task.Dialog.Layout.Column = 1;
+            end
+
+            position = app.DownloadDialog.Position;
+            position(3) = 560;
+            position(4) = min(760, max(200, 16 + 158*numel(activeIDs)));
+            app.DownloadDialog.Position = position;
+        end
+
+        %-----------------------------------------------------------------%
+        function stopAllDownloads(app, source)
+            for taskID = 1:numel(app.DownloadTasks)
+                task = app.DownloadTasks{taskID};
+                if isempty(task)
+                    continue
+                end
+                task.IsStopped = true;
+                task.IsPaused = false;
+                if ~isempty(task.Downloader) && isvalid(task.Downloader)
+                    stop(task.Downloader)
+                end
+                app.DownloadTasks{taskID} = task;
+                app.closeDownloadDialog(taskID)
+            end
+            if ~isempty(source) && isvalid(source)
+                delete(source)
+            end
+            app.DownloadDialog = [];
+            app.DownloadStack = [];
+        end
+
+        %-----------------------------------------------------------------%
+        function task = getDownloadTask(app, taskID)
+            task = [];
+            if ~isvalid(app) || taskID > numel(app.DownloadTasks)
+                return
+            end
+            task = app.DownloadTasks{taskID};
+        end
+
+        %-----------------------------------------------------------------%
+        function tf = isDownloadPathActive(app, filePath)
+            tf = false;
+            for taskID = 1:numel(app.DownloadTasks)
+                task = app.DownloadTasks{taskID};
+                if isempty(task) || isempty(task.Downloader)
+                    continue
+                end
+                if isvalid(task.Downloader) && task.Downloader.IsRunning && ...
+                        strcmpi(task.FilePath, filePath)
+                    tf = true;
+                    return
+                end
+            end
         end
 
         %-----------------------------------------------------------------%
