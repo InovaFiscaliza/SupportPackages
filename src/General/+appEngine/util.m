@@ -202,7 +202,7 @@ classdef (Abstract) util
                     elseif ismac
                         programDataFolder = '/Users/Shared';
                     else % isunix
-                        programDataFolder = '/etc';
+                        programDataFolder = '/tmp';
                     end
                     varargout{1} = programDataFolder;
         
