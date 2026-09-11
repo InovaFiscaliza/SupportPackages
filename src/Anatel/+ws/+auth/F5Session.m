@@ -171,6 +171,19 @@ classdef F5Session < handle
         end
 
         %-----------------------------------------------------------------%
+        function [data, response] = readRaw(obj, url, autoReauthenticate)
+            % READRAW Authenticated GET request without payload conversion.
+
+            arguments
+                obj
+                url                (1,:) char {mustBeNonempty}
+                autoReauthenticate (1,1) logical = true
+            end
+
+            [data, response] = fetch(obj, url, false, autoReauthenticate, []);
+        end
+
+        %-----------------------------------------------------------------%
         function context = getDownloadContext(obj)
             assertAuthenticated(obj)
             context = struct('CookieHeader', obj.CookieHeader);
