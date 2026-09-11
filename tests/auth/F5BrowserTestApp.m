@@ -7,10 +7,11 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
 
     properties (Access = private)
         Session
+        FigureBackgroundColor  % Store the figure background color
 
         UIFigure    matlab.ui.Figure
         URLDropDown matlab.ui.control.DropDown
-        StatusLabel matlab.ui.control.Label
+        StatusButton matlab.ui.control.Button
         HTMLView    matlab.ui.control.HTML
         DownloadDialog
         DownloadStack
@@ -19,7 +20,8 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
     end
 
     properties (Constant, Access = private)
-        DefaultURLs = {'https://fiscalizacao.anatel.gov.br/rffusion/debug/headers', ...
+        AuthenticationURL = 'https://fiscalizacao.anatel.gov.br/rffusion/api/users/login'
+        DefaultURLs = {'https://fiscalizacao.anatel.gov.br/rffusion/api/users/me', ...
                        'https://fiscalizacao.anatel.gov.br/rffusion/server/zabbix_metrics', ...
                        'https://fiscalizacao.anatel.gov.br/rffusion/server/runtime-health', ...
                        'https://fiscalizacao.anatel.gov.br/rffusion/api/map/stations', ...
@@ -72,6 +74,9 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             app.UIFigure = uifigure('Name', 'F5Session :: Navegador de teste', 'Position', [100, 100, 1000, 700]);
             app.UIFigure.CloseRequestFcn = @(~, ~) delete(app);
 
+            % Store the figure's background color for use in panels
+            app.FigureBackgroundColor = app.UIFigure.Color;
+
             gridLayout = uigridlayout(app.UIFigure, [2, 2]);
             gridLayout.RowHeight   = {22, '1x'};
             gridLayout.ColumnWidth = {'1x', 260};
@@ -81,9 +86,11 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             app.URLDropDown.Layout.Row    = 1;
             app.URLDropDown.Layout.Column = 1;
 
-            app.StatusLabel = uilabel(gridLayout, 'Text', 'Desconectado', 'HorizontalAlignment', 'right');
-            app.StatusLabel.Layout.Row    = 1;
-            app.StatusLabel.Layout.Column = 2;
+            app.StatusButton = uibutton(gridLayout, ...
+                                        'Text', 'conectar', ...
+                                        'ButtonPushedFcn', @(~, ~) toggleAuthentication(app));
+            app.StatusButton.Layout.Row    = 1;
+            app.StatusButton.Layout.Column = 2;
 
             app.HTMLView = uihtml(gridLayout, 'HTMLSource', '<html><body></body></html>');
             app.HTMLView.Layout.Row    = 2;
@@ -115,6 +122,27 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             catch ME
                 app.HTMLView.HTMLSource = '<html><body></body></html>';
                 uialert(app.UIFigure, ME.message, 'Falha na requisição')
+            end
+
+            refreshStatus(app)
+        end
+
+        %-----------------------------------------------------------------%
+        function toggleAuthentication(app)
+            if ~isempty(app.Session) && isvalid(app.Session) && app.Session.IsAuthenticated
+                logout(app.Session)
+                app.Session = [];
+                app.HTMLView.HTMLSource = '<html><body></body></html>';
+                refreshStatus(app)
+                return
+            end
+
+            try
+                ensureSession(app, app.AuthenticationURL)
+                [~, response] = readRaw(app.Session, app.AuthenticationURL);
+                renderRawResponse(app, response)
+            catch ME
+                uialert(app.UIFigure, ME.message, 'Falha na autenticação')
             end
 
             refreshStatus(app)
@@ -266,7 +294,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             % nem marcações (uigauge desenha régua e ponteiro).
             task.ProgressTrack = uipanel(gridLayout, ...
                                                 'BorderType', 'line', ...
-                                                'BackgroundColor', [1, 1, 1]);
+                                                'BackgroundColor', app.FigureBackgroundColor);
             task.ProgressTrack.Layout.Row = 2;
             task.ProgressTrack.Layout.Column = [1, 3];
 
@@ -523,10 +551,18 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             isConnected = ~isempty(app.Session) && isvalid(app.Session) && app.Session.IsAuthenticated;
 
             if isConnected
-                app.StatusLabel.Text = 'Conectado';
+                app.StatusButton.Text = 'desconectar';
             else
-                app.StatusLabel.Text = 'Desconectado';
+                app.StatusButton.Text = 'conectar';
             end
+        end
+
+        %-----------------------------------------------------------------%
+        function renderRawResponse(app, response)
+            responseText = char(response.show);
+
+            app.HTMLView.HTMLSource = sprintf('<html><body><pre>%s</pre></body></html>', ...
+                                              app.escapeHTML(responseText));
         end
 
         %-----------------------------------------------------------------%
