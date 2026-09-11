@@ -44,12 +44,101 @@ function setup(htmlComponent) {
         };
     }
 
-    if (!appWindow.document._blockUIInstalled) {
+    const isFramingProbe = htmlComponent.Data?.source === "uihtmlFramingProbe";
+    if (!isFramingProbe && !appWindow.document._blockUIInstalled) {
         appWindow.document._blockUIInstalled = true;
         createUIBlocker(appWindow, 'matlab-js-bridge-ui-blocker', 901);
     }
 
     injectBaseStyles();
+
+    let framingProbeFrame = null;
+    let framingProbeHasLoaded = false;
+
+    htmlComponent.addEventListener("DataChanged", function() {
+        const command = htmlComponent.Data;
+        if (!command || command.source !== "uihtmlFramingProbe") {
+            return;
+        }
+
+        handleFramingProbeCommand(command);
+    });
+
+    function handleFramingProbeCommand(command) {
+        if (command.action === "loadURL") {
+            loadFramingProbeURL(command.url);
+        } else if (command.action === "checkFraming") {
+            inspectFramingProbeFrame(command.requestId);
+        } else if (command.action === "attemptCookieRead") {
+            inspectFramingProbeCookies(command.requestId);
+        }
+    }
+
+    if (htmlComponent.Data && htmlComponent.Data.source === "uihtmlFramingProbe") {
+        htmlComponent.sendEventToMATLAB("uihtmlProbe", { type: "bridge-ready" });
+        handleFramingProbeCommand(htmlComponent.Data);
+    }
+
+    function loadFramingProbeURL(url) {
+        document.body.innerHTML = `
+            <style>
+                html, body { height: 100%; margin: 0; overflow: hidden; background: #f4f4f4; }
+                iframe { width: 100%; height: 100%; box-sizing: border-box;
+                         border: 3px solid #d9534f; background: white; display: block; }
+            </style>
+            <iframe id="uihtmlFramingProbeFrame" title="Framed test target"></iframe>`;
+
+        framingProbeFrame = document.getElementById("uihtmlFramingProbeFrame");
+        framingProbeHasLoaded = false;
+        framingProbeFrame.addEventListener("load", function() {
+            framingProbeHasLoaded = true;
+        });
+        framingProbeFrame.src = url || "about:blank";
+    }
+
+    function inspectFramingProbeFrame(requestId) {
+        try {
+            const frameDocument = framingProbeFrame.contentDocument;
+            if (frameDocument !== null) {
+                const frameDocumentURL = frameDocument.URL || "";
+                if (frameDocumentURL && frameDocumentURL !== "about:blank" && framingProbeHasLoaded) {
+                    sendFramingProbeResult("framing", "same-origin", "contentDocument was accessible.", requestId);
+                } else {
+                    sendFramingProbeResult("framing", "blocked", "The frame is empty or remained at about:blank.", requestId);
+                }
+                return;
+            }
+
+            try {
+                const accessibleDocument = framingProbeFrame.contentWindow.document;
+                const accessibleURL = accessibleDocument.URL || "";
+                if (accessibleURL && accessibleURL !== "about:blank" && framingProbeHasLoaded) {
+                    sendFramingProbeResult("framing", "same-origin", "contentWindow.document was accessible.", requestId);
+                } else {
+                    sendFramingProbeResult("framing", "blocked", "contentDocument was null and the accessible frame was blank.", requestId);
+                }
+            } catch (error) {
+                sendFramingProbeResult("framing", "cross-origin", `contentDocument was unavailable and contentWindow.document raised ${error.name}.`, requestId);
+            }
+        } catch (error) {
+            sendFramingProbeResult("framing", "cross-origin", `Reading contentDocument raised ${error.name}.`, requestId);
+        }
+    }
+
+    function inspectFramingProbeCookies(requestId) {
+        try {
+            const cookieDocument = framingProbeFrame.contentWindow.document;
+            const ignoredCookieValue = cookieDocument.cookie;
+            void ignoredCookieValue;
+            sendFramingProbeResult("cookies", "readable", "document.cookie was readable; its value was intentionally discarded.", requestId);
+        } catch (error) {
+            sendFramingProbeResult("cookies", "blocked", `document.cookie raised ${error.name} (expected for a cross-origin frame).`, requestId);
+        }
+    }
+
+    function sendFramingProbeResult(type, status, detail, requestId) {
+        htmlComponent.sendEventToMATLAB("uihtmlProbe", { type, status, detail, requestId });
+    }
 
     /*
         Corrige o comportamento de foco do uialert, evitando que o botão receba foco 
