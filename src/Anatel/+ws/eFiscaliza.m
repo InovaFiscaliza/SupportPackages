@@ -1,33 +1,55 @@
 classdef eFiscaliza < ws.WebServiceBase
 
-    properties (Access = private)
+    properties
         %-----------------------------------------------------------------%
-        login
-        password
+        mfaLogin (1, 1) logical = false
+        login = ''
+        password = ''
     end
 
 
-    properties (Access = private, Constant)
+    properties (Constant)
         %-----------------------------------------------------------------%
-        url = struct( ...
+        BASE_URL = struct( ...
             'DS', 'https://appsnetds.anatel.gov.br/eFiscaliza_API/rest/servico', ...
             'HM', 'https://appsnethm/eFiscaliza_API/rest/servico', ...
             'TS', 'https://appsnetts.anatel.gov.br/eFiscaliza_API/rest/servico', ...
             'PD', 'https://appsnet/eFiscaliza_API/rest/servico' ...
         )
+
+        CURRENT_USER_URL = 'https://fiscalizacao.anatel.gov.br/rffusion/api/users/me'
     end
 
 
     methods
         %-----------------------------------------------------------------%
-        function obj = eFiscaliza(login, password)
+        function obj = eFiscaliza(loginMode, login, password)
             arguments
-                login    char
+                loginMode char {mustBeMember(loginMode, {'mfa', 'manual'})}
+                login char
                 password char
             end
 
-            obj.login    = login;
+            obj.mfaLogin = strcmp(loginMode, 'mfa');
+            
+            if contains(login, '@')
+                login = extractBefore(login, '@');
+            end
+            obj.login = login;
+
             obj.password = ws.WebServiceBase.base64encode(password);
+        end
+
+        %-----------------------------------------------------------------%
+        function delete(obj)
+            % Login automático (sessão F5 Big-IP) não pode ser descartado 
+            % manualmente
+            if ~obj.mfaLogin
+                return
+            end
+
+            obj.login = '';
+            obj.password = '';
         end
 
         %-----------------------------------------------------------------%
@@ -64,7 +86,7 @@ classdef eFiscaliza < ws.WebServiceBase
                     % (inclui DS, caso idêntico ao PD)
                     %-----------------------------------------------------%
                     case {'queryIssue', 'queryIssue-DS'}
-                        endPoint = sprintf('%s/atividades/%s/contexto', obj.url.(env), string(issue.id));
+                        endPoint = sprintf('%s/atividades/%s/contexto', obj.BASE_URL.(env), string(issue.id));
                         response = ws.WebServiceBase.request(endPoint, 'GET', header);
         
                         if ~isstruct(response.Body.Data) || any(~isfield(response.Body.Data, {'solicitacao', 'acao', 'atividade', 'usuario'}))
@@ -117,7 +139,7 @@ classdef eFiscaliza < ws.WebServiceBase
                             body.nomeArquivo = [name, ext];
                         end
 
-                        endPoint = sprintf('%s/atividades/%d/documento-SEI', obj.url.(env), issue.id);
+                        endPoint = sprintf('%s/atividades/%d/documento-SEI', obj.BASE_URL.(env), issue.id);
                         response = ws.WebServiceBase.request(endPoint, 'POST', header, body);
         
                         if ~isstruct(response.Body.Data) || ~isfield(response.Body.Data, 'sei') || ~isstruct(response.Body.Data.sei) || any(~isfield(response.Body.Data.sei, {'documentoFormatado', 'linkAcesso'})) || isempty(response.Body.Data.sei.documentoFormatado)
@@ -150,19 +172,52 @@ classdef eFiscaliza < ws.WebServiceBase
                 msg  = ME.message;
             end
         end
-
-        %-----------------------------------------------------------------%
-        function login = getLogin(obj)
-            login = obj.login;
-        end
     end
 
 
     methods (Static = true)
         %-----------------------------------------------------------------%
-        function ID = serviceMapping(ID)
+        function varargout = getCredentials(loginMode, executionMode, jsBackDoor, eventName, context)
+            varargout = {};
+
+            switch loginMode
+                case 'manual'
+                    createDialog()
+
+                otherwise % 'auto'
+                    try
+                        url = ws.eFiscaliza.CURRENT_USER_URL;
+
+                        switch executionMode
+                            case 'webApp'
+                                sendEventToHTMLSource(jsBackDoor, 'getAuthenticatedUser', struct('eventName', eventName, 'url', url));
+
+                            otherwise
+                                session = ws.auth.F5Session(url);
+                                login(session)
+                                [~, response] = readRaw(session, url);
+                                credentials = jsondecode(response.Body.Data);
+                                varargout = {struct('mfaLogin', true, 'login', credentials.NA_USER_EMAIL, 'password', '123456')};
+                        end
+
+                    catch
+                        createDialog()
+                    end
+            end
+
+            function createDialog()
+                dialogBox = [
+                    struct('id', 'login',    'label', 'Usuário: ', 'type', 'text');
+                    struct('id', 'password', 'label', 'Senha: ',   'type', 'password')
+                ];
+                sendEventToHTMLSource(jsBackDoor, 'customForm', struct('UUID', eventName, 'Fields', dialogBox, 'Context', context));
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function id = serviceMapping(id)
             arguments
-                ID (1,1) int16
+                id (1,1) int16
             end
 
             global id2nameTable
@@ -174,11 +229,11 @@ classdef eFiscaliza < ws.WebServiceBase
                 id2nameTable.ID = int16(id2nameTable.ID);
             end
 
-            [~, idxFind] = ismember(ID, id2nameTable.ID);
+            [~, idxFind] = ismember(id, id2nameTable.ID);
             if idxFind
-                ID = id2nameTable.("Serviço"){idxFind};
+                id = id2nameTable.("Serviço"){idxFind};
             else
-                ID = num2str(ID);
+                id = num2str(id);
             end
         end
     end

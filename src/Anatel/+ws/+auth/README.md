@@ -54,7 +54,7 @@ Pontos-chave da implementação:
 
 ## Pré-requisitos do ambiente
 
-- MATLAB **R2024b ou superior** (multiplataforma: Windows, macOS e Linux).
+- MATLAB **R2024a ou superior** (multiplataforma: Windows, macOS e Linux).
 - Parallel Computing Toolbox para downloads assíncronos com `FileDownload`.
 - Acesso de rede ao host protegido e ao IdP.
 - Usuário com acesso autorizado ao serviço para concluir o login e aprovar o push a cada nova sessão.

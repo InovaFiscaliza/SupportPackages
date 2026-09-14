@@ -44,101 +44,12 @@ function setup(htmlComponent) {
         };
     }
 
-    const isFramingProbe = htmlComponent.Data?.source === "uihtmlFramingProbe";
-    if (!isFramingProbe && !appWindow.document._blockUIInstalled) {
+    if (!appWindow.document._blockUIInstalled) {
         appWindow.document._blockUIInstalled = true;
         createUIBlocker(appWindow, 'matlab-js-bridge-ui-blocker', 901);
     }
 
     injectBaseStyles();
-
-    let framingProbeFrame = null;
-    let framingProbeHasLoaded = false;
-
-    htmlComponent.addEventListener("DataChanged", function() {
-        const command = htmlComponent.Data;
-        if (!command || command.source !== "uihtmlFramingProbe") {
-            return;
-        }
-
-        handleFramingProbeCommand(command);
-    });
-
-    function handleFramingProbeCommand(command) {
-        if (command.action === "loadURL") {
-            loadFramingProbeURL(command.url);
-        } else if (command.action === "checkFraming") {
-            inspectFramingProbeFrame(command.requestId);
-        } else if (command.action === "attemptCookieRead") {
-            inspectFramingProbeCookies(command.requestId);
-        }
-    }
-
-    if (htmlComponent.Data && htmlComponent.Data.source === "uihtmlFramingProbe") {
-        htmlComponent.sendEventToMATLAB("uihtmlProbe", { type: "bridge-ready" });
-        handleFramingProbeCommand(htmlComponent.Data);
-    }
-
-    function loadFramingProbeURL(url) {
-        document.body.innerHTML = `
-            <style>
-                html, body { height: 100%; margin: 0; overflow: hidden; background: #f4f4f4; }
-                iframe { width: 100%; height: 100%; box-sizing: border-box;
-                         border: 3px solid #d9534f; background: white; display: block; }
-            </style>
-            <iframe id="uihtmlFramingProbeFrame" title="Framed test target"></iframe>`;
-
-        framingProbeFrame = document.getElementById("uihtmlFramingProbeFrame");
-        framingProbeHasLoaded = false;
-        framingProbeFrame.addEventListener("load", function() {
-            framingProbeHasLoaded = true;
-        });
-        framingProbeFrame.src = url || "about:blank";
-    }
-
-    function inspectFramingProbeFrame(requestId) {
-        try {
-            const frameDocument = framingProbeFrame.contentDocument;
-            if (frameDocument !== null) {
-                const frameDocumentURL = frameDocument.URL || "";
-                if (frameDocumentURL && frameDocumentURL !== "about:blank" && framingProbeHasLoaded) {
-                    sendFramingProbeResult("framing", "same-origin", "contentDocument was accessible.", requestId);
-                } else {
-                    sendFramingProbeResult("framing", "blocked", "The frame is empty or remained at about:blank.", requestId);
-                }
-                return;
-            }
-
-            try {
-                const accessibleDocument = framingProbeFrame.contentWindow.document;
-                const accessibleURL = accessibleDocument.URL || "";
-                if (accessibleURL && accessibleURL !== "about:blank" && framingProbeHasLoaded) {
-                    sendFramingProbeResult("framing", "same-origin", "contentWindow.document was accessible.", requestId);
-                } else {
-                    sendFramingProbeResult("framing", "blocked", "contentDocument was null and the accessible frame was blank.", requestId);
-                }
-            } catch (error) {
-                sendFramingProbeResult("framing", "cross-origin", `contentDocument was unavailable and contentWindow.document raised ${error.name}.`, requestId);
-            }
-        } catch (error) {
-            sendFramingProbeResult("framing", "cross-origin", `Reading contentDocument raised ${error.name}.`, requestId);
-        }
-    }
-
-    function inspectFramingProbeCookies(requestId) {
-        try {
-            const cookieDocument = framingProbeFrame.contentWindow.document;
-            const ignoredCookieValue = cookieDocument.cookie;
-            void ignoredCookieValue;
-            sendFramingProbeResult("cookies", "readable", "document.cookie was readable; its value was intentionally discarded.", requestId);
-        } catch (error) {
-            sendFramingProbeResult("cookies", "blocked", `document.cookie raised ${error.name} (expected for a cross-origin frame).`, requestId);
-        }
-    }
-
-    function sendFramingProbeResult(type, status, detail, requestId) {
-        htmlComponent.sendEventToMATLAB("uihtmlProbe", { type, status, detail, requestId });
-    }
 
     /*
         Corrige o comportamento de foco do uialert, evitando que o botão receba foco 
@@ -168,9 +79,14 @@ function setup(htmlComponent) {
         
         Para evitar isso, remove-se esse listener do arquivo "bundle.469.js" e usa-se um 
         substituto que não interage com o websocket. Se o usuário confirmar o fechamento, 
-        o evento "unload" é disparado e aciona a função MATLAB closeFcn(app, event), que 
+        o evento "pagehide" é disparado e aciona a função MATLAB closeFcn(app, event), que 
         realiza algumas operações, inclusive fechando a instância do MATLAB Runtime que 
-        suporte o webapp
+        suporte o webapp.
+
+        "unload" foi substituído por "pagehide" porque navegadores recentes bloqueiam o 
+        primeiro por Permissions-Policy (padrão em processo de depreciação). "pagehide" 
+        também dispara ao ir para o bfcache, por isso o evento só é repassado ao MATLAB 
+        quando "event.persisted" é falso (fechamento/navegação real, não bfcache).
     -----------------------------------------------------------------------------------*/  
     htmlComponent.addEventListener("startup", function(customEvent) {
         const executionMode = customEvent.Data;
@@ -185,8 +101,10 @@ function setup(htmlComponent) {
                     event.returnValue = '';
                 });
 
-                appWindow.addEventListener("unload", () => {
-                    htmlComponent.sendEventToMATLAB("unload");
+                appWindow.addEventListener("pagehide", (event) => {
+                    if (!event.persisted) {
+                        htmlComponent.sendEventToMATLAB("unload");
+                    }
                 });
 
                 if ('serviceWorker' in navigator) {
@@ -1328,6 +1246,31 @@ function setup(htmlComponent) {
 
             el.remove();
         });
+    });
+
+
+    /*-----------------------------------------------------------------------------------
+        ## AUTENTICAÇÃO ##
+        A sessão F5 já autenticada do webapp é compartilhada com o domínio da API (mesmo
+        proxy reverso), então o cookie de sessão é enviado automaticamente pelo navegador
+        com "credentials: include".
+    -----------------------------------------------------------------------------------*/
+    htmlComponent.addEventListener("getAuthenticatedUser", (event) => {
+        const {eventName, context, url} = event.Data;
+
+        fetch(url, { credentials: 'include' })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                htmlComponent.sendEventToMATLAB("customForm", struct('uuid', eventName, 'context', context, 'mfaLogin', true, 'login', data.NA_USER_EMAIL, 'password', '123456'));
+            })
+            .catch(ME => {
+                htmlComponent.sendEventToMATLAB("customForm", struct('uuid', eventName, 'context', context, 'error', ME.message));
+            });
     });
 
     /*-----------------------------------------------------------------------------------
