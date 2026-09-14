@@ -19,28 +19,31 @@ classdef F5Session < handle
     %   delete(session)
 
     properties (SetAccess = immutable)
-        %LoginURL Protected URL used to trigger the SAML flow.
-        LoginURL (1,:) char
+        %-----------------------------------------------------------------%
+        LoginURL (1, :) char
     end
 
+
     properties (Dependent, SetAccess = private)
+        %-----------------------------------------------------------------%
         IsAuthenticated
     end
 
+
     properties (Access = private, Transient, NonCopyable)
-        CookieHeader     (1,:) char    = ''
-        Browser                        = []
-        IsBrowserVisible (1,1) logical = false
-        InteractionDone  (1,1) logical = false
+        %-----------------------------------------------------------------%
+        CookieHeader (1, :) char    = ''
+        Browser = []
+        IsBrowserVisible (1, 1) logical = false
+        InteractionDone (1, 1) logical = false
     end
 
+    
     properties (Constant, Access = private)
-        RequiredCookies = ["LastMRH_Session", "F5_ST"]
-        PollInterval    = 0.25
-
-        % Time tolerated before displaying the window: a still valid session in CEF
-        % makes the landing occur without any user interaction.
-        SilentLoginGracePeriod = 2
+        %-----------------------------------------------------------------%
+        REQUIRED_COOKIES = ["LastMRH_Session", "F5_ST"]
+        POLL_INTERVAL = 0.25
+        SILENT_LOGIN_GRACE_PERIOD = 2
     end
 
 
@@ -52,8 +55,7 @@ classdef F5Session < handle
             end
 
             if ~startsWith(loginURL, 'https://', 'IgnoreCase', true)
-                error('ws:auth:F5Session:insecureURL', '%s', ...
-                      ws.auth.getMessage('auth:F5Session:insecureURL'))
+                error('ws:auth:F5Session:insecureURL', 'Insecure URL')
             end
             obj.LoginURL = loginURL;
         end
@@ -89,13 +91,11 @@ classdef F5Session < handle
             startTime = tic;
             while true
                 if ~isBrowserAlive(obj)
-                    error('ws:auth:F5Session:windowClosed', '%s', ...
-                          ws.auth.getMessage('auth:F5Session:windowClosed'))
+                    error('ws:auth:F5Session:windowClosed', 'Window closed')
                 end
 
                 if toc(startTime) > timeout
-                    error('ws:auth:F5Session:timeout', '%s', ...
-                          ws.auth.getMessage('auth:F5Session:timeout', round(timeout)))
+                    error('ws:auth:F5Session:timeout', 'Timeout')
                 end
 
                 state = probeBrowser(obj);
@@ -115,8 +115,7 @@ classdef F5Session < handle
                     showBrowser(obj)
                 end
 
-                pause(obj.PollInterval)
-                drawnow limitrate
+                pause(obj.POLL_INTERVAL)
             end
         end
 
@@ -165,8 +164,7 @@ classdef F5Session < handle
             [data, response] = fetch(obj, url, false, autoReauthenticate, progressFcn);
 
             if ~isa(data, 'uint8')
-                error('ws:auth:F5Session:unexpectedPayload', '%s', ...
-                      ws.auth.getMessage('auth:F5Session:unexpectedPayload', class(data)))
+                error('ws:auth:F5Session:unexpectedPayload', 'Unexpected payload')
             end
         end
 
@@ -207,17 +205,16 @@ classdef F5Session < handle
         %-----------------------------------------------------------------%
         function openBrowser(obj)
             if ~exist('matlab.internal.webwindow', 'class')
-                error('ws:auth:F5Session:unsupportedRelease', '%s', ...
-                      ws.auth.getMessage('auth:F5Session:unsupportedRelease'))
+                error('ws:auth:F5Session:unsupportedRelease', 'UnsupportedRrelease')
             end
 
             obj.Browser = matlab.internal.webwindow(obj.LoginURL);
-            obj.Browser.Title = ws.auth.getMessage('auth:F5Session:authenticationWindowTitle');
-            obj.Browser.CustomWindowClosingCallback = @(src, ~) src.close();
+            obj.Browser.Title = 'Authentication';
+            obj.Browser.CustomWindowClosingCallback = @(src, ~) close(src);
+            setResizable(obj.Browser, false)
 
-            screenSize = get(groot, 'ScreenSize');
-            windowSize = [min(1000, screenSize(3)-100), min(800, screenSize(4)-100)];
-            obj.Browser.Position = [(screenSize(3)-windowSize(1))/2, (screenSize(4)-windowSize(2))/2, windowSize];
+            obj.Browser.Position(3:4) = [620, 540];
+            appEngine.util.setWindowPosition(obj.Browser)
         end
 
         %-----------------------------------------------------------------%
@@ -247,7 +244,7 @@ classdef F5Session < handle
             % when silent landing takes longer than tolerated.
 
             tf = true;
-            if elapsedTime > obj.SilentLoginGracePeriod
+            if elapsedTime > obj.SILENT_LOGIN_GRACE_PERIOD
                 return
             end
 
@@ -268,6 +265,7 @@ classdef F5Session < handle
             if isBrowserAlive(obj)
                 obj.Browser.close()
             end
+            
             obj.Browser = [];
             obj.IsBrowserVisible = false;
             obj.InteractionDone  = false;
@@ -313,14 +311,13 @@ classdef F5Session < handle
             end
 
             cookieNames = string({ws.auth.F5Session.parseCookieHeader(state.cookie).Name});
-            tf = all(ismember(obj.RequiredCookies, cookieNames));
+            tf = all(ismember(obj.REQUIRED_COOKIES, cookieNames));
         end
 
         %-----------------------------------------------------------------%
         function assertAuthenticated(obj)
             if ~obj.IsAuthenticated
-                error('ws:auth:F5Session:notAuthenticated', '%s', ...
-                      ws.auth.getMessage('auth:F5Session:notAuthenticated'))
+                error('ws:auth:F5Session:notAuthenticated', 'Not authenticated')
             end
         end
 
@@ -335,22 +332,19 @@ classdef F5Session < handle
             response = sendRequest(obj, url, convertResponse, progressFcn);
             if ws.auth.F5Session.isSessionExpired(response)
                 if ~autoReauthenticate
-                    error('ws:auth:F5Session:sessionExpired', '%s', ...
-                          ws.auth.getMessage('auth:F5Session:sessionExpired'))
+                    error('ws:auth:F5Session:sessionExpired', 'Session expired')
                 end
 
                 login(obj)
                 response = sendRequest(obj, url, convertResponse, progressFcn);
 
                 if ws.auth.F5Session.isSessionExpired(response)
-                    error('ws:auth:F5Session:sessionExpired', '%s', ...
-                          ws.auth.getMessage('auth:F5Session:sessionExpiredAfterAuth'))
+                    error('ws:auth:F5Session:sessionExpired', 'Session expired after auth')
                 end
             end
 
             if response.StatusCode ~= matlab.net.http.StatusCode.OK
-                error('ws:auth:F5Session:httpError', '%s', ...
-                      ws.auth.getMessage('auth:F5Session:httpError', double(response.StatusCode), char(response.StatusCode)))
+                error('ws:auth:F5Session:httpError', 'Http error')
             end
             data = response.Body.Data;
         end
