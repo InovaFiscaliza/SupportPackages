@@ -1266,10 +1266,10 @@ function setup(htmlComponent) {
                 return response.json();
             })
             .then(data => {
-                htmlComponent.sendEventToMATLAB("customForm", struct('uuid', eventName, 'context', context, 'mfaLogin', true, 'login', data.NA_USER_EMAIL, 'password', '123456'));
+                htmlComponent.sendEventToMATLAB("customForm", {uuid: eventName, context, mfaLogin: true, login: data.NA_USER_EMAIL, password: '123456'});
             })
             .catch(ME => {
-                htmlComponent.sendEventToMATLAB("customForm", struct('uuid', eventName, 'context', context, 'error', ME.message));
+                htmlComponent.sendEventToMATLAB("customForm", {uuid: eventName, context, error: ME.message});
             });
     });
 

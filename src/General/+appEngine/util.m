@@ -21,9 +21,14 @@ classdef (Abstract) util
         function safeSaveMAT(fileName, variableNames, variableValues, compressionMode)
             s = cell2struct(variableValues, variableNames, 2);
             lastwarn('')
-            save(fileName, '-struct', 's', '-v7', compressionMode{:});
-            [~, warnID] = lastwarn;
-            if strcmp(warnID, 'MATLAB:save:sizeTooBigForMATFile')
+            try
+                save(fileName, '-struct', 's', '-v7', compressionMode{:});
+                [~, warnID] = lastwarn;
+                if strcmp(warnID, 'MATLAB:save:sizeTooBigForMATFile')
+                    error('MATLAB:save:sizeTooBigForMATFile', 'The MAT-file is too big for the -v7 format.')
+                end
+
+            catch ME
                 save(fileName, '-struct', 's', '-v7.3', compressionMode{:});
             end
         end
