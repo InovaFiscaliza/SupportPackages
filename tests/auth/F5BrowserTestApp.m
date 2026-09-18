@@ -348,62 +348,82 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
         function task = createDownloadDialog(app, taskID, fileName)
             task = struct('Downloader', [], ...
                           'Dialog', [], ...
+                          'Separator', [], ...
                           'StatusLabel', [], ...
                           'BytesLabel', [], ...
                           'ProgressTrack', [], ...
                           'ProgressFill', [], ...
+                          'ProgressMarkers', [], ...
+                          'ProgressFraction', 0, ...
                           'PauseButton', [], ...
                           'StopButton', [], ...
                           'FileName', fileName, ...
                           'FilePath', '', ...
                           'LogPath', '', ...
                           'IsPaused', false, ...
-                          'IsStopped', false);
+                          'IsStopped', false, ...
+                          'StartTimer', tic, ...
+                          'ProgressSamples', zeros(0, 2));
 
-                    app.ensureDownloadContainer()
-                    task.Dialog = uipanel(app.DownloadStack, ...
-                              'BorderType', 'line', ...
-                              'Title', fileName);
-            gridLayout = uigridlayout(task.Dialog, [3, 3]);
-            gridLayout.RowHeight = {22, 18, 30};
+            app.ensureDownloadContainer()
+            task.Dialog = uipanel(app.DownloadStack, ...
+                                  'BorderType', 'none', ...
+                                  'BackgroundColor', app.FigureBackgroundColor);
+            task.Separator = uipanel(app.DownloadStack, ...
+                                     'BorderType', 'none', ...
+                                     'BackgroundColor', [0.55, 0.55, 0.55], ...
+                                     'Visible', 'off');
+            gridLayout = uigridlayout(task.Dialog, [4, 3]);
+            gridLayout.Padding = [16, 12, 16, 8];
+            gridLayout.RowSpacing = 4;
+            gridLayout.RowHeight = {24, 20, 46, 30};
             gridLayout.ColumnWidth = {'1x', 90, 90};
 
             task.StatusLabel = uilabel(gridLayout, ...
-                                              'Text', sprintf('Baixando %s', fileName), ...
-                                              'WordWrap', 'on');
+                                       'Text', fileName, ...
+                                       'HorizontalAlignment', 'left', ...
+                                       'VerticalAlignment', 'bottom', ...
+                                       'WordWrap', 'on');
             task.StatusLabel.Layout.Row = 1;
             task.StatusLabel.Layout.Column = [1, 3];
 
-            % Barra simples: uma faixa azul preenchendo a trilha, sem escala
-            % nem marcações (uigauge desenha régua e ponteiro).
+            % Barra simples: uma faixa azul preenchendo a trilha, com linhas
+            % verticais nos pontos de 0%, 25%, 50%, 75% e 100%.
             task.ProgressTrack = uipanel(gridLayout, ...
-                                                'BorderType', 'line', ...
-                                                'BackgroundColor', app.FigureBackgroundColor);
+                                         'BorderType', 'none', ...
+                                         'BackgroundColor', app.FigureBackgroundColor);
             task.ProgressTrack.Layout.Row = 2;
             task.ProgressTrack.Layout.Column = [1, 3];
 
             task.ProgressFill = uipanel(task.ProgressTrack, ...
-                                               'BorderType', 'none', ...
-                                               'BackgroundColor', [0, 0.447, 0.741], ...
-                                               'Units', 'pixels', ...
-                                               'Position', [0, 0, 0, 1]);
+                                        'BorderType', 'none', ...
+                                        'BackgroundColor', [0, 0.447, 0.741], ...
+                                        'Units', 'pixels', ...
+                                        'Position', [0, 0, 0, 1]);
+            task.ProgressMarkers = gobjects(1, 5);
+            for markerIndex = 1:numel(task.ProgressMarkers)
+                task.ProgressMarkers(markerIndex) = uipanel(task.ProgressTrack, ...
+                                                             'BorderType', 'none', ...
+                                                             'BackgroundColor', [0.45, 0.45, 0.45], ...
+                                                             'Units', 'pixels', ...
+                                                             'Position', [0, 0, 1, 1]);
+            end
 
-            task.BytesLabel = uilabel(gridLayout, 'Text', '');
+            task.BytesLabel = uilabel(gridLayout, 'Text', '', 'WordWrap', 'on');
             task.BytesLabel.Layout.Row = 3;
-            task.BytesLabel.Layout.Column = 1;
+            task.BytesLabel.Layout.Column = [1, 3];
 
             task.PauseButton = uibutton(gridLayout, 'Text', 'Pausar', ...
                                         'ButtonPushedFcn', @(~, ~) app.toggleDownloadPause(taskID));
-            task.PauseButton.Layout.Row = 3;
+            task.PauseButton.Layout.Row = 4;
             task.PauseButton.Layout.Column = 2;
 
             task.StopButton = uibutton(gridLayout, 'Text', 'Parar', ...
                                        'ButtonPushedFcn', @(src, ~) app.stopDownload(taskID, src));
-            task.StopButton.Layout.Row = 3;
+            task.StopButton.Layout.Row = 4;
             task.StopButton.Layout.Column = 3;
-            task.Dialog.Layout.Row = 1;
-            task.Dialog.Layout.Column = 1;
             drawnow
+            app.updateProgressScale(task, task.ProgressTrack.InnerPosition)
         end
 
         %-----------------------------------------------------------------%
@@ -419,19 +439,110 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
                 return
             end
 
-            if isempty(totalBytes) || totalBytes <= 0
-                fraction = 0;
-                task.BytesLabel.Text = F5BrowserTestApp.formatBytes(receivedBytes);
-            else
-                fraction = min(receivedBytes/totalBytes, 1);
-                task.BytesLabel.Text = sprintf('%s / %s', ...
-                                               F5BrowserTestApp.formatBytes(receivedBytes), ...
-                                               F5BrowserTestApp.formatBytes(totalBytes));
+            elapsedSeconds = toc(task.StartTimer);
+            task.ProgressSamples(end+1, :) = [elapsedSeconds, double(receivedBytes)];
+            cutoffTime = elapsedSeconds - 10;
+            samplesBeforeCutoff = find(task.ProgressSamples(:, 1) <= cutoffTime, 1, 'last');
+            if ~isempty(samplesBeforeCutoff)
+                task.ProgressSamples = task.ProgressSamples(samplesBeforeCutoff:end, :);
             end
 
-            trackSize = task.ProgressTrack.InnerPosition;
-            task.ProgressFill.Position = [0, 0, fraction*trackSize(3), trackSize(4)];
+            transferRate = NaN;
+            if elapsedSeconds >= 10 && size(task.ProgressSamples, 1) >= 2
+                sampleDuration = task.ProgressSamples(end, 1) - task.ProgressSamples(1, 1);
+                if sampleDuration >= 10
+                    transferRate = (task.ProgressSamples(end, 2) - task.ProgressSamples(1, 2)) / sampleDuration;
+                end
+            end
 
+            if isempty(totalBytes) || totalBytes <= 0
+                fraction = 0;
+            else
+                fraction = min(receivedBytes/totalBytes, 1);
+            end
+            task.BytesLabel.Text = app.downloadProgressText(receivedBytes, totalBytes, elapsedSeconds, transferRate);
+            task.ProgressFraction = fraction;
+
+            trackSize = task.ProgressTrack.InnerPosition;
+            app.updateProgressScale(task, trackSize);
+
+            app.DownloadTasks{taskID} = task;
+            drawnow limitrate
+        end
+
+        %-----------------------------------------------------------------%
+        function text = downloadProgressText(~, receivedBytes, totalBytes, elapsedSeconds, transferRate)
+            receivedText = F5BrowserTestApp.formatBytes(receivedBytes);
+            totalText = '-';
+            totalSizeText = '-';
+            if ~isempty(totalBytes) && totalBytes > 0
+                totalText = F5BrowserTestApp.formatBytes(totalBytes);
+                totalSizeText = F5BrowserTestApp.formatTotalBytes(totalBytes);
+            end
+
+            if elapsedSeconds < 10
+                elapsedText = '- s';
+                remainingText = '- s';
+            else
+                elapsedText = F5BrowserTestApp.formatDuration(elapsedSeconds);
+                remainingText = '- s';
+                if ~isempty(totalBytes) && totalBytes > 0 && isfinite(transferRate) && transferRate > 0
+                    remainingBytes = max(0, double(totalBytes) - double(receivedBytes));
+                    remainingText = F5BrowserTestApp.formatDuration(remainingBytes/transferRate);
+                end
+            end
+
+            text = sprintf('%s / %s (%s) | Decorrido: %s | Restante: %s', ...
+                           receivedText, totalText, totalSizeText, elapsedText, remainingText);
+        end
+
+        %-----------------------------------------------------------------%
+        function updateProgressScale(~, task, trackSize)
+            if isempty(task.ProgressTrack) || ~isvalid(task.ProgressTrack)
+                return
+            end
+
+            trackWidth = max(0, trackSize(3));
+            trackHeight = max(1, trackSize(4));
+            task.ProgressFill.Position = [0, 0, task.ProgressFraction*trackWidth, trackHeight];
+
+            markerWidth = 1;
+            markerXPositions = round((0:4)/4 * max(0, trackWidth - markerWidth));
+            for markerIndex = 1:numel(task.ProgressMarkers)
+                marker = task.ProgressMarkers(markerIndex);
+                if ~isempty(marker) && isvalid(marker)
+                    marker.Position = [markerXPositions(markerIndex), 0, markerWidth, trackHeight];
+                end
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function resizeDownloadProgressBars(app)
+            if isempty(app.DownloadDialog) || ~isvalid(app.DownloadDialog)
+                return
+            end
+
+            for taskID = 1:numel(app.DownloadTasks)
+                task = app.DownloadTasks{taskID};
+                if isempty(task) || isempty(task.Dialog) || ~isvalid(task.Dialog)
+                    continue
+                end
+                if ~isempty(task.ProgressTrack) && isvalid(task.ProgressTrack)
+                    app.updateProgressScale(task, task.ProgressTrack.InnerPosition)
+                end
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function onDownloadWindowResized(app)
+            if isempty(app.DownloadDialog) || ~isvalid(app.DownloadDialog)
+                return
+            end
+
+            % Let the standard grid finish resizing before refreshing the
+            % nested progress grids.
+            drawnow
+            app.resizeDownloadProgressBars()
             drawnow limitrate
         end
 
@@ -446,11 +557,9 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             if task.IsPaused
                 pause(task.Downloader)
                 task.PauseButton.Text = 'Continuar';
-                task.StatusLabel.Text = sprintf('Pausado - %s', task.FileName);
             else
                 resume(task.Downloader)
                 task.PauseButton.Text = 'Pausar';
-                task.StatusLabel.Text = sprintf('Baixando %s', task.FileName);
             end
             app.DownloadTasks{taskID} = task;
         end
@@ -480,11 +589,16 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             if ~isempty(task.Dialog) && isvalid(task.Dialog)
                 delete(task.Dialog)
             end
+            if ~isempty(task.Separator) && isvalid(task.Separator)
+                delete(task.Separator)
+            end
             task.Dialog = [];
+            task.Separator = [];
             task.StatusLabel = [];
             task.BytesLabel = [];
             task.ProgressTrack = [];
             task.ProgressFill = [];
+            task.ProgressMarkers = [];
             task.PauseButton = [];
             task.StopButton = [];
             app.DownloadTasks{taskID} = task;
@@ -498,14 +612,16 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             end
 
             app.DownloadDialog = uifigure('Name', 'Downloads', ...
-                                          'Position', [430, 320, 560, 200], ...
+                                          'Position', [430, 320, 560, 169], ...
                                           'Resize', 'on', ...
                                           'CloseRequestFcn', @(src, ~) app.stopAllDownloads(src));
+            app.DownloadDialog.SizeChangedFcn = @(~, ~) app.onDownloadWindowResized();
             app.DownloadStack = uigridlayout(app.DownloadDialog, [1, 1]);
-            app.DownloadStack.Padding = [8, 8, 8, 8];
-            app.DownloadStack.RowSpacing = 8;
+            app.DownloadStack.Padding = [0, 0, 0, 0];
+            app.DownloadStack.RowSpacing = 0;
             app.DownloadStack.ColumnWidth = {'1x'};
-            app.DownloadStack.RowHeight = {150};
+            app.DownloadStack.RowHeight = {152};
+            app.resizeDownloadProgressBars()
         end
 
         %-----------------------------------------------------------------%
@@ -540,17 +656,30 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
                 return
             end
 
-            app.DownloadStack.RowHeight = repmat({150}, 1, numel(activeIDs));
-            for row = 1:numel(activeIDs)
-                task = app.DownloadTasks{activeIDs(row)};
-                task.Dialog.Layout.Row = row;
-                task.Dialog.Layout.Column = 1;
-            end
-
             position = app.DownloadDialog.Position;
             position(3) = 560;
-            position(4) = min(760, max(200, 16 + 158*numel(activeIDs)));
+            position(4) = min(840, max(169, 16 + 153*numel(activeIDs)));
             app.DownloadDialog.Position = position;
+            drawnow
+
+            rowHeights = repmat({1}, 1, 2*numel(activeIDs));
+            rowHeights(1:2:end) = repmat({152}, 1, numel(activeIDs));
+            app.DownloadStack.RowHeight = rowHeights;
+            for row = 1:numel(activeIDs)
+                task = app.DownloadTasks{activeIDs(row)};
+                task.Dialog.Layout.Row = 2*row - 1;
+                task.Dialog.Layout.Column = 1;
+                task.Separator.Layout.Row = 2*row;
+                task.Separator.Layout.Column = 1;
+                if row < numel(activeIDs)
+                    task.Separator.Visible = 'on';
+                else
+                    task.Separator.Visible = 'off';
+                end
+            end
+            drawnow
+            app.resizeDownloadProgressBars()
+            drawnow limitrate
         end
 
         %-----------------------------------------------------------------%
@@ -888,10 +1017,77 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
 
         %-----------------------------------------------------------------%
         function text = formatBytes(value)
-            if nargin == 0 || isempty(value)
+            if nargin == 0 || isempty(value) || ~isscalar(value) || ~isfinite(value)
                 text = 'unknown';
+                return
+            end
+
+            value = double(value);
+            signText = '';
+            if value < 0
+                signText = '-';
+                value = abs(value);
+            end
+            digits = sprintf('%.0f', value);
+            firstGroupLength = mod(numel(digits), 3);
+            if firstGroupLength == 0
+                firstGroupLength = 3;
+            end
+
+            groupCount = 1 + floor((numel(digits) - firstGroupLength)/3);
+            groups = cell(1, groupCount);
+            groups{1} = digits(1:firstGroupLength);
+            for groupIndex = 2:groupCount
+                startIndex = firstGroupLength + (groupIndex - 2)*3 + 1;
+                groups{groupIndex} = digits(startIndex:startIndex + 2);
+            end
+            text = [signText, strjoin(groups, ' ')];
+        end
+
+        %-----------------------------------------------------------------%
+        function text = formatTotalBytes(value)
+            value = double(value);
+            unitScales = [1024^3, 1024^2, 1024];
+            unitNames = {'GBytes', 'MBytes', 'kBytes'};
+            unitIndex = find(value >= unitScales, 1, 'first');
+            if isempty(unitIndex)
+                unitIndex = numel(unitScales);
+            end
+
+            unitValue = max(1, round(value/unitScales(unitIndex)));
+            text = sprintf('%.0f %s', unitValue, unitNames{unitIndex});
+        end
+
+        %-----------------------------------------------------------------%
+        function text = formatDuration(seconds)
+            if isempty(seconds) || ~isscalar(seconds) || ~isfinite(seconds)
+                text = '- s';
+                return
+            end
+
+            seconds = max(0, round(double(seconds)));
+            if seconds < 60
+                text = sprintf('%.0f s', seconds);
+                return
+            end
+
+            minutes = floor(seconds/60);
+            remainingSeconds = mod(seconds, 60);
+            if minutes < 60
+                if remainingSeconds == 0
+                    text = sprintf('%.0f min', minutes);
+                else
+                    text = sprintf('%.0f min %.0f s', minutes, remainingSeconds);
+                end
+                return
+            end
+
+            hours = floor(minutes/60);
+            remainingMinutes = mod(minutes, 60);
+            if remainingMinutes == 0
+                text = sprintf('%.0f h', hours);
             else
-                text = sprintf('%.0f', value);
+                text = sprintf('%.0f h %.0f min', hours, remainingMinutes);
             end
         end
 
