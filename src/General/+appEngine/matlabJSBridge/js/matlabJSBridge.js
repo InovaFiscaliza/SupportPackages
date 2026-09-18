@@ -154,11 +154,22 @@ function setup(htmlComponent) {
                     }
 
                     if (el.tableMultiline) {
-                        const styleElement = appWindow.document.createElement("style");
-                        styleElement.type = "text/css";
-                        styleElement.id = `matlab-js-bridge-table-multiline-${el.dataTag}`;
+                        const styleId = `matlab-js-bridge-table-multiline-${el.dataTag}`;
 
-                        styleElement.innerHTML = `[data-tag="${el.dataTag}"] .mw-table-row {
+                        if (!el.tableMultiline.status) {
+                            appWindow.document.getElementById(styleId)?.remove();
+                        } else {
+                            let styleElement = appWindow.document.getElementById(styleId);
+                            if (!styleElement) {
+                                styleElement = appWindow.document.createElement("style");
+                                styleElement.type = "text/css";
+                                styleElement.id = styleId;
+                                appWindow.document.head.appendChild(styleElement);
+                            }
+
+                            const verticalCenter = !!el.tableMultiline.verticalCenter;
+
+                            styleElement.innerHTML = `[data-tag="${el.dataTag}"] .mw-table-row {
     height: auto !important;
 }
 
@@ -167,8 +178,6 @@ function setup(htmlComponent) {
 }
 
 [data-tag="${el.dataTag}"] .mw-table-row > td.mw-table-cell-clean-focus.mw-table-cell.mw-table-cell-background-input .mw-string-renderer {
-    display: flex !important;
-    align-items: center !important;
     height: auto !important;
     min-height: 100% !important;
     white-space: pre-line !important;
@@ -177,8 +186,9 @@ function setup(htmlComponent) {
     overflow-wrap: anywhere !important;
     word-break: break-word !important;
     line-height: 1.25 !important;
+    ${verticalCenter ? 'display: flex !important;\n    align-items: center !important;' : ''}
 }`;
-                        appWindow.document.head.appendChild(styleElement);
+                        }
                     }
 
                     if (el.tableSelectionStyle) {
@@ -190,6 +200,18 @@ function setup(htmlComponent) {
     color: ${el.tableSelectionStyle.color} !important;
     background-color: ${el.tableSelectionStyle.backgroundColor} !important;
 }`;
+                        appWindow.document.head.appendChild(styleElement);
+                    }
+
+                    if (el.tableTextAlignment) {
+                        const styleElement = appWindow.document.createElement("style");
+                        styleElement.type = "text/css";
+                        styleElement.id = `matlab-js-bridge-table-text-alignment-style-${el.dataTag}`;
+
+                        styleElement.innerHTML = el.tableTextAlignment.map(({ columnId, textAlign }) => `
+[data-tag="${el.dataTag}"] .mw-table-row > td:nth-child(${columnId}) {
+    text-align: ${textAlign} !important;
+}`).join('\n');
                         appWindow.document.head.appendChild(styleElement);
                     }
 
