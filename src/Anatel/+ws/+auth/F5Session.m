@@ -265,7 +265,7 @@ classdef F5Session < handle
             obj.Browser.CustomWindowClosingCallback = @(src, ~) close(src);
             setResizable(obj.Browser, false)
 
-            obj.Browser.Position(3:4) = [750, 500];
+            obj.Browser.Position(3:4) = [500, 675];
             appEngine.util.setWindowPosition(obj.Browser)
         end
 
