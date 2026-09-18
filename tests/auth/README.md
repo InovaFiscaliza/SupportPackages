@@ -15,7 +15,7 @@ Não há como executá-los de forma desassistida.
 
 ## checkF5Auth.m
 
-Script organizado em seções (`%%`), pensado para execução com **Ctrl+Enter**, uma de cada vez. O cabeçalho define `targetURL` e acrescenta `src/Anatel` ao path.
+Script organizado em seções (`%%`), pensado para execução com **Ctrl+Enter**, uma de cada vez. O cabeçalho define `loginURL`, `targetURL` e `debugFile`, além de acrescentar `src/Anatel` ao path.
 
 O path provido refere-se a exemplo simples que 
 
@@ -23,15 +23,17 @@ O path provido refere-se a exemplo simples que
 
 Cria a `F5Session` e chama `login`. A janela do navegador só aparece quando o fluxo é redirecionado ao Azure AD; conclua o login e aprove o push. Ao final, `debugInfo` imprime `IsAuthenticated`, a quantidade e os **nomes** dos cookies capturados — nunca os valores.
 
+A URL de login deve terminar no host protegido com HTTP `200`; o corpo da landing page pode ser vazio. Esse retorno mantém o documento no domínio dos cookies do F5 para que a sessão possa ser capturada.
+
 Esperado: `IsAuthenticated = 1` e `LastMRH_Session`, `F5_ST` (e normalmente `MRHSession`) entre os nomes.
 
 ### Test2 — Round-trip fora do navegador embarcado
 
 Este é o teste que valida a premissa central do módulo: que o cookie obtido no navegador embarcado é **portável para o cliente HTTP do MATLAB**, ou seja, que o F5 não vincula a sessão a um *fingerprint* de navegador (User-Agent, IP, sessão TLS).
 
-Faz um `read` no mesmo endpoint e verifica que a resposta é JSON. Se voltasse a página de login em vez do payload, a abordagem inteira seria inviável e exigiria replicar cabeçalhos do navegador.
+Faz um `read` em `targetURL` e verifica que a resposta é JSON. Se voltasse a página de login em vez do payload, a abordagem inteira seria inviável e exigiria replicar cabeçalhos do navegador.
 
-Esperado: struct com os campos `X_User_*` que o APM injeta.
+Esperado: struct de perfil obtido do cabeçalho `X-User-Profile`, normalmente com campos como `NA_USER_EMAIL`, `NA_USER_NAME` e `NA_ROLE`.
 
 ### Test3 — Requisição sem cookie (controle negativo)
 
@@ -66,7 +68,7 @@ F5BrowserTestApp
 ### Interface
 
 - **Combo box de URL** (editável), pré-populado com endpoints de teste. Navega tanto ao   pressionar Enter sobre uma URL digitada quanto ao selecionar um item. URLs novas são acrescentadas ao histórico mas não serão recuperadas entre sessões.
-- **Rótulo de status**, à direita: `Conectado` / `Desconectado`.
+- **Botão de status**, à direita: `conectar` / `desconectar`.
 - **Área de conteúdo** (`uihtml`), ocupando o restante da figura.
 
 ### Comportamento
@@ -98,8 +100,8 @@ empilhados que redimensionam o contêiner conforme novas tarefas são adicionada
 O progresso é exibido na barra a partir do tamanho total informado pelo servidor. O contador mostra
 os bytes recebidos e o total; quando o total não é conhecido, mostra apenas os bytes recebidos.
 Além disso, o app salva um arquivo de log ao lado do download (`<arquivo>.log`) com URL,
-identificação da sessão, código HTTP, `Content-Length`, bytes recebidos e stack de erro quando
-houver falha.
+destino, identificação resumida da sessão e bytes recebidos. Em caso de falha, o log inclui a
+exceção e o stack; código HTTP e `Content-Length` não são registrados atualmente.
 
 Endpoints sem extensão no último segmento (`debug/headers`, `server/runtime-health`) seguem
 sendo renderizados normalmente.

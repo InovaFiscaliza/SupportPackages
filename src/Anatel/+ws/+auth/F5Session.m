@@ -10,10 +10,14 @@ classdef F5Session < handle
     % Authenticator push. Once login is completed, the F5 session cookies
     % (LastMRH_Session, F5_ST and others present) are read via document.cookie
     % and maintained EXCLUSIVELY IN MEMORY, for the lifetime of this object.
-    % Nothing is written to disk or reused between executions.
+    % Cookie values stay in memory during normal operation. If debugFile is
+    % supplied to login, the browser state may be written for diagnostics.
+    %
+    % The constructor argument is the URL used to start interactive login.
+    % It is retained in LoginURL and reused for every reauthentication.
     %
     % Example:
-    %   session = ws.auth.F5Session('https://host/app');
+    %   session = ws.auth.F5Session('https://host/app/login');
     %   login(session)
     %   data = read(session, 'https://host/app/api/v1/lookup?locations=-24,-52');
     %   delete(session)
@@ -30,9 +34,16 @@ classdef F5Session < handle
     end
 
 
+    properties (Transient, SetAccess = private)
+        %-----------------------------------------------------------------%
+        UserProfile (1,1) struct = struct()
+    end
+
+
     properties (Access = private, Transient, NonCopyable)
         %-----------------------------------------------------------------%
         CookieHeader (1, :) char    = ''
+        DebugStateFile (1, :) char  = ''
         Browser = []
         IsBrowserVisible (1, 1) logical = false
         InteractionDone (1, 1) logical = false
@@ -69,18 +80,37 @@ classdef F5Session < handle
         function tf = get.IsAuthenticated(obj)
             tf = ~isempty(obj.CookieHeader);
         end
+
+        %-----------------------------------------------------------------%
+        function [isAuthenticated, userProfile] = getAuthenticationInfo(obj)
+            % GETAUTHENTICATIONINFO Returns authentication status and profile.
+
+            isAuthenticated = obj.IsAuthenticated;
+            if isAuthenticated
+                userProfile = obj.UserProfile;
+            else
+                userProfile = struct();
+            end
+        end
     end
 
 
     methods
         %-----------------------------------------------------------------%
-        function login(obj, timeout)
+        function login(obj, timeout, debugFile)
             % LOGIN Opens the authentication window and waits for the user to complete
-            % the SAML + MFA flow. Blocks until session cookies are obtained.
+            % the SAML + MFA flow. Blocks until session cookies are obtained or
+            % the user declines to continue after a timeout.
 
             arguments
                 obj
                 timeout (1,1) double {mustBePositive, mustBeFinite} = 300
+                debugFile (1,:) char = ''
+            end
+
+            obj.DebugStateFile = debugFile;
+            if ~isempty(obj.DebugStateFile)
+                initializeDebugStateFile(obj)
             end
 
             logout(obj)
@@ -95,12 +125,20 @@ classdef F5Session < handle
                 end
 
                 if toc(startTime) > timeout
-                    error('ws:auth:F5Session:timeout', 'Timeout')
+                    choice = questdlg('The login timed out. Continue waiting?', ...
+                        'F5Session timeout', 'Yes', 'No', 'No');
+                    if strcmp(choice, 'Yes')
+                        startTime = tic;
+                    else
+                        break
+                    end
                 end
 
                 state = probeBrowser(obj);
+
                 if hasLanded(obj, state)
                     obj.CookieHeader = strtrim(state.cookie);
+                    updateUserProfile(obj)
                     break
                 end
 
@@ -116,6 +154,7 @@ classdef F5Session < handle
                 end
 
                 pause(obj.POLL_INTERVAL)
+                % drawnow limitrate
             end
         end
 
@@ -128,6 +167,7 @@ classdef F5Session < handle
             % Overwrites the buffer before releasing it.
             obj.CookieHeader(:) = ' ';
             obj.CookieHeader    = '';
+            obj.UserProfile     = struct();
         end
 
         %-----------------------------------------------------------------%
@@ -210,10 +250,22 @@ classdef F5Session < handle
 
             obj.Browser = matlab.internal.webwindow(obj.LoginURL);
             obj.Browser.Title = 'Authentication';
+            try
+                iconPath = fullfile(fileparts(mfilename('fullpath')), ...
+                            '..', '..', '..', 'General', 'icons', ...
+                            'Anatel_Logo_Color_256x256.png');
+                obj.Browser.Icon = iconPath;
+            catch
+                warning('ws:auth:F5Session:iconError', 'Failed to set browser window icon')
+            end
+            if ~isempty(obj.DebugStateFile)
+                obj.Browser.openDevTools();
+            end
+
             obj.Browser.CustomWindowClosingCallback = @(src, ~) close(src);
             setResizable(obj.Browser, false)
 
-            obj.Browser.Position(3:4) = [620, 540];
+            obj.Browser.Position(3:4) = [750, 500];
             appEngine.util.setWindowPosition(obj.Browser)
         end
 
@@ -284,8 +336,12 @@ classdef F5Session < handle
             state = [];
             try
                 rawValue = obj.Browser.executeJS('JSON.stringify({url: window.location.href, cookie: document.cookie})');
+                writeDebugState(obj, 'raw', rawValue)
                 state    = ws.auth.F5Session.decodeJSResult(rawValue);
-            catch
+                writeDebugState(obj, 'decoded', state)
+            catch ME
+                writeDebugState(obj, 'error', struct('Identifier', ME.identifier, ...
+                                                     'Message', ME.message))
             end
         end
 
@@ -306,12 +362,79 @@ classdef F5Session < handle
         %-----------------------------------------------------------------%
         function tf = hasLanded(obj, state)
             tf = false;
-            if ~isOnTargetHost(obj, state) || ~isfield(state, 'cookie')
+            if isempty(state) || ~isstruct(state) || ~isfield(state, 'cookie')
+                writeDebugState(obj, 'landed', struct('Result', false, ...
+                                                      'Reason', 'Missing cookie state'))
                 return
             end
 
             cookieNames = string({ws.auth.F5Session.parseCookieHeader(state.cookie).Name});
+
             tf = all(ismember(obj.REQUIRED_COOKIES, cookieNames));
+            writeDebugState(obj, 'landed', struct('Result', tf, ...
+                                                  'CookieNames', {cellstr(cookieNames)}, ...
+                                                  'RequiredCookies', {cellstr(obj.REQUIRED_COOKIES)}))
+        end
+
+        %-----------------------------------------------------------------%
+        function initializeDebugStateFile(obj)
+            if isempty(obj.DebugStateFile)
+                return
+            end
+
+            try
+                folder = fileparts(obj.DebugStateFile);
+                if ~isempty(folder) && ~isfolder(folder)
+                    mkdir(folder)
+                end
+
+                fileID = fopen(obj.DebugStateFile, 'w');
+                if fileID == -1
+                    return
+                end
+                fileCleanup = onCleanup(@() fclose(fileID));
+                fprintf(fileID, 'F5Session browser state log\n');
+            catch
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function writeDebugState(obj, label, value)
+            if isempty(obj.DebugStateFile)
+                return
+            end
+
+            try
+                fileID = fopen(obj.DebugStateFile, 'a');
+                if fileID == -1
+                    return
+                end
+                fileCleanup = onCleanup(@() fclose(fileID));
+
+                if ischar(value) || isStringScalar(value)
+                    text = char(value);
+                else
+                    text = jsonencode(value);
+                end
+
+                timestamp = char(datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss.SSS'));
+                fprintf(fileID, '\n[%s] %s\n%s\n', timestamp, label, text);
+            catch
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function updateUserProfile(obj)
+            try
+                response = sendRequest(obj, obj.LoginURL, true, []);
+                statusCode = double(response.StatusCode);
+                profileFields = response.getFields('X-User-Profile');
+
+                if statusCode >= 200 && statusCode < 300 && ~isempty(profileFields)
+                    obj.UserProfile = ws.auth.F5Session.getLoginProfile(response);
+                end
+            catch
+            end
         end
 
         %-----------------------------------------------------------------%
@@ -343,10 +466,23 @@ classdef F5Session < handle
                 end
             end
 
-            if response.StatusCode ~= matlab.net.http.StatusCode.OK
+            statusCode = double(response.StatusCode);
+            if statusCode < 200 || statusCode >= 300
                 error('ws:auth:F5Session:httpError', 'Http error')
             end
-            data = response.Body.Data;
+
+            profileFields = response.getFields('X-User-Profile');
+            if ~isempty(profileFields)
+                obj.UserProfile = ws.auth.F5Session.getLoginProfile(response);
+                data = obj.UserProfile;
+                return
+            end
+
+            if isempty(response.Body)
+                data = [];
+            else
+                data = response.Body.Data;
+            end
         end
 
         %-----------------------------------------------------------------%
@@ -396,6 +532,12 @@ classdef F5Session < handle
                 end
                 cookies(end+1) = struct('Name', tokens{ii}(1:idx-1), 'Value', tokens{ii}(idx+1:end)); %#ok<AGROW>
             end
+        end
+
+        %-----------------------------------------------------------------%
+        function profile = getLoginProfile(response)
+            field = response.getFields('X-User-Profile');
+            profile = jsondecode(char(field(1).Value));
         end
     end
 

@@ -5,17 +5,21 @@
 %
 % Execute célula a célula (Ctrl+Enter).
 
-targetURL = 'https://fiscalizacao.anatel.gov.br/rffusion/debug/headers';
+loginURL = 'https://fiscalizacao.anatel.gov.br/rffusion/api/users/login';
+targetURL = 'https://fiscalizacao.anatel.gov.br/rffusion/api/users/me';
+debugFile = fullfile(tempdir, 'F5Session-browser-state.log');
 
 mFilePath = fileparts(which('checkF5Auth'));
 addpath(fullfile(fileparts(fileparts(mFilePath)), 'src', 'Anatel'))
+addpath(fullfile(fileparts(fileparts(mFilePath)), 'src', 'General'))
 
 %% Test1: Login interativo
 % Abre a janela embarcada, aguarda o fluxo SAML + aprovação do push no
 % Microsoft Authenticator e captura os cookies de sessão.
 
-session = ws.auth.F5Session(targetURL);
-login(session)
+session = ws.auth.F5Session(loginURL);
+fprintf('F5Session browser state log: %s\n', debugFile)
+session.login(300, debugFile)
 
 disp(debugInfo(session))
 

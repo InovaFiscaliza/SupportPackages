@@ -12,7 +12,7 @@ Módulo compartilhado de autenticação para aplicações MATLAB desktop que con
 
 ## Por que este módulo existe
 
-O backend não possui lógica de autenticação própria: quem autentica é o F5. Uma vez concluído o login, o APM injeta cabeçalhos de identidade confiáveis (`X-User-Name`, `X-User-Email`, `X-User-Department`, `X-User-Job-Title`, `X-User-Location`) nas requisições encaminhadas ao backend.
+O backend não possui lógica de autenticação própria: quem autentica é o F5. Uma vez concluído o login, o APM associa a identidade autenticada às requisições encaminhadas ao backend. Quando disponível, o cabeçalho `X-User-Profile` contém o perfil JSON consumido por `F5Session`.
 
 Não existe token OAuth em nenhum ponto da cadeia — o que autoriza a chamada é o **cookie de sessão do APM**.
 
@@ -38,15 +38,16 @@ sequenceDiagram
     A-->>B: POST SAMLResponse para o ACS do F5
     Note over M,B: fluxo voltou ao host protegido<br/>=> a janela é ocultada
     F-->>B: 302 /<app> + cookies de sessão
+    Note over M,B: a navegação deve terminar no host protegido com HTTP 200<br/>o corpo pode ser vazio
     M->>B: document.cookie (via executeJS)
     B-->>M: LastMRH_Session, F5_ST, ...
     M->>F: GET /api/... com header Cookie
-    F->>F: injeta cabeçalhos X-User-* e encaminha ao backend
+    F->>F: disponibiliza X-User-Profile e encaminha ao backend
 ```
 
 Pontos-chave da implementação:
 
-- **Detecção de conclusão** — polling a cada 0,25 s executando `JSON.stringify({url: location.href, cookie: document.cookie})` na página. Considera-se concluído quando o host corresponde ao da URL protegida, o caminho não é `/my.policy` e os cookies obrigatórios (`LastMRH_Session` e `F5_ST`) estão presentes.
+- **Detecção de conclusão** — polling a cada 0,25 s executando `JSON.stringify({url: location.href, cookie: document.cookie})` na página. A URL de login deve terminar no host protegido com uma resposta HTTP `200`; o corpo dessa página pode ser vazio. Considera-se concluído quando os cookies obrigatórios (`LastMRH_Session` e `F5_ST`) estão presentes. Uma resposta `204` não é adequada para esse fluxo porque mantém o documento do provedor de identidade, cujo `document.cookie` não expõe os cookies do F5. Depois disso, a classe faz uma tentativa independente de ler `X-User-Profile` usando a `LoginURL` e os cookies capturados.
 - **Leitura dos cookies** — possível via `document.cookie` porque os cookies do APM não são marcados `HttpOnly`. Nenhuma API nativa de gerenciamento de cookies é necessária.
 - **Download independente** — para arquivos grandes, `FileDownload` executa as requisições por blocos em `backgroundPool`, mantendo a interface livre para outras requisições. O arquivo parcial pode ser retomado.
 - **Janela sob demanda** — a janela é criada oculta. Só é exibida quando o fluxo sai do host protegido (redirecionamento ao IdP) ou quando o *landing* silencioso demora mais que 2 s. Se o CEF ainda tiver uma sessão válida, o login ocorre sem qualquer janela visível.
@@ -54,7 +55,7 @@ Pontos-chave da implementação:
 
 ## Pré-requisitos do ambiente
 
-- MATLAB **R2024a ou superior** (multiplataforma: Windows, macOS e Linux).
+- MATLAB **R2024b ou superior** (multiplataforma: Windows, macOS e Linux).
 - Parallel Computing Toolbox para downloads assíncronos com `FileDownload`.
 - Acesso de rede ao host protegido e ao IdP.
 - Usuário com acesso autorizado ao serviço para concluir o login e aprovar o push a cada nova sessão.
@@ -105,8 +106,9 @@ Essa inclusão deve ser repetida no projeto ou script de compilação de cada ap
 ## Uso
 
 ```matlab
-session = ws.auth.F5Session('<https service URL>');
-login(session)     % bloqueia até o login concluir
+loginURL = 'https://<host>/<app>/api/users/login'; % deve terminar em HTTP 200
+session = ws.auth.F5Session(loginURL);
+login(session)     % o corpo da página de landing pode ser vazio
 
 data = read(session, 'https://<host>/<app>/api/v1/...');
 
@@ -117,21 +119,24 @@ delete(session)    % descarta a sessão da memória
 
 | Membro | Descrição |
 |---|---|
-| `F5Session(loginURL)` | Construtor. Exige HTTPS. |
-| `login(obj, timeout)` | Login interativo. Bloqueia até obter os cookies. `timeout` padrão: 300 s. |
+| `F5Session(loginURL)` | Construtor. Exige uma URL HTTPS de login, armazenada em `LoginURL` e reutilizada em cada reautenticação. |
+| `login(obj, timeout, debugFile)` | Login interativo. Aguarda os cookies obrigatórios e exige uma landing page HTTP 200 no host protegido; o corpo pode ser vazio. `timeout` padrão: 300 s. Se o usuário não continuar após o timeout, o método retorna sem autenticar. Se `debugFile` for informado, registra o estado bruto e decodificado do navegador para diagnóstico. |
 | `logout(obj)` | Descarta os cookies da memória e fecha a janela. |
 | `read(obj, url, autoReauthenticate)` | GET autenticado, com o payload convertido pelo tipo de conteúdo. Em caso de sessão expirada, dispara nova autenticação (padrão) ou lança erro. |
 | `readBytes(obj, url, autoReauthenticate, progressFcn)` | Idem, sem conversão do payload: devolve `uint8`. Útil para pequenos payloads binários ou diagnósticos. `progressFcn` é chamado como `f(bytesRecebidos, bytesTotais)`. |
 | `FileDownload(session, url, filePath, chunkSize, maxRetries)` | Cria um download assíncrono retomável. Várias instâncias podem executar simultaneamente. Use `start`, `pause`, `resume` e `stop`; `ProgressFcn` recebe `f(bytesRecebidos, bytesTotais)`, `CompletedFcn` recebe o resumo e `ErrorFcn` recebe a exceção. |
 | `debugInfo(obj)` | Diagnóstico: `LoginURL`, `IsAuthenticated`, `CookieCount` e `CookieNames`. |
 | `IsAuthenticated` | Propriedade somente leitura. |
+| `UserProfile` | Perfil do usuário associado à sessão autenticada. Somente leitura para a aplicação. |
+| `getAuthenticationInfo()` | Retorna `[isAuthenticated, userProfile]`. Quando não autenticada, `userProfile` é um struct vazio. |
 | `isSessionExpired(response)` | Estático. Avalia uma `ResponseMessage` já obtida. |
 
 ## Notas de segurança
 
-- Os cookies existem **apenas em memória**, em propriedade privada, pelo tempo de vida do objeto. Nada é gravado em disco nem reaproveitado entre execuções do MATLAB.
+- Os cookies existem **em memória**, em propriedade privada, pelo tempo de vida do objeto. Durante a operação normal nada é gravado em disco nem reaproveitado entre execuções do MATLAB; se `debugFile` for informado, o estado bruto do navegador, que pode conter valores de cookies, é gravado para diagnóstico.
 - O valor do cookie não é persistido em disco. Durante um `FileDownload`, uma cópia em memória do cabeçalho é enviada ao worker de `backgroundPool` para que a transferência seja independente da thread principal.
 - `debugInfo` expõe apenas nomes e quantidade de cookies, nunca os valores.
+- O `debugFile` de `login` pode conter cookies de autenticação; use-o somente para diagnóstico local e remova-o após a análise.
 - `logout` sobrescreve o buffer do cabeçalho antes de liberá-lo.
 - `logout` **não** encerra a sessão no lado do F5 nem limpa o cookie jar do CEF, que vive enquanto o processo do MATLAB existir. Um novo `login` após `logout` tende a concluir silenciosamente, reaproveitando a sessão do navegador.
 
