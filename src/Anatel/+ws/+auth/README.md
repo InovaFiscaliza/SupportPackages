@@ -8,6 +8,7 @@ Módulo compartilhado de autenticação para aplicações MATLAB desktop que con
 | `FileDownload.m` | Download assíncrono retomável em `backgroundPool` |
 | `DownloadProgressMonitor.m` | Reporta o andamento das transferências ao chamador |
 | `getMessage.m` | Carrega as mensagens localizadas do módulo |
+| [`profileAvatar.html`](profileAvatar.html) | Componente `uihtml` reutilizável para indicar o estado e o perfil autenticado |
 | `resources/{en,pt}/catalog.m` | Catálogos de mensagens em inglês e português |
 
 ## Por que este módulo existe
@@ -71,19 +72,21 @@ O próprio módulo não pode configurar essa dependência: as opções de empaco
 ```matlab
 authFolder = fileparts(which('ws.auth.F5Session'));
 authResources = fullfile(authFolder, 'resources');
+authProfileAvatar = fullfile(authFolder, 'profileAvatar.html');
 ```
 
 Com `compiler.build.standaloneApplication`:
 
 ```matlab
 compiler.build.standaloneApplication(appFile, ...
-    'AdditionalFiles', authResources);
+    'AdditionalFiles', [string(authResources), string(authProfileAvatar)]);
 ```
 
 Se a aplicação já inclui outros arquivos adicionais, preserve-os na mesma lista:
 
 ```matlab
-additionalFiles = [string(existingAdditionalFiles), string(authResources)];
+additionalFiles = [string(existingAdditionalFiles), string(authResources), ...
+                   string(authProfileAvatar)];
 compiler.build.standaloneApplication(appFile, ...
     'AdditionalFiles', additionalFiles);
 ```
@@ -91,10 +94,10 @@ compiler.build.standaloneApplication(appFile, ...
 Com `mcc`:
 
 ```matlab
-mcc('-m', appFile, '-a', authResources)
+mcc('-m', appFile, '-a', authResources, '-a', authProfileAvatar)
 ```
 
-No Application Compiler, adicione `authResources` em **Files installed for your end user**. A pasta deve conter os dois arquivos abaixo no pacote final:
+No Application Compiler, adicione `authResources` e `authProfileAvatar` em **Files installed for your end user**. A pasta de recursos deve conter os dois arquivos abaixo no pacote final:
 
 ```text
 resources/en/catalog.m
@@ -114,6 +117,35 @@ data = read(session, 'https://<host>/<app>/api/v1/...');
 
 delete(session)    % descarta a sessão da memória
 ```
+
+### Componente de avatar
+
+`profileAvatar.html` é um componente `uihtml` reutilizável para exibir um avatar
+desconectado, a inicial do usuário autenticado ou uma foto PNG em Base64. O
+componente fica no pacote `ws.auth`; aplicações consumidoras devem referenciá-lo
+diretamente, sem copiar o HTML para a pasta da aplicação:
+
+```matlab
+authFolder = fileparts(which('ws.auth.F5Session'));
+avatarHTML = uihtml(parentContainer);
+avatarHTML.HTMLSource = fullfile(authFolder, 'profileAvatar.html');
+avatarHTML.HTMLEventReceivedFcn = @avatarEventReceived;
+```
+
+Depois que o componente emitir o evento `profileAvatarReady`, a aplicação pode
+atualizar `avatarHTML.Data` com um struct no formato abaixo:
+
+```matlab
+state = struct('action', 'render', ...
+               'connected', true, ...
+               'initial', 'A', ...
+               'photoPngBase64', '');
+avatarHTML.Data = state;
+```
+
+Use `connected = false` para exibir o estado desconectado. O componente emite
+`profileAvatarClick` quando o usuário pressiona o avatar; a aplicação pode usar
+esse evento para iniciar o login ou abrir o menu do perfil.
 
 ### API pública
 

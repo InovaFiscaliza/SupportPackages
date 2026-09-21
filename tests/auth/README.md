@@ -5,16 +5,21 @@ Exemplos e validação de [`ws.auth.F5Session`](../../src/Anatel/+ws/+auth/READM
 | Arquivo | Tipo | Finalidade |
 |---|---|---|
 | [checkF5Auth.m](checkF5Auth.m) | Script por seções | Validação passo a passo do fluxo |
-| [checkProfileHtml.m](checkProfileHtml.m) | Harness `uifigure` | Teste isolado do avatar `uihtml`, sem autenticação |
+| [`profileAvatar.html`](../../src/Anatel/+ws/+auth/profileAvatar.html) | Componente `uihtml` compartilhado | Avatar reutilizável para o estado de autenticação |
+| [checkProfileHtml.m](checkProfileHtml.m) | Harness `uifigure` | Teste isolado do avatar compartilhado, sem autenticação |
 | [F5BrowserTestApp.m](F5BrowserTestApp.m) | App `uifigure` | Integração completa em uma aplicação |
 
-Ambos exigem um login real, com aprovação do push no Microsoft Authenticator.
+Os testes de autenticação exigem um login real, com aprovação do push no Microsoft
+Authenticator. O harness isolado do avatar não exige autenticação.
 
 Não há como executá-los de forma desassistida.
 
-O harness do avatar não exige login. Execute `checkProfileHtml` para alternar entre
-desconectado, conectado com inicial e conectado com a foto PNG de teste, além de verificar
-o callback de clique emitido pelo componente HTML.
+O componente `profileAvatar.html` pertence ao módulo compartilhado em
+[`src/Anatel/+ws/+auth`](../../src/Anatel/+ws/+auth/README.md) e pode ser reutilizado por
+qualquer aplicação que use este pacote de autenticação. O harness não exige login.
+Execute `checkProfileHtml` para alternar entre desconectado, conectado com inicial e
+conectado com a foto PNG de teste, além de verificar o callback de clique emitido pelo
+componente HTML.
 
 ---
 
@@ -86,11 +91,14 @@ F5BrowserTestApp
 aponta para outro host — o cookie do APM é válido apenas para o host que o emitiu. Enquanto
 o host for o mesmo, nenhuma nova autenticação ocorre.
 
-O avatar é um componente `uihtml` autossuficiente em `profileAvatar.html`. Os SVGs são
-embutidos no HTML; o MATLAB envia apenas o estado de conexão, a inicial e a foto PNG em
-Base64. A foto de teste é carregada por uma função específica a partir de
+O avatar é o componente `uihtml` compartilhado em
+[`src/Anatel/+ws/+auth/profileAvatar.html`](../../src/Anatel/+ws/+auth/profileAvatar.html).
+Os SVGs são embutidos no HTML; o MATLAB envia apenas o estado de conexão, a inicial e a
+foto PNG em Base64. A foto de teste é carregada por uma função específica a partir de
 `Profile-Picture.png`, sem criar arquivos temporários. O componente recorta a foto em um
-círculo no próprio SVG e devolve eventos de clique ao MATLAB.
+círculo no próprio SVG e devolve eventos de clique ao MATLAB. Aplicações consumidoras
+devem configurar `uihtml.HTMLSource` para o arquivo do módulo, em vez de manter uma cópia
+local.
 
 `render` decide como exibir a resposta: HTML é renderizado como HTML; respostas JSON (que
 `matlab.net.http` já converte em struct) são exibidas como JSON formatado dentro de `<pre>`.
