@@ -5,7 +5,8 @@ function uiFigure = checkProfileHtml
 % conectado com foto. O nome fornece a primeira letra exibida no avatar.
 
 mFilePath = fileparts(mfilename('fullpath'));
-profileHtmlPath = fullfile(mFilePath, 'profileAvatar.html');
+projectFolder = fileparts(fileparts(mFilePath));
+profileHtmlPath = fullfile(projectFolder, 'src', 'Anatel', '+ws', '+auth', 'profileAvatar.html');
 
 isConnected = false;
 useProfilePicture = false;

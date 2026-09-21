@@ -12,7 +12,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
         UIFigure    matlab.ui.Figure
         URLDropDown matlab.ui.control.DropDown
         DebugImage matlab.ui.control.Image
-        ProfileImage matlab.ui.control.Image
+        ProfileAvatarHTML matlab.ui.control.HTML
         HTMLView    matlab.ui.control.HTML
         ProfileMenu matlab.ui.container.Panel
         ProfileNameLabel matlab.ui.control.Label
@@ -20,8 +20,12 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
         SignOutButton matlab.ui.control.Button
         DebugMode (1,1) logical = false
         AuthResourceFolder (1, :) char = ''
-        GeneratedProfileImagePath (1, :) char = ''
-        GeneratedProfileInitial (1, :) char = ''
+        ProfileAvatarHTMLPath (1, :) char = ''
+        ProfileAvatarState struct = struct('action', 'render', ...
+                            'connected', false, ...
+                            'initial', '?', ...
+                            'photoPngBase64', '')
+        ProfileAvatarHTMLReady (1,1) logical = false
         DownloadDialog
         DownloadStack
         DownloadTasks = {}
@@ -69,7 +73,6 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             end
             app.DownloadTasks = {};
             app.closeDownloadContainer()
-            app.deleteGeneratedProfileImage()
             delete(app.Session)
 
             if ~isempty(app.UIFigure) && isvalid(app.UIFigure)
@@ -85,6 +88,8 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             app.UIFigure = uifigure('Name', 'F5Session :: Navegador de teste', 'Position', [100, 100, 1000, 700]);
             app.UIFigure.CloseRequestFcn = @(~, ~) delete(app);
             app.AuthResourceFolder = fileparts(mfilename('fullpath'));
+            projectFolder = fileparts(fileparts(app.AuthResourceFolder));
+            app.ProfileAvatarHTMLPath = fullfile(projectFolder, 'src', 'Anatel', '+ws', '+auth', 'profileAvatar.html');
 
             % Store the figure's background color for use in panels
             app.FigureBackgroundColor = app.UIFigure.Color;
@@ -104,15 +109,15 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             app.DebugImage.Layout.Row    = 1;
             app.DebugImage.Layout.Column = 2;
 
-            app.ProfileImage = uiimage(gridLayout, ...
-                                       'ImageSource', fullfile(app.AuthResourceFolder, 'profile_out.svg'), ...
-                                       'ImageClickedFcn', @(~, ~) app.profileImageClicked());
-            app.ProfileImage.Layout.Row    = 1;
-            app.ProfileImage.Layout.Column = 3;
+            app.ProfileAvatarHTML = uihtml(gridLayout);
+            app.ProfileAvatarHTML.HTMLEventReceivedFcn = @(~, event) app.onProfileAvatarEvent(event);
+            app.ProfileAvatarHTML.HTMLSource = app.ProfileAvatarHTMLPath;
+            app.ProfileAvatarHTML.Layout.Row    = 1;
+            app.ProfileAvatarHTML.Layout.Column = 3;
 
             app.HTMLView = uihtml(gridLayout, 'HTMLSource', '<html><body></body></html>');
             app.HTMLView.Layout.Row    = 2;
-            app.HTMLView.Layout.Column = [1, 2];
+            app.HTMLView.Layout.Column = [1, 3];
 
             app.ProfileMenu = uipanel(app.UIFigure, 'Visible', 'off', 'Title', 'Perfil');
             menuLayout = uigridlayout(app.ProfileMenu, [3, 1]);
@@ -194,6 +199,46 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
         end
 
         %-----------------------------------------------------------------%
+        function onProfileAvatarEvent(app, event)
+            eventName = "";
+            if isprop(event, 'HTMLEventName')
+                eventName = string(event.HTMLEventName);
+            elseif isprop(event, 'EventName')
+                eventName = string(event.EventName);
+            end
+
+            payload = [];
+            if isprop(event, 'HTMLEventData')
+                payload = event.HTMLEventData;
+            elseif isprop(event, 'Data')
+                payload = event.Data;
+            end
+            if ischar(payload) || (isstring(payload) && isscalar(payload))
+                try
+                    payload = jsondecode(char(payload));
+                catch
+                    payload = struct();
+                end
+            end
+            if eventName == "profileAvatarClick"
+                app.profileImageClicked()
+                return
+            end
+            if ~isstruct(payload) || ~isfield(payload, 'type')
+                return
+            end
+
+            switch string(payload.type)
+                case "ready"
+                    app.ProfileAvatarHTMLReady = true;
+                    app.ProfileAvatarHTML.Data = app.ProfileAvatarState;
+
+                case "click"
+                    app.profileImageClicked()
+            end
+        end
+
+        %-----------------------------------------------------------------%
         function toggleProfileMenu(app)
             if strcmp(app.ProfileMenu.Visible, 'on')
                 app.ProfileMenu.Visible = 'off';
@@ -205,7 +250,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             app.ProfileDetailsLabel.Text = app.profileDetails(profile);
 
             drawnow
-            imagePosition = getpixelposition(app.ProfileImage, true);
+            imagePosition = getpixelposition(app.ProfileAvatarHTML, true);
             menuWidth = 300;
             menuHeight = 240;
             figureSize = app.UIFigure.Position(3:4);
@@ -771,14 +816,12 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
 
             if isConnected
                 [~, profile] = app.Session.getAuthenticationInfo();
-                imagePath = app.authenticatedProfileImage(profile);
-                app.ProfileImage.ImageSource = imagePath;
+                app.updateProfileAvatar(true, profile)
                 return
             end
 
             app.ProfileMenu.Visible = 'off';
-            app.ProfileImage.ImageSource = fullfile(app.AuthResourceFolder, 'profile_out.svg');
-            app.deleteGeneratedProfileImage()
+            app.updateProfileAvatar(false, struct())
         end
 
         %-----------------------------------------------------------------%
@@ -791,46 +834,41 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
         end
 
         %-----------------------------------------------------------------%
-        function imagePath = authenticatedProfileImage(app, profile)
-            initial = app.profileInitial(profile);
-            needsNewImage = isempty(app.GeneratedProfileImagePath) || ...
-                            ~isfile(app.GeneratedProfileImagePath) || ...
-                            ~strcmp(app.GeneratedProfileInitial, initial);
-            if needsNewImage
-                previousImagePath = app.GeneratedProfileImagePath;
-                imagePath = app.createProfileImage(initial);
-                app.GeneratedProfileImagePath = imagePath;
-                app.GeneratedProfileInitial = initial;
-                if ~isempty(previousImagePath) && isfile(previousImagePath)
-                    delete(previousImagePath)
+        function updateProfileAvatar(app, isConnected, profile)
+            state = struct('action', 'render', ...
+                           'connected', logical(isConnected), ...
+                           'initial', '?', ...
+                           'photoPngBase64', '');
+            if isConnected
+                state.initial = app.profileInitial(profile);
+                try
+                    state.photoPngBase64 = app.loadProfilePictureBase64();
+                catch
+                    state.photoPngBase64 = '';
                 end
-            else
-                imagePath = app.GeneratedProfileImagePath;
+            end
+            app.ProfileAvatarState = state;
+
+            if app.ProfileAvatarHTMLReady && ~isempty(app.ProfileAvatarHTML) && isvalid(app.ProfileAvatarHTML)
+                app.ProfileAvatarHTML.Data = state;
             end
         end
 
         %-----------------------------------------------------------------%
-        function imagePath = createProfileImage(app, initial)
-            sourcePath = fullfile(app.AuthResourceFolder, 'profile.svg');
-            svgSource = fileread(sourcePath);
-            svgSource = regexprep(svgSource, '(<text[^>]*>)[^<]*(</text>)', ['$1', initial, '$2'], 'once');
+        function base64 = loadProfilePictureBase64(app)
+            picturePath = fullfile(app.AuthResourceFolder, 'Profile-Picture.png');
+            base64 = '';
+            if ~isfile(picturePath)
+                return
+            end
 
-            imagePath = [tempname, '.svg'];
-            fileID = fopen(imagePath, 'w');
+            fileID = fopen(picturePath, 'rb');
             if fileID == -1
-                error('F5BrowserTestApp:ProfileImageWriteFailed', 'Nao foi possivel criar a imagem do perfil.')
+                return
             end
             fileCleanup = onCleanup(@() fclose(fileID));
-            fwrite(fileID, svgSource, 'char');
-        end
-
-        %-----------------------------------------------------------------%
-        function deleteGeneratedProfileImage(app)
-            if ~isempty(app.GeneratedProfileImagePath) && isfile(app.GeneratedProfileImagePath)
-                delete(app.GeneratedProfileImagePath)
-            end
-            app.GeneratedProfileImagePath = '';
-            app.GeneratedProfileInitial = '';
+            imageBytes = fread(fileID, [1, inf], '*uint8');
+            base64 = char(matlab.net.base64encode(imageBytes));
         end
 
         %-----------------------------------------------------------------%
