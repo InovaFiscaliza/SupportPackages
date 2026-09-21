@@ -12,15 +12,24 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
         UIFigure    matlab.ui.Figure
         URLDropDown matlab.ui.control.DropDown
         DebugImage matlab.ui.control.Image
+        DownloadAvatarHTML matlab.ui.control.HTML
         ProfileAvatarHTML matlab.ui.control.HTML
         HTMLView    matlab.ui.control.HTML
         ProfileMenu matlab.ui.container.Panel
+        DownloadContent matlab.ui.container.Panel
         ProfileNameLabel matlab.ui.control.Label
         ProfileDetailsLabel matlab.ui.control.Label
         SignOutButton matlab.ui.control.Button
         DebugMode (1,1) logical = false
         AuthResourceFolder (1, :) char = ''
+        DefaultServerDownloadPath (1, :) char = ''
+        DownloadAvatarHTMLPath (1, :) char = ''
         ProfileAvatarHTMLPath (1, :) char = ''
+        DownloadAvatarState struct = struct('level', 0, ...
+                    'inProgress', false, ...
+                    'ballCount', 0, ...
+                    'speedRadiansPerSecond', 0)
+        DownloadAvatarHTMLReady (1,1) logical = false
         ProfileAvatarState struct = struct('action', 'render', ...
                             'connected', false, ...
                             'initial', '?', ...
@@ -88,15 +97,17 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             app.UIFigure = uifigure('Name', 'F5Session :: Navegador de teste', 'Position', [100, 100, 1000, 700]);
             app.UIFigure.CloseRequestFcn = @(~, ~) delete(app);
             app.AuthResourceFolder = fileparts(mfilename('fullpath'));
+            app.DefaultServerDownloadPath = app.AuthResourceFolder;
             projectFolder = fileparts(fileparts(app.AuthResourceFolder));
+            app.DownloadAvatarHTMLPath = fullfile(projectFolder, 'src', 'Anatel', '+ws', '+auth', 'downloadAvatar.html');
             app.ProfileAvatarHTMLPath = fullfile(projectFolder, 'src', 'Anatel', '+ws', '+auth', 'profileAvatar.html');
 
             % Store the figure's background color for use in panels
             app.FigureBackgroundColor = app.UIFigure.Color;
 
-            gridLayout = uigridlayout(app.UIFigure, [2, 3]);
+            gridLayout = uigridlayout(app.UIFigure, [2, 4]);
             gridLayout.RowHeight   = {22, '1x'};
-            gridLayout.ColumnWidth = {'1x', 22, 22};
+            gridLayout.ColumnWidth = {'1x', 22, 22, 22};
 
             app.URLDropDown = uidropdown(gridLayout, 'Editable', 'on', 'Items', app.DefaultURLs, 'Value', '<digite uma URL ou selecione>');
             app.URLDropDown.ValueChangedFcn = @(~, ~) navigate(app);
@@ -109,15 +120,23 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             app.DebugImage.Layout.Row    = 1;
             app.DebugImage.Layout.Column = 2;
 
+            app.DownloadAvatarHTML = uihtml(gridLayout);
+            app.DownloadAvatarHTML.HTMLEventReceivedFcn = @(~, event) app.onDownloadAvatarEvent(event);
+            app.DownloadAvatarHTML.HTMLSource = app.DownloadAvatarHTMLPath;
+            app.DownloadAvatarHTML.Layout.Row    = 1;
+            app.DownloadAvatarHTML.Layout.Column = 3;
+
             app.ProfileAvatarHTML = uihtml(gridLayout);
             app.ProfileAvatarHTML.HTMLEventReceivedFcn = @(~, event) app.onProfileAvatarEvent(event);
             app.ProfileAvatarHTML.HTMLSource = app.ProfileAvatarHTMLPath;
             app.ProfileAvatarHTML.Layout.Row    = 1;
-            app.ProfileAvatarHTML.Layout.Column = 3;
+            app.ProfileAvatarHTML.Layout.Column = 4;
 
             app.HTMLView = uihtml(gridLayout, 'HTMLSource', '<html><body></body></html>');
             app.HTMLView.Layout.Row    = 2;
-            app.HTMLView.Layout.Column = [1, 3];
+            app.HTMLView.Layout.Column = [1, 4];
+
+            app.UIFigure.WindowButtonDownFcn = @(~, event) app.onMainFigureButtonDown(event);
 
             app.ProfileMenu = uipanel(app.UIFigure, 'Visible', 'off', 'Title', 'Perfil');
             menuLayout = uigridlayout(app.ProfileMenu, [3, 1]);
@@ -151,7 +170,8 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
                 ensureSession(app, url)
 
                 if app.isDownloadURL(url)
-                    downloadFile(app, url)
+                    defaultFilePath = fullfile(app.DefaultServerDownloadPath, app.fileNameFromURL(url));
+                    downloadFile(app, url, defaultFilePath)
                     refreshStatus(app)
                     return
                 end
@@ -239,6 +259,84 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
         end
 
         %-----------------------------------------------------------------%
+        function onDownloadAvatarEvent(app, event)
+            eventName = "";
+            if isprop(event, 'HTMLEventName')
+                eventName = string(event.HTMLEventName);
+            elseif isprop(event, 'EventName')
+                eventName = string(event.EventName);
+            end
+
+            payload = [];
+            if isprop(event, 'HTMLEventData')
+                payload = event.HTMLEventData;
+            elseif isprop(event, 'Data')
+                payload = event.Data;
+            end
+            if ischar(payload) || (isstring(payload) && isscalar(payload))
+                try
+                    payload = jsondecode(char(payload));
+                catch
+                    payload = struct();
+                end
+            end
+
+            if eventName == "downloadAvatarClick"
+                app.showDownloadContainer()
+                return
+            end
+            if ~isstruct(payload) || ~isfield(payload, 'type')
+                return
+            end
+
+            switch string(payload.type)
+                case "ready"
+                    app.DownloadAvatarHTMLReady = true;
+                    app.DownloadAvatarHTML.Data = app.DownloadAvatarState;
+
+                case "click"
+                    app.showDownloadContainer()
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function showDownloadContainer(app)
+            if isempty(app.DownloadDialog) || ~isvalid(app.DownloadDialog)
+                return
+            end
+
+            app.DownloadDialog.Visible = 'on';
+            drawnow
+            app.refreshDownloadContainer()
+            uistack(app.DownloadDialog, 'top')
+        end
+
+        %-----------------------------------------------------------------%
+        function hideDownloadContainer(app)
+            if ~isempty(app.DownloadDialog) && isvalid(app.DownloadDialog)
+                app.DownloadDialog.Visible = 'off';
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function onMainFigureButtonDown(app, ~)
+            if isempty(app.DownloadDialog) || ~isvalid(app.DownloadDialog) || ...
+                    ~strcmp(app.DownloadDialog.Visible, 'on')
+                return
+            end
+
+            point = app.UIFigure.CurrentPoint;
+            panelPosition = app.DownloadDialog.Position;
+            insidePanel = point(1) >= panelPosition(1) && ...
+                          point(1) <= panelPosition(1) + panelPosition(3) && ...
+                          point(2) >= panelPosition(2) && ...
+                          point(2) <= panelPosition(2) + panelPosition(4);
+            if ~insidePanel
+                app.hideDownloadContainer()
+            end
+        end
+
+        %-----------------------------------------------------------------%
         function toggleProfileMenu(app)
             if strcmp(app.ProfileMenu.Visible, 'on')
                 app.ProfileMenu.Visible = 'off';
@@ -278,18 +376,21 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
         end
 
         %-----------------------------------------------------------------%
-        function downloadFile(app, url)
+        function downloadFile(app, url, filePath)
             % URLs cujo último segmento tem extensão são baixadas para disco,
             % em vez de renderizadas.
 
-            [fileName, folderName] = uiputfile('*.*', 'Salvar arquivo', fullfile(app.downloadFolder(), app.fileNameFromURL(url)));
-            figure(app.UIFigure)
+            if nargin < 3 || isempty(filePath)
+                [fileName, folderName] = uiputfile('*.*', 'Salvar arquivo');
+                figure(app.UIFigure)
 
-            if isequal(fileName, 0)
-                return
+                if isequal(fileName, 0)
+                    return
+                end
+                filePath = fullfile(folderName, fileName);
             end
 
-            filePath = resolveExistingFile(app, fullfile(folderName, fileName));
+            filePath = resolveExistingFile(app, filePath);
             if isempty(filePath)
                 return
             end
@@ -318,7 +419,8 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             task.Downloader.CompletedFcn = @(info) app.onDownloadCompleted(taskID, info);
             task.Downloader.ErrorFcn     = @(ME) app.onDownloadFailed(taskID, ME);
             app.DownloadTasks{taskID} = task;
-            app.refreshDownloadContainer()
+            app.showDownloadContainer()
+            app.updateDownloadAvatar()
             start(task.Downloader)
         end
 
@@ -331,6 +433,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             F5BrowserTestApp.writeDownloadLog(task.LogPath, sprintf('Bytes received: %d\nEND\n', info.BytesReceived));
             app.closeDownloadDialog(taskID)
             app.DownloadTasks{taskID} = [];
+            app.updateDownloadAvatar()
         end
 
         %-----------------------------------------------------------------%
@@ -343,6 +446,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
                                                                      getReport(exception, 'extended', 'hyperlinks', 'off')));
             app.closeDownloadDialog(taskID)
             app.DownloadTasks{taskID} = [];
+            app.updateDownloadAvatar()
 
             % O arquivo parcial é preservado para permitir a retomada.
             uialert(app.UIFigure, ...
@@ -400,6 +504,9 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
                           'ProgressFill', [], ...
                           'ProgressMarkers', [], ...
                           'ProgressFraction', 0, ...
+                          'ReceivedBytes', 0, ...
+                          'TotalBytes', [], ...
+                          'TransferRate', NaN, ...
                           'PauseButton', [], ...
                           'StopButton', [], ...
                           'FileName', fileName, ...
@@ -480,7 +587,11 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             if isempty(task) || task.IsStopped || ~isvalid(app)
                 return
             end
+            task.ReceivedBytes = double(receivedBytes);
+            task.TotalBytes = totalBytes;
             if isempty(task.ProgressTrack) || ~isvalid(task.ProgressTrack)
+                app.DownloadTasks{taskID} = task;
+                app.updateDownloadAvatar()
                 return
             end
 
@@ -492,7 +603,8 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
                 task.ProgressSamples = task.ProgressSamples(samplesBeforeCutoff:end, :);
             end
 
-            transferRate = NaN;
+            % fake default transfer rate to simulate a minimum speed before enough samples are collected
+            transferRate = 100000;
             if elapsedSeconds >= 10 && size(task.ProgressSamples, 1) >= 2
                 sampleDuration = task.ProgressSamples(end, 1) - task.ProgressSamples(1, 1);
                 if sampleDuration >= 10
@@ -507,12 +619,72 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             end
             task.BytesLabel.Text = app.downloadProgressText(receivedBytes, totalBytes, elapsedSeconds, transferRate);
             task.ProgressFraction = fraction;
+            task.TransferRate = transferRate;
 
             trackSize = task.ProgressTrack.InnerPosition;
             app.updateProgressScale(task, trackSize);
 
             app.DownloadTasks{taskID} = task;
+            app.updateDownloadAvatar()
             drawnow limitrate
+        end
+
+        %-----------------------------------------------------------------%
+        function updateDownloadAvatar(app)
+            activeCount = 0;
+            receivedBytes = 0;
+            totalBytes = 0;
+            transferRate = 0;
+
+            for taskID = 1:numel(app.DownloadTasks)
+                task = app.DownloadTasks{taskID};
+                if isempty(task) || task.IsStopped
+                    continue
+                end
+
+                activeCount = activeCount + 1;
+                if isfield(task, 'ReceivedBytes') && isscalar(task.ReceivedBytes) && isfinite(task.ReceivedBytes)
+                    receivedBytes = receivedBytes + max(0, double(task.ReceivedBytes));
+                end
+                if isfield(task, 'TotalBytes') && ~isempty(task.TotalBytes) && ...
+                        isscalar(task.TotalBytes) && isfinite(task.TotalBytes) && task.TotalBytes > 0
+                    totalBytes = totalBytes + double(task.TotalBytes);
+                end
+                if isfield(task, 'TransferRate') && isscalar(task.TransferRate) && ...
+                        isfinite(task.TransferRate) && task.TransferRate > 0
+                    transferRate = transferRate + double(task.TransferRate);
+                end
+            end
+
+            percentage = 0;
+            if totalBytes > 0
+                percentage = min(100, receivedBytes/totalBytes*100);
+            end
+            level = app.downloadAvatarLevel(percentage);
+            speedRadiansPerSecond = transferRate/1024^2*2*pi;
+            state = struct('level', level, ...
+                           'inProgress', activeCount > 0, ...
+                           'ballCount', activeCount, ...
+                           'speedRadiansPerSecond', speedRadiansPerSecond);
+
+            if isequal(state, app.DownloadAvatarState)
+                return
+            end
+            app.DownloadAvatarState = state;
+            if app.DownloadAvatarHTMLReady && ~isempty(app.DownloadAvatarHTML) && isvalid(app.DownloadAvatarHTML)
+                app.DownloadAvatarHTML.Data = state;
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function level = downloadAvatarLevel(~, percentage)
+            if percentage <= 0
+                level = 0;
+            elseif percentage >= 90
+                level = 10;
+            else
+                level = ceil(percentage/10);
+            end
         end
 
         %-----------------------------------------------------------------%
@@ -606,7 +778,9 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
                 resume(task.Downloader)
                 task.PauseButton.Text = 'Pausar';
             end
+            task.TransferRate = NaN;
             app.DownloadTasks{taskID} = task;
+            app.updateDownloadAvatar()
         end
 
         %-----------------------------------------------------------------%
@@ -623,6 +797,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             end
             app.DownloadTasks{taskID} = task;
             app.closeDownloadDialog(taskID)
+            app.updateDownloadAvatar()
         end
 
         %-----------------------------------------------------------------%
@@ -656,16 +831,23 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
                 return
             end
 
-            app.DownloadDialog = uifigure('Name', 'Downloads', ...
-                                          'Position', [430, 320, 560, 169], ...
-                                          'Resize', 'on', ...
-                                          'CloseRequestFcn', @(src, ~) app.stopAllDownloads(src));
-            app.DownloadDialog.SizeChangedFcn = @(~, ~) app.onDownloadWindowResized();
-            app.DownloadStack = uigridlayout(app.DownloadDialog, [1, 1]);
+            app.DownloadDialog = uipanel(app.UIFigure, ...
+                                         'Title', 'Downloads', ...
+                                         'Visible', 'off', ...
+                                         'Scrollable', 'off', ...
+                                         'Units', 'pixels', ...
+                                         'BorderType', 'line', ...
+                                         'BackgroundColor', app.FigureBackgroundColor);
+            app.DownloadContent = uipanel(app.DownloadDialog, ...
+                                          'BorderType', 'none', ...
+                                          'Units', 'pixels', ...
+                                          'BackgroundColor', app.FigureBackgroundColor);
+            app.DownloadStack = uigridlayout(app.DownloadContent, [1, 1]);
             app.DownloadStack.Padding = [0, 0, 0, 0];
             app.DownloadStack.RowSpacing = 0;
             app.DownloadStack.ColumnWidth = {'1x'};
             app.DownloadStack.RowHeight = {152};
+            app.positionDownloadContainer(1)
             app.resizeDownloadProgressBars()
         end
 
@@ -675,6 +857,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
                 delete(app.DownloadDialog)
             end
             app.DownloadDialog = [];
+            app.DownloadContent = matlab.ui.container.Panel.empty;
             app.DownloadStack = [];
         end
 
@@ -682,6 +865,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
         function refreshDownloadContainer(app)
             if isempty(app.DownloadDialog) || ~isvalid(app.DownloadDialog)
                 app.DownloadDialog = [];
+                app.DownloadContent = matlab.ui.container.Panel.empty;
                 app.DownloadStack = [];
                 return
             end
@@ -697,19 +881,17 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             if isempty(activeIDs)
                 delete(app.DownloadDialog)
                 app.DownloadDialog = [];
+                app.DownloadContent = matlab.ui.container.Panel.empty;
                 app.DownloadStack = [];
                 return
             end
 
-            position = app.DownloadDialog.Position;
-            position(3) = 560;
-            position(4) = min(840, max(169, 16 + 153*numel(activeIDs)));
-            app.DownloadDialog.Position = position;
-            drawnow
-
+            contentHeight = 16 + 153*numel(activeIDs);
             rowHeights = repmat({1}, 1, 2*numel(activeIDs));
             rowHeights(1:2:end) = repmat({152}, 1, numel(activeIDs));
             app.DownloadStack.RowHeight = rowHeights;
+            app.positionDownloadContainer(contentHeight)
+            drawnow
             for row = 1:numel(activeIDs)
                 task = app.DownloadTasks{activeIDs(row)};
                 task.Dialog.Layout.Row = 2*row - 1;
@@ -728,6 +910,48 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
         end
 
         %-----------------------------------------------------------------%
+        function positionDownloadContainer(app, contentHeight)
+            if isempty(app.DownloadDialog) || ~isvalid(app.DownloadDialog)
+                return
+            end
+
+            drawnow limitrate
+            avatarPosition = getpixelposition(app.DownloadAvatarHTML, true);
+            figurePosition = app.UIFigure.Position;
+            figureWidth = figurePosition(3);
+            panelWidth = min(560, max(220, figureWidth - 16));
+            panelChromeHeight = 24;
+            availablePanelHeight = max(64, avatarPosition(2) - 8);
+            panelHeight = min(max(64, contentHeight + panelChromeHeight), availablePanelHeight);
+            panelX = min(max(8, avatarPosition(1)), max(8, figureWidth - panelWidth - 8));
+            panelY = max(8, avatarPosition(2) - panelHeight - 4);
+
+            app.DownloadDialog.Position = [panelX, panelY, panelWidth, panelHeight];
+            app.DownloadDialog.Scrollable = 'off';
+            drawnow limitrate
+            innerPosition = app.DownloadDialog.InnerPosition;
+            needsVerticalScroll = contentHeight > innerPosition(4);
+            if needsVerticalScroll
+                app.DownloadDialog.Scrollable = 'on';
+                drawnow limitrate
+            end
+            innerPosition = app.DownloadDialog.InnerPosition;
+            horizontalSafetyMargin = 16;
+            contentWidth = max(1, floor(innerPosition(3)) - horizontalSafetyMargin);
+            app.DownloadContent.Position = [0, 0, contentWidth, contentHeight];
+            drawnow limitrate
+
+            % Re-measure after the first layout pass. A vertical scrollbar can
+            % reduce the viewport by a pixel after the child is positioned.
+            innerPosition = app.DownloadDialog.InnerPosition;
+            stableContentWidth = max(1, floor(innerPosition(3)) - horizontalSafetyMargin);
+            if stableContentWidth ~= contentWidth
+                app.DownloadContent.Position = [0, 0, stableContentWidth, contentHeight];
+                drawnow limitrate
+            end
+        end
+
+        %-----------------------------------------------------------------%
         function stopAllDownloads(app, source)
             for taskID = 1:numel(app.DownloadTasks)
                 task = app.DownloadTasks{taskID};
@@ -742,6 +966,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
                 app.DownloadTasks{taskID} = task;
                 app.closeDownloadDialog(taskID)
             end
+            app.updateDownloadAvatar()
             if ~isempty(source) && isvalid(source)
                 delete(source)
             end
@@ -1009,21 +1234,6 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
 
             % O nome vem da URL: descarta separadores e caracteres inválidos.
             fileName = regexprep(fileName, '[\\/:*?"<>|]', '_');
-        end
-
-        %-----------------------------------------------------------------%
-        function folderName = downloadFolder()
-            if ispc
-                homeFolder = getenv('USERPROFILE');
-            else
-                homeFolder = getenv('HOME');
-            end
-
-            % folderName = fullfile(homeFolder, 'Downloads');
-            folderName = 'c:\GitHub\SupportPackages\tests\auth';
-            if ~isfolder(folderName)
-                folderName = homeFolder;
-            end
         end
 
         %-----------------------------------------------------------------%
