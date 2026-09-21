@@ -195,3 +195,9 @@ A janela é criada oculta e só é exibida quando o fluxo sai do host protegido.
 MATLAB ainda tiver uma sessão válida, o login se completa sem que nenhuma janela apareça.
 Resta um *glitch* conhecido: por uma fração de segundo (até ~0,25 s, o intervalo do polling)
 a página final pode ficar visível antes de a janela ser ocultada.
+
+
+### TODO
+
+- Chunked writer: Current downloadFileWorker.m appends chunks repeatedly to the selected destination. This is unsuitable for web apps because repeated writes can trigger multiple browser downloads. Download chunks to a server-side temporary file, then perform one final copy/write to the uiputfile path.
+- Change download avatar to use a list of speeds as entry points instead of number of circles and speed. Number of circles should be equal to the length of the list. Speed may be zero for some entries resulting in stationary circles.
