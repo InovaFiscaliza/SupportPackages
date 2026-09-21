@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #avatar-button {
+            width: 22px;
+            height: 22px;
+            flex: 0 0 22px;
+            display: block;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        #avatar-button:focus-visible {
+            outline: 1px solid #0072bd;
+            outline-offset: -1px;
+        }
+
+        .avatar-svg {
+            width: 22px;
+            height: 22px;
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <button id="avatar-button" type="button" aria-label="Perfil"></button>
+
+    <template id="profile-out-template">
+        <svg width="399.99997" height="400" viewBox="0 0 105.83332 105.83333" version="1.1"
+            xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+            xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns:svg="http://www.w3.org/2000/svg">
+            <sodipodi:namedview id="namedview7" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25"
+                inkscape:showpageshadow="2" sodipodi:docname="profile_out.svg" />
+            <defs id="defs2">
+                <rect x="77.292137" y="104.64167" width="105.83078" height="248.52396" id="rect1008" />
+            </defs>
+            <g id="layer1" transform="translate(13.229167)">
+                <circle id="path2362" cx="40" cy="53" r="52" fill="#9c9c9c" fill-opacity="0.19" stroke="#9c9c9c"
+                    stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+                <path id="path1607" fill="#9c9c9c" fill-opacity="0.50196081"
+                    d="M 40 66 A 40 20 0 0 0 0.15 86 A 40 20 0 0 0 0.40 88 A 53 53 0 0 0 39 106 A 40 20 0 0 0 40 106 A 40 20 0 0 0 40 106 A 53 53 0 0 0 79 88 A 40 20 0 0 0 79 86 A 40 20 0 0 0 40 66 z" />
+                <circle id="path788" cx="40" cy="37" r="26" fill="#9c9c9c" fill-opacity="0.50" />
+                <path id="path847"
+                    d="m 37.229865,48.398931 h -1.381416 c -0.04493,-2.493287 -0.374884,-4.815622 -0.172743,-7.207437 0.129202,-1.528785 0.27735,-3.126785 0.879458,-4.492878 1.119726,-2.540495 2.767151,-4.9555 4.873193,-6.411975 2.769967,-1.915625 3.45227,-2.175501 4.213313,-4.120784 0.642385,-1.641985 0.762556,-3.898611 -0.0774,-5.414293 -0.959959,-1.732234 -3.047246,-2.360329 -4.799542,-2.63247 -2.836592,-0.440538 -6.03559,-0.04323 -8.454055,1.741809 -0.458938,0.338737 -0.776501,0.946857 -0.943406,1.549881 -0.215045,0.776953 -0.216901,1.667578 -0.01513,2.449364 0.362312,1.403804 2.104098,2.436131 2.104098,3.649081 0,1.100641 -0.381855,2.021585 -1.145564,2.762832 -0.741247,0.741247 -1.673422,1.111871 -2.796525,1.111871 -1.257875,0 -2.313591,-0.43801 -3.167148,-1.314029 -0.853558,-0.898482 -1.280337,-2.077739 -1.280337,-3.537772 0,-2.650521 1.614503,-5.340396 3.436693,-6.974466 2.627319,-2.356079 6.291632,-2.846342 9.602525,-2.998683 3.588538,-0.165116 7.55172,0.05808 10.594751,2.283778 1.465577,1.071938 2.862006,2.87613 3.072638,4.879553 0.226174,2.151244 -0.820842,4.46162 -2.116092,6.014948 -2.240068,2.686403 -6.383632,2.098077 -8.811004,4.552914 -1.488738,1.505583 -2.529257,3.658244 -3.136894,5.845073 -0.729736,2.626252 -0.322185,5.882706 -0.479419,8.263683 z m -0.370624,4.919188 c 1.504957,0 2.785294,0.527858 3.84101,1.583575 1.055716,1.055716 1.583574,2.336052 1.583574,3.841009 0,1.504957 -0.527858,2.796525 -1.583574,3.874703 -1.055716,1.055716 -2.336053,1.583574 -3.84101,1.583574 -1.504957,0 -2.785293,-0.527858 -3.84101,-1.583574 -1.055716,-1.078178 -1.583574,-2.369746 -1.583574,-3.874703 0,-1.504957 0.527858,-2.785293 1.583574,-3.841009 1.055717,-1.055717 2.336053,-1.583575 3.84101,-1.583575 z"
+                    fill="#fffffa" stroke="#ff0000" stroke-width="1.72509" stroke-linecap="round"
+                    stroke-linejoin="round" transform="scale(1.0802636,0.92569996)" />
+            </g>
+        </svg>
+    </template>
+
+    <template id="profile-template">
+        <svg width="400" height="400" viewBox="0 0 106 106" version="1.1" xmlns="http://www.w3.org/2000/svg"
+            xmlns:svg="http://www.w3.org/2000/svg">
+            <defs id="defs857"></defs>
+            <g id="layer1" transform="translate(13.229167)">
+                <circle id="circle844" cx="40" cy="53" r="52" fill="#9c9c9c" fill-opacity="0.19" stroke="#9c9c9c"
+                    stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+                <path id="path846"
+                    d="M 40 66 A 40 20 0 0 0 0.15 86 A 40 20 0 0 0 0.40 88 A 53 53 0 0 0 39 106 A 40 20 0 0 0 40 106 A 40 20 0 0 0 40 106 A 53 53 0 0 0 79 88 A 40 20 0 0 0 79 86 A 40 20 0 0 0 40 66 z"
+                    fill="#9c9c9c" fill-opacity="0.50" />
+                <circle id="circle848" cx="40" cy="37" r="26" fill="#9c9c9c" fill-opacity="0.50" />
+                <text id="text850" x="40" text-anchor="middle" y="80"
+                    style="font-size:102px;font-family:Arial;fill:#008f00;fill-opacity:1;stroke:#424242;stroke-width:1.5;stroke-opacity:1;font-weight:bold">Q</text>
+            </g>
+        </svg>
+    </template>
+
+    <script>
+        (function () {
+            'use strict';
+
+            var SVG_NS = 'http://www.w3.org/2000/svg';
+            var XLINK_NS = 'http://www.w3.org/1999/xlink';
+            var avatarButton = document.getElementById('avatar-button');
+            var profileOutTemplate = document.getElementById('profile-out-template');
+            var profileTemplate = document.getElementById('profile-template');
+            var matlabHtmlComponent = null;
+            var renderNumber = 0;
+
+            function send(type) {
+                var eventName = type === 'click' ? 'profileAvatarClick' : 'profileAvatarReady';
+                if (matlabHtmlComponent && typeof matlabHtmlComponent.sendEventToMATLAB === 'function') {
+                    matlabHtmlComponent.sendEventToMATLAB(eventName, { type: type });
+                } else if (typeof sendEventToMATLAB === 'function') {
+                    sendEventToMATLAB(eventName, { type: type });
+                }
+            }
+
+            function createElement(name) {
+                return document.createElementNS(SVG_NS, name);
+            }
+
+            function addPhoto(svg, base64) {
+                var group = svg.querySelector('g') || svg;
+                var defs = svg.querySelector('defs');
+                var clipPath = createElement('clipPath');
+                var circle = createElement('circle');
+                var image = createElement('image');
+                var clipID = 'profile-photo-clip-' + renderNumber;
+                var dataURI = 'data:image/png;base64,' + base64;
+
+                if (!defs) {
+                    defs = createElement('defs');
+                    svg.insertBefore(defs, svg.firstChild);
+                }
+
+                clipPath.setAttribute('id', clipID);
+                clipPath.setAttribute('clipPathUnits', 'userSpaceOnUse');
+                circle.setAttribute('cx', '40');
+                circle.setAttribute('cy', '53');
+                circle.setAttribute('r', '52');
+                clipPath.appendChild(circle);
+                defs.appendChild(clipPath);
+
+                image.setAttribute('x', '-12');
+                image.setAttribute('y', '1');
+                image.setAttribute('width', '104');
+                image.setAttribute('height', '104');
+                image.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+                image.setAttribute('clip-path', 'url(#' + clipID + ')');
+                image.setAttribute('href', dataURI);
+                image.setAttributeNS(XLINK_NS, 'xlink:href', dataURI);
+
+                var text = svg.querySelector('text');
+                if (text) {
+                    text.setAttribute('visibility', 'hidden');
+                    group.insertBefore(image, text);
+                } else {
+                    group.appendChild(image);
+                }
+            }
+
+            function render(state) {
+                var connected = Boolean(state && state.connected);
+                var template = connected ? profileTemplate : profileOutTemplate;
+                var svg = template.content.firstElementChild.cloneNode(true);
+                var initial = state && state.initial ? String(state.initial).charAt(0).toUpperCase() : '?';
+                var photo = state && state.photoPngBase64 ? String(state.photoPngBase64) : '';
+
+                renderNumber += 1;
+                svg.classList.add('avatar-svg');
+                if (connected) {
+                    var text = svg.querySelector('text');
+                    if (text) {
+                        text.textContent = initial || '?';
+                    }
+                    if (/^[A-Za-z0-9+/]*={0,2}$/.test(photo) && photo.length > 0) {
+                        addPhoto(svg, photo);
+                    }
+                }
+                while (avatarButton.firstChild) {
+                    avatarButton.removeChild(avatarButton.firstChild);
+                }
+                avatarButton.appendChild(svg);
+            }
+
+            window.profileAvatarSetup = function (htmlComponent) {
+                matlabHtmlComponent = htmlComponent;
+                htmlComponent.addEventListener('DataChanged', function () {
+                    var state = htmlComponent.Data;
+                    if (state && state.action === 'render') {
+                        render(state);
+                    }
+                });
+                send('ready');
+            };
+
+            var lastPointerClick = 0;
+            function notifyClick(event) {
+                var now = Date.now();
+                if (now - lastPointerClick < 250) {
+                    return;
+                }
+                lastPointerClick = now;
+                send('click');
+            }
+
+            avatarButton.addEventListener('pointerdown', notifyClick);
+            avatarButton.addEventListener('mousedown', notifyClick);
+            avatarButton.addEventListener('click', notifyClick);
+
+            render({ connected: false, initial: '?', photoPngBase64: '' });
+        }());
+
+        function setup(htmlComponent) {
+            window.profileAvatarSetup(htmlComponent);
+        }
+    </script>
+</body>
+
+</html>
