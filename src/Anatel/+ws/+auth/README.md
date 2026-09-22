@@ -9,7 +9,7 @@ Módulo compartilhado de autenticação para aplicações MATLAB desktop que con
 | `DownloadProgressMonitor.m` | Reporta o andamento das transferências ao chamador |
 | `getMessage.m` | Carrega as mensagens localizadas do módulo |
 | [`profileAvatar.html`](profileAvatar.html) | Componente `uihtml` reutilizável para indicar o estado e o perfil autenticado |
-| [`downloadAvatar.html`](downloadAvatar.html) | Componente `uihtml` reutilizável para indicar o andamento de downloads e abrir a janela de downloads |
+| [`DownloadPanel`](../../../General/+ui/DownloadPanel.m) | Painel reutilizável de downloads; recebe um `DownloaderFactory` e não conhece a autenticação |
 | `resources/{en,pt}/catalog.m` | Catálogos de mensagens em inglês e português |
 
 ## Por que este módulo existe
@@ -72,9 +72,10 @@ O próprio módulo não pode configurar essa dependência: as opções de empaco
 
 ```matlab
 authFolder = fileparts(which('ws.auth.F5Session'));
+uiFolder = fileparts(which('ui.DownloadPanel'));
 authResources = fullfile(authFolder, 'resources');
 authProfileAvatar = fullfile(authFolder, 'profileAvatar.html');
-authDownloadAvatar = fullfile(authFolder, 'downloadAvatar.html');
+uiDownloadAvatar = fullfile(uiFolder, 'html', 'downloadAvatar.html');
 ```
 
 Com `compiler.build.standaloneApplication`:
@@ -82,14 +83,14 @@ Com `compiler.build.standaloneApplication`:
 ```matlab
 compiler.build.standaloneApplication(appFile, ...
     'AdditionalFiles', [string(authResources), string(authProfileAvatar), ...
-                        string(authDownloadAvatar)]);
+                        string(uiDownloadAvatar)]);
 ```
 
 Se a aplicação já inclui outros arquivos adicionais, preserve-os na mesma lista:
 
 ```matlab
 additionalFiles = [string(existingAdditionalFiles), string(authResources), ...
-                   string(authProfileAvatar), string(authDownloadAvatar)];
+                   string(authProfileAvatar), string(uiDownloadAvatar)];
 compiler.build.standaloneApplication(appFile, ...
     'AdditionalFiles', additionalFiles);
 ```
@@ -98,10 +99,10 @@ Com `mcc`:
 
 ```matlab
 mcc('-m', appFile, '-a', authResources, '-a', authProfileAvatar, ...
-    '-a', authDownloadAvatar)
+    '-a', uiDownloadAvatar)
 ```
 
-No Application Compiler, adicione `authResources`, `authProfileAvatar` e `authDownloadAvatar` em **Files installed for your end user**. A pasta de recursos deve conter os dois arquivos abaixo no pacote final:
+No Application Compiler, adicione `authResources`, `authProfileAvatar` e `uiDownloadAvatar` em **Files installed for your end user**. A pasta de recursos deve conter os dois arquivos abaixo no pacote final:
 
 ```text
 resources/en/catalog.m
@@ -151,42 +152,39 @@ Use `connected = false` para exibir o estado desconectado. O componente emite
 `profileAvatarClick` quando o usuário pressiona o avatar; a aplicação pode usar
 esse evento para iniciar o login ou abrir o menu do perfil.
 
-### Componente de downloads
+### Painel de downloads
 
-`downloadAvatar.html` é um componente `uihtml` reutilizável para indicar o
-andamento de uma fila de downloads. O círculo externo e a seta usam a mesma
-linguagem visual do avatar de perfil. A seta possui dez níveis: `level = 0`
-deixa todas as linhas cinza; níveis de `1` a `10` ativam progressivamente as
-linhas azuis a partir da ponta inferior. A aplicação deve voltar a enviar
-`level = 0` quando a fila terminar.
-
-Durante uma transferência, `inProgress = true` exibe bolas azuis sólidas
-orbitando a seta. A quantidade de bolas e a velocidade são independentes do
-percentual exibido: `ballCount` define uma quantidade inteira não negativa de
-bolas, e
-`speedRadiansPerSecond` define a velocidade angular em radianos por segundo.
-O valor padrão da velocidade é `5.2` rad/s. Com `inProgress = false`, as bolas
-ficam ocultas e a animação é interrompida.
+`ui.DownloadPanel` fica em `src/General/+ui` e é independente de
+`F5Session`. Ele recebe um `DownloaderFactory`, administra as linhas de
+progresso, pausa, retomada, cancelamento e a agregação exibida pelo avatar.
+O HTML em `src/General/+ui/html/downloadAvatar.html` é um detalhe do painel e
+deve ser incluído explicitamente em aplicações compiladas.
 
 ```matlab
-authFolder = fileparts(which('ws.auth.F5Session'));
-downloadHTML = uihtml(parentContainer);
-downloadHTML.HTMLSource = fullfile(authFolder, 'downloadAvatar.html');
-downloadHTML.HTMLEventReceivedFcn = @downloadEventReceived;
+panel = ui.DownloadPanel(parentContainer, ...
+    'DownloaderFactory', @createDownloader, ...
+    'executionMode', 'desktopStandaloneApp', ...
+    'tempPath', tempFolder, ...
+    'targetPath', targetFolder);
 
-state = struct('level', 4, ...
-               'inProgress', true, ...
-               'ballCount', 2, ...
-               'speedRadiansPerSecond', 5.2);
-downloadHTML.Data = state;
+panel.AvatarHTML.Layout.Row = 1;
+panel.AvatarHTML.Layout.Column = 3;
+panel.addDownload(url);
 ```
 
-`level` deve ser atualizado de acordo com o progresso agregado da fila,
-enquanto `ballCount` pode representar o número de downloads ativos e a
-velocidade pode ser calculada a partir da taxa de transferência. Depois que o
-componente emitir `downloadAvatarReady`, ele está pronto para receber o estado.
-O evento `downloadAvatarClick` é emitido quando o usuário pressiona o controle,
-para que a aplicação abra ou focalize a janela de downloads.
+O factory recebe uma struct com `URL`, `TempFolder`, `TargetFolder`,
+`FileName`, `FinalPath` e `CollisionAction`. O objeto devolvido deve expor
+`start`, `pause`, `resume`, `stop`, `ProgressFcn`, `CompletedFcn` e
+`ErrorFcn`. A adaptação de `ws.auth.FileDownload` para esse contrato está
+sendo feita separadamente do painel.
+
+`executionMode` aceita `webApp`, `desktopStandaloneApp` e
+`MATLABEnvironment`. O último usa o mesmo comportamento de download do modo
+desktop. Em todos os modos, quando o destino já existe, a linha fica em espera
+com os controles **Overwrite**, **Save as new** e **Cancel** abaixo da barra;
+o downloader só é criado depois da escolha. O callback de conclusão deve
+publicar o arquivo em `TargetFolder` e remover os arquivos temporários de
+sucesso.
 
 ### API pública
 
@@ -197,7 +195,7 @@ para que a aplicação abra ou focalize a janela de downloads.
 | `logout(obj)` | Descarta os cookies da memória e fecha a janela. |
 | `read(obj, url, autoReauthenticate)` | GET autenticado, com o payload convertido pelo tipo de conteúdo. Em caso de sessão expirada, dispara nova autenticação (padrão) ou lança erro. |
 | `readBytes(obj, url, autoReauthenticate, progressFcn)` | Idem, sem conversão do payload: devolve `uint8`. Útil para pequenos payloads binários ou diagnósticos. `progressFcn` é chamado como `f(bytesRecebidos, bytesTotais)`. |
-| `FileDownload(session, url, filePath, chunkSize, maxRetries)` | Cria um download assíncrono retomável. Várias instâncias podem executar simultaneamente. Use `start`, `pause`, `resume` e `stop`; `ProgressFcn` recebe `f(bytesRecebidos, bytesTotais)`, `CompletedFcn` recebe o resumo e `ErrorFcn` recebe a exceção. |
+| `FileDownload(session, request, chunkSize, maxRetries)` | Cria um download assíncrono retomável a partir de uma requisição com `TaskID`, `URL`, `TempFolder`, `TargetFolder`, `FileName`, `PartialPath`, `ChunkPath`, `BackupPath`, `CollisionAction` e `PartialAction`. Use `start`, `pause`, `resume` e `stop`; `ProgressFcn` recebe `f(bytesRecebidos, bytesTotais)`, `CompletedFcn` recebe o resumo e `ErrorFcn` recebe a exceção. |
 | `debugInfo(obj)` | Diagnóstico: `LoginURL`, `IsAuthenticated`, `CookieCount` e `CookieNames`. |
 | `IsAuthenticated` | Propriedade somente leitura. |
 | `UserProfile` | Perfil do usuário associado à sessão autenticada. Somente leitura para a aplicação. |

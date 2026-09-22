@@ -1,14 +1,17 @@
 function uiFigure = checkDownloadHtml
-% checkDownloadHtml Testa o componente downloadAvatar.html sem downloads reais.
+% CHECKDOWNLOADHTML Open the isolated download-avatar UI harness.
 %
-% O slider usa percentuais de 0 a 100 e o componente recebe níveis de 0 a 10.
-% O nível zero representa a fila ociosa; clicar no controle simula a abertura
-% da janela de downloads. O botão de estado liga/desliga a animação de atividade
-% sem alterar o percentual exibido.
+% This harness tests only the reusable downloadAvatar.html uihtml asset. It
+% does not start downloads, authenticate, access the network, or instantiate
+% ui.DownloadPanel. Sliders and a state button send representative visual
+% state to the HTML component, while the callback indicator confirms that the
+% avatar click event returns to MATLAB.
+%
+% The returned figure remains open until the user closes it.
 
 mFilePath = fileparts(mfilename('fullpath'));
 projectFolder = fileparts(fileparts(mFilePath));
-downloadHtmlPath = fullfile(projectFolder, 'src', 'Anatel', '+ws', '+auth', 'downloadAvatar.html');
+downloadHtmlPath = fullfile(projectFolder, 'src', 'General', '+ui', 'html', 'downloadAvatar.html');
 
 currentProgress = 0;
 currentLevel = 0;
@@ -82,12 +85,14 @@ indicatorBackgroundColor = clickIndicator.BackgroundColor;
 sendProgress()
 
     function progressChanged(source, ~)
+        % PROGRESSCHANGED Update the simulated visual progress level.
         currentProgress = round(source.Value);
         source.Value = currentProgress;
         sendProgress()
     end
 
     function runningChanged(source, ~)
+        % RUNNINGCHANGED Toggle the simulated active-download animation.
         isDownloadRunning = source.Value;
         if isDownloadRunning
             source.Text = 'parar download';
@@ -98,17 +103,20 @@ sendProgress()
     end
 
     function ballCountChanged(source, ~)
+        % BALLCOUNTCHANGED Update the number of simulated orbiting balls.
         currentBallCount = round(source.Value);
         source.Value = currentBallCount;
         sendProgress()
     end
 
     function speedChanged(source, ~)
+        % SPEEDCHANGED Update the simulated orbit speed.
         currentSpeedRadiansPerSecond = source.Value;
         sendProgress()
     end
 
     function downloadEventReceived(~, event)
+        % DOWNLOADEVENTRECEIVED Handle ready and click events from the asset.
         eventName = "";
         if isprop(event, 'HTMLEventName')
             eventName = string(event.HTMLEventName);
@@ -147,10 +155,12 @@ sendProgress()
     end
 
     function handleDownloadClick()
+        % HANDLEDOWNLOADCLICK Confirm that the avatar click reached MATLAB.
         blinkIndicator()
     end
 
     function blinkIndicator()
+        % BLINKINDICATOR Highlight the click confirmation label briefly.
         if ~isempty(blinkTimer) && isvalid(blinkTimer)
             stop(blinkTimer)
             delete(blinkTimer)
@@ -165,6 +175,7 @@ sendProgress()
     end
 
     function restoreIndicator(~, ~)
+        % RESTOREINDICATOR Restore the click indicator background color.
         if ~isempty(clickIndicator) && isvalid(clickIndicator)
             clickIndicator.BackgroundColor = indicatorBackgroundColor;
         end
@@ -175,6 +186,7 @@ sendProgress()
     end
 
     function sendProgress()
+        % SENDPROGRESS Send the current visual state to downloadAvatar.html.
         currentLevel = progressToLevel(currentProgress);
         if ~isempty(downloadHTML) && isvalid(downloadHTML)
             downloadHTML.Data = struct('level', currentLevel, ...
@@ -185,6 +197,7 @@ sendProgress()
     end
 
     function level = progressToLevel(progress)
+        % PROGRESSTOLEVEL Convert percentage progress to an avatar level.
         if progress <= 0
             level = 0;
         elseif progress >= 90
@@ -195,6 +208,7 @@ sendProgress()
     end
 
     function closeFigure(source, ~)
+        % CLOSEFIGURE Stop the click timer and close the harness figure.
         if ~isempty(blinkTimer) && isvalid(blinkTimer)
             stop(blinkTimer)
             delete(blinkTimer)

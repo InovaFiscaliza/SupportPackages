@@ -7,13 +7,10 @@ Exemplos e validação de [`ws.auth.F5Session`](../../src/Anatel/+ws/+auth/READM
 | [checkF5Auth.m](checkF5Auth.m) | Script por seções | Validação passo a passo do fluxo |
 | [`profileAvatar.html`](../../src/Anatel/+ws/+auth/profileAvatar.html) | Componente `uihtml` compartilhado | Avatar reutilizável para o estado de autenticação |
 | [checkProfileHtml.m](checkProfileHtml.m) | Harness `uifigure` | Teste isolado do avatar compartilhado, sem autenticação |
-| [`downloadAvatar.html`](../../src/Anatel/+ws/+auth/downloadAvatar.html) | Componente `uihtml` compartilhado | Indicador reutilizável de progresso e downloads ativos |
-| [checkDownloadHtml.m](checkDownloadHtml.m) | Harness `uifigure` | Teste isolado do indicador de downloads, sem autenticação |
 | [F5BrowserTestApp.m](F5BrowserTestApp.m) | App `uifigure` | Integração completa em uma aplicação |
 
 Os testes de autenticação exigem um login real, com aprovação do push no Microsoft
-Authenticator. Os harnesses isolados do avatar e do indicador de downloads não
-exigem autenticação.
+Authenticator.
 
 Não há como executá-los de forma desassistida.
 
@@ -23,47 +20,6 @@ qualquer aplicação que use este pacote de autenticação. O harness não exige
 Execute `checkProfileHtml` para alternar entre desconectado, conectado com inicial e
 conectado com a foto PNG de teste, além de verificar o callback de clique emitido pelo
 componente HTML.
-
-Execute `checkDownloadHtml` para testar o componente
-[`downloadAvatar.html`](../../src/Anatel/+ws/+auth/downloadAvatar.html) sem iniciar
-downloads reais. O harness apresenta o slider de progresso e o controle `uihtml` em
-duas colunas, além de controles para reproduzir a atividade da fila:
-
-- **Progresso** — slider de `0%` a `100%`, com marcações a cada `10%`, ajustado ao
-	inteiro mais próximo. O valor `0%` representa a fila ociosa; os valores são
-	convertidos para os dez níveis visuais do indicador.
-- **Estado do download** — botão independente para ligar ou desligar a animação das
-	bolas, sem alterar o percentual.
-- **Quantidade de bolas** — slider inteiro de `1` a `10`, representando a quantidade
-	de downloads ativos na órbita.
-- **Velocidade** — slider contínuo em radianos por segundo, para simular a velocidade
-	agregada dos downloads.
-- **Clique** — pressionar o indicador dispara o evento de abertura da janela de
-	downloads e acende temporariamente o indicador de teste.
-
-O harness também envia o estado `level`, `inProgress`, `ballCount` e
-`speedRadiansPerSecond` ao componente e trata os eventos `downloadAvatarReady` e
-`downloadAvatarClick`.
-
-```matlab
-checkDownloadHtml
-```
-
----
-
-## checkDownloadHtml.m
-
-Harness visual para validar o estado do indicador sem autenticação ou transferência
-de arquivos. O controle de progresso é convertido para níveis de `0` a `10`, enquanto
-o número de bolas e a velocidade da órbita são atualizados independentemente. O botão
-de estado permite verificar que a animação pode ser ligada ou desligada sem alterar o
-progresso exibido.
-
-O botão do indicador representa a abertura do painel de downloads. O callback
-recebe os eventos emitidos pelo HTML e pisca o indicador inferior em verde, permitindo
-verificar visualmente que o clique chegou ao MATLAB.
-
----
 
 ## checkF5Auth.m
 
@@ -145,33 +101,6 @@ local.
 
 `render` decide como exibir a resposta: HTML é renderizado como HTML; respostas JSON (que
 `matlab.net.http` já converte em struct) são exibidas como JSON formatado dentro de `<pre>`.
-
-### Download de arquivos
-
-Quando o último segmento do caminho da URL contém extensão — por exemplo
-`.../p-a2d86905--rfeye002126_260902_T161700.bin` — o conteúdo é gravado diretamente em disco,
-em vez de ser renderizado. Nesta aplicação de teste, o destino padrão do servidor é a
-própria pasta `tests/auth`, e o nome sugerido é derivado da URL, com separadores e
-caracteres inválidos sanitizados. A aplicação passa esse caminho explicitamente para o
-download. Se `downloadFile` for chamado sem um caminho de destino, o fluxo mantém um
-`uiputfile` como fallback para que o usuário escolha o arquivo e a pasta.
-
-A implementação atual usa `ws.auth.FileDownload`, que executa as requisições por blocos em
-`backgroundPool`. A interface permanece livre para outras requisições durante o download, e um
-arquivo parcial pode ser retomado a partir do ponto em que foi interrompido. Downloads diferentes
-podem permanecer ativos ao mesmo tempo dentro de um painel de downloads compartilhado, em seções
-empilhadas que redimensionam o conteúdo conforme novas tarefas são adicionadas ou concluídas.
-
-O painel aparece abaixo do avatar de downloads e cresce conforme o número de seções. Quando a
-altura necessária excede o espaço disponível, somente a rolagem vertical é habilitada; a largura
-do conteúdo recebe uma margem de segurança para evitar uma rolagem horizontal causada pela barra
-vertical. Clicar fora do painel o oculta; clicar no avatar o reabre.
-
-O progresso é exibido na barra a partir do tamanho total informado pelo servidor. O contador mostra
-os bytes recebidos e o total; quando o total não é conhecido, mostra apenas os bytes recebidos.
-Além disso, o app salva um arquivo de log ao lado do download (`<arquivo>.log`) com URL,
-destino, identificação resumida da sessão e bytes recebidos. Em caso de falha, o log inclui a
-exceção e o stack; código HTTP e `Content-Length` não são registrados atualmente.
 
 Endpoints sem extensão no último segmento (`debug/headers`, `server/runtime-health`) seguem
 sendo renderizados normalmente.

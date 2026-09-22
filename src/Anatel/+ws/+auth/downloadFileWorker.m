@@ -1,25 +1,37 @@
-function result = downloadFileWorker(requestContext, url, filePath, chunkSize, maxRetries, progressQueue, jobId)
+function result = downloadFileWorker(requestContext, request, chunkSize, maxRetries, progressQueue, jobId)
 %DOWNLOADFILEWORKER Performs ranged download work on a background worker.
 
-    bytesReceived = fileSize(filePath);
+    partialPath = request.PartialPath;
+    chunkPath = request.ChunkPath;
+    finalPath = fullfile(request.TargetFolder, request.FileName);
+    bytesReceived = fileSize(partialPath);
     totalBytes = [];
     retryCount = 0;
-    tempPath = [filePath, '.chunk'];
 
     result = struct('Success', false, ...
                     'BytesReceived', bytesReceived, ...
                     'TotalBytes', totalBytes, ...
+                    'FinalPath', finalPath, ...
                     'Error', []);
 
     try
+        ensureFolder(request.TempFolder)
+        if strcmp(request.PartialAction, 'restart')
+            deleteIfExists(partialPath)
+            deleteIfExists(chunkPath)
+            bytesReceived = 0;
+            result.BytesReceived = 0;
+            request.PartialAction = 'none';
+        end
+
         while true
-            if isfile(tempPath)
-                delete(tempPath)
+            if isfile(chunkPath)
+                delete(chunkPath)
             end
 
             firstByte = bytesReceived;
             lastByte = firstByte + chunkSize - 1;
-            response = requestRange(requestContext.CookieHeader, url, firstByte, lastByte);
+            response = requestRange(requestContext.CookieHeader, request.URL, firstByte, lastByte);
             statusCode = double(response.StatusCode);
 
             if statusCode == 401 || statusCode == 403 || (statusCode >= 300 && statusCode < 400)
@@ -39,9 +51,9 @@ function result = downloadFileWorker(requestContext, url, filePath, chunkSize, m
                       'Unexpected payload (%s) in raw reading.', class(data))
             end
 
-            fileID = fopen(tempPath, 'wb');
+            fileID = fopen(chunkPath, 'wb');
             if fileID == -1
-                error('ws:auth:F5Session:fileOpenFailed', 'Could not write to "%s".', tempPath)
+                error('ws:auth:F5Session:fileOpenFailed', 'Could not write to "%s".', chunkPath)
             end
             fwrite(fileID, data, 'uint8');
             fclose(fileID)
@@ -50,10 +62,10 @@ function result = downloadFileWorker(requestContext, url, filePath, chunkSize, m
             totalBytes = totalFromResponse(response, statusCode);
 
             if statusCode == 206
-                appendFile(tempPath, filePath)
+                appendFile(chunkPath, partialPath)
                 bytesReceived = firstByte + chunkBytes;
             else
-                movefile(tempPath, filePath, 'f')
+                moveFileWithFallback(chunkPath, partialPath)
                 bytesReceived = chunkBytes;
             end
 
@@ -65,6 +77,8 @@ function result = downloadFileWorker(requestContext, url, filePath, chunkSize, m
 
             reachedTotal = ~isempty(totalBytes) && bytesReceived >= totalBytes;
             if reachedTotal || chunkBytes < chunkSize || statusCode == 200
+                publishFile(request, partialPath, finalPath)
+                cleanupSuccessfulFiles(request, partialPath, chunkPath)
                 result.Success = true;
                 result.BytesReceived = bytesReceived;
                 result.TotalBytes = totalBytes;
@@ -72,20 +86,21 @@ function result = downloadFileWorker(requestContext, url, filePath, chunkSize, m
             end
         end
     catch exception
-        if isfile(tempPath)
-            delete(tempPath)
+        if isfile(chunkPath)
+            delete(chunkPath)
         end
 
         if retryCount < maxRetries && ~strcmp(exception.identifier, 'ws:auth:F5Session:fileOpenFailed')
             retryCount = retryCount + 1;
             pause(2 * retryCount)
-            result = downloadFileWorker(requestContext, url, filePath, chunkSize, ...
+            result = downloadFileWorker(requestContext, request, chunkSize, ...
                                         maxRetries - retryCount, progressQueue, jobId);
             return
         end
 
+        restoreBackup(request.BackupPath, finalPath)
         result.Error = exception;
-        result.BytesReceived = fileSize(filePath);
+        result.BytesReceived = fileSize(partialPath);
         result.TotalBytes = totalBytes;
     end
 end
@@ -143,6 +158,68 @@ function appendFile(sourcePath, targetPath)
         end
         fwrite(targetID, chunk, 'uint8');
     end
+end
+
+
+function publishFile(request, partialPath, finalPath)
+    ensureFolder(request.TargetFolder)
+    if isfile(finalPath)
+        if strcmp(request.CollisionAction, 'overwrite')
+            delete(finalPath)
+        else
+            error('ws:auth:F5Session:targetExists', ...
+                  'The target file "%s" already exists.', finalPath)
+        end
+    end
+    moveFileWithFallback(partialPath, finalPath)
+end
+
+
+function cleanupSuccessfulFiles(request, partialPath, chunkPath)
+    deleteIfExists(partialPath)
+    deleteIfExists(chunkPath)
+    deleteIfExists(request.BackupPath)
+end
+
+
+function restoreBackup(backupPath, finalPath)
+if isempty(backupPath) || ~isfile(backupPath) || isfile(finalPath)
+    return
+end
+moveFileWithFallback(backupPath, finalPath)
+end
+
+
+function moveFileWithFallback(sourcePath, destinationPath)
+[moved, message] = movefile(sourcePath, destinationPath, 'f');
+if moved
+    return
+end
+
+[copied, copyMessage] = copyfile(sourcePath, destinationPath, 'f');
+if ~copied
+    error('ws:auth:F5Session:fileTransferFailed', ...
+          'Could not move or copy "%s" to "%s": %s %s', ...
+          sourcePath, destinationPath, message, copyMessage)
+end
+delete(sourcePath)
+end
+
+
+function ensureFolder(folderPath)
+if ~isfolder(folderPath)
+    [created, message] = mkdir(folderPath);
+    if ~created && ~isfolder(folderPath)
+        error('ws:auth:F5Session:folderUnavailable', '%s', message)
+    end
+end
+end
+
+
+function deleteIfExists(filePath)
+if ~isempty(filePath) && isfile(filePath)
+    delete(filePath)
+end
 end
 
 

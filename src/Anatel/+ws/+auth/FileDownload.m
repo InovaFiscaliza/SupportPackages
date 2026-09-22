@@ -2,7 +2,12 @@ classdef FileDownload < handle
 
     properties (SetAccess = private)
         URL (1,:) char
-        FilePath (1,:) char
+        TaskID (1,:) char
+        TempFolder (1,:) char
+        TargetFolder (1,:) char
+        FileName (1,:) char
+        FinalPath (1,:) char
+        PartialPath (1,:) char
         BytesReceived (1,1) double = 0
         TotalBytes = []
         IsRunning (1,1) logical = false
@@ -16,6 +21,7 @@ classdef FileDownload < handle
     end
 
     properties (Access = private, Transient, NonCopyable)
+        Request
         RequestContext
         ChunkSize  (1,1) double
         MaxRetries (1,1) double
@@ -28,18 +34,24 @@ classdef FileDownload < handle
 
     methods
         %-----------------------------------------------------------------%
-        function obj = FileDownload(session, url, filePath, chunkSize, maxRetries)
+        function obj = FileDownload(session, request, chunkSize, maxRetries)
             arguments
                 session    (1,1) ws.auth.F5Session
-                url        (1,:) char {mustBeNonempty}
-                filePath   (1,:) char {mustBeNonempty}
+                request    (1,1) struct
                 chunkSize  (1,1) double {mustBeInteger, mustBePositive} = 1024*1024
                 maxRetries (1,1) double {mustBeInteger, mustBeNonnegative} = 3
             end
 
+            request = normalizeRequest(request);
             obj.RequestContext = session.getDownloadContext();
-            obj.URL             = url;
-            obj.FilePath        = filePath;
+            obj.Request        = request;
+            obj.URL             = request.URL;
+            obj.TaskID          = request.TaskID;
+            obj.TempFolder      = request.TempFolder;
+            obj.TargetFolder    = request.TargetFolder;
+            obj.FileName        = request.FileName;
+            obj.FinalPath       = request.FinalPath;
+            obj.PartialPath     = request.PartialPath;
             obj.ChunkSize       = chunkSize;
             obj.MaxRetries      = maxRetries;
         end
@@ -60,7 +72,7 @@ classdef FileDownload < handle
                       'Could not start the MATLAB background pool: %s', poolError.message)
             end
 
-            obj.BytesReceived = fileSize(obj.FilePath);
+            obj.BytesReceived = fileSize(obj.PartialPath);
             obj.TotalBytes    = [];
             obj.IsPaused      = false;
             obj.IsRunning     = true;
@@ -70,8 +82,10 @@ classdef FileDownload < handle
             obj.ProgressQueue = parallel.pool.DataQueue;
             afterEach(obj.ProgressQueue, @(message) receiveMessage(obj, message));
 
+            request = obj.Request;
+            obj.Request.PartialAction = 'none';
             obj.Future = parfeval(pool, @ws.auth.downloadFileWorker, 1, ...
-                                  obj.RequestContext, obj.URL, obj.FilePath, ...
+                                  obj.RequestContext, request, ...
                                   obj.ChunkSize, obj.MaxRetries, obj.ProgressQueue, jobId);
             obj.FutureObserver = afterEach(obj.Future, @(future) workerFinished(obj, future, jobId), ...
                                            0, 'PassFuture', true);
@@ -103,7 +117,13 @@ classdef FileDownload < handle
 
         %-----------------------------------------------------------------%
         function info = summary(obj)
-            info = struct('FilePath',      obj.FilePath, ...
+            info = struct('TaskID',         obj.TaskID, ...
+                          'URL',            obj.URL, ...
+                          'TempFolder',     obj.TempFolder, ...
+                          'TargetFolder',   obj.TargetFolder, ...
+                          'FileName',       obj.FileName, ...
+                          'FinalPath',      obj.FinalPath, ...
+                          'PartialPath',    obj.PartialPath, ...
                           'BytesReceived', obj.BytesReceived, ...
                           'TotalBytes',    obj.TotalBytes);
         end
@@ -193,4 +213,32 @@ function bytes = fileSize(filePath)
     else
         bytes = 0;
     end
+end
+
+function request = normalizeRequest(request)
+requiredFields = {'URL', 'TaskID', 'TempFolder', 'TargetFolder', 'FileName'};
+for fieldIndex = 1:numel(requiredFields)
+    fieldName = requiredFields{fieldIndex};
+    if ~isfield(request, fieldName) || ~ischar(request.(fieldName)) || isempty(request.(fieldName))
+        error('ws:auth:FileDownload:invalidRequest', ...
+              'The download request must contain a nonempty character field named %s.', fieldName)
+    end
+end
+
+request.FinalPath = fullfile(request.TargetFolder, request.FileName);
+if ~isfield(request, 'PartialPath') || isempty(request.PartialPath)
+    request.PartialPath = fullfile(request.TempFolder, [request.TaskID, '_', request.FileName, '.part']);
+end
+if ~isfield(request, 'ChunkPath') || isempty(request.ChunkPath)
+    request.ChunkPath = [request.PartialPath, '.chunk'];
+end
+if ~isfield(request, 'BackupPath')
+    request.BackupPath = '';
+end
+if ~isfield(request, 'CollisionAction') || isempty(request.CollisionAction)
+    request.CollisionAction = 'none';
+end
+if ~isfield(request, 'PartialAction') || isempty(request.PartialAction)
+    request.PartialAction = 'none';
+end
 end
