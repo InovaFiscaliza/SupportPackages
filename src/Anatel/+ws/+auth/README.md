@@ -175,8 +175,30 @@ panel.addDownload(url);
 O factory recebe uma struct com `URL`, `TempFolder`, `TargetFolder`,
 `FileName`, `FinalPath` e `CollisionAction`. O objeto devolvido deve expor
 `start`, `pause`, `resume`, `stop`, `ProgressFcn`, `CompletedFcn` e
-`ErrorFcn`. A adaptação de `ws.auth.FileDownload` para esse contrato está
-sendo feita separadamente do painel.
+`ErrorFcn`. O `FileDownload` e o painel usam um worker HTTP compartilhado;
+o painel não precisa escolher entre um transporte público e um transporte F5.
+
+Para uma aplicação que usa F5, o factory pode sempre usar a mesma chamada:
+
+```matlab
+panel = ui.DownloadPanel(parentContainer, ...
+    'DownloaderFactory', @(request) ws.auth.FileDownload(session, request), ...
+    'executionMode', 'MATLABEnvironment', ...
+    'tempPath', tempFolder, ...
+    'targetPath', targetFolder);
+```
+
+Passar uma sessão não inicia autenticação. O login é feito somente quando o
+download recebe uma resposta de autenticação para o host F5. URLs públicas
+HTTP ou HTTPS são baixadas sem cookies. URLs autenticadas exigem HTTPS.
+
+O nome de arquivo usa, nesta ordem, um nome explícito, o último segmento útil
+da URL, `Content-Disposition` (`filename*` antes de `filename`) e um fallback
+no formato `YYMMDD_HHmm_<dominio>_<UID>.download`. Os pontos do domínio são
+substituídos por hífens, por exemplo
+`260923_1430_httpbin-org_a1b2c3d4.download`.
+O `DownloadPanel` reutiliza o fallback gerado para a mesma URL durante a vida
+do painel, permitindo encontrar um arquivo parcial depois de `stop`.
 
 `executionMode` aceita `webApp`, `desktopStandaloneApp` e
 `MATLABEnvironment`. O último usa o mesmo comportamento de download do modo
@@ -190,12 +212,12 @@ sucesso.
 
 | Membro | Descrição |
 |---|---|
-| `F5Session(loginURL)` | Construtor. Exige uma URL HTTPS de login, armazenada em `LoginURL` e reutilizada em cada reautenticação. |
+| `F5Session(loginURL)` | Construtor. Exige uma URL HTTPS de login, armazenada em `LoginURL`; `Domain` contém o host exato usado para limitar cookies e reautenticação. |
 | `login(obj, timeout, debugFile)` | Login interativo. Aguarda os cookies obrigatórios e exige uma landing page HTTP 200 no host protegido; o corpo pode ser vazio. `timeout` padrão: 300 s. Se o usuário não continuar após o timeout, o método retorna sem autenticar. Se `debugFile` for informado, registra o estado bruto e decodificado do navegador para diagnóstico. |
 | `logout(obj)` | Descarta os cookies da memória e fecha a janela. |
 | `read(obj, url, autoReauthenticate)` | GET autenticado, com o payload convertido pelo tipo de conteúdo. Em caso de sessão expirada, dispara nova autenticação (padrão) ou lança erro. |
 | `readBytes(obj, url, autoReauthenticate, progressFcn)` | Idem, sem conversão do payload: devolve `uint8`. Útil para pequenos payloads binários ou diagnósticos. `progressFcn` é chamado como `f(bytesRecebidos, bytesTotais)`. |
-| `FileDownload(session, request, chunkSize, maxRetries)` | Cria um download assíncrono retomável a partir de uma requisição com `TaskID`, `URL`, `TempFolder`, `TargetFolder`, `FileName`, `PartialPath`, `ChunkPath`, `BackupPath`, `CollisionAction` e `PartialAction`. Use `start`, `pause`, `resume` e `stop`; `ProgressFcn` recebe `f(bytesRecebidos, bytesTotais)`, `CompletedFcn` recebe o resumo e `ErrorFcn` recebe a exceção. |
+| `FileDownload(session, request, chunkSize, maxRetries)` | Cria um download assíncrono retomável. A mesma chamada aceita URLs públicas e F5; `start` autentica sob demanda somente após uma resposta de autenticação do host exato da sessão. |
 | `debugInfo(obj)` | Diagnóstico: `LoginURL`, `IsAuthenticated`, `CookieCount` e `CookieNames`. |
 | `IsAuthenticated` | Propriedade somente leitura. |
 | `UserProfile` | Perfil do usuário associado à sessão autenticada. Somente leitura para a aplicação. |
@@ -206,6 +228,8 @@ sucesso.
 
 - Os cookies existem **em memória**, em propriedade privada, pelo tempo de vida do objeto. Durante a operação normal nada é gravado em disco nem reaproveitado entre execuções do MATLAB; se `debugFile` for informado, o estado bruto do navegador, que pode conter valores de cookies, é gravado para diagnóstico.
 - O valor do cookie não é persistido em disco. Durante um `FileDownload`, uma cópia em memória do cabeçalho é enviada ao worker de `backgroundPool` para que a transferência seja independente da thread principal.
+- Cookies são enviados somente para o host exatamente igual a `F5Session.Domain`. Não são enviados para subdomínios, domínio pai, outros hosts ou após um redirecionamento para outro host. O escopo não considera caminhos: a regra é exclusivamente o host exato.
+- A sessão é opcional do ponto de vista do transporte: uma URL pública não recebe cookies F5. A existência de um objeto `F5Session` não dispara login durante a construção de `FileDownload`.
 - `debugInfo` expõe apenas nomes e quantidade de cookies, nunca os valores.
 - O `debugFile` de `login` pode conter cookies de autenticação; use-o somente para diagnóstico local e remova-o após a análise.
 - `logout` sobrescreve o buffer do cabeçalho antes de liberá-lo.

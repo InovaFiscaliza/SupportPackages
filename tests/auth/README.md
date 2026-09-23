@@ -83,8 +83,16 @@ F5BrowserTestApp
 
 ### Comportamento
 
-`navigate` acrescenta a URL ao histórico, garante a sessão e faz a leitura sob um
-`uiprogressdlg` indeterminado. Erros viram `uialert`, sem derrubar a aplicação.
+`navigate` acrescenta a URL ao histórico. Downloads são encaminhados primeiro
+ao painel e usam a mesma chamada para fontes públicas e protegidas; a sessão F5
+só autentica quando o servidor protegido exigir isso. As demais URLs garantem a
+sessão e fazem a leitura sob um `uiprogressdlg` indeterminado. Erros viram
+`uialert`, sem derrubar a aplicação.
+
+Os itens `https://httpbin.org/bytes/1024` e
+`http://httpbin.org/bytes/1024` demonstram downloads públicos sem login. Os
+itens do host `fiscalizacao.anatel.gov.br` demonstram o mesmo painel com
+autenticação F5 sob demanda.
 
 `ensureSession` só cria uma sessão nova quando não há login válido **ou** quando a URL
 aponta para outro host — o cookie do APM é válido apenas para o host que o emitiu. Enquanto
@@ -126,7 +134,302 @@ Resta um *glitch* conhecido: por uma fração de segundo (até ~0,25 s, o interv
 a página final pode ficar visível antes de a janela ser ocultada.
 
 
-### TODO
+### TODO — recommended implementation order
 
-- Chunked writer: Current downloadFileWorker.m appends chunks repeatedly to the selected destination. This is unsuitable for web apps because repeated writes can trigger multiple browser downloads. Download chunks to a server-side temporary file, then perform one final copy/write to the uiputfile path.
-- Change download avatar to use a list of speeds as entry points instead of number of circles and speed. Number of circles should be equal to the length of the list. Speed may be zero for some entries resulting in stationary circles.
+The original migration item is no longer a simple “move everything” task. The
+current ownership should be split into three boundaries: download UI under
+`src/General/+ui`, generic download services under `src/General/+download`,
+and F5 authentication/adaptation under `src/Anatel/+ws/+auth`. Finish the
+cleanup and documentation of that boundary before adding more features.
+
+1. **Separate the download UI, generic download services, and F5 adapter.**
+
+	This is a namespace migration as well as a file reorganization. The target
+	structure is:
+
+	```text
+	src/General/
+	├── +ui/
+	│   ├── DownloadPanel.m
+	│   └── html/
+	│       ├── downloadAvatar.html
+	│       └── downloadStatus.html
+	└── +download/
+	    ├── DownloadManager.m
+	    ├── downloadContentDispositionFileName.m
+	    ├── downloadFileName.m
+	    ├── downloadFileWorker.m
+	    ├── downloadHTTPResponse.m
+	    └── downloadSourceMetadata.m
+
+	src/Anatel/+ws/+auth/
+	├── F5Session.m
+	├── FileDownload.m
+	└── DownloadProgressMonitor.m
+	```
+
+	- Keep `DownloadPanel` in `+ui` as the presentation layer. It owns the
+	  visual panel, row controls, avatar state, and UI callbacks, but it must not
+	  own the transfer lifecycle or call downloader methods directly. Keep the
+	  download avatar HTML beside that component.
+	- Add `download.DownloadManager` to `+download`. It owns the logical task
+	  lifecycle: task registration, state transitions, task identifiers,
+	  `start`, `pause`, `resume`, `stop`, and `cancel` commands, downloader
+	  callbacks, late-callback filtering, cleanup, and notifications/snapshots
+	  consumed by the panel. It must not depend on `uifigure`, `uihtml`, or
+	  other presentation classes.
+	- The panel must translate user actions into manager commands and render the
+	  manager's task snapshots. A task state must have one authoritative owner:
+	  the manager owns transfer state, while the panel owns only UI handles and
+	  presentation state. Conflict decisions and history updates must follow
+	  this same boundary.
+	- Define the manager contract before extracting the current implementation.
+	  A normalized `DownloadRequest` must contain the URL, temporary folder,
+	  target folder, file name, final path, display mode, and applicable conflict
+	  policies. A `TaskSnapshot` must expose the task ID, lifecycle state, paths,
+	  received and total bytes, measured and estimated rates, timestamps, and
+	  error information without exposing UI handles or downloader internals.
+	- Use one authoritative lifecycle vocabulary. `pause` preserves a resumable
+	  task, `stop` intentionally ends the transfer while retaining its partial
+	  state, `cancel` removes the task according to the configured cleanup
+	  policy, and `restart` discards the partial state before starting again.
+	  Target conflicts use `overwrite`, `uniqueName`, and `cancel` (the
+	  user-facing label for `uniqueName` is "Save as new"); partial-file
+	  conflicts use `resume`, `restart`, and `cancel`.
+	- Keep destination selection separate from transfer orchestration. A panel
+	  or injected destination resolver may use `executionMode` and `uiputfile`
+	  to produce a normalized request, but `DownloadManager` must not call UI
+	  APIs or know about desktop/Web App Server modes. The manager owns conflict
+	  detection and emits a pending decision for the panel to render.
+	- Move the generic filename, HTTP, metadata, and worker functions to the
+	  sibling MATLAB package `+download`. These functions must remain independent
+	  of `uifigure`, `DownloadPanel`, `F5Session`, cookies, and other provider
+	  details. Their existing `requestContext` and normalized request arguments
+	  are the boundary that permits both public HTTP and authenticated adapters.
+	- Keep `F5Session`, `FileDownload`, and F5-specific progress/authentication
+	  behavior in `+ws/+auth`. `FileDownload` adapts an F5 session to the generic
+	  `download` service; it is not part of the UI package.
+	- Treat the current `src/Anatel/+ws/+auth/downloadFileWorker.m` as a
+	  compatibility wrapper during the migration only. It must delegate to
+	  `download.downloadFileWorker` if any external caller still needs it; after
+	  all references are migrated, remove the wrapper or document it as a
+	  deliberately supported compatibility entry point. There must be only one
+	  worker implementation.
+
+	### Required namespace changes
+
+	Moving a file from `+ui` to the sibling package `+download` changes its
+	qualified MATLAB name. Update every call from `ui.*` to `download.*`, including
+	:
+
+	- `DownloadPanel.m`: `download.downloadFileName`;
+	- `FileDownload.m`: `download.downloadSourceMetadata` and
+	  `@download.downloadFileWorker` passed to `parfeval`;
+	- `downloadFileWorker.m` and `downloadSourceMetadata.m`: all calls to the
+	  HTTP, filename, and content-disposition helpers;
+	- `tests/ui/checkDownloadHttp.m` and any future tests;
+	- README examples, error documentation, build scripts, and generated
+	  dependency lists.
+
+	Update error identifiers at the same time. Generic errors should use the
+	`download:*` namespace, for example `download:downloadFileWorker:httpError`,
+	while F5 adapter errors continue to use `ws:auth:*` and panel/UI errors use
+	`ui:DownloadPanel:*`. Do not leave identifiers referring to the old package
+	unless a compatibility policy explicitly requires them.
+
+	### Migration and compatibility policy
+
+	Before editing callers, decide whether `ui.download*` was part of the
+	public package API or only an internal implementation detail. The repository
+	currently contains direct test calls, but no evidence in this README of an
+	external consumer. The recommended default is an intentional namespace
+	migration: update all repository callers to `download.*` and do not maintain
+	permanent duplicate wrappers. If backward compatibility with released
+	consumers is required, retain thin deprecated wrappers in `+ui` that forward
+	to `download.*`; never copy or fork the implementation, and define when the
+	wrappers may be removed.
+
+	The contract to record later in `contract.md` should state that:
+
+	- `download.*` owns provider-neutral HTTP transfer, response handling,
+	  source metadata, filename derivation, and task-scoped file publication;
+	- `download.DownloadManager` owns provider-neutral transfer orchestration,
+	  task state, conflict decisions, history coordination, normalized request
+	  handling, and downloader lifecycle commands. It exposes snapshots/events,
+	  not UI handles;
+	- `ui.DownloadPanel` owns presentation and UI lifecycle only. It translates
+	  user actions into manager commands, renders manager snapshots, and does
+	  not perform authentication, inspect cookies, or call downloader methods
+	  directly;
+	- `ws.auth.FileDownload` owns F5 session interaction and supplies the
+	  provider-specific `requestContext` to `download.*`; the manager receives
+	  it only through the injected downloader factory;
+	- no package may call into the concrete implementation of another provider;
+	- the normalized request and `requestContext` are the only transfer boundary
+	  between the generic service and an authentication adapter.
+
+	### Path, compilation, and validation requirements
+
+	- Keep `src/General` on the MATLAB path so both `ui.*` and `download.*`
+	  resolve as sibling packages. Do not add the package folders themselves to
+	  the path.
+	- Update `parfeval` function handles and any dynamic `which`/`mfilename`
+	  lookup to use the new package names. Verify that the worker can be found
+	  from the background pool, not only from the interactive MATLAB client.
+	- Update Application Compiler instructions and additional-file lists for the
+	  new package layout. The `download` source files are code dependencies;
+	  `downloadAvatar.html` and `downloadStatus.html` remain additional UI
+	  assets. Keep
+	  `profileAvatar.html` under `+ws/+auth` because it belongs to the F5 profile
+	  component, not the download package.
+	- Update `src/Anatel/+ws/+auth/README.md`, `tests/ui/README.md`, and this
+	  README before deleting the old files. Remove the obsolete duplicate
+	  download avatar only after a repository-wide reference search is empty.
+	- Use `tests/ui/checkDownloadHttp.m` to validate the generic package without
+	  authentication, then use `checkDownloadPanel.m` to validate the UI/factory
+	  boundary. Real F5 authentication in `F5BrowserTestApp.m` is a later
+	  integration check, not a prerequisite for this migration.
+	- The migration is complete only when no generic download implementation
+	  remains under the `+ui` location, `DownloadPanel` delegates transfer
+	  lifecycle operations to `download.DownloadManager`, the manager contract
+	  and lifecycle semantics are covered by isolated tests, all repository
+	  references resolve to the new package names, and the compiled-application
+	  asset instructions are consistent with the new ownership model.
+
+2. **Resolve execution mode and destination before creating a task.**
+	 - Add a `uiimage` control to `F5BrowserTestApp` for switching between
+		 desktop behavior and Web App Server behavior in the test app.
+	 - Keep `executionMode` and initial destination selection in the application,
+		 `DownloadPanel`, or an injected `DestinationResolver`. `webApp` must not
+		 open desktop file-selection dialogs; desktop-like modes may use `uiputfile`.
+	 - Pass the manager a normalized request after destination resolution. The
+		 request must contain the final target folder and file name; the manager
+		 must not call `uiputfile`, `uiconfirm`, `questdlg`, or any other UI API.
+	 - Configure collision behavior on `DownloadManager`, not through a
+		 test-specific branch in the panel. The manager detects the collision and
+		 emits a pending decision; the panel renders the controls and calls the
+		 manager's decision method. Target conflicts use `overwrite`, `uniqueName`,
+		 and `cancel` (shown as **Save as new**). Partial conflicts use `resume`,
+		 `restart`, and `cancel`.
+	 - Add manager tests for each mode-independent conflict transition and
+		 panel tests for desktop/Web App Server destination resolution before
+		 changing the visual layout.
+
+3. **Add an explicit silent mode.**
+	 - Add `DisplayMode = 'normal' | 'silent'` to the normalized request or task
+		 options. The manager owns this value; the panel does not infer it from a
+		 URL or caller-specific branch.
+	 - A silent task must not create a visible row or contribute to the avatar by
+		 default, but it must retain the normal manager lifecycle, callbacks,
+		 cleanup, and history behavior. The inclusion policy must be configurable
+		 without changing the downloader contract.
+	 - Add manager and panel harness cases proving that silent tasks still emit
+		 completion and error notifications and do not affect visible progress.
+
+4. **Change the download avatar contract from aggregate count/speed to a
+	 per-download speed list.**
+	 - `TaskSnapshot` must expose both `MeasuredRate` and `EstimatedRate`, in
+		 bytes per second, plus a `RateSource` value. The panel maps the snapshots
+		 of represented tasks to the avatar's speed list.
+	 - Send one speed value per represented download; the number of orbiting
+		 circles must equal the list length. Preserve a stable ordering, preferably
+		 task creation order, and exclude silent tasks by default.
+	 - A paused, stopped, pending-conflict, or otherwise represented task with
+		 no current rate sends zero and produces a stationary red circle. Positive
+		 measured or explicitly permitted estimated rates retain active animation.
+	 - Update `DownloadPanel`, `downloadAvatar.html`, and `checkDownloadHtml`
+		 together. Document the units, ordering, empty-list behavior, and the
+		 distinction between estimated and measured rates.
+
+5. **Make the empty panel a first-class state.**
+	 - Clicking the avatar must open or bring the panel to the front even when
+		 there are no downloads.
+	 - In that state, show only the configured title bar, the `Download` label,
+		 and the close control aligned with the panel's top-right corner.
+	 - Add a harness case for opening, closing, and reopening the empty panel.
+
+6. **Replace the progress bar with a reusable animated `uihtml` status
+	 component.**
+	 - Implement the component as `src/General/+ui/html/downloadStatus.html`
+		 and include it in compiled applications together with the avatar asset.
+	 - Define explicit states for active download (constant blue), warning
+		 (blinking yellow), and error (blinking red), with precedence
+		 `error > warning > active > idle`.
+	 - Map manager snapshots to these visual states in the panel. The manager
+		 must retain enough failed or warning state for the component to display it
+		 before the row is removed or archived.
+	 - Keep the component independent of authentication and make its MATLAB to
+		 HTML data contract testable from `tests/ui`.
+	 - Verify desktop MATLAB and Web App Server rendering before integrating it
+		 into every row.
+
+7. **Define and implement persistent download history.**
+	 - History belongs to `DownloadManager` or to an injected provider-neutral
+		 history store, never to `DownloadPanel` or a downloader adapter. The
+		 manager must receive the history-file location or store explicitly and
+		 load it at startup.
+	 - Use one JSON entry per download attempt. Link retries and restarts for the
+		 same logical file with a stable `LogicalFileID`; keep the active entry
+		 associated with the manager task by `TaskID`.
+	 - Define one stable schema containing at least: entry and logical-file IDs,
+		 source URL, full target path, temporary path, start timestamp,
+		 completion timestamp, lifecycle state, downloaded byte count, measured
+		 speed, rate source, error messages, and `isAvailable`. Use ISO 8601 UTC
+		 timestamps.
+	 - Persist changes when a download starts, pauses, stops, resumes, completes,
+		 fails, or is canceled. A history write must reflect the authoritative
+		 manager transition, not a UI callback.
+	 - At startup, reconcile history with target and temporary files. Update
+		 availability, refresh byte counts from matching temporary files, and move
+		 unreferenced task-scoped temporary files to the OS trash through a
+		 platform-neutral filesystem helper.
+	 - Make reconciliation and JSON writes tolerant of a missing or corrupt
+		 history file. Use an atomic replacement or equivalent strategy so a
+		 concurrent interruption cannot leave a partially written history file.
+	 - Keep history fields in manager snapshots so the panel can render completed
+		 entries without owning the JSON representation.
+
+8. **Redesign the download rows around the finalized state model.**
+	 - Render manager snapshots, not private downloader objects. Active or
+		 paused downloads use a 3-row by 4-column layout: filename; progress plus
+		 pause/resume, stop, and cancel controls; then byte count, speed, estimated
+		 remaining time, or status text.
+	 - Target conflicts show `Overwrite`, `Save as new`, and `Cancel`. Partial
+		 downloads show `Resume`, `Restart`, and `Cancel`, and retain the known
+		 byte count. The panel sends these choices to `DownloadManager`.
+	 - Completed history entries use a 2-row by 3-column layout with filename,
+		 restart/delete-history actions, timestamp, and file size. Missing target
+		 files use red struck-through text. Deleting history removes the history
+		 entry but does not delete the target file unless a separate file-delete
+		 command is selected.
+	 - Remove separator lines, use a slightly darker background per download,
+		 and add a clear gap between rows. Keep the close control at the panel's
+		 top-right corner.
+	 - Add manager tests for every lifecycle transition and visual harness
+		 coverage for every row state, including stopped downloads and unavailable
+		 completed files.
+
+9. **Use historical speeds in the examples.**
+	 - Before a new transfer has enough samples, the manager may obtain an
+		 estimated rate from history using the closest available key: exact URL,
+		 host and filename, then a global default.
+	 - Expose the estimate separately from measured transfer rate. Once real
+		 progress samples exist, measured rate takes precedence and the estimate
+		 must not be presented as measured data.
+	 - Demonstrate the behavior in `tests/ui` with deterministic history before
+		 relying on live F5 transfers. The avatar consumes the same stable speed
+		 list contract regardless of whether a value is measured or estimated.
+
+### Decisions to confirm before implementation
+
+- Should `DestinationResolver` be a callback supplied to `DownloadPanel` or a
+	separate reusable class? In either case, it must return a normalized request
+	without making `DownloadManager` depend on UI APIs.
+- Should a silent task be excluded from the avatar as specified above, or
+	should callers be allowed to opt it into aggregate visual state?
+- Should cancel always delete partial files, or should a deployment be able
+	to retain them for later recovery? The manager must expose one explicit
+	policy rather than infer behavior from the button label.
+- Is backward compatibility with released consumers of `ui.download*`
+	required? If so, retain deprecated forwarding wrappers with a documented
+	removal point; otherwise perform the namespace migration without wrappers.

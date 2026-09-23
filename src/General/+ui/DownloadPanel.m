@@ -43,6 +43,7 @@ classdef DownloadPanel < handle
         DownloadContent
         DownloadStack
         DownloadTasks = {}
+        DownloadFileNames cell = cell(0, 2)
         NextDownloadID (1,1) double = 0
         AvatarHTMLReady (1,1) logical = false
         AvatarState struct = struct('level', 0, ...
@@ -137,7 +138,7 @@ classdef DownloadPanel < handle
             end
 
             url = char(url);
-            [finalPath, cancelled] = obj.resolveFinalPath(url);
+            [finalPath, cancelled, allowSourceFilename] = obj.resolveFinalPath(url);
             if cancelled
                 taskID = [];
                 return
@@ -147,20 +148,9 @@ classdef DownloadPanel < handle
             fileName = [fileName, extension];
             taskID = obj.createTask(url, targetFolder, fileName, finalPath);
             task = obj.getTask(taskID);
-            existingPartialPath = findPartialPath(task.TempFolder, task.FileName);
-            if ~isempty(existingPartialPath)
-                task.PartialPath = existingPartialPath;
-                task.ChunkPath = [existingPartialPath, '.chunk'];
-            end
+            task.AllowSourceFilename = allowSourceFilename;
             obj.DownloadTasks{taskID} = task;
-
-            if pathExists(finalPath)
-                obj.configureTargetConflict(taskID)
-            elseif ~isempty(existingPartialPath)
-                obj.configurePartialConflict(taskID)
-            else
-                obj.startTask(taskID, 'none', 'none')
-            end
+            obj.startTask(taskID, 'none', 'none')
         end
 
         %-----------------------------------------------------------------%
@@ -319,6 +309,8 @@ classdef DownloadPanel < handle
                           'TempFolder', '', ...
                           'TargetFolder', '', ...
                           'FinalPath', '', ...
+                          'AllowSourceFilename', false, ...
+                          'SourcePrepared', false, ...
                           'PartialPath', '', ...
                           'ChunkPath', '', ...
                           'BackupPath', '', ...
@@ -592,10 +584,48 @@ classdef DownloadPanel < handle
                                       'ChunkPath', task.ChunkPath, ...
                                       'BackupPath', task.BackupPath, ...
                                       'CollisionAction', collisionAction, ...
-                                      'PartialAction', partialAction);
+                                      'PartialAction', partialAction, ...
+                                      'AllowSourceFilename', task.AllowSourceFilename, ...
+                                      'SourcePrepared', task.SourcePrepared);
                 downloader = obj.DownloaderFactory(task.Request);
                 validateDownloader(downloader)
+
                 task.Downloader = downloader;
+                obj.DownloadTasks{taskID} = task;
+                if ~task.SourcePrepared && ismethod(downloader, 'prepare')
+                    sourceInfo = prepare(downloader);
+                    task = obj.applySourceInfo(task, sourceInfo);
+                end
+                task.SourcePrepared = true;
+                task.Request.FileName = task.FileName;
+                task.Request.FinalPath = task.FinalPath;
+                task.Request.PartialPath = task.PartialPath;
+                task.Request.ChunkPath = task.ChunkPath;
+
+                existingPartialPath = findPartialPath(task.TempFolder, task.FileName);
+                if ~isempty(existingPartialPath)
+                    task.PartialPath = existingPartialPath;
+                    task.ChunkPath = [existingPartialPath, '.chunk'];
+                    task.Request.PartialPath = task.PartialPath;
+                    task.Request.ChunkPath = task.ChunkPath;
+                end
+
+                if pathExists(task.FinalPath)
+                    obj.DownloadTasks{taskID} = task;
+                    obj.stopAndReleaseDownloader(task)
+                    task.Downloader = [];
+                    obj.DownloadTasks{taskID} = task;
+                    obj.configureTargetConflict(taskID)
+                    return
+                elseif ~strcmp(partialAction, 'resume') && ~isempty(existingPartialPath)
+                    obj.DownloadTasks{taskID} = task;
+                    obj.stopAndReleaseDownloader(task)
+                    task.Downloader = [];
+                    obj.DownloadTasks{taskID} = task;
+                    obj.configurePartialConflict(taskID)
+                    return
+                end
+
                 task.LifecycleState = 'active';
                 task.IsPaused = false;
                 obj.DownloadTasks{taskID} = task;
@@ -609,6 +639,20 @@ classdef DownloadPanel < handle
             catch exception
                 obj.onDownloadError(taskID, exception)
             end
+        end
+
+        %-----------------------------------------------------------------%
+        function task = applySourceInfo(~, task, sourceInfo)
+            if ~isstruct(sourceInfo) || ~isfield(sourceInfo, 'FileName') || ...
+                    isempty(sourceInfo.FileName)
+                return
+            end
+
+            task.FileName = char(sourceInfo.FileName);
+            task.FinalPath = fullfile(task.TargetFolder, task.FileName);
+            task.PartialPath = fullfile(task.TempFolder, [task.TaskID, '_', task.FileName, '.part']);
+            task.ChunkPath = [task.PartialPath, '.chunk'];
+            task.StatusLabel.Text = task.FileName;
         end
 
         %-----------------------------------------------------------------%
@@ -986,9 +1030,10 @@ classdef DownloadPanel < handle
 
     methods (Access = private)
         %-----------------------------------------------------------------%
-        function [finalPath, cancelled] = resolveFinalPath(obj, url)
+        function [finalPath, cancelled, allowSourceFilename] = resolveFinalPath(obj, url)
             cancelled = false;
-            fileName = filenameFromURL(url);
+            [fileName, isUsefulURLName] = obj.resolveDownloadFileName(url);
+            allowSourceFilename = ~isUsefulURLName;
             if strcmp(obj.executionMode, 'webApp')
                 if isempty(strtrim(obj.TargetPath)) || ~isfolder(obj.TargetPath)
                     error('ui:DownloadPanel:missingTargetPath', ...
@@ -1006,10 +1051,29 @@ classdef DownloadPanel < handle
             if isequal(selectedName, 0)
                 finalPath = '';
                 cancelled = true;
+                allowSourceFilename = false;
                 return
             end
             figure(obj.UIFigure)
             finalPath = fullfile(selectedFolder, selectedName);
+            allowSourceFilename = false;
+        end
+
+        %-----------------------------------------------------------------%
+        function [fileName, isUseful] = resolveDownloadFileName(obj, url)
+            [fileName, isUseful] = ui.downloadFileName(url, shortTaskID());
+            if isUseful
+                return
+            end
+
+            matchingURL = strcmp(obj.DownloadFileNames(:, 1), url);
+            matchingIndex = find(matchingURL, 1, 'last');
+            if ~isempty(matchingIndex)
+                fileName = obj.DownloadFileNames{matchingIndex, 2};
+                return
+            end
+
+            obj.DownloadFileNames(end+1, :) = {url, fileName};
         end
     end
 
@@ -1219,21 +1283,6 @@ end
 end
 
 %-----------------------------------------------------------------%
-function value = filenameFromURL(url)
-value = 'download';
-try
-    pathSegments = matlab.net.URI(url).Path;
-    if ~isempty(pathSegments) && strlength(pathSegments(end)) > 0
-        value = char(pathSegments(end));
-    end
-catch
-end
-value = regexprep(value, '[\\/:*?"<>|]', '_');
-if isempty(value) || strcmp(value, '.') || strcmp(value, '..')
-    value = 'download';
-end
-end
-
 %-----------------------------------------------------------------%
 function text = progressText(receivedBytes, totalBytes, elapsedSeconds, transferRate)
 receivedText = formatBytes(receivedBytes);

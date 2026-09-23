@@ -25,6 +25,7 @@ classdef F5Session < handle
     properties (SetAccess = immutable)
         %-----------------------------------------------------------------%
         LoginURL (1, :) char
+        Domain (1, :) char
     end
 
 
@@ -69,6 +70,7 @@ classdef F5Session < handle
                 error('ws:auth:F5Session:insecureURL', 'Insecure URL')
             end
             obj.LoginURL = loginURL;
+            obj.Domain = char(matlab.net.URI(loginURL).Host);
         end
 
         %-----------------------------------------------------------------%
@@ -222,9 +224,45 @@ classdef F5Session < handle
         end
 
         %-----------------------------------------------------------------%
-        function context = getDownloadContext(obj)
-            assertAuthenticated(obj)
-            context = struct('CookieHeader', obj.CookieHeader);
+        function context = getDownloadContext(obj, url)
+            % GETDOWNLOADCONTEXT Return credentials only for the exact F5 host.
+
+            arguments
+                obj
+                url (1,:) char {mustBeNonempty}
+            end
+
+            uri = matlab.net.URI(url);
+            context = struct('CookieHeader', '', ...
+                             'AllowedHost', obj.Domain, ...
+                             'AuthenticationEligible', strcmpi(char(uri.Host), obj.Domain), ...
+                             'Authenticated', obj.IsAuthenticated);
+            if context.AuthenticationEligible && ...
+                    strcmpi(char(uri.Scheme), 'https') && obj.IsAuthenticated
+                context.CookieHeader = obj.CookieHeader;
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function context = authenticateForDownload(obj, url)
+            % AUTHENTICATEFORDOWNLOAD Reauthenticate an exact-host HTTPS URL.
+
+            arguments
+                obj
+                url (1,:) char {mustBeNonempty}
+            end
+
+            uri = matlab.net.URI(url);
+            if ~strcmpi(char(uri.Host), obj.Domain)
+                error('ws:auth:F5Session:hostMismatch', ...
+                      'Authenticated requests must target the exact F5 host "%s".', obj.Domain)
+            end
+            login(obj)
+            context = getDownloadContext(obj, url);
+            if isempty(context.CookieHeader)
+                error('ws:auth:F5Session:notAuthenticated', ...
+                      'The F5 authentication did not produce session cookies.')
+            end
         end
 
         %-----------------------------------------------------------------%
@@ -445,6 +483,19 @@ classdef F5Session < handle
         end
 
         %-----------------------------------------------------------------%
+        function validateDownloadURL(obj, url)
+            uri = matlab.net.URI(url);
+            if ~strcmpi(char(uri.Host), obj.Domain)
+                error('ws:auth:F5Session:hostMismatch', ...
+                      'Authenticated requests must target the exact F5 host "%s".', obj.Domain)
+            end
+            if ~strcmpi(char(uri.Scheme), 'https')
+                error('ws:auth:F5Session:insecureURL', ...
+                      'Authenticated requests require HTTPS.')
+            end
+        end
+
+        %-----------------------------------------------------------------%
         function [data, response] = fetch(obj, url, convertResponse, autoReauthenticate, progressFcn)
             % Redirects to the login page (session expired or
             % invalidated) are detected and, by default, trigger new
@@ -487,6 +538,7 @@ classdef F5Session < handle
 
         %-----------------------------------------------------------------%
         function response = sendRequest(obj, url, convertResponse, progressFcn)
+            validateDownloadURL(obj, url)
             header  = matlab.net.http.HeaderField('Cookie', obj.CookieHeader);
             request = matlab.net.http.RequestMessage('GET', header);
 

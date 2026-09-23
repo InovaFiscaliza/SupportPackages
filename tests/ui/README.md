@@ -1,145 +1,166 @@
 # tests/ui
 
-This folder contains the manual UI harness and test double for
+Esta pasta contém o harness manual de UI e o dublê de teste de
 `src/General/+ui/DownloadPanel`.
 
-It also contains the isolated visual harness for
-`src/General/+ui/html/downloadAvatar.html`. The avatar harness and the panel
-harness are deliberately separate: one verifies the HTML presentation
-protocol, while the other verifies the MATLAB panel, downloader factory, task
-lifecycle, and file-system behavior.
+Ela também contém o harness visual isolado de
+`src/General/+ui/html/downloadAvatar.html`. O harness do avatar e o harness do
+painel são deliberadamente separados: um verifica o protocolo de apresentação
+HTML, enquanto o outro verifica o painel MATLAB, a fábrica de downloaders, o
+ciclo de vida das tarefas e o comportamento do sistema de arquivos.
 
-## Files
+## Arquivos
 
-| File | Role |
+| Arquivo | Função |
 |---|---|
-| [`checkDownloadPanel.m`](checkDownloadPanel.m) | Opens a manual `uifigure` harness for the reusable panel. |
-| [`checkDownloadHtml.m`](checkDownloadHtml.m) | Tests only the `downloadAvatar.html` `uihtml` asset. |
-| [`DownloadPanelFakeDownloader.m`](DownloadPanelFakeDownloader.m) | Simulates the downloader object required by `ui.DownloadPanel`. |
+| [`checkDownloadPanel.m`](checkDownloadPanel.m) | Abre um harness manual em `uifigure` para o painel reutilizável. |
+| [`checkDownloadHtml.m`](checkDownloadHtml.m) | Testa apenas o recurso `uihtml` `downloadAvatar.html`. |
+| [`checkDownloadHttp.m`](checkDownloadHttp.m) | Faz um teste rápido do transporte HTTP público, do fallback de nome de arquivo e do isolamento de cookies por host exato. |
+| [`DownloadPanelFakeDownloader.m`](DownloadPanelFakeDownloader.m) | Simula o objeto downloader exigido por `ui.DownloadPanel`. |
 
-These files have different responsibilities. `checkDownloadPanel` is the
-actual interactive test harness. `DownloadPanelFakeDownloader` is its injected
-dependency: it provides deterministic timer-driven progress and file-system
-behavior without network traffic, F5 authentication, or `backgroundPool`.
+Esses arquivos têm responsabilidades diferentes. `checkDownloadPanel` é o
+harness de teste interativo propriamente dito. `DownloadPanelFakeDownloader` é
+sua dependência injetada: ele fornece progresso determinístico orientado por
+timer e comportamento do sistema de arquivos sem tráfego de rede, autenticação
+F5 ou `backgroundPool`.
 
-`checkDownloadHtml` is intentionally separate from the panel harness. It tests
-only the presentation protocol of `downloadAvatar.html`: progress levels,
-active state, orbit ball count, orbit speed, the ready event, and the click
-event. It does not create download files, instantiate `ui.DownloadPanel`, or
-perform network or authentication work.
+`checkDownloadHtml` é intencionalmente separado do harness do painel. Ele testa
+apenas o protocolo de apresentação de `downloadAvatar.html`: níveis de
+progresso, estado ativo, quantidade de esferas em órbita, velocidade da órbita,
+evento de pronto e evento de clique. Ele não cria arquivos de download, não
+instancia `ui.DownloadPanel` nem executa operações de rede ou autenticação.
 
-## Isolated avatar harness
+## Harness isolado do avatar
 
-`checkDownloadHtml.m` creates a small `uifigure` containing the
-`downloadAvatar.html` `uihtml` component and controls for its visual state:
+`checkDownloadHtml.m` cria uma pequena `uifigure` contendo o componente `uihtml`
+`downloadAvatar.html` e controles para seu estado visual:
 
-- Progress from `0%` to `100%`, converted to avatar levels `0` to `10`.
-- Active/inactive animation state.
-- Orbit ball count from `1` to `10`.
-- Orbit speed in radians per second.
-- A click indicator that confirms `downloadAvatarClick` reached MATLAB.
+- Progresso de `0%` a `100%`, convertido nos níveis de avatar de `0` a `10`.
+- Estado de animação ativo/inativo.
+- Quantidade de esferas em órbita de `1` a `10`.
+- Velocidade da órbita em radianos por segundo.
+- Um indicador de clique que confirma que `downloadAvatarClick` chegou ao MATLAB.
 
-This harness is presentation-only. It does not create temporary or target
-files, start `ui.DownloadPanel`, authenticate, or perform network transfers.
+Este harness é exclusivamente de apresentação. Ele não cria arquivos
+temporários ou de destino, não inicia `ui.DownloadPanel`, não autentica nem
+realiza transferências de rede.
 
-## DownloadPanel integration
+## Integração com DownloadPanel
 
-`checkDownloadPanel.m` exercises `ui.DownloadPanel` with
-`DownloadPanelFakeDownloader`. It provides four sample links with different
-sizes and speeds, task progress, pause/resume/stop behavior, target and partial
-conflict choices, and the close/trash controls. The panel uses the shared
-`downloadAvatar.html` asset internally.
+`checkDownloadPanel.m` exercita `ui.DownloadPanel` com
+`DownloadPanelFakeDownloader`. Ele fornece quatro links de exemplo com tamanhos
+e velocidades diferentes, progresso das tarefas, comportamento de
+pausar/retomar/parar, escolhas para conflitos de destino e de arquivos parciais
+e os controles de fechar/lixeira. O painel usa internamente o recurso
+compartilhado `downloadAvatar.html`.
 
-The F5 integration example is [`F5BrowserTestApp.m`](../auth/F5BrowserTestApp.m).
-It supplies the authenticated `ws.auth.FileDownload` factory while
-`ui.DownloadPanel` remains responsible for the download UI and task lifecycle.
+O exemplo de integração com F5 é [`F5BrowserTestApp.m`](../auth/F5BrowserTestApp.m).
+Ele fornece a fábrica `ws.auth.FileDownload` baseada na sessão, enquanto
+`ui.DownloadPanel` continua responsável pela UI de download e pelo ciclo de
+vida das tarefas. A mesma fábrica trata fontes HTTP/HTTPS públicas sem iniciar
+o login do F5.
 
-The panel sends the following state to `downloadAvatar.html` after the asset
-reports ready:
+Para URLs sem um nome útil, o painel reutiliza o fallback gerado para novas
+tentativas durante a vida da mesma instância, permitindo oferecer um arquivo
+`.part` parado para retomada. Se a fonte ignorar o cabeçalho HTTP `Range`, não
+é possível continuar byte a byte; o worker detecta a resposta `200` e baixa a
+fonte novamente desde o início.
 
-- `level`: aggregate progress level from `0` to `10`.
-- `inProgress`: whether at least one transfer is active.
-- `ballCount`: number of active downloads represented by orbiting balls.
-- `speedRadiansPerSecond`: aggregate visual orbit speed.
+Depois que o recurso informa que está pronto, o painel envia o seguinte estado
+para `downloadAvatar.html`:
 
-The asset emits `downloadAvatarReady` and `downloadAvatarClick`, with payload
-types `ready` and `click`. The avatar asset itself does not access files,
-authentication, or network services.
+- `level`: nível de progresso agregado de `0` a `10`.
+- `inProgress`: indica se há pelo menos uma transferência ativa.
+- `ballCount`: quantidade de downloads ativos representados por esferas em órbita.
+- `speedRadiansPerSecond`: velocidade visual agregada da órbita.
 
-## F5 download integration
+O recurso emite `downloadAvatarReady` e `downloadAvatarClick`, com os tipos de
+payload `ready` e `click`. O próprio recurso do avatar não acessa arquivos,
+autenticação ou serviços de rede.
 
-When `F5BrowserTestApp` receives a URL whose final path segment has an
-extension, it delegates the request to `ui.DownloadPanel`. The application
-factory creates `ws.auth.FileDownload` with the authenticated F5 session.
-`FileDownload` transfers data in `backgroundPool`; task-scoped partial files
-and chunks are stored in the configured temporary folder, and the completed
-file is published in the target folder only after the transfer succeeds.
+## Integração de download com F5
 
-The panel supports multiple concurrent downloads, pause/resume, stopping,
-target conflicts (**Overwrite**, **Save as new**, **Cancel**), and partial-file
-conflicts (**Resume**, **Restart**, **Cancel**). The application keeps only
-F5-specific authentication, logging, and error reporting concerns.
+Quando `F5BrowserTestApp` recebe uma URL cujo segmento final do caminho possui
+uma extensão, ele delega a solicitação a `ui.DownloadPanel`. A fábrica da
+aplicação cria `ws.auth.FileDownload` com a sessão F5 autenticada.
+`FileDownload` transfere dados em `backgroundPool`; arquivos parciais e partes
+específicas da tarefa são armazenados na pasta temporária configurada, e o
+arquivo concluído é publicado na pasta de destino somente depois que a
+transferência é bem-sucedida.
 
-## Running the harness
+O painel oferece suporte a vários downloads simultâneos, pausar/retomar, parar,
+conflitos de destino (**Overwrite**, **Save as new**, **Cancel**) e conflitos de
+arquivos parciais (**Resume**, **Restart**, **Cancel**). A aplicação mantém
+apenas as responsabilidades específicas do F5 relacionadas à autenticação,
+registro e comunicação de erros.
 
-From the repository root, add the test folder to the MATLAB path and run:
+## Execução do harness
+
+A partir da raiz do repositório, adicione a pasta de testes ao caminho do MATLAB
+e execute:
 
 ```matlab
 addpath(fullfile(pwd, 'tests', 'ui'))
 uiFigure = checkDownloadPanel;
 ```
 
-To run the isolated download-avatar test:
+Para executar o teste isolado do avatar de download:
 
 ```matlab
 uiFigure = checkDownloadHtml;
 ```
 
-The harness adds `src/General` to the path automatically. When executed, it
-creates `tests/ui/temp` and `tests/ui/target` and uses them as the simulated
-temporary and target folders.
+Para executar o teste rápido do transporte público:
 
-## Manual scenarios
+```matlab
+report = checkDownloadHttp;
+```
 
-- **`sample1.bin`** downloads 10 MB at 250 kB/s.
-- **`sample2.bin`** downloads 20 MB at 500 kB/s.
-- **`sample3.bin`** downloads 30 MB at 750 kB/s.
-- **`sample4.bin`** downloads 40 MB at 1 MB/s.
-- The **trash icon** stops active tasks and removes both `temp` and `target`
-  folders with all their contents. The folders are recreated automatically
-  when another sample link is clicked.
-- Existing target files use the shared conflict row with **Overwrite**, **Save
-  as new**, and **Cancel**.
-- The download row exercises progress callbacks, completion callbacks, and
-  temporary-file cleanup.
+O harness adiciona `src/General` ao caminho automaticamente. Quando executado,
+ele cria `tests/ui/temp` e `tests/ui/target` e usa essas pastas como pastas
+temporária e de destino simuladas.
 
-The harness uses `executionMode = 'webApp'` to verify that the panel's
-application-level controls can represent the flow without desktop file
-selection or modal conflict dialogs. The test still runs in a local MATLAB
-`uifigure`; it does not start MATLAB Web App Server.
+## Cenários manuais
 
-## Fake downloader contract
+- **`sample1.bin`** baixa 10 MB a 250 kB/s.
+- **`sample2.bin`** baixa 20 MB a 500 kB/s.
+- **`sample3.bin`** baixa 30 MB a 750 kB/s.
+- **`sample4.bin`** baixa 40 MB a 1 MB/s.
+- O **ícone de lixeira** para as tarefas ativas e remove as pastas `temp` e
+  `target` com todo o seu conteúdo. As pastas são recriadas automaticamente
+  quando outro link de exemplo é clicado.
+- Arquivos de destino existentes usam a linha de conflito compartilhada com
+  **Overwrite**, **Save as new** e **Cancel**.
+- A linha de download exercita callbacks de progresso, callbacks de conclusão
+  e limpeza de arquivos temporários.
 
-`DownloadPanelFakeDownloader` exposes the same surface expected from a real
-downloader:
+O harness usa `executionMode = 'webApp'` para verificar que os controles da
+aplicação no painel conseguem representar o fluxo sem seleção de arquivos na
+área de trabalho ou diálogos modais de conflito. O teste ainda é executado em
+uma `uifigure` local do MATLAB; ele não inicia o MATLAB Web App Server.
 
-- `start`, `pause`, `resume`, `stop`, and `delete` methods.
-- `ProgressFcn`, `CompletedFcn`, and `ErrorFcn` callback properties.
-- `IsRunning` and `IsPaused` state properties.
+## Contrato do downloader simulado
 
-Its timer advances each sample at its configured speed, writes representative
-bytes to both `Request.PartialPath` and `Request.ChunkPath`, and publishes a
-file at `Request.FinalPath` with the configured size. Stopping or pausing
-preserves both staging files for continuation. Successful completion removes
-the partial file, chunk file, and any overwrite backup. It intentionally does
-not model real HTTP behavior,
-authentication, retries, or cross-volume publication; those responsibilities
-are covered by `ws.auth.FileDownload` and its worker.
+`DownloadPanelFakeDownloader` expõe a mesma interface esperada de um downloader
+real:
 
-## Limitations
+- Métodos `start`, `pause`, `resume`, `stop` e `delete`.
+- Propriedades de callback `ProgressFcn`, `CompletedFcn` e `ErrorFcn`.
+- Propriedades de estado `IsRunning` e `IsPaused`.
 
-This is a manual visual/integration harness, not an automated assertion suite.
-The callback counters and status label provide immediate feedback, while the
-fake downloader makes the panel behavior repeatable. Authenticated F5 transfer
-validation belongs to `tests/auth/F5BrowserTestApp.m` and requires the real
-interactive authentication flow.
+O timer avança cada exemplo na velocidade configurada, grava bytes
+representativos em `Request.PartialPath` e `Request.ChunkPath` e publica um
+arquivo em `Request.FinalPath` com o tamanho configurado. Parar ou pausar
+preserva os dois arquivos de preparação para permitir a continuação. Uma
+conclusão bem-sucedida remove o arquivo parcial, o arquivo de partes e qualquer
+backup de sobrescrita. Intencionalmente, ele não modela o comportamento HTTP
+real, autenticação, novas tentativas ou publicação entre volumes; essas
+responsabilidades são cobertas por `ws.auth.FileDownload` e seu worker.
+
+## Limitações
+
+Este é um harness manual visual/de integração, não uma suíte automatizada de
+asserções. Os contadores de callback e o rótulo de status fornecem feedback
+imediato, enquanto o downloader simulado torna o comportamento do painel
+repetível. A validação de transferências autenticadas do F5 pertence a
+`tests/auth/F5BrowserTestApp.m` e exige o fluxo interativo real de autenticação.

@@ -30,12 +30,13 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
     properties (Constant, Access = private)
         AuthenticationURL = 'https://fiscalizacao.anatel.gov.br/rffusion/api/users/login'
         DefaultURLs = {'https://fiscalizacao.anatel.gov.br/rffusion/api/users/me', ...
-                       'https://fiscalizacao.anatel.gov.br/rffusion/server/zabbix_metrics', ...
-                       'https://fiscalizacao.anatel.gov.br/rffusion/server/runtime-health', ...
                        'https://fiscalizacao.anatel.gov.br/rffusion/api/map/stations', ...
-                       'https://fiscalizacao.anatel.gov.br/rffusion/api/map/stations?start_date=2026-09-01&end_date=2026-09-07', ...
+                       'https://fiscalizacao.anatel.gov.br/rffusion/api/host/10321/zabbix_metrics', ...
+                       'https://fiscalizacao.anatel.gov.br/downloads/2026/PE/2611101/36/p-a2d86905--rfeye002126_260919_T063900.bin', ...
                        'https://fiscalizacao.anatel.gov.br/downloads/2024/RO/1100205/176/p-1f25532e--rfeye002210_240819_T175952.bin', ...
-                       'https://fiscalizacao.anatel.gov.br/downloads/2026/SP/3549805/79/p-6b9f7d03--rfeye002266_260901_T073300.bin'}
+                       'https://fiscalizacao.anatel.gov.br/downloads/2026/SP/3549805/79/p-6b9f7d03--rfeye002266_260901_T073300.bin', ...
+                       'https://httpbin.org/bytes/1024', ...
+                       'http://httpbin.org/bytes/1024'}
     end
 
 
@@ -74,6 +75,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             app.UIFigure.CloseRequestFcn = @(~, ~) delete(app);
             app.AuthResourceFolder = fileparts(mfilename('fullpath'));
             app.DefaultServerDownloadPath = app.AuthResourceFolder;
+            app.Session = ws.auth.F5Session(app.AuthenticationURL);
             projectFolder = fileparts(fileparts(app.AuthResourceFolder));
             app.ProfileAvatarHTMLPath = fullfile(projectFolder, 'src', 'Anatel', '+ws', '+auth', 'profileAvatar.html');
 
@@ -148,12 +150,13 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             app.addToHistory(url)
 
             try
-                app.ensureSession(url)
                 if app.isDownloadURL(url)
                     app.DownloadPanel.addDownload(url)
                     app.refreshStatus()
                     return
                 end
+
+                app.ensureSession(url)
 
                 progressDialog = uiprogressdlg(app.UIFigure, ...
                                                 'Indeterminate', 'on', ...
@@ -221,9 +224,8 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
         end
 
         function downloader = createDownloader(app, request)
-            if isempty(app.Session) || ~isvalid(app.Session) || ~app.Session.IsAuthenticated
-                error('ws:auth:F5BrowserTestApp:notAuthenticated', ...
-                      'An authenticated F5 session is required for a download.')
+            if isempty(app.Session) || ~isvalid(app.Session)
+                app.Session = ws.auth.F5Session(app.AuthenticationURL);
             end
             downloader = ws.auth.FileDownload(app.Session, request);
         end
@@ -469,8 +471,17 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
         function tf = isDownloadURL(url)
             tf = false;
             try
-                pathSegments = matlab.net.URI(url).Path;
-                tf = ~isempty(pathSegments) && contains(pathSegments(end), '.');
+                uri = matlab.net.URI(url);
+                f5Host = char(matlab.net.URI(F5BrowserTestApp.AuthenticationURL).Host);
+                if ~strcmpi(char(uri.Host), f5Host)
+                    % F5Session is intentionally limited to its exact host.
+                    % External URLs are handled by the generic download panel.
+                    tf = true;
+                    return
+                end
+                pathSegments = uri.Path;
+                lastSegmentIsFile = ~isempty(pathSegments) && contains(pathSegments(end), '.');
+                tf = lastSegmentIsFile;
             catch
             end
         end
