@@ -21,24 +21,131 @@ not add the `+download` folder itself.
 | [`downloadFileName.m`](downloadFileName.m) | Derives a safe filename from a URL or creates a deterministic fallback filename. |
 | [`downloadContentDispositionFileName.m`](downloadContentDispositionFileName.m) | Extracts and sanitizes `filename` and `filename*` values from a `Content-Disposition` header. |
 
-## Boundaries
+## Architecture
 
-`download.DownloadManager` receives a normalized request and an injected
-`DownloaderFactory`. The manager owns transfer state, but it does not create UI
-controls or call UI APIs. Its snapshots contain task state, paths, byte counts,
-rates, timestamps, and error information without exposing downloader objects or
-UI handles.
+The download subsystem is split into three boundaries:
 
-The presentation layer is [`ui.DownloadPanel`](../+ui/DownloadPanel.m). It
-renders manager snapshots and translates row actions into manager commands. Its
-avatar asset is [`downloadAvatar.html`](../+ui/html/downloadAvatar.html).
-The panel and avatar are UI concerns and are intentionally kept outside this
-package.
+```text
+src/General/
+├── +ui/
+│   ├── DownloadPanel.m
+│   └── html/
+│       ├── downloadAvatar.html
+│       └── downloadStatus.html
+└── +download/
+    ├── DownloadManager.m
+    ├── downloadContentDispositionFileName.m
+    ├── downloadFileName.m
+    ├── downloadFileWorker.m
+    ├── downloadHTTPResponse.m
+    └── downloadSourceMetadata.m
 
-Authentication adapters remain outside this package. For F5-authenticated
-transfers, `ws.auth.FileDownload` supplies the request context and invokes
-`@download.downloadFileWorker`; the generic worker does not inspect cookies or
-know about `F5Session`.
+src/Anatel/+ws/+auth/
+├── F5Session.m
+├── FileDownload.m
+└── DownloadProgressMonitor.m
+```
+
+### Ownership boundaries
+
+| Boundary | Owns | Must not own |
+|---|---|---|
+| `download.*` | Provider-neutral HTTP transfer, response handling, source metadata, filename derivation, task-scoped staging, publication, and transfer orchestration. | UI controls, figures, authentication sessions, cookies, or provider-specific behavior. |
+| [`ui.DownloadPanel`](../+ui/DownloadPanel.m) | Presentation, row controls, avatar state, UI callbacks, and rendering manager snapshots. | Transfer lifecycle, authentication, cookie inspection, or direct downloader calls. |
+| `ws.auth` | F5 session handling, cookie capture, reauthentication, profile retrieval, and the `FileDownload` adapter. | Generic UI and provider-neutral transfer implementations. |
+
+`DownloadManager` receives an injected `DownloaderFactory`; it does not call
+`uifigure`, `uihtml`, `uiputfile`, `uiconfirm`, `questdlg`, or other UI APIs.
+Destination selection belongs to the panel, the consuming application, or an
+injected destination resolver. The manager receives the normalized result and
+owns conflict detection and lifecycle transitions.
+
+The download avatar is
+[`downloadAvatar.html`](../+ui/html/downloadAvatar.html), beside the panel's
+UI implementation. It is not part of this provider-neutral package. The
+optional `downloadStatus.html` asset follows the same UI ownership rule.
+
+### Manager contract
+
+`download.DownloadManager` owns task registration, task IDs, state transitions,
+`start`, `pause`, `resume`, and `cancel` commands, downloader callbacks,
+late-callback filtering, cleanup, conflict decisions, snapshots, and
+completion/error notifications. It exposes snapshots and events, never UI
+handles or downloader internals.
+
+A normalized `DownloadRequest` contains the URL, task ID, temporary folder,
+target folder, filename, final path, display mode, task-scoped partial/chunk
+paths, and applicable conflict policies. A `TaskSnapshot` contains the task ID,
+lifecycle state, paths, received and total bytes, measured and estimated rates,
+rate-source information, timestamps, and error information. Neither contract
+exposes UI handles or downloader internals.
+
+The lifecycle vocabulary is authoritative:
+
+- `pause` stops transfer while preserving resumable temporary state;
+- `cancel` stops transfer, removes task-scoped temporary files, and removes the
+    task from the panel;
+- `restart` discards the partial state before starting again;
+- target conflicts use `overwrite`, `uniqueName` (shown as **Save as new**),
+    and `cancel`;
+- partial-file conflicts use `resume`, `restart`, and `cancel`.
+
+The panel translates user actions into manager commands and renders snapshots.
+Task state has one owner: the manager owns transfer state, while the panel owns
+only UI handles and presentation state.
+
+When a target or partial file conflict is detected, the manager emits a pending
+snapshot. The panel renders the appropriate row choices without opening a modal
+dialog: `Overwrite`, **Save as new**, and `Cancel` for target conflicts, or
+`Resume`, `Restart`, and `Cancel` for partial files. The manager applies the
+choice and rechecks the destination before publication.
+
+### Adapter boundary
+
+Generic helpers use normalized request arguments and a provider-supplied
+`requestContext`. For F5-authenticated transfers, `ws.auth.FileDownload`
+supplies the context and invokes `@download.downloadFileWorker`. The generic
+worker does not inspect cookies or know about `F5Session`.
+
+The remaining
+[`src/Anatel/+ws/+auth/downloadFileWorker.m`](../../Anatel/+ws/+auth/downloadFileWorker.m)
+file is a compatibility wrapper during this migration. It delegates to
+`download.downloadFileWorker`; there is only one worker implementation. Once
+all external callers are confirmed to use the new namespace, the wrapper may be
+removed or retained as an explicitly documented compatibility entry point.
+
+No package calls into another provider's concrete implementation. The
+normalized request and provider `requestContext` are the only transfer
+boundary between generic services and authentication adapters.
+
+### Namespace and error policy
+
+All repository callers use `download.*` for generic helpers, including
+`download.downloadFileName`, `download.downloadSourceMetadata`,
+`download.downloadHTTPResponse`, and `@download.downloadFileWorker`.
+
+Generic errors use the `download:*` namespace. F5 adapter errors use
+`ws:auth:*`, and panel errors use `ui:DownloadPanel:*`. Old `ui.download*`
+implementations are not maintained as permanent duplicate wrappers.
+
+### Path, packaging, and validation
+
+Add `src/General` to the MATLAB path so `ui.*` and `download.*` resolve as
+sibling packages. Do not add either package folder directly. `+download` code
+files are regular code dependencies. UI assets such as `downloadAvatar.html`
+and `downloadStatus.html` must be included explicitly as additional files in
+compiled applications; `profileAvatar.html` remains under `+ws/+auth`.
+
+The avatar asset is resolved relative to `DownloadPanel.m`. Its MATLAB-to-HTML
+protocol uses the `downloadAvatarReady` and `downloadAvatarClick` events and
+the cached state sent after the ready event. Compiled applications must include
+the asset explicitly rather than copying it into the consuming application.
+
+Validate the generic package with `tests/ui/checkDownloadHttp.m`, validate the
+manager contract without UI using `tests/ui/checkDownloadManager.m`, and
+validate the panel/factory boundary with `tests/ui/checkDownloadPanel.m`. Real
+F5 authentication in `F5BrowserTestApp.m` is a later integration check and is
+not required for provider-neutral tests.
 
 ## Request boundary
 

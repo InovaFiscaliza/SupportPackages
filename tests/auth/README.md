@@ -25,8 +25,6 @@ componente HTML.
 
 Script organizado em seções (`%%`), pensado para execução com **Ctrl+Enter**, uma de cada vez. O cabeçalho define `loginURL`, `targetURL` e `debugFile`, além de acrescentar `src/Anatel` ao path.
 
-O path provido refere-se a exemplo simples que 
-
 ### Test1 — Login interativo
 
 Cria a `F5Session` e chama `login`. A janela do navegador só aparece quando o fluxo é redirecionado ao Azure AD; conclua o login e aprove o push. Ao final, `debugInfo` imprime `IsAuthenticated`, a quantidade e os **nomes** dos cookies capturados — nunca os valores.
@@ -90,219 +88,37 @@ sessão e fazem a leitura sob um `uiprogressdlg` indeterminado. Erros viram
 `uialert`, sem derrubar a aplicação.
 
 Os itens `https://httpbin.org/bytes/1024` e
-`http://httpbin.org/bytes/1024` demonstram downloads públicos sem login. Os
-itens do host `fiscalizacao.anatel.gov.br` demonstram o mesmo painel com
-autenticação F5 sob demanda.
+`http://httpbin.org/bytes/1024` exercitam downloads públicos sem login. Os itens
+do host `fiscalizacao.anatel.gov.br` exercitam o mesmo fluxo com autenticação F5
+sob demanda. `ensureSession` reutiliza a sessão enquanto o host permanece o
+mesmo e cria uma nova sessão quando a URL aponta para outro host.
 
-`ensureSession` só cria uma sessão nova quando não há login válido **ou** quando a URL
-aponta para outro host — o cookie do APM é válido apenas para o host que o emitiu. Enquanto
-o host for o mesmo, nenhuma nova autenticação ocorre.
+O avatar de perfil usa o componente compartilhado
+[`profileAvatar.html`](../../src/Anatel/+ws/+auth/profileAvatar.html). O harness
+de perfil verifica os estados desconectado, inicial e foto PNG; o app de teste
+verifica também o clique que abre o menu de perfil e a opção de desconectar.
 
-O avatar é o componente `uihtml` compartilhado em
-[`src/Anatel/+ws/+auth/profileAvatar.html`](../../src/Anatel/+ws/+auth/profileAvatar.html).
-Os SVGs são embutidos no HTML; o MATLAB envia apenas o estado de conexão, a inicial e a
-foto PNG em Base64. A foto de teste é carregada por uma função específica a partir de
-`Profile-Picture.png`, sem criar arquivos temporários. O componente recorta a foto em um
-círculo no próprio SVG e devolve eventos de clique ao MATLAB. Aplicações consumidoras
-devem configurar `uihtml.HTMLSource` para o arquivo do módulo, em vez de manter uma cópia
-local.
+`render` exibe respostas HTML no `uihtml` e respostas JSON formatadas em `<pre>`.
+Endpoints sem extensão no último segmento, como `debug/headers` e
+`server/runtime-health`, também são aceitos pelo teste.
 
-`render` decide como exibir a resposta: HTML é renderizado como HTML; respostas JSON (que
-`matlab.net.http` já converte em struct) são exibidas como JSON formatado dentro de `<pre>`.
+O conteúdo HTML recebido é sanitizado antes da exibição: scripts, atributos
+`on*` e URIs `javascript:` são removidos. Isso torna o harness adequado para
+validar respostas sem executar código remoto, mas páginas que dependem de
+JavaScript aparecem apenas como markup estático. Um `<base href>` é injetado
+para permitir que CSS e imagens relativos sejam resolvidos; essas
+subrequisições usam o cookie jar do `uihtml`, não os cookies mantidos pelo
+MATLAB.
 
-Endpoints sem extensão no último segmento (`debug/headers`, `server/runtime-health`) seguem
-sendo renderizados normalmente.
+A janela de autenticação é criada oculta e exibida apenas quando a navegação
+sai do host protegido ou demora além do limite de espera. Com uma sessão CEF
+válida, o login pode terminar sem uma janela visível.
 
-### Duas decisões deliberadas
+### TODO — remaining implementation order
 
-**Sanitização do conteúdo.** O markup recebido é despido de `<script>`, atributos `on*` e
-URIs `javascript:` antes da exibição. O `uihtml` compartilha o contexto CEF do MATLAB, e
-executar script arbitrário de página ali é um risco desnecessário para um harness de teste.
-Efeito colateral: páginas dependentes de JavaScript — provavelmente incluindo a aplicação
-real — aparecem apenas como markup estático. **Este app serve para verificar o reúso da
-sessão, não para navegar na aplicação.**
-
-**`<base href>` injetado.** Permite que CSS e imagens relativos resolvam, mas essas
-subrequisições partem do cookie jar do `uihtml`, e não do cookie mantido pelo MATLAB —
-algumas podem falhar. Não afeta o payload principal.
-
-### Sobre a janela de autenticação
-
-A janela é criada oculta e só é exibida quando o fluxo sai do host protegido. Se o CEF do
-MATLAB ainda tiver uma sessão válida, o login se completa sem que nenhuma janela apareça.
-Resta um *glitch* conhecido: por uma fração de segundo (até ~0,25 s, o intervalo do polling)
-a página final pode ficar visível antes de a janela ser ocultada.
-
-
-### TODO — recommended implementation order
-
-The original migration item is no longer a simple “move everything” task. The
-current ownership should be split into three boundaries: download UI under
-`src/General/+ui`, generic download services under `src/General/+download`,
-and F5 authentication/adaptation under `src/Anatel/+ws/+auth`. Finish the
-cleanup and documentation of that boundary before adding more features.
-
-**First extraction slice implemented:** `download.*` now owns the generic HTTP,
-filename, metadata, and worker services; `download.DownloadManager` owns the
-provider-neutral task lifecycle; `ui.DownloadPanel` renders manager snapshots
-and forwards UI commands; `ws.auth.FileDownload` remains the F5 adapter. The
-isolated manager harness is `tests/ui/checkDownloadManager.m`. The remaining
-items below are intentionally not started until the panel and F5 harnesses are
-functionally tested.
-
-1. **Separate the download UI, generic download services, and F5 adapter.**
-
-	This is a namespace migration as well as a file reorganization. The target
-	structure is:
-
-	```text
-	src/General/
-	├── +ui/
-	│   ├── DownloadPanel.m
-	│   └── html/
-	│       ├── downloadAvatar.html
-	│       └── downloadStatus.html
-	└── +download/
-	    ├── DownloadManager.m
-	    ├── downloadContentDispositionFileName.m
-	    ├── downloadFileName.m
-	    ├── downloadFileWorker.m
-	    ├── downloadHTTPResponse.m
-	    └── downloadSourceMetadata.m
-
-	src/Anatel/+ws/+auth/
-	├── F5Session.m
-	├── FileDownload.m
-	└── DownloadProgressMonitor.m
-	```
-
-	- Keep `DownloadPanel` in `+ui` as the presentation layer. It owns the
-	  visual panel, row controls, avatar state, and UI callbacks, but it must not
-	  own the transfer lifecycle or call downloader methods directly. Keep the
-	  download avatar HTML beside that component.
-	- Add `download.DownloadManager` to `+download`. It owns the logical task
-	  lifecycle: task registration, state transitions, task identifiers,
-	  `start`, `pause`, `resume`, and `cancel` commands, downloader
-	  callbacks, late-callback filtering, cleanup, and notifications/snapshots
-	  consumed by the panel. It must not depend on `uifigure`, `uihtml`, or
-	  other presentation classes.
-	- The panel must translate user actions into manager commands and render the
-	  manager's task snapshots. A task state must have one authoritative owner:
-	  the manager owns transfer state, while the panel owns only UI handles and
-	  presentation state. Conflict decisions and history updates must follow
-	  this same boundary.
-	- Define the manager contract before extracting the current implementation.
-	  A normalized `DownloadRequest` must contain the URL, temporary folder,
-	  target folder, file name, final path, display mode, and applicable conflict
-	  policies. A `TaskSnapshot` must expose the task ID, lifecycle state, paths,
-	  received and total bytes, measured and estimated rates, timestamps, and
-	  error information without exposing UI handles or downloader internals.
-	- Use one authoritative lifecycle vocabulary. `pause` stops transfer while
-	  preserving a resumable task, `cancel` stops transfer, removes temporary
-	  files, and removes the task from the panel, and `restart` discards the
-	  partial state before starting again.
-	  Target conflicts use `overwrite`, `uniqueName`, and `cancel` (the
-	  user-facing label for `uniqueName` is "Save as new"); partial-file
-	  conflicts use `resume`, `restart`, and `cancel`.
-	- Keep destination selection separate from transfer orchestration. A panel
-	  or injected destination resolver may use `executionMode` and `uiputfile`
-	  to produce a normalized request, but `DownloadManager` must not call UI
-	  APIs or know about desktop/Web App Server modes. The manager owns conflict
-	  detection and emits a pending decision for the panel to render.
-	- Move the generic filename, HTTP, metadata, and worker functions to the
-	  sibling MATLAB package `+download`. These functions must remain independent
-	  of `uifigure`, `DownloadPanel`, `F5Session`, cookies, and other provider
-	  details. Their existing `requestContext` and normalized request arguments
-	  are the boundary that permits both public HTTP and authenticated adapters.
-	- Keep `F5Session`, `FileDownload`, and F5-specific progress/authentication
-	  behavior in `+ws/+auth`. `FileDownload` adapts an F5 session to the generic
-	  `download` service; it is not part of the UI package.
-	- Treat the current `src/Anatel/+ws/+auth/downloadFileWorker.m` as a
-	  compatibility wrapper during the migration only. It must delegate to
-	  `download.downloadFileWorker` if any external caller still needs it; after
-	  all references are migrated, remove the wrapper or document it as a
-	  deliberately supported compatibility entry point. There must be only one
-	  worker implementation.
-
-	### Required namespace changes
-
-	Moving a file from `+ui` to the sibling package `+download` changes its
-	qualified MATLAB name. Update every call from `ui.*` to `download.*`, including
-	:
-
-	- `DownloadPanel.m`: `download.downloadFileName`;
-	- `FileDownload.m`: `download.downloadSourceMetadata` and
-	  `@download.downloadFileWorker` passed to `parfeval`;
-	- `downloadFileWorker.m` and `downloadSourceMetadata.m`: all calls to the
-	  HTTP, filename, and content-disposition helpers;
-	- `tests/ui/checkDownloadHttp.m` and any future tests;
-	- README examples, error documentation, build scripts, and generated
-	  dependency lists.
-
-	Update error identifiers at the same time. Generic errors should use the
-	`download:*` namespace, for example `download:downloadFileWorker:httpError`,
-	while F5 adapter errors continue to use `ws:auth:*` and panel/UI errors use
-	`ui:DownloadPanel:*`. Do not leave identifiers referring to the old package
-	unless a compatibility policy explicitly requires them.
-
-	### Migration and compatibility policy
-
-	Before editing callers, decide whether `ui.download*` was part of the
-	public package API or only an internal implementation detail. The repository
-	currently contains direct test calls, but no evidence in this README of an
-	external consumer. The recommended default is an intentional namespace
-	migration: update all repository callers to `download.*` and do not maintain
-	permanent duplicate wrappers. If backward compatibility with released
-	consumers is required, retain thin deprecated wrappers in `+ui` that forward
-	to `download.*`; never copy or fork the implementation, and define when the
-	wrappers may be removed.
-
-	The contract to record later in `contract.md` should state that:
-
-	- `download.*` owns provider-neutral HTTP transfer, response handling,
-	  source metadata, filename derivation, and task-scoped file publication;
-	- `download.DownloadManager` owns provider-neutral transfer orchestration,
-	  task state, conflict decisions, history coordination, normalized request
-	  handling, and downloader lifecycle commands. It exposes snapshots/events,
-	  not UI handles;
-	- `ui.DownloadPanel` owns presentation and UI lifecycle only. It translates
-	  user actions into manager commands, renders manager snapshots, and does
-	  not perform authentication, inspect cookies, or call downloader methods
-	  directly;
-	- `ws.auth.FileDownload` owns F5 session interaction and supplies the
-	  provider-specific `requestContext` to `download.*`; the manager receives
-	  it only through the injected downloader factory;
-	- no package may call into the concrete implementation of another provider;
-	- the normalized request and `requestContext` are the only transfer boundary
-	  between the generic service and an authentication adapter.
-
-	### Path, compilation, and validation requirements
-
-	- Keep `src/General` on the MATLAB path so both `ui.*` and `download.*`
-	  resolve as sibling packages. Do not add the package folders themselves to
-	  the path.
-	- Update `parfeval` function handles and any dynamic `which`/`mfilename`
-	  lookup to use the new package names. Verify that the worker can be found
-	  from the background pool, not only from the interactive MATLAB client.
-	- Update Application Compiler instructions and additional-file lists for the
-	  new package layout. The `download` source files are code dependencies;
-	  `downloadAvatar.html` and `downloadStatus.html` remain additional UI
-	  assets. Keep
-	  `profileAvatar.html` under `+ws/+auth` because it belongs to the F5 profile
-	  component, not the download package.
-	- Update `src/Anatel/+ws/+auth/README.md`, `tests/ui/README.md`, and this
-	  README before deleting the old files. Remove the obsolete duplicate
-	  download avatar only after a repository-wide reference search is empty.
-	- Use `tests/ui/checkDownloadHttp.m` to validate the generic package without
-	  authentication, then use `checkDownloadPanel.m` to validate the UI/factory
-	  boundary. Real F5 authentication in `F5BrowserTestApp.m` is a later
-	  integration check, not a prerequisite for this migration.
-	- The migration is complete only when no generic download implementation
-	  remains under the `+ui` location, `DownloadPanel` delegates transfer
-	  lifecycle operations to `download.DownloadManager`, the manager contract
-	  and lifecycle semantics are covered by isolated tests, all repository
-	  references resolve to the new package names, and the compiled-application
-	  asset instructions are consistent with the new ownership model.
+Os itens abaixo tratam da evolução dos testes e das funcionalidades de download;
+os detalhes arquiteturais do item 1 estão documentados em
+[`src/General/+download/README.md`](../../src/General/+download/README.md).
 
 2. **Resolve execution mode and destination before creating a task.**
 	 - Add a `uiimage` control to `F5BrowserTestApp` for switching between
