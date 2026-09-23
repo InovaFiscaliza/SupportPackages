@@ -13,11 +13,11 @@ report = struct('FallbackName', '', ...
                 'FinalPath', '', ...
                 'UsedAuthentication', false);
 
-[report.FallbackName, isUseful] = ui.downloadFileName('https://example.com/', 'a1b2c3d4');
+[report.FallbackName, isUseful] = download.downloadFileName('https://example.com/', 'a1b2c3d4');
 assert(~isUseful)
 assert(contains(report.FallbackName, '_example-com_a1b2c3d4.download'))
 
-report.ContentDispositionName = ui.downloadContentDispositionFileName(...
+report.ContentDispositionName = download.downloadContentDispositionFileName(...
     'attachment; filename*=UTF-8''''report%20final.bin');
 assert(strcmp(report.ContentDispositionName, 'report final.bin'))
 
@@ -27,7 +27,7 @@ context = session.getDownloadContext('https://httpbin.org/bytes/1024');
 assert(~context.AuthenticationEligible)
 assert(isempty(context.CookieHeader))
 
-responseResult = ui.downloadHTTPResponse('https://httpbin.org/bytes/1024', context, 'HEAD');
+responseResult = download.downloadHTTPResponse('https://httpbin.org/bytes/1024', context, 'HEAD');
 report.StatusCode = double(responseResult.Response.StatusCode);
 assert(report.StatusCode == 200)
 
@@ -47,7 +47,7 @@ request = struct('URL', 'https://httpbin.org/bytes/1024', ...
                  'CollisionAction', 'none', ...
                  'PartialAction', 'none');
 queue = parallel.pool.DataQueue;
-result = ui.downloadFileWorker(context, request, 1024^2, 0, queue, 1);
+result = download.downloadFileWorker(context, request, 1024^2, 0, queue, 1);
 report.BytesReceived = result.BytesReceived;
 report.FinalPath = fullfile(request.TargetFolder, request.FileName);
 report.UsedAuthentication = result.NeedsAuthentication;

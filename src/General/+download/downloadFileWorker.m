@@ -32,7 +32,7 @@ try
         deleteIfExists(chunkPath)
         firstByte = bytesReceived;
         lastByte = firstByte + chunkSize - 1;
-        responseResult = ui.downloadHTTPResponse(currentURL, requestContext, ...
+        responseResult = download.downloadHTTPResponse(currentURL, requestContext, ...
                                                   'GET', firstByte, lastByte);
         if responseResult.NeedsAuthentication
             result.NeedsAuthentication = true;
@@ -45,7 +45,7 @@ try
         result.FinalURL = currentURL;
         statusCode = double(response.StatusCode);
         if statusCode < 200 || statusCode >= 300
-            error('ui:downloadFileWorker:httpError', ...
+            error('download:downloadFileWorker:httpError', ...
                   'Request returned HTTP %d.', statusCode)
         end
 
@@ -58,13 +58,13 @@ try
         if isempty(data)
             data = uint8.empty(0, 1);
         elseif ~isa(data, 'uint8')
-            error('ui:downloadFileWorker:unexpectedPayload', ...
+            error('download:downloadFileWorker:unexpectedPayload', ...
                   'Unexpected payload (%s) in raw reading.', class(data))
         end
 
         fileID = fopen(chunkPath, 'wb');
         if fileID == -1
-            error('ui:downloadFileWorker:fileOpenFailed', ...
+            error('download:downloadFileWorker:fileOpenFailed', ...
                   'Could not write to "%s".', chunkPath)
         end
         cleanup = onCleanup(@() closeFileQuietly(fileID)); %#ok<NASGU>
@@ -100,10 +100,10 @@ try
     end
 catch exception
     deleteIfExists(chunkPath)
-    if retryCount < maxRetries && ~strcmp(exception.identifier, 'ui:downloadFileWorker:fileOpenFailed')
+    if retryCount < maxRetries && ~strcmp(exception.identifier, 'download:downloadFileWorker:fileOpenFailed')
         retryCount = retryCount + 1;
         pause(2 * retryCount)
-        result = ui.downloadFileWorker(requestContext, request, chunkSize, ...
+        result = download.downloadFileWorker(requestContext, request, chunkSize, ...
                                        maxRetries - retryCount, progressQueue, jobId);
         return
     end
@@ -122,7 +122,7 @@ if isempty(fields)
     value = '';
     return
 end
-value = ui.downloadContentDispositionFileName(char(fields(1).Value));
+value = download.downloadContentDispositionFileName(char(fields(1).Value));
 end
 
 
@@ -148,12 +148,12 @@ end
 function appendFile(sourcePath, targetPath)
 sourceID = fopen(sourcePath, 'rb');
 if sourceID == -1
-    error('ui:downloadFileWorker:fileOpenFailed', 'Could not read "%s".', sourcePath)
+    error('download:downloadFileWorker:fileOpenFailed', 'Could not read "%s".', sourcePath)
 end
 sourceCleanup = onCleanup(@() fclose(sourceID)); %#ok<NASGU>
 targetID = fopen(targetPath, 'ab');
 if targetID == -1
-    error('ui:downloadFileWorker:fileOpenFailed', 'Could not write "%s".', targetPath)
+    error('download:downloadFileWorker:fileOpenFailed', 'Could not write "%s".', targetPath)
 end
 targetCleanup = onCleanup(@() fclose(targetID)); %#ok<NASGU>
 while true
@@ -172,7 +172,7 @@ if isfile(finalPath)
     if isfield(request, 'CollisionAction') && strcmp(request.CollisionAction, 'overwrite')
         delete(finalPath)
     else
-        error('ui:downloadFileWorker:targetExists', ...
+        error('download:downloadFileWorker:targetExists', ...
               'The target file "%s" already exists.', finalPath)
     end
 end
@@ -202,7 +202,7 @@ if moved
 end
 [copied, copyMessage] = copyfile(sourcePath, destinationPath, 'f');
 if ~copied
-    error('ui:downloadFileWorker:fileTransferFailed', ...
+    error('download:downloadFileWorker:fileTransferFailed', ...
           'Could not move or copy "%s" to "%s": %s %s', ...
           sourcePath, destinationPath, message, copyMessage)
 end
@@ -214,7 +214,7 @@ function ensureFolder(folderPath)
 if ~isfolder(folderPath)
     [created, message] = mkdir(folderPath);
     if ~created && ~isfolder(folderPath)
-        error('ui:downloadFileWorker:folderUnavailable', '%s', message)
+        error('download:downloadFileWorker:folderUnavailable', '%s', message)
     end
 end
 end

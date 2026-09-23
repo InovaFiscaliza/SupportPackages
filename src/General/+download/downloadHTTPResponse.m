@@ -26,7 +26,7 @@ while true
     if isRedirect(statusCode)
         location = headerValue(response, 'Location');
         if isempty(location)
-            error('ui:downloadHTTPResponse:missingRedirect', ...
+            error('download:downloadHTTPResponse:missingRedirect', ...
                   'HTTP redirect from "%s" did not provide a Location header.', currentURL)
         end
 
@@ -37,7 +37,7 @@ while true
             return
         end
         if redirectCount >= maxRedirects
-            error('ui:downloadHTTPResponse:tooManyRedirects', ...
+            error('download:downloadHTTPResponse:tooManyRedirects', ...
                   'The download source redirected more than %d times.', maxRedirects)
         end
 
@@ -76,7 +76,7 @@ end
 function validateRequestURL(url, ~)
 uri = matlab.net.URI(url);
 if ~ismember(lower(char(uri.Scheme)), {'http', 'https'})
-    error('ui:downloadHTTPResponse:invalidScheme', ...
+    error('download:downloadHTTPResponse:invalidScheme', ...
           'Download URLs must use HTTP or HTTPS.')
 end
 
@@ -153,7 +153,7 @@ end
 
 baseTokens = regexp(baseURL, '^(https?://[^/]+)(/[^?#]*)?', 'tokens', 'once', 'ignorecase');
 if isempty(baseTokens)
-    error('ui:downloadHTTPResponse:invalidBaseURL', ...
+    error('download:downloadHTTPResponse:invalidBaseURL', ...
           'Could not resolve a redirect from "%s".', baseURL)
 end
 origin = baseTokens{1};

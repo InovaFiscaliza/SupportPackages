@@ -1,7 +1,7 @@
 # tests/ui
 
 Esta pasta contém o harness manual de UI e o dublê de teste de
-`src/General/+ui/DownloadPanel`.
+`src/General/+ui/DownloadPanel` e `src/General/+download/DownloadManager`.
 
 Ela também contém o harness visual isolado de
 `src/General/+ui/html/downloadAvatar.html`. O harness do avatar e o harness do
@@ -14,9 +14,11 @@ ciclo de vida das tarefas e o comportamento do sistema de arquivos.
 | Arquivo | Função |
 |---|---|
 | [`checkDownloadPanel.m`](checkDownloadPanel.m) | Abre um harness manual em `uifigure` para o painel reutilizável. |
+| [`checkDownloadManager.m`](checkDownloadManager.m) | Verifica o ciclo de vida e conflitos do manager sem UI. |
 | [`checkDownloadHtml.m`](checkDownloadHtml.m) | Testa apenas o recurso `uihtml` `downloadAvatar.html`. |
 | [`checkDownloadHttp.m`](checkDownloadHttp.m) | Faz um teste rápido do transporte HTTP público, do fallback de nome de arquivo e do isolamento de cookies por host exato. |
 | [`DownloadPanelFakeDownloader.m`](DownloadPanelFakeDownloader.m) | Simula o objeto downloader exigido por `ui.DownloadPanel`. |
+| [`DownloadManagerFakeDownloader.m`](DownloadManagerFakeDownloader.m) | Simula um downloader síncrono para o contrato do manager. |
 
 Esses arquivos têm responsabilidades diferentes. `checkDownloadPanel` é o
 harness de teste interativo propriamente dito. `DownloadPanelFakeDownloader` é
@@ -50,9 +52,14 @@ realiza transferências de rede.
 `checkDownloadPanel.m` exercita `ui.DownloadPanel` com
 `DownloadPanelFakeDownloader`. Ele fornece quatro links de exemplo com tamanhos
 e velocidades diferentes, progresso das tarefas, comportamento de
-pausar/retomar/parar, escolhas para conflitos de destino e de arquivos parciais
+pausar/retomar/cancelar, escolhas para conflitos de destino e de arquivos parciais
 e os controles de fechar/lixeira. O painel usa internamente o recurso
 compartilhado `downloadAvatar.html`.
+
+`checkDownloadManager.m` exercita o manager sem criar `uifigure`: confirma
+snapshots, conclusão, remoção de tarefas e a decisão **Save as new** para um
+conflito de destino. O manager mantém a tarefa e o downloader; o painel possui
+somente handles de apresentação e snapshots renderizados.
 
 O exemplo de integração com F5 é [`F5BrowserTestApp.m`](../auth/F5BrowserTestApp.m).
 Ele fornece a fábrica `ws.auth.FileDownload` baseada na sessão, enquanto
@@ -88,7 +95,7 @@ específicas da tarefa são armazenados na pasta temporária configurada, e o
 arquivo concluído é publicado na pasta de destino somente depois que a
 transferência é bem-sucedida.
 
-O painel oferece suporte a vários downloads simultâneos, pausar/retomar, parar,
+O painel oferece suporte a vários downloads simultâneos, pausar/retomar e cancelar,
 conflitos de destino (**Overwrite**, **Save as new**, **Cancel**) e conflitos de
 arquivos parciais (**Resume**, **Restart**, **Cancel**). A aplicação mantém
 apenas as responsabilidades específicas do F5 relacionadas à autenticação,
@@ -114,6 +121,12 @@ Para executar o teste rápido do transporte público:
 
 ```matlab
 report = checkDownloadHttp;
+```
+
+Para executar o teste isolado do manager:
+
+```matlab
+report = checkDownloadManager;
 ```
 
 O harness adiciona `src/General` ao caminho automaticamente. Quando executado,
@@ -150,8 +163,9 @@ real:
 
 O timer avança cada exemplo na velocidade configurada, grava bytes
 representativos em `Request.PartialPath` e `Request.ChunkPath` e publica um
-arquivo em `Request.FinalPath` com o tamanho configurado. Parar ou pausar
-preserva os dois arquivos de preparação para permitir a continuação. Uma
+arquivo em `Request.FinalPath` com o tamanho configurado. Pausar preserva os
+arquivos de preparação para permitir a continuação; cancelar remove os arquivos
+temporários e a linha correspondente. Uma
 conclusão bem-sucedida remove o arquivo parcial, o arquivo de partes e qualquer
 backup de sobrescrita. Intencionalmente, ele não modela o comportamento HTTP
 real, autenticação, novas tentativas ou publicação entre volumes; essas

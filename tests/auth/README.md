@@ -142,6 +142,14 @@ current ownership should be split into three boundaries: download UI under
 and F5 authentication/adaptation under `src/Anatel/+ws/+auth`. Finish the
 cleanup and documentation of that boundary before adding more features.
 
+**First extraction slice implemented:** `download.*` now owns the generic HTTP,
+filename, metadata, and worker services; `download.DownloadManager` owns the
+provider-neutral task lifecycle; `ui.DownloadPanel` renders manager snapshots
+and forwards UI commands; `ws.auth.FileDownload` remains the F5 adapter. The
+isolated manager harness is `tests/ui/checkDownloadManager.m`. The remaining
+items below are intentionally not started until the panel and F5 harnesses are
+functionally tested.
+
 1. **Separate the download UI, generic download services, and F5 adapter.**
 
 	This is a namespace migration as well as a file reorganization. The target
@@ -174,7 +182,7 @@ cleanup and documentation of that boundary before adding more features.
 	  download avatar HTML beside that component.
 	- Add `download.DownloadManager` to `+download`. It owns the logical task
 	  lifecycle: task registration, state transitions, task identifiers,
-	  `start`, `pause`, `resume`, `stop`, and `cancel` commands, downloader
+	  `start`, `pause`, `resume`, and `cancel` commands, downloader
 	  callbacks, late-callback filtering, cleanup, and notifications/snapshots
 	  consumed by the panel. It must not depend on `uifigure`, `uihtml`, or
 	  other presentation classes.
@@ -189,10 +197,10 @@ cleanup and documentation of that boundary before adding more features.
 	  policies. A `TaskSnapshot` must expose the task ID, lifecycle state, paths,
 	  received and total bytes, measured and estimated rates, timestamps, and
 	  error information without exposing UI handles or downloader internals.
-	- Use one authoritative lifecycle vocabulary. `pause` preserves a resumable
-	  task, `stop` intentionally ends the transfer while retaining its partial
-	  state, `cancel` removes the task according to the configured cleanup
-	  policy, and `restart` discards the partial state before starting again.
+	- Use one authoritative lifecycle vocabulary. `pause` stops transfer while
+	  preserving a resumable task, `cancel` stops transfer, removes temporary
+	  files, and removes the task from the panel, and `restart` discards the
+	  partial state before starting again.
 	  Target conflicts use `overwrite`, `uniqueName`, and `cancel` (the
 	  user-facing label for `uniqueName` is "Save as new"); partial-file
 	  conflicts use `resume`, `restart`, and `cancel`.
@@ -334,7 +342,7 @@ cleanup and documentation of that boundary before adding more features.
 	 - Send one speed value per represented download; the number of orbiting
 		 circles must equal the list length. Preserve a stable ordering, preferably
 		 task creation order, and exclude silent tasks by default.
-	 - A paused, stopped, pending-conflict, or otherwise represented task with
+	 - A paused, pending-conflict, or otherwise represented task with
 		 no current rate sends zero and produces a stationary red circle. Positive
 		 measured or explicitly permitted estimated rates retain active animation.
 	 - Update `DownloadPanel`, `downloadAvatar.html`, and `checkDownloadHtml`
@@ -376,7 +384,7 @@ cleanup and documentation of that boundary before adding more features.
 		 completion timestamp, lifecycle state, downloaded byte count, measured
 		 speed, rate source, error messages, and `isAvailable`. Use ISO 8601 UTC
 		 timestamps.
-	 - Persist changes when a download starts, pauses, stops, resumes, completes,
+	 - Persist changes when a download starts, pauses, resumes, completes,
 		 fails, or is canceled. A history write must reflect the authoritative
 		 manager transition, not a UI callback.
 	 - At startup, reconcile history with target and temporary files. Update
@@ -391,8 +399,8 @@ cleanup and documentation of that boundary before adding more features.
 
 8. **Redesign the download rows around the finalized state model.**
 	 - Render manager snapshots, not private downloader objects. Active or
-		 paused downloads use a 3-row by 4-column layout: filename; progress plus
-		 pause/resume, stop, and cancel controls; then byte count, speed, estimated
+	  paused downloads use a 3-row by 4-column layout: filename; progress plus
+	  pause/resume and cancel controls; then byte count, speed, estimated
 		 remaining time, or status text.
 	 - Target conflicts show `Overwrite`, `Save as new`, and `Cancel`. Partial
 		 downloads show `Resume`, `Restart`, and `Cancel`, and retain the known
@@ -406,7 +414,7 @@ cleanup and documentation of that boundary before adding more features.
 		 and add a clear gap between rows. Keep the close control at the panel's
 		 top-right corner.
 	 - Add manager tests for every lifecycle transition and visual harness
-		 coverage for every row state, including stopped downloads and unavailable
+		  coverage for every row state, including canceled downloads and unavailable
 		 completed files.
 
 9. **Use historical speeds in the examples.**

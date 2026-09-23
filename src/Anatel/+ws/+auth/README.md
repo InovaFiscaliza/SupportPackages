@@ -7,6 +7,8 @@ Módulo compartilhado de autenticação para aplicações MATLAB desktop que con
 | `F5Session.m` | Sessão autenticada reutilizável (`ws.auth.F5Session`) |
 | `FileDownload.m` | Download assíncrono retomável em `backgroundPool` |
 | `DownloadProgressMonitor.m` | Reporta o andamento das transferências ao chamador |
+| [`DownloadManager`](../../../General/+download/DownloadManager.m) | Orquestra tarefas, conflitos, callbacks e snapshots sem conhecer UI ou F5 |
+| [`+download`](../../../General/+download) | Serviços HTTP, nomes de arquivos, metadados e worker provider-neutral |
 | `getMessage.m` | Carrega as mensagens localizadas do módulo |
 | [`profileAvatar.html`](profileAvatar.html) | Componente `uihtml` reutilizável para indicar o estado e o perfil autenticado |
 | [`DownloadPanel`](../../../General/+ui/DownloadPanel.m) | Painel reutilizável de downloads; recebe um `DownloaderFactory` e não conhece a autenticação |
@@ -155,10 +157,18 @@ esse evento para iniciar o login ou abrir o menu do perfil.
 ### Painel de downloads
 
 `ui.DownloadPanel` fica em `src/General/+ui` e é independente de
-`F5Session`. Ele recebe um `DownloaderFactory`, administra as linhas de
-progresso, pausa, retomada, cancelamento e a agregação exibida pelo avatar.
+`F5Session`. Ele recebe um `DownloaderFactory`, renderiza snapshots do
+`download.DownloadManager` e traduz ações da UI em comandos do manager.
 O HTML em `src/General/+ui/html/downloadAvatar.html` é um detalhe do painel e
 deve ser incluído explicitamente em aplicações compiladas.
+
+Os serviços provider-neutral ficam em `src/General/+download`: use
+`download.downloadFileName`, `download.downloadSourceMetadata`,
+`download.downloadHTTPResponse` e `download.downloadFileWorker` para o
+transporte e o processamento genérico. O `FileDownload` é o adaptador F5:
+fornece o `requestContext` autenticado e passa `@download.downloadFileWorker`
+ao `backgroundPool`. O manager recebe somente a fábrica injetada e nunca
+inspeciona cookies, sessões ou handles de UI.
 
 ```matlab
 panel = ui.DownloadPanel(parentContainer, ...
@@ -172,8 +182,9 @@ panel.AvatarHTML.Layout.Column = 3;
 panel.addDownload(url);
 ```
 
-O factory recebe uma struct com `URL`, `TempFolder`, `TargetFolder`,
-`FileName`, `FinalPath` e `CollisionAction`. O objeto devolvido deve expor
+O factory recebe uma struct normalizada com `URL`, `TaskID`, `TempFolder`,
+`TargetFolder`, `FileName`, `FinalPath`, `PartialPath` e as ações de conflito.
+O objeto devolvido deve expor
 `start`, `pause`, `resume`, `stop`, `ProgressFcn`, `CompletedFcn` e
 `ErrorFcn`. O `FileDownload` e o painel usam um worker HTTP compartilhado;
 o painel não precisa escolher entre um transporte público e um transporte F5.

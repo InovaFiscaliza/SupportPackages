@@ -71,10 +71,10 @@ classdef FileDownload < handle
             context = obj.Session.getDownloadContext(obj.URL);
             checkContentDisposition = isfield(obj.Request, 'AllowSourceFilename') && ...
                                       obj.Request.AllowSourceFilename;
-            metadata = ui.downloadSourceMetadata(obj.URL, context, checkContentDisposition);
+            metadata = download.downloadSourceMetadata(obj.URL, context, checkContentDisposition);
             if metadata.NeedsAuthentication
                 context = obj.Session.authenticateForDownload(obj.URL);
-                metadata = ui.downloadSourceMetadata(obj.URL, context, checkContentDisposition);
+                metadata = download.downloadSourceMetadata(obj.URL, context, checkContentDisposition);
             end
             if metadata.NeedsAuthentication
                 error('ws:auth:FileDownload:authenticationRequired', ...
@@ -182,7 +182,7 @@ classdef FileDownload < handle
 
             request = obj.Request;
             obj.Request.PartialAction = 'none';
-            obj.Future = parfeval(pool, @ui.downloadFileWorker, 1, ...
+            obj.Future = parfeval(pool, @download.downloadFileWorker, 1, ...
                                   obj.RequestContext, request, ...
                                   obj.ChunkSize, obj.MaxRetries, obj.ProgressQueue, jobId);
             obj.FutureObserver = afterEach(obj.Future, @(future) workerFinished(obj, future, jobId), ...

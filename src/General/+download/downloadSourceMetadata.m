@@ -7,7 +7,7 @@ arguments
     checkContentDisposition (1,1) logical = true
 end
 
-result = ui.downloadHTTPResponse(url, requestContext, 'HEAD');
+result = download.downloadHTTPResponse(url, requestContext, 'HEAD');
 response = result.Response;
 statusCode = double(response.StatusCode);
 
@@ -25,7 +25,7 @@ if ismember(statusCode, [405, 501])
 end
 
 if statusCode < 200 || statusCode >= 300
-    error('ui:downloadSourceMetadata:httpError', ...
+    error('download:downloadSourceMetadata:httpError', ...
           'Metadata request returned HTTP %d.', statusCode)
 end
 
@@ -37,7 +37,7 @@ end
 
 
 function metadata = fallbackToRangeRequest(url, requestContext)
-result = ui.downloadHTTPResponse(url, requestContext, 'GET', 0, 0);
+result = download.downloadHTTPResponse(url, requestContext, 'GET', 0, 0);
 response = result.Response;
 statusCode = double(response.StatusCode);
 if result.NeedsAuthentication
@@ -48,7 +48,7 @@ if result.NeedsAuthentication
     return
 end
 if statusCode < 200 || statusCode >= 300
-    error('ui:downloadSourceMetadata:httpError', ...
+    error('download:downloadSourceMetadata:httpError', ...
           'Metadata request returned HTTP %d.', statusCode)
 end
 metadata = metadataFromResponse(response, result.FinalURL, statusCode);
@@ -60,7 +60,7 @@ contentDisposition = headerValue(response, 'Content-Disposition');
 metadata = struct('NeedsAuthentication', false, ...
                   'FinalURL', finalURL, ...
                   'StatusCode', statusCode, ...
-                  'ContentDispositionFileName', ui.downloadContentDispositionFileName(contentDisposition));
+                  'ContentDispositionFileName', download.downloadContentDispositionFileName(contentDisposition));
 end
 
 

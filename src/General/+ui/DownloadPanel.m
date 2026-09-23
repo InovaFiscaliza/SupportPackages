@@ -4,7 +4,7 @@ classdef DownloadPanel < handle
     %
     % DownloadPanel owns the presentation and lifecycle of multiple download
     % rows: the download avatar, the popup panel, progress aggregation,
-    % pause/resume/stop controls, conflict decisions, and cleanup of UI and
+    % pause/resume/cancel controls, conflict decisions, and cleanup of UI and
     % downloader handles. It deliberately does not know how authentication
     % or network transfer is implemented.
     %
@@ -31,6 +31,7 @@ classdef DownloadPanel < handle
     properties (SetAccess = private)
         AvatarHTML
         DownloaderFactory
+        Manager
     end
 
     properties (Access = private)
@@ -43,8 +44,8 @@ classdef DownloadPanel < handle
         DownloadContent
         DownloadStack
         DownloadTasks = {}
+        DownloadOrder = []
         DownloadFileNames cell = cell(0, 2)
-        NextDownloadID (1,1) double = 0
         AvatarHTMLReady (1,1) logical = false
         AvatarState struct = struct('level', 0, ...
                                     'inProgress', false, ...
@@ -88,6 +89,16 @@ classdef DownloadPanel < handle
             obj.TargetPath = char(options.targetPath);
             obj.CollisionPolicy = options.CollisionPolicy;
             obj.PartialConflictPolicy = options.PartialConflictPolicy;
+            obj.Manager = download.DownloadManager(...
+                'DownloaderFactory', obj.DownloaderFactory, ...
+                'CollisionPolicy', obj.CollisionPolicy, ...
+                'PartialConflictPolicy', obj.PartialConflictPolicy);
+            obj.Manager.SnapshotFcn = @(snapshot) obj.onManagerSnapshot(snapshot);
+            obj.Manager.TaskReorderedFcn = @(snapshot) obj.onManagerTaskReordered(snapshot);
+            obj.Manager.CompletedFcn = @(taskID, info, snapshot) ...
+                obj.onManagerCompleted(taskID, info, snapshot);
+            obj.Manager.ErrorFcn = @(taskID, exception, snapshot) ...
+                obj.onManagerError(taskID, exception, snapshot);
 
             obj.AvatarHTML = uihtml(parentContainer);
             obj.AvatarHTML.HTMLSource = avatarHTMLPath();
@@ -105,15 +116,17 @@ classdef DownloadPanel < handle
             end
             obj.IsDeleting = true;
 
+            if ~isempty(obj.Manager) && isvalid(obj.Manager)
+                delete(obj.Manager)
+            end
             for taskID = 1:numel(obj.DownloadTasks)
                 task = obj.DownloadTasks{taskID};
-                if isempty(task)
-                    continue
+                if ~isempty(task)
+                    obj.deleteTaskGraphics(task)
                 end
-                obj.stopAndReleaseDownloader(task)
-                obj.deleteTaskGraphics(task)
             end
             obj.DownloadTasks = {};
+            obj.DownloadOrder = [];
             obj.closeDownloadContainer()
 
             if ~isempty(obj.AvatarHTML) && isvalid(obj.AvatarHTML)
@@ -146,11 +159,13 @@ classdef DownloadPanel < handle
 
             [targetFolder, fileName, extension] = fileparts(finalPath);
             fileName = [fileName, extension];
-            taskID = obj.createTask(url, targetFolder, fileName, finalPath);
-            task = obj.getTask(taskID);
-            task.AllowSourceFilename = allowSourceFilename;
-            obj.DownloadTasks{taskID} = task;
-            obj.startTask(taskID, 'none', 'none')
+            request = struct('URL', url, ...
+                             'TempFolder', obj.TempPath, ...
+                             'TargetFolder', targetFolder, ...
+                             'FileName', fileName, ...
+                             'FinalPath', finalPath, ...
+                             'AllowSourceFilename', allowSourceFilename);
+            taskID = obj.Manager.addDownload(request);
         end
 
         %-----------------------------------------------------------------%
@@ -174,48 +189,26 @@ classdef DownloadPanel < handle
         end
 
         %-----------------------------------------------------------------%
-        function stop(obj, taskID)
-            % STOP Stop and remove one download task.
-            %
-            % The task's partial and chunk files are retained so a later
-            % addDownload call can offer resume or restart.
+        function cancel(obj, taskID)
+            % CANCEL Stop one download, remove temporary files, and remove its row.
             task = obj.getTask(taskID);
             if isempty(task)
                 return
             end
 
-            task.IsStopped = true;
-            task.LifecycleState = 'stopped';
-            obj.DownloadTasks{taskID} = task;
-            obj.stopAndReleaseDownloader(task)
-            restoreBackup(task)
-            obj.removeTask(taskID)
+            obj.Manager.cancel(taskID)
         end
 
         %-----------------------------------------------------------------%
-        function stopAll(obj)
-            % STOPALL Stop and remove every download task in the panel.
-            for taskID = 1:numel(obj.DownloadTasks)
-                if ~isempty(obj.DownloadTasks{taskID})
-                    obj.stop(taskID)
-                end
-            end
+        function cancelAll(obj)
+            % CANCELALL Cancel every download and remove temporary files.
+            obj.Manager.cancelAll()
         end
 
         %-----------------------------------------------------------------%
         function tf = isActive(obj, filePath)
             % ISACTIVE Return true when a task targets filePath.
-            tf = false;
-            for taskID = 1:numel(obj.DownloadTasks)
-                task = obj.DownloadTasks{taskID};
-                if isempty(task) || task.IsStopped
-                    continue
-                end
-                if strcmpi(task.FinalPath, filePath)
-                    tf = true;
-                    return
-                end
-            end
+            tf = obj.Manager.isActive(filePath);
         end
     end
 
@@ -223,6 +216,121 @@ classdef DownloadPanel < handle
     % Private implementation: HTML events, task state, row controls, layout,
     % conflict handling, and aggregate avatar updates.
     methods (Access = private)
+        %-----------------------------------------------------------------%
+        function onManagerSnapshot(obj, snapshot)
+            if isempty(snapshot) || obj.IsDeleting
+                return
+            end
+
+            taskID = snapshot.ID;
+            if strcmp(snapshot.LifecycleState, 'canceled')
+                obj.removeTask(taskID)
+                return
+            end
+            task = obj.getTask(taskID);
+            if isempty(task)
+                task = obj.createTaskGraphics(taskID, snapshot.FileName);
+                task.Snapshot = snapshot;
+                obj.DownloadTasks{taskID} = task;
+                obj.DownloadOrder(end+1) = taskID;
+            else
+                task.Snapshot = snapshot;
+                obj.DownloadTasks{taskID} = task;
+            end
+            obj.renderTask(snapshot)
+            obj.refreshDownloadContainer()
+            obj.updateDownloadAvatar()
+        end
+
+        %-----------------------------------------------------------------%
+        function onManagerTaskReordered(obj, snapshot)
+            if isempty(snapshot) || obj.IsDeleting || isempty(obj.getTask(snapshot.ID))
+                return
+            end
+            obj.DownloadOrder(obj.DownloadOrder == snapshot.ID) = [];
+            obj.DownloadOrder(end+1) = snapshot.ID;
+            obj.refreshDownloadContainer()
+            obj.show()
+        end
+
+        %-----------------------------------------------------------------%
+        function onManagerCompleted(obj, taskID, info, snapshot)
+            obj.removeTask(taskID)
+            invokeCallback(obj.CompletedFcn, taskID, info, snapshot)
+        end
+
+        %-----------------------------------------------------------------%
+        function onManagerError(obj, taskID, exception, snapshot)
+            obj.removeTask(taskID)
+            invokeCallback(obj.ErrorFcn, taskID, exception, snapshot)
+        end
+
+        %-----------------------------------------------------------------%
+        function renderTask(obj, snapshot)
+            task = obj.getTask(snapshot.ID);
+            if isempty(task)
+                return
+            end
+            task.Snapshot = snapshot;
+            task.StatusLabel.Text = snapshot.FileName;
+            elapsedSeconds = snapshotElapsedSeconds(snapshot);
+            task.BytesLabel.Text = progressText(snapshot.ReceivedBytes, ...
+                                                snapshot.TotalBytes, ...
+                                                elapsedSeconds, ...
+                                                snapshot.TransferRate);
+            task.ProgressFraction = snapshot.ProgressFraction;
+            task.Snapshot = snapshot;
+
+            if strcmp(snapshot.LifecycleState, 'awaitingConflictDecision')
+                obj.renderConflict(task, snapshot)
+            else
+                task.ConflictPanel.Visible = 'off';
+                task.PauseButton.Visible = 'on';
+                task.CancelButton.Visible = 'on';
+                task.GridLayout.RowHeight = {24, 20, 46, 30, 1};
+                task.RowHeight = 154;
+                if strcmp(snapshot.LifecycleState, 'paused')
+                    task.PauseButton.Text = 'Resume';
+                else
+                    task.PauseButton.Text = 'Pause';
+                end
+                if ismember(snapshot.LifecycleState, {'stopped', 'completed', 'failed', 'canceled'})
+                    task.PauseButton.Visible = 'off';
+                    task.CancelButton.Visible = 'off';
+                    task.StatusLabel.Text = sprintf('%s (%s)', snapshot.FileName, ...
+                                                    snapshot.LifecycleState);
+                end
+            end
+            obj.DownloadTasks{snapshot.ID} = task;
+            obj.updateProgressScale(task)
+        end
+
+        %-----------------------------------------------------------------%
+        function renderConflict(obj, task, snapshot)
+            if strcmp(snapshot.ConflictType, 'target')
+                task.StatusLabel.Text = sprintf('%s already exists', snapshot.FileName);
+                task.BytesLabel.Text = 'Choose an action to continue.';
+                actionLabels = {'Overwrite', 'Save as new', 'Cancel'};
+                actions = {'overwrite', 'uniqueName', 'cancel'};
+            else
+                task.StatusLabel.Text = sprintf('Partial download found for %s', snapshot.FileName);
+                task.BytesLabel.Text = 'Resume, restart, or cancel this download.';
+                actionLabels = {'Resume', 'Restart', 'Cancel'};
+                actions = {'resume', 'restart', 'cancel'};
+            end
+            for buttonIndex = 1:numel(task.ConflictButtons)
+                task.ConflictButtons(buttonIndex).Text = actionLabels{buttonIndex};
+                task.ConflictButtons(buttonIndex).ButtonPushedFcn = ...
+                    @(~, ~) obj.Manager.resolveConflict(snapshot.ID, actions{buttonIndex});
+                task.ConflictButtons(buttonIndex).Enable = 'on';
+            end
+            task.ConflictPanel.Visible = 'on';
+            task.PauseButton.Visible = 'off';
+            task.CancelButton.Visible = 'off';
+            task.GridLayout.RowHeight = {24, 20, 46, 30, 30};
+            task.RowHeight = 190;
+        end
+
         %-----------------------------------------------------------------%
         function onAvatarEvent(obj, event)
             eventName = eventProperty(event, {'HTMLEventName', 'EventName'});
@@ -266,68 +374,12 @@ classdef DownloadPanel < handle
         end
 
         %-----------------------------------------------------------------%
-        function taskID = createTask(obj, url, targetFolder, fileName, finalPath)
-            obj.NextDownloadID = obj.NextDownloadID + 1;
-            taskID = obj.NextDownloadID;
-            task = obj.createTaskGraphics(taskID, fileName);
-            task.ID = taskID;
-            task.TaskID = shortTaskID();
-            task.URL = url;
-            task.FileName = fileName;
-            task.TempFolder = obj.TempPath;
-            task.TargetFolder = targetFolder;
-            task.FinalPath = finalPath;
-            task.PartialPath = fullfile(obj.TempPath, [task.TaskID, '_', fileName, '.part']);
-            task.ChunkPath = [task.PartialPath, '.chunk'];
-            task.BackupPath = '';
-            task.ConflictType = '';
-            task.CollisionAction = 'none';
-            task.PartialAction = 'none';
-            task.Downloader = [];
-            task.Request = struct();
-            task.LifecycleState = 'created';
-            task.IsPaused = false;
-            task.IsStopped = false;
-            task.ReceivedBytes = 0;
-            task.TotalBytes = [];
-            task.ProgressFraction = 0;
-            task.TransferRate = NaN;
-            task.StartTimer = tic;
-            task.ProgressSamples = zeros(0, 2);
-            obj.DownloadTasks{taskID} = task;
-            obj.refreshDownloadContainer()
-        end
-
-        %-----------------------------------------------------------------%
         function task = createTaskGraphics(obj, taskID, fileName)
             obj.ensureDownloadContainer()
 
             task = struct('ID', taskID, ...
-                          'TaskID', '', ...
-                          'URL', '', ...
                           'FileName', fileName, ...
-                          'TempFolder', '', ...
-                          'TargetFolder', '', ...
-                          'FinalPath', '', ...
-                          'AllowSourceFilename', false, ...
-                          'SourcePrepared', false, ...
-                          'PartialPath', '', ...
-                          'ChunkPath', '', ...
-                          'BackupPath', '', ...
-                          'Downloader', [], ...
-                          'Request', struct(), ...
-                          'LifecycleState', 'created', ...
-                          'ConflictType', '', ...
-                          'CollisionAction', 'none', ...
-                          'PartialAction', 'none', ...
-                          'IsPaused', false, ...
-                          'IsStopped', false, ...
-                          'ReceivedBytes', 0, ...
-                          'TotalBytes', [], ...
                           'ProgressFraction', 0, ...
-                          'TransferRate', NaN, ...
-                          'StartTimer', [], ...
-                          'ProgressSamples', zeros(0, 2), ...
                           'Dialog', [], ...
                           'Separator', [], ...
                           'GridLayout', [], ...
@@ -337,10 +389,11 @@ classdef DownloadPanel < handle
                           'ProgressFill', [], ...
                           'ProgressMarkers', [], ...
                           'PauseButton', [], ...
-                          'StopButton', [], ...
+                          'CancelButton', [], ...
                           'ConflictPanel', [], ...
                           'ConflictButtons', [], ...
-                          'RowHeight', 154);
+                          'RowHeight', 154, ...
+                          'Snapshot', struct());
 
             task.Dialog = uipanel(obj.DownloadStack, ...
                                   'BorderType', 'none', ...
@@ -393,11 +446,11 @@ classdef DownloadPanel < handle
             task.PauseButton.Layout.Row = 4;
             task.PauseButton.Layout.Column = 2;
 
-            task.StopButton = uibutton(task.GridLayout, ...
-                                       'Text', 'Stop', ...
-                                       'ButtonPushedFcn', @(~, ~) obj.stop(taskID));
-            task.StopButton.Layout.Row = 4;
-            task.StopButton.Layout.Column = 3;
+            task.CancelButton = uibutton(task.GridLayout, ...
+                                         'Text', 'Cancel', ...
+                                         'ButtonPushedFcn', @(~, ~) obj.cancel(taskID));
+            task.CancelButton.Layout.Row = 4;
+            task.CancelButton.Layout.Column = 3;
 
             task.ConflictPanel = uipanel(task.GridLayout, ...
                                          'BorderType', 'none', ...
@@ -410,349 +463,32 @@ classdef DownloadPanel < handle
             task.ConflictButtons = gobjects(1, 3);
             task.ConflictButtons(1) = uibutton(conflictLayout, ...
                                                'Text', 'Overwrite', ...
-                                               'ButtonPushedFcn', @(~, ~) obj.resolveConflict(taskID, 'overwrite'));
+                                               'ButtonPushedFcn', @(~, ~) obj.Manager.resolveConflict(taskID, 'overwrite'));
             task.ConflictButtons(2) = uibutton(conflictLayout, ...
                                                'Text', 'Save as new', ...
-                                               'ButtonPushedFcn', @(~, ~) obj.resolveConflict(taskID, 'uniqueName'));
+                                               'ButtonPushedFcn', @(~, ~) obj.Manager.resolveConflict(taskID, 'uniqueName'));
             task.ConflictButtons(3) = uibutton(conflictLayout, ...
                                                'Text', 'Cancel', ...
-                                               'ButtonPushedFcn', @(~, ~) obj.resolveConflict(taskID, 'cancel'));
+                                               'ButtonPushedFcn', @(~, ~) obj.Manager.resolveConflict(taskID, 'cancel'));
             drawnow
             obj.updateProgressScale(task)
         end
 
         %-----------------------------------------------------------------%
-        function configureTargetConflict(obj, taskID)
-            task = obj.getTask(taskID);
-            if isempty(task)
-                return
-            end
-            task.ConflictType = 'target';
-            obj.DownloadTasks{taskID} = task;
-            if strcmp(obj.CollisionPolicy, 'overwrite')
-                obj.resolveConflict(taskID, 'overwrite')
-                return
-            elseif strcmp(obj.CollisionPolicy, 'uniqueName')
-                obj.resolveConflict(taskID, 'uniqueName')
-                return
-            elseif strcmp(obj.CollisionPolicy, 'reject')
-                obj.resolveConflict(taskID, 'cancel')
-                return
-            end
-
-            task.ConflictType = 'target';
-            task.LifecycleState = 'awaitingConflictDecision';
-            task.StatusLabel.Text = sprintf('%s already exists', task.FileName);
-            task.BytesLabel.Text = 'Choose an action to continue.';
-            task.ConflictButtons(1).Text = 'Overwrite';
-            task.ConflictButtons(1).ButtonPushedFcn = @(~, ~) obj.resolveConflict(taskID, 'overwrite');
-            task.ConflictButtons(2).Text = 'Save as new';
-            task.ConflictButtons(2).ButtonPushedFcn = @(~, ~) obj.resolveConflict(taskID, 'uniqueName');
-            task.ConflictButtons(3).Text = 'Cancel';
-            task.ConflictButtons(3).ButtonPushedFcn = @(~, ~) obj.resolveConflict(taskID, 'cancel');
-            for buttonIndex = 1:numel(task.ConflictButtons)
-                task.ConflictButtons(buttonIndex).Enable = 'on';
-            end
-            task.ConflictPanel.Visible = 'on';
-            task.PauseButton.Visible = 'off';
-            task.StopButton.Visible = 'off';
-            task.GridLayout.RowHeight = {24, 20, 46, 30, 30};
-            task.RowHeight = 190;
-            obj.DownloadTasks{taskID} = task;
-            obj.refreshDownloadContainer()
-            obj.show()
-            obj.updateDownloadAvatar()
-        end
-
-        %-----------------------------------------------------------------%
-        function configurePartialConflict(obj, taskID)
-            task = obj.getTask(taskID);
-            if isempty(task)
-                return
-            end
-            task.ConflictType = 'partial';
-            obj.DownloadTasks{taskID} = task;
-            if strcmp(obj.PartialConflictPolicy, 'resume')
-                obj.resolveConflict(taskID, 'resume')
-                return
-            elseif strcmp(obj.PartialConflictPolicy, 'restart')
-                obj.resolveConflict(taskID, 'restart')
-                return
-            elseif strcmp(obj.PartialConflictPolicy, 'cancel')
-                obj.resolveConflict(taskID, 'cancel')
-                return
-            end
-
-            task.LifecycleState = 'awaitingConflictDecision';
-            task.StatusLabel.Text = sprintf('Partial download found for %s', task.FileName);
-            task.BytesLabel.Text = 'Resume, restart, or cancel this download.';
-            task.ConflictButtons(1).Text = 'Resume';
-            task.ConflictButtons(1).ButtonPushedFcn = @(~, ~) obj.resolveConflict(taskID, 'resume');
-            task.ConflictButtons(2).Text = 'Restart';
-            task.ConflictButtons(2).ButtonPushedFcn = @(~, ~) obj.resolveConflict(taskID, 'restart');
-            task.ConflictButtons(3).Text = 'Cancel';
-            task.ConflictButtons(3).ButtonPushedFcn = @(~, ~) obj.resolveConflict(taskID, 'cancel');
-            for buttonIndex = 1:numel(task.ConflictButtons)
-                task.ConflictButtons(buttonIndex).Enable = 'on';
-            end
-            task.ConflictPanel.Visible = 'on';
-            task.PauseButton.Visible = 'off';
-            task.StopButton.Visible = 'off';
-            task.GridLayout.RowHeight = {24, 20, 46, 30, 30};
-            task.RowHeight = 190;
-            obj.DownloadTasks{taskID} = task;
-            obj.refreshDownloadContainer()
-            obj.show()
-            obj.updateDownloadAvatar()
-        end
-
-        %-----------------------------------------------------------------%
-        function resolveConflict(obj, taskID, action)
-            task = obj.getTask(taskID);
-            if isempty(task) || ~strcmp(task.LifecycleState, 'awaitingConflictDecision')
-                return
-            end
-            wasTargetConflict = strcmp(task.ConflictType, 'target');
-
-            if strcmp(action, 'cancel')
-                obj.stop(taskID)
-                return
-            end
-
-            if strcmp(task.ConflictType, 'target') && strcmp(action, 'overwrite')
-                task.BackupPath = fullfile(task.TempFolder, [task.TaskID, '_backup_', task.FileName]);
-                try
-                    ensureFolder(task.TempFolder)
-                    moveFileWithFallback(task.FinalPath, task.BackupPath)
-                catch exception
-                    obj.onDownloadError(taskID, exception)
-                    return
-                end
-                task.CollisionAction = 'overwrite';
-            elseif strcmp(task.ConflictType, 'target') && strcmp(action, 'uniqueName')
-                task.FinalPath = uniqueTargetPath(task.FinalPath);
-                [task.TargetFolder, baseName, extension] = fileparts(task.FinalPath);
-                task.FileName = [baseName, extension];
-                task.StatusLabel.Text = task.FileName;
-                task.PartialPath = fullfile(task.TempFolder, [task.TaskID, '_', task.FileName, '.part']);
-                task.ChunkPath = [task.PartialPath, '.chunk'];
-                task.CollisionAction = 'uniqueName';
-            elseif strcmp(task.ConflictType, 'partial') && strcmp(action, 'restart')
-                deleteIfExists(task.PartialPath)
-                deleteIfExists(task.ChunkPath)
-                task.PartialPath = fullfile(task.TempFolder, [task.TaskID, '_', task.FileName, '.part']);
-                task.ChunkPath = [task.PartialPath, '.chunk'];
-                task.PartialAction = 'restart';
-            elseif strcmp(task.ConflictType, 'partial') && strcmp(action, 'resume')
-                task.PartialAction = 'resume';
-            end
-
-            for buttonIndex = 1:numel(task.ConflictButtons)
-                task.ConflictButtons(buttonIndex).Enable = 'off';
-            end
-            task.ConflictPanel.Visible = 'off';
-            task.PauseButton.Visible = 'on';
-            task.StopButton.Visible = 'on';
-            task.GridLayout.RowHeight = {24, 20, 46, 30, 1};
-            task.RowHeight = 154;
-            task.ConflictType = '';
-            obj.DownloadTasks{taskID} = task;
-            obj.refreshDownloadContainer()
-            if wasTargetConflict && ~isempty(task.PartialPath) && isfile(task.PartialPath)
-                obj.configurePartialConflict(taskID)
-                return
-            end
-            obj.startTask(taskID, task.CollisionAction, task.PartialAction)
-        end
-
-        %-----------------------------------------------------------------%
-        function startTask(obj, taskID, collisionAction, partialAction)
-            task = obj.getTask(taskID);
-            if isempty(task) || task.IsStopped
-                return
-            end
-
-            try
-                ensureFolder(task.TempFolder)
-                task.Request = struct('URL', task.URL, ...
-                                      'TaskID', task.TaskID, ...
-                                      'TempFolder', task.TempFolder, ...
-                                      'TargetFolder', task.TargetFolder, ...
-                                      'FileName', task.FileName, ...
-                                      'FinalPath', task.FinalPath, ...
-                                      'PartialPath', task.PartialPath, ...
-                                      'ChunkPath', task.ChunkPath, ...
-                                      'BackupPath', task.BackupPath, ...
-                                      'CollisionAction', collisionAction, ...
-                                      'PartialAction', partialAction, ...
-                                      'AllowSourceFilename', task.AllowSourceFilename, ...
-                                      'SourcePrepared', task.SourcePrepared);
-                downloader = obj.DownloaderFactory(task.Request);
-                validateDownloader(downloader)
-
-                task.Downloader = downloader;
-                obj.DownloadTasks{taskID} = task;
-                if ~task.SourcePrepared && ismethod(downloader, 'prepare')
-                    sourceInfo = prepare(downloader);
-                    task = obj.applySourceInfo(task, sourceInfo);
-                end
-                task.SourcePrepared = true;
-                task.Request.FileName = task.FileName;
-                task.Request.FinalPath = task.FinalPath;
-                task.Request.PartialPath = task.PartialPath;
-                task.Request.ChunkPath = task.ChunkPath;
-
-                existingPartialPath = findPartialPath(task.TempFolder, task.FileName);
-                if ~isempty(existingPartialPath)
-                    task.PartialPath = existingPartialPath;
-                    task.ChunkPath = [existingPartialPath, '.chunk'];
-                    task.Request.PartialPath = task.PartialPath;
-                    task.Request.ChunkPath = task.ChunkPath;
-                end
-
-                if pathExists(task.FinalPath)
-                    obj.DownloadTasks{taskID} = task;
-                    obj.stopAndReleaseDownloader(task)
-                    task.Downloader = [];
-                    obj.DownloadTasks{taskID} = task;
-                    obj.configureTargetConflict(taskID)
-                    return
-                elseif ~strcmp(partialAction, 'resume') && ~isempty(existingPartialPath)
-                    obj.DownloadTasks{taskID} = task;
-                    obj.stopAndReleaseDownloader(task)
-                    task.Downloader = [];
-                    obj.DownloadTasks{taskID} = task;
-                    obj.configurePartialConflict(taskID)
-                    return
-                end
-
-                task.LifecycleState = 'active';
-                task.IsPaused = false;
-                obj.DownloadTasks{taskID} = task;
-
-                downloader.ProgressFcn = @(receivedBytes, totalBytes) obj.onDownloadProgress(taskID, receivedBytes, totalBytes);
-                downloader.CompletedFcn = @(info) obj.onDownloadCompleted(taskID, info);
-                downloader.ErrorFcn = @(exception) obj.onDownloadError(taskID, exception);
-                obj.refreshDownloadContainer()
-                obj.updateDownloadAvatar()
-                start(downloader)
-            catch exception
-                obj.onDownloadError(taskID, exception)
-            end
-        end
-
-        %-----------------------------------------------------------------%
-        function task = applySourceInfo(~, task, sourceInfo)
-            if ~isstruct(sourceInfo) || ~isfield(sourceInfo, 'FileName') || ...
-                    isempty(sourceInfo.FileName)
-                return
-            end
-
-            task.FileName = char(sourceInfo.FileName);
-            task.FinalPath = fullfile(task.TargetFolder, task.FileName);
-            task.PartialPath = fullfile(task.TempFolder, [task.TaskID, '_', task.FileName, '.part']);
-            task.ChunkPath = [task.PartialPath, '.chunk'];
-            task.StatusLabel.Text = task.FileName;
-        end
-
         %-----------------------------------------------------------------%
         function togglePause(obj, taskID)
             task = obj.getTask(taskID);
-            if isempty(task) || ~ismember(task.LifecycleState, {'active', 'paused'}) || ...
-                    isempty(task.Downloader)
+            if isempty(task) || ~isfield(task, 'Snapshot') || isempty(fieldnames(task.Snapshot))
                 return
             end
 
-            if task.IsPaused
-                resume(task.Downloader)
-                task.IsPaused = false;
-                task.LifecycleState = 'active';
-                task.PauseButton.Text = 'Pause';
+            if strcmp(task.Snapshot.LifecycleState, 'paused')
+                obj.Manager.resume(taskID)
+            elseif strcmp(task.Snapshot.LifecycleState, 'active')
+                obj.Manager.pause(taskID)
             else
-                pause(task.Downloader)
-                task.IsPaused = true;
-                task.LifecycleState = 'paused';
-                task.PauseButton.Text = 'Resume';
-            end
-            task.TransferRate = NaN;
-            obj.DownloadTasks{taskID} = task;
-            obj.updateDownloadAvatar()
-        end
-
-        %-----------------------------------------------------------------%
-        function onDownloadProgress(obj, taskID, receivedBytes, totalBytes)
-            task = obj.getTask(taskID);
-            if isempty(task) || ~strcmp(task.LifecycleState, 'active') || obj.IsDeleting
                 return
             end
-
-            receivedBytes = double(receivedBytes);
-            if isempty(totalBytes)
-                totalBytes = [];
-            else
-                totalBytes = double(totalBytes);
-            end
-            task.ReceivedBytes = receivedBytes;
-            task.TotalBytes = totalBytes;
-
-            elapsedSeconds = toc(task.StartTimer);
-            task.ProgressSamples(end+1, :) = [elapsedSeconds, receivedBytes];
-            cutoffTime = elapsedSeconds - 10;
-            samplesBeforeCutoff = find(task.ProgressSamples(:, 1) <= cutoffTime, 1, 'last');
-            if ~isempty(samplesBeforeCutoff)
-                task.ProgressSamples = task.ProgressSamples(samplesBeforeCutoff:end, :);
-            end
-
-            transferRate = 100000;
-            if elapsedSeconds >= 10 && size(task.ProgressSamples, 1) >= 2
-                sampleDuration = task.ProgressSamples(end, 1) - task.ProgressSamples(1, 1);
-                if sampleDuration >= 10
-                    transferRate = (task.ProgressSamples(end, 2) - task.ProgressSamples(1, 2)) / sampleDuration;
-                end
-            end
-
-            if isempty(totalBytes) || totalBytes <= 0
-                fraction = 0;
-            else
-                fraction = min(receivedBytes / totalBytes, 1);
-            end
-            task.ProgressFraction = fraction;
-            task.TransferRate = transferRate;
-            task.BytesLabel.Text = progressText(receivedBytes, totalBytes, elapsedSeconds, transferRate);
-            obj.updateProgressScale(task)
-            obj.DownloadTasks{taskID} = task;
-            obj.updateDownloadAvatar()
-            drawnow limitrate
-        end
-
-        %-----------------------------------------------------------------%
-        function onDownloadCompleted(obj, taskID, info)
-            task = obj.getTask(taskID);
-            if isempty(task) || task.IsStopped
-                return
-            end
-
-            if ~isstruct(info)
-                info = struct('FinalPath', task.FinalPath, 'BytesReceived', task.ReceivedBytes, 'TotalBytes', task.TotalBytes);
-            elseif ~isfield(info, 'FinalPath') || isempty(info.FinalPath)
-                info.FinalPath = task.FinalPath;
-            end
-            taskInfo = publicTaskInfo(task);
-            taskInfo.FinalPath = info.FinalPath;
-            obj.removeTask(taskID)
-            invokeCallback(obj.CompletedFcn, taskID, info, taskInfo)
-        end
-
-        %-----------------------------------------------------------------%
-        function onDownloadError(obj, taskID, exception)
-            task = obj.getTask(taskID);
-            if isempty(task) || task.IsStopped
-                return
-            end
-            taskInfo = publicTaskInfo(task);
-            restoreBackup(task)
-            obj.removeTask(taskID)
-            invokeCallback(obj.ErrorFcn, taskID, exception, taskInfo)
         end
 
         %-----------------------------------------------------------------%
@@ -761,9 +497,9 @@ classdef DownloadPanel < handle
             if isempty(task)
                 return
             end
-            obj.stopAndReleaseDownloader(task)
             obj.deleteTaskGraphics(task)
             obj.DownloadTasks{taskID} = [];
+            obj.DownloadOrder(obj.DownloadOrder == taskID) = [];
             obj.refreshDownloadContainer()
             obj.updateDownloadAvatar()
         end
@@ -777,38 +513,6 @@ classdef DownloadPanel < handle
             task = obj.DownloadTasks{taskID};
             if isempty(task)
                 task = [];
-            end
-        end
-
-        %-----------------------------------------------------------------%
-        function stopAndReleaseDownloader(~, task)
-            downloader = task.Downloader;
-            if isempty(downloader)
-                return
-            end
-            try
-                if isprop(downloader, 'ProgressFcn')
-                    downloader.ProgressFcn = [];
-                end
-                if isprop(downloader, 'CompletedFcn')
-                    downloader.CompletedFcn = [];
-                end
-                if isprop(downloader, 'ErrorFcn')
-                    downloader.ErrorFcn = [];
-                end
-            catch
-            end
-            try
-                if ismethod(downloader, 'stop')
-                    stop(downloader)
-                end
-            catch
-            end
-            try
-                if ismethod(downloader, 'delete')
-                    delete(downloader)
-                end
-            catch
             end
         end
 
@@ -878,13 +582,15 @@ classdef DownloadPanel < handle
                 return
             end
 
-            activeIDs = [];
-            for taskID = 1:numel(obj.DownloadTasks)
-                task = obj.DownloadTasks{taskID};
-                if ~isempty(task) && ~isempty(task.Dialog) && isvalid(task.Dialog)
-                    activeIDs(end+1) = taskID;
-                end
+            activeIDs = obj.DownloadOrder;
+            isValidTask = false(size(activeIDs));
+            for taskIndex = 1:numel(activeIDs)
+                task = obj.getTask(activeIDs(taskIndex));
+                isValidTask(taskIndex) = ~isempty(task) && ...
+                    ~isempty(task.Dialog) && isvalid(task.Dialog);
             end
+            activeIDs = activeIDs(isValidTask);
+            obj.DownloadOrder = activeIDs;
 
             if isempty(activeIDs)
                 obj.closeDownloadContainer()
@@ -924,8 +630,8 @@ classdef DownloadPanel < handle
             borderInset = 2;
             panelGap = 12;
             activeHeight = 0;
-            for taskID = 1:numel(obj.DownloadTasks)
-                task = obj.DownloadTasks{taskID};
+            for orderIndex = 1:numel(obj.DownloadOrder)
+                task = obj.getTask(obj.DownloadOrder(orderIndex));
                 if ~isempty(task)
                     activeHeight = activeHeight + task.RowHeight + 1;
                 end
@@ -994,18 +700,21 @@ classdef DownloadPanel < handle
 
             for taskID = 1:numel(obj.DownloadTasks)
                 task = obj.DownloadTasks{taskID};
-                if isempty(task) || ~strcmp(task.LifecycleState, 'active')
+                if isempty(task) || ~isfield(task, 'Snapshot') || ...
+                        isempty(fieldnames(task.Snapshot)) || ...
+                        ~strcmp(task.Snapshot.LifecycleState, 'active')
                     continue
                 end
+                snapshot = task.Snapshot;
                 activeCount = activeCount + 1;
-                if isfinite(task.ReceivedBytes)
-                    receivedBytes = receivedBytes + max(0, double(task.ReceivedBytes));
+                if isfinite(snapshot.ReceivedBytes)
+                    receivedBytes = receivedBytes + max(0, double(snapshot.ReceivedBytes));
                 end
-                if ~isempty(task.TotalBytes) && isfinite(task.TotalBytes) && task.TotalBytes > 0
-                    totalBytes = totalBytes + double(task.TotalBytes);
+                if ~isempty(snapshot.TotalBytes) && isfinite(snapshot.TotalBytes) && snapshot.TotalBytes > 0
+                    totalBytes = totalBytes + double(snapshot.TotalBytes);
                 end
-                if isfinite(task.TransferRate) && task.TransferRate > 0
-                    transferRate = transferRate + double(task.TransferRate);
+                if isfinite(snapshot.TransferRate) && snapshot.TransferRate > 0
+                    transferRate = transferRate + double(snapshot.TransferRate);
                 end
             end
 
@@ -1061,7 +770,7 @@ classdef DownloadPanel < handle
 
         %-----------------------------------------------------------------%
         function [fileName, isUseful] = resolveDownloadFileName(obj, url)
-            [fileName, isUseful] = ui.downloadFileName(url, shortTaskID());
+            [fileName, isUseful] = download.downloadFileName(url, shortTaskID());
             if isUseful
                 return
             end
@@ -1171,118 +880,15 @@ value = value(1:min(8, numel(value)));
 end
 
 %-----------------------------------------------------------------%
-function partialPath = findPartialPath(folderPath, fileName)
-partialPath = '';
-if isempty(folderPath) || ~isfolder(folderPath)
+%-----------------------------------------------------------------%
+function value = snapshotElapsedSeconds(snapshot)
+if isempty(snapshot.StartedAt) || isempty(snapshot.UpdatedAt)
+    value = 0;
     return
 end
-
-entries = dir(fullfile(folderPath, ['*_', fileName, '.part']));
-if isempty(entries)
-    entries = dir(fullfile(folderPath, ['*_', fileName, '.part.chunk']));
-    for entryIndex = 1:numel(entries)
-        entries(entryIndex).name = erase(entries(entryIndex).name, '.chunk');
-    end
-end
-if isempty(entries)
-    return
+value = max(0, seconds(snapshot.UpdatedAt - snapshot.StartedAt));
 end
 
-[~, newestIndex] = max([entries.datenum]);
-partialPath = fullfile(folderPath, entries(newestIndex).name);
-end
-
-%-----------------------------------------------------------------%
-function moveFileWithFallback(sourcePath, destinationPath)
-[moved, message] = movefile(sourcePath, destinationPath, 'f');
-if moved
-    return
-end
-
-[copied, copyMessage] = copyfile(sourcePath, destinationPath, 'f');
-if ~copied
-    error('ui:DownloadPanel:fileTransferFailed', ...
-          'Could not move or copy "%s" to "%s": %s %s', ...
-          sourcePath, destinationPath, message, copyMessage)
-end
-delete(sourcePath)
-end
-
-%-----------------------------------------------------------------%
-function deleteIfExists(filePath)
-if isempty(filePath)
-    return
-end
-if isfile(filePath) || isfolder(filePath)
-    delete(filePath)
-end
-end
-
-%-----------------------------------------------------------------%
-function restoreBackup(task)
-if ~isfield(task, 'BackupPath') || isempty(task.BackupPath) || ~isfile(task.BackupPath)
-    return
-end
-if isfile(task.FinalPath) || isfolder(task.FinalPath)
-    return
-end
-try
-    moveFileWithFallback(task.BackupPath, task.FinalPath)
-catch
-end
-end
-
-%-----------------------------------------------------------------%
-function exists = pathExists(filePath)
-exists = isfile(filePath) || isfolder(filePath);
-end
-
-%-----------------------------------------------------------------%
-function ensureFolder(folderPath)
-if isempty(folderPath)
-    error('ui:DownloadPanel:missingTempPath', 'TempPath must not be empty.')
-end
-if ~isfolder(folderPath)
-    [created, message] = mkdir(folderPath);
-    if ~created && ~isfolder(folderPath)
-        error('ui:DownloadPanel:tempPathUnavailable', '%s', message)
-    end
-end
-end
-
-%-----------------------------------------------------------------%
-function validateDownloader(downloader)
-if isempty(downloader)
-    error('ui:DownloadPanel:invalidDownloader', 'DownloaderFactory returned an empty value.')
-end
-requiredMethods = {'start', 'pause', 'resume', 'stop'};
-for methodIndex = 1:numel(requiredMethods)
-    if ~ismethod(downloader, requiredMethods{methodIndex})
-        error('ui:DownloadPanel:invalidDownloader', ...
-              'DownloaderFactory result does not implement %s.', requiredMethods{methodIndex})
-    end
-end
-requiredProperties = {'ProgressFcn', 'CompletedFcn', 'ErrorFcn'};
-for propertyIndex = 1:numel(requiredProperties)
-    if ~isprop(downloader, requiredProperties{propertyIndex})
-        error('ui:DownloadPanel:invalidDownloader', ...
-              'DownloaderFactory result does not expose %s.', requiredProperties{propertyIndex})
-    end
-end
-end
-
-%-----------------------------------------------------------------%
-function value = uniqueTargetPath(filePath)
-[folderPath, baseName, extension] = fileparts(filePath);
-value = filePath;
-index = 1;
-while isfile(value) || isfolder(value)
-    value = fullfile(folderPath, sprintf('%s (%d)%s', baseName, index, extension));
-    index = index + 1;
-end
-end
-
-%-----------------------------------------------------------------%
 %-----------------------------------------------------------------%
 function text = progressText(receivedBytes, totalBytes, elapsedSeconds, transferRate)
 receivedText = formatBytes(receivedBytes);
@@ -1375,22 +981,6 @@ elseif percentage >= 90
 else
     level = ceil(percentage / 10);
 end
-end
-
-%-----------------------------------------------------------------%
-function info = publicTaskInfo(task)
-info = struct('ID', task.ID, ...
-              'TaskID', task.TaskID, ...
-              'URL', task.URL, ...
-              'FileName', task.FileName, ...
-              'TempFolder', task.TempFolder, ...
-              'TargetFolder', task.TargetFolder, ...
-              'FinalPath', task.FinalPath, ...
-              'PartialPath', task.PartialPath, ...
-              'BackupPath', task.BackupPath, ...
-              'ReceivedBytes', task.ReceivedBytes, ...
-              'TotalBytes', task.TotalBytes, ...
-              'LifecycleState', task.LifecycleState);
 end
 
 %-----------------------------------------------------------------%

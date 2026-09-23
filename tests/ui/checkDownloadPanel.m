@@ -104,9 +104,9 @@ panel.ErrorFcn = @failed;
     end
 
     function clearDownloadFolders(~, ~)
-        % CLEARDOWNLOADFOLDERS Stop downloads and delete both runtime folders.
+        % CLEARDOWNLOADFOLDERS Cancel downloads and delete both runtime folders.
         try
-            panel.stopAll()
+            panel.cancelAll()
             if isfolder(tempPath)
                 rmdir(tempPath, 's')
             end
