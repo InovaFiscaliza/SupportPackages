@@ -88,6 +88,13 @@ lifecycle state, paths, received and total bytes, measured and estimated rates,
 rate-source information, timestamps, and error information. Neither contract
 exposes UI handles or downloader internals.
 
+`DisplayMode` accepts `normal` or `silent` and belongs to the manager task
+state, not to URL inference or downloader behavior. Silent tasks retain the
+same lifecycle, downloader callbacks, cleanup, and completion/error callbacks,
+but their snapshots and reorder notifications are omitted from presentation by
+default. Set `IncludeSilentTasks` on `DownloadManager` to include those
+snapshots in the panel and avatar without changing the downloader contract.
+
 The lifecycle vocabulary is authoritative:
 
 - `pause` stops transfer while preserving resumable temporary state;

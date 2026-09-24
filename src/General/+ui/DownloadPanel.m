@@ -76,6 +76,7 @@ classdef DownloadPanel < handle
                 options.CollisionPolicy (1,:) char = 'askInRow'
                 options.PartialConflictPolicy (1,:) char = 'askInRow'
                 options.DestinationResolver = []
+                options.IncludeSilentTasks (1,1) logical = false
             end
 
             obj.ParentContainer = parentContainer;
@@ -100,7 +101,8 @@ classdef DownloadPanel < handle
             obj.Manager = download.DownloadManager(...
                 'DownloaderFactory', obj.DownloaderFactory, ...
                 'CollisionPolicy', obj.CollisionPolicy, ...
-                'PartialConflictPolicy', obj.PartialConflictPolicy);
+                'PartialConflictPolicy', obj.PartialConflictPolicy, ...
+                'IncludeSilentTasks', options.IncludeSilentTasks);
             obj.Manager.SnapshotFcn = @(snapshot) obj.onManagerSnapshot(snapshot);
             obj.Manager.TaskReorderedFcn = @(snapshot) obj.onManagerTaskReordered(snapshot);
             obj.Manager.CompletedFcn = @(taskID, info, snapshot) ...
@@ -146,7 +148,7 @@ classdef DownloadPanel < handle
         end
 
         %-----------------------------------------------------------------%
-        function taskID = addDownload(obj, url)
+        function taskID = addDownload(obj, url, options)
             % ADDDOWNLOAD Add and start a download for a URL.
             %
             % The file name is derived from URL. Depending on executionMode,
@@ -156,6 +158,7 @@ classdef DownloadPanel < handle
             arguments
                 obj
                 url (1,:) char {mustBeNonempty}
+                options.DisplayMode (1,:) char = 'normal'
             end
 
             url = char(url);
@@ -172,6 +175,7 @@ classdef DownloadPanel < handle
                              'TargetFolder', targetFolder, ...
                              'FileName', fileName, ...
                              'FinalPath', finalPath, ...
+                             'DisplayMode', options.DisplayMode, ...
                              'AllowSourceFilename', allowSourceFilename);
             taskID = obj.Manager.addDownload(request);
         end

@@ -135,17 +135,6 @@ Os itens abaixo tratam da evolução dos testes e das funcionalidades de downloa
 os detalhes arquiteturais do item 1 estão documentados em
 [`src/General/+download/README.md`](../../src/General/+download/README.md).
 
-3. **Add an explicit silent mode.**
-	 - Add `DisplayMode = 'normal' | 'silent'` to the normalized request or task
-		 options. The manager owns this value; the panel does not infer it from a
-		 URL or caller-specific branch.
-	 - A silent task must not create a visible row or contribute to the avatar by
-		 default, but it must retain the normal manager lifecycle, callbacks,
-		 cleanup, and history behavior. The inclusion policy must be configurable
-		 without changing the downloader contract.
-	 - Add manager and panel harness cases proving that silent tasks still emit
-		 completion and error notifications and do not affect visible progress.
-
 4. **Change the download avatar contract from aggregate count/speed to a
 	 per-download speed list.**
 	 - `TaskSnapshot` must expose both `MeasuredRate` and `EstimatedRate`, in
@@ -245,8 +234,6 @@ os detalhes arquiteturais do item 1 estão documentados em
 - Should `DestinationResolver` be a callback supplied to `DownloadPanel` or a
 	separate reusable class? In either case, it must return a normalized request
 	without making `DownloadManager` depend on UI APIs.
-- Should a silent task be excluded from the avatar as specified above, or
-	should callers be allowed to opt it into aggregate visual state?
 - Should cancel always delete partial files, or should a deployment be able
 	to retain them for later recovery? The manager must expose one explicit
 	policy rather than infer behavior from the button label.

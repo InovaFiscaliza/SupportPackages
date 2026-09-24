@@ -16,6 +16,7 @@ ciclo de vida das tarefas e o comportamento do sistema de arquivos.
 | [`checkDownloadPanel.m`](checkDownloadPanel.m) | Abre um harness manual em `uifigure` para o painel reutilizável. |
 | [`checkDownloadPanelDestination.m`](checkDownloadPanelDestination.m) | Verifica automaticamente a resolução de destino nos modos desktop e Web App. |
 | [`checkDownloadManager.m`](checkDownloadManager.m) | Verifica o ciclo de vida e conflitos do manager sem UI. |
+| [`checkDownloadSilent.m`](checkDownloadSilent.m) | Verifica tarefas silenciosas, callbacks e inclusão opcional na apresentação. |
 | [`checkDownloadHtml.m`](checkDownloadHtml.m) | Testa apenas o recurso `uihtml` `downloadAvatar.html`. |
 | [`checkDownloadHttp.m`](checkDownloadHttp.m) | Faz um teste rápido do transporte HTTP público, do fallback de nome de arquivo e do isolamento de cookies por host exato. |
 | [`DownloadPanelFakeDownloader.m`](DownloadPanelFakeDownloader.m) | Simula o objeto downloader exigido por `ui.DownloadPanel`. |
@@ -68,6 +69,10 @@ o destino retornado pelo callback e que `webApp` usa `TargetPath` sem chamar o
 resolver ou construir o downloader antes da decisão de conflito. Também
 confirma que um nome alternativo sem extensão recebe a extensão original da URL
 e é usado como o target final.
+
+`checkDownloadSilent.m` confirma que tarefas com `DisplayMode = 'silent'` não
+criam linhas nem progresso visível por padrão, mas ainda emitem conclusão e
+erro. Também verifica `IncludeSilentTasks = true` no manager.
 
 O exemplo de integração com F5 é [`F5BrowserTestApp.m`](../auth/F5BrowserTestApp.m).
 Ele fornece a fábrica `ws.auth.FileDownload` baseada na sessão, enquanto
@@ -141,6 +146,12 @@ Para verificar a resolução de destino por modo:
 
 ```matlab
 report = checkDownloadPanelDestination;
+```
+
+Para verificar tarefas silenciosas:
+
+```matlab
+report = checkDownloadSilent;
 ```
 
 O harness adiciona `src/General` ao caminho automaticamente. Quando executado,

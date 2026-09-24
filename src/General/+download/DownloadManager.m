@@ -9,6 +9,7 @@ classdef DownloadManager < handle
     properties
         CollisionPolicy (1,:) char = 'askInRow'
         PartialConflictPolicy (1,:) char = 'askInRow'
+        IncludeSilentTasks (1,1) logical = false
         SnapshotFcn = []
         TaskReorderedFcn = []
         CompletedFcn = []
@@ -31,11 +32,13 @@ classdef DownloadManager < handle
                 options.DownloaderFactory (1,1) function_handle
                 options.CollisionPolicy (1,:) char = 'askInRow'
                 options.PartialConflictPolicy (1,:) char = 'askInRow'
+                options.IncludeSilentTasks (1,1) logical = false
             end
 
             obj.DownloaderFactory = options.DownloaderFactory;
             obj.CollisionPolicy = options.CollisionPolicy;
             obj.PartialConflictPolicy = options.PartialConflictPolicy;
+            obj.IncludeSilentTasks = options.IncludeSilentTasks;
         end
 
         function delete(obj)
@@ -67,6 +70,7 @@ classdef DownloadManager < handle
             task = struct('ID', taskID, ...
                           'TaskID', shortTaskID(), ...
                           'URL', request.URL, ...
+                          'DisplayMode', request.DisplayMode, ...
                           'FileName', request.FileName, ...
                           'TempFolder', request.TempFolder, ...
                           'TargetFolder', request.TargetFolder, ...
@@ -452,6 +456,9 @@ classdef DownloadManager < handle
             else
                 snapshot = taskOrSnapshot;
             end
+            if ~obj.shouldNotifyPresentation(snapshot)
+                return
+            end
             invokeCallback(obj.SnapshotFcn, snapshot)
         end
 
@@ -472,6 +479,9 @@ classdef DownloadManager < handle
                     continue
                 end
                 if strcmp(task.URL, request.URL) && strcmpi(task.FileName, request.FileName)
+                    if ~strcmp(task.DisplayMode, request.DisplayMode)
+                        continue
+                    end
                     taskID = task.ID;
                     return
                 end
@@ -483,13 +493,21 @@ classdef DownloadManager < handle
             if isempty(task)
                 return
             end
-            invokeCallback(obj.TaskReorderedFcn, obj.snapshot(task))
+            snapshot = obj.snapshot(task);
+            if obj.shouldNotifyPresentation(snapshot)
+                invokeCallback(obj.TaskReorderedFcn, snapshot)
+            end
+        end
+
+        function tf = shouldNotifyPresentation(obj, snapshot)
+            tf = obj.IncludeSilentTasks || ~strcmp(snapshot.DisplayMode, 'silent');
         end
 
         function value = snapshot(~, task)
             value = struct('ID', task.ID, ...
                            'TaskID', task.TaskID, ...
                            'URL', task.URL, ...
+                           'DisplayMode', task.DisplayMode, ...
                            'FileName', task.FileName, ...
                            'TempFolder', task.TempFolder, ...
                            'TargetFolder', task.TargetFolder, ...
@@ -552,6 +570,18 @@ request.URL = char(request.URL);
 request.TempFolder = char(request.TempFolder);
 request.TargetFolder = char(request.TargetFolder);
 request.FileName = char(request.FileName);
+if ~isfield(request, 'DisplayMode') || isempty(request.DisplayMode)
+    request.DisplayMode = 'normal';
+elseif isstring(request.DisplayMode) && isscalar(request.DisplayMode)
+    request.DisplayMode = char(request.DisplayMode);
+elseif ~ischar(request.DisplayMode)
+    error('download:DownloadManager:invalidRequest', ...
+          'DisplayMode must be normal or silent.')
+end
+if ~ismember(request.DisplayMode, {'normal', 'silent'})
+    error('download:DownloadManager:invalidRequest', ...
+          'DisplayMode must be normal or silent.')
+end
 request.FinalPath = fullfile(request.TargetFolder, request.FileName);
 if ~isfield(request, 'PartialPath') || isempty(request.PartialPath)
     request.PartialPath = fullfile(request.TempFolder, ...
@@ -574,6 +604,7 @@ end
 function request = requestFromTask(task)
 request = struct('URL', task.URL, ...
                  'TaskID', task.TaskID, ...
+                 'DisplayMode', task.DisplayMode, ...
                  'TempFolder', task.TempFolder, ...
                  'TargetFolder', task.TargetFolder, ...
                  'FileName', task.FileName, ...

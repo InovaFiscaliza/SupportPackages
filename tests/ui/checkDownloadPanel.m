@@ -20,6 +20,8 @@ ensureFolder(tempPath)
 ensureFolder(targetPath)
 
 sampleNames = {'sample1.bin', 'sample2.bin', 'sample3.bin', 'sample4.bin'};
+sampleLabels = sampleNames;
+sampleLabels{4} = 'sample4.bin [silent]';
 executionLog = {'Ready. Click a sample link to start a download.'};
 
 uiFigure = uifigure('Name', 'Teste do ui.DownloadPanel', ...
@@ -34,7 +36,7 @@ mainLayout.ColumnWidth = {'1x', 22};
 
 for sampleIndex = 1:numel(sampleNames)
     linkHTML = uihtml(mainLayout, ...
-                      'HTMLSource', sampleLinkHTML(sampleNames{sampleIndex}, sampleIndex));
+                      'HTMLSource', sampleLinkHTML(sampleLabels{sampleIndex}, sampleIndex));
     linkHTML.HTMLEventReceivedFcn = @(~, ~) startSample(sampleIndex);
     linkHTML.Layout.Row = sampleIndex;
     linkHTML.Layout.Column = 1;
@@ -77,9 +79,14 @@ panel.ErrorFcn = @failed;
             ensureFolder(tempPath)
             ensureFolder(targetPath)
             sampleName = sampleNames{sampleIndex};
+            sampleLabel = sampleLabels{sampleIndex};
             sampleURL = ['https://example.test/download/', sampleName];
-            panel.addDownload(sampleURL);
-            appendLog(sprintf('Started %s.', sampleName));
+            displayMode = 'normal';
+            if sampleIndex == 4
+                displayMode = 'silent';
+            end
+            panel.addDownload(sampleURL, 'DisplayMode', displayMode);
+            appendLog(sprintf('Started %s.', sampleLabel));
         catch exception
             appendLog(sprintf('Failed to start %s: %s', sampleNames{sampleIndex}, exception.message));
         end
