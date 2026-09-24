@@ -14,6 +14,7 @@ ciclo de vida das tarefas e o comportamento do sistema de arquivos.
 | Arquivo | Função |
 |---|---|
 | [`checkDownloadPanel.m`](checkDownloadPanel.m) | Abre um harness manual em `uifigure` para o painel reutilizável. |
+| [`checkDownloadPanelDestination.m`](checkDownloadPanelDestination.m) | Verifica automaticamente a resolução de destino nos modos desktop e Web App. |
 | [`checkDownloadManager.m`](checkDownloadManager.m) | Verifica o ciclo de vida e conflitos do manager sem UI. |
 | [`checkDownloadHtml.m`](checkDownloadHtml.m) | Testa apenas o recurso `uihtml` `downloadAvatar.html`. |
 | [`checkDownloadHttp.m`](checkDownloadHttp.m) | Faz um teste rápido do transporte HTTP público, do fallback de nome de arquivo e do isolamento de cookies por host exato. |
@@ -57,9 +58,16 @@ e os controles de fechar/lixeira. O painel usa internamente o recurso
 compartilhado `downloadAvatar.html`.
 
 `checkDownloadManager.m` exercita o manager sem criar `uifigure`: confirma
-snapshots, conclusão, remoção de tarefas e a decisão **Save as new** para um
-conflito de destino. O manager mantém a tarefa e o downloader; o painel possui
-somente handles de apresentação e snapshots renderizados.
+snapshots, conclusão, remoção de tarefas e todas as decisões de conflito de
+destino e arquivo parcial. O manager mantém a tarefa e o downloader; o painel
+possui somente handles de apresentação e snapshots renderizados.
+
+`checkDownloadPanelDestination.m` cria uma figura invisível e injeta um
+`DestinationResolver` determinístico. O teste confirma que modos desktop usam
+o destino retornado pelo callback e que `webApp` usa `TargetPath` sem chamar o
+resolver ou construir o downloader antes da decisão de conflito. Também
+confirma que um nome alternativo sem extensão recebe a extensão original da URL
+e é usado como o target final.
 
 O exemplo de integração com F5 é [`F5BrowserTestApp.m`](../auth/F5BrowserTestApp.m).
 Ele fornece a fábrica `ws.auth.FileDownload` baseada na sessão, enquanto
@@ -129,6 +137,12 @@ Para executar o teste isolado do manager:
 report = checkDownloadManager;
 ```
 
+Para verificar a resolução de destino por modo:
+
+```matlab
+report = checkDownloadPanelDestination;
+```
+
 O harness adiciona `src/General` ao caminho automaticamente. Quando executado,
 ele cria `tests/ui/temp` e `tests/ui/target` e usa essas pastas como pastas
 temporária e de destino simuladas.
@@ -144,6 +158,10 @@ temporária e de destino simuladas.
   quando outro link de exemplo é clicado.
 - Arquivos de destino existentes usam a linha de conflito compartilhada com
   **Overwrite**, **Save as new** e **Cancel**.
+- Com a política `askInRow`, ao detectar um conflito de destino ou de arquivo
+  parcial, o painel é aberto automaticamente para exibir as escolhas
+  **Overwrite**/**Save as new** ou **Resume**/**Restart**. Políticas automáticas
+  como `overwrite` não exibem os controles de confirmação.
 - A linha de download exercita callbacks de progresso, callbacks de conclusão
   e limpeza de arquivos temporários.
 

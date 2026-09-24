@@ -74,7 +74,8 @@ F5BrowserTestApp
 ### Interface
 
 - **Combo box de URL** (editável), pré-populado com endpoints de teste. Navega tanto ao   pressionar Enter sobre uma URL digitada quanto ao selecionar um item. URLs novas são acrescentadas ao histórico mas não serão recuperadas entre sessões.
-- **Imagem de debug**, ao lado do combo: controla a abertura das DevTools do navegador de autenticação e a gravação do estado bruto do navegador.
+- **Imagem de debug** (<img src="debug-alt.svg" alt="ícone de debug" width="16" height="16"> / <img src="debug-alt-active.svg" alt="ícone de debug" width="16" height="16">), ao lado do combo: controla a abertura das DevTools do navegador de autenticação e a gravação do estado bruto do navegador em arquivo de log. O ícone muda de cor quando o modo de debug está ativo.
+- **Modo de execução** (![ícone desktop](vm.svg) / ![ícone Web App Server](globe.svg)), ao lado do debug: indica o comportamento desktop ou Web App Server. O clique alterna o modo usado pelos próximos downloads e permite testar a compatibilidade com os dois modos de execução dos aplicativos.
 - **Avatar de downloads**, entre o debug e o avatar de perfil: mostra o progresso agregado da fila, uma bola por download ativo e a velocidade agregada. O clique abre ou traz para frente o painel de downloads.
 - **Avatar de perfil**, à direita: desconectado, conectado com inicial ou conectado com foto circular. O clique conecta ou abre o menu de perfil, que contém a opção de desconectar.
 - **Área de conteúdo** (`uihtml`), ocupando o restante da figura.
@@ -92,6 +93,20 @@ Os itens `https://httpbin.org/bytes/1024` e
 do host `fiscalizacao.anatel.gov.br` exercitam o mesmo fluxo com autenticação F5
 sob demanda. `ensureSession` reutiliza a sessão enquanto o host permanece o
 mesmo e cria uma nova sessão quando a URL aponta para outro host.
+
+No modo desktop, o painel abre `uiputfile` antes de criar a tarefa. No modo Web
+App Server, usa diretamente a pasta de destino configurada na aplicação e não
+abre diálogos desktop. Depois dessa resolução, ambos os modos enviam a mesma
+solicitação normalizada ao `DownloadManager`; conflitos são apresentados na
+linha do painel, que é aberto automaticamente quando a intervenção do usuário
+é necessária, e resolvidos pelo manager.
+
+No modo desktop deste app, um conflito com o target escolhido no `uiputfile` é
+resolvido automaticamente com **Overwrite**, pois a escolha do destino já foi
+confirmada pelo usuário. Se o usuário informar outro nome, esse nome passa a
+ser o target final e o conflito com o nome original deixa de existir. Quando o
+nome informado não contém extensão, o painel acrescenta a extensão do arquivo
+indicado pela URL, quando disponível.
 
 O avatar de perfil usa o componente compartilhado
 [`profileAvatar.html`](../../src/Anatel/+ws/+auth/profileAvatar.html). O harness
@@ -119,25 +134,6 @@ válida, o login pode terminar sem uma janela visível.
 Os itens abaixo tratam da evolução dos testes e das funcionalidades de download;
 os detalhes arquiteturais do item 1 estão documentados em
 [`src/General/+download/README.md`](../../src/General/+download/README.md).
-
-2. **Resolve execution mode and destination before creating a task.**
-	 - Add a `uiimage` control to `F5BrowserTestApp` for switching between
-		 desktop behavior and Web App Server behavior in the test app.
-	 - Keep `executionMode` and initial destination selection in the application,
-		 `DownloadPanel`, or an injected `DestinationResolver`. `webApp` must not
-		 open desktop file-selection dialogs; desktop-like modes may use `uiputfile`.
-	 - Pass the manager a normalized request after destination resolution. The
-		 request must contain the final target folder and file name; the manager
-		 must not call `uiputfile`, `uiconfirm`, `questdlg`, or any other UI API.
-	 - Configure collision behavior on `DownloadManager`, not through a
-		 test-specific branch in the panel. The manager detects the collision and
-		 emits a pending decision; the panel renders the controls and calls the
-		 manager's decision method. Target conflicts use `overwrite`, `uniqueName`,
-		 and `cancel` (shown as **Save as new**). Partial conflicts use `resume`,
-		 `restart`, and `cancel`.
-	 - Add manager tests for each mode-independent conflict transition and
-		 panel tests for desktop/Web App Server destination resolution before
-		 changing the visual layout.
 
 3. **Add an explicit silent mode.**
 	 - Add `DisplayMode = 'normal' | 'silent'` to the normalized request or task

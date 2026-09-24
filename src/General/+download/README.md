@@ -60,6 +60,14 @@ Destination selection belongs to the panel, the consuming application, or an
 injected destination resolver. The manager receives the normalized result and
 owns conflict detection and lifecycle transitions.
 
+`ui.DownloadPanel` accepts an optional `DestinationResolver` callback for
+desktop-like modes. The callback receives `ExecutionMode`, `URL`,
+`SuggestedFileName`, `InitialFolder`, and `UIFigure`, and returns a scalar
+struct with `Cancelled`, `TargetFolder`, and `FileName`. Without a callback,
+the panel uses `uiputfile`. In `webApp` mode the callback and `uiputfile` are
+both bypassed: the panel requires an existing `TargetPath` and derives the
+filename from the URL.
+
 The download avatar is
 [`downloadAvatar.html`](../+ui/html/downloadAvatar.html), beside the panel's
 UI implementation. It is not part of this provider-neutral package. The
@@ -94,11 +102,13 @@ The panel translates user actions into manager commands and renders snapshots.
 Task state has one owner: the manager owns transfer state, while the panel owns
 only UI handles and presentation state.
 
-When a target or partial file conflict is detected, the manager emits a pending
-snapshot. The panel renders the appropriate row choices without opening a modal
-dialog: `Overwrite`, **Save as new**, and `Cancel` for target conflicts, or
-`Resume`, `Restart`, and `Cancel` for partial files. The manager applies the
-choice and rechecks the destination before publication.
+When a target or partial file conflict is detected with the corresponding
+policy set to `askInRow`, the manager emits a pending snapshot. The panel
+renders the appropriate row choices without opening a modal dialog:
+`Overwrite`, **Save as new**, and `Cancel` for target conflicts, or `Resume`,
+`Restart`, and `Cancel` for partial files. Automatic policies such as
+`overwrite` are applied before any pending snapshot is emitted. The manager
+rechecks the destination before publication.
 
 ### Adapter boundary
 
@@ -175,9 +185,15 @@ request to the selected provider:
 ```matlab
 panel = ui.DownloadPanel(parentContainer, ...
     'DownloaderFactory', @(request) ws.auth.FileDownload(session, request), ...
+    'DestinationResolver', @resolveDestination, ...
     'tempPath', temporaryFolder, ...
     'targetPath', targetFolder);
 ```
+
+`DestinationResolver` is optional. It is useful for automated tests and for
+applications that already own a desktop destination workflow. Collision
+choices remain manager operations regardless of how the initial destination
+was selected.
 
 For a non-F5 provider, the factory can return any object implementing the
 manager downloader contract: `start`, `pause`, `resume`, and `stop` methods,

@@ -9,6 +9,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
         UIFigure matlab.ui.Figure
         URLDropDown matlab.ui.control.DropDown
         DebugImage matlab.ui.control.Image
+        ExecutionModeImage matlab.ui.control.Image
         DownloadPanel
         ProfileAvatarHTML matlab.ui.control.HTML
         HTMLView matlab.ui.control.HTML
@@ -17,6 +18,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
         ProfileDetailsLabel matlab.ui.control.Label
         SignOutButton matlab.ui.control.Button
         DebugMode (1,1) logical = false
+        DownloadExecutionMode (1, :) char = 'desktopStandaloneApp'
         AuthResourceFolder (1, :) char = ''
         DefaultServerDownloadPath (1, :) char = ''
         ProfileAvatarHTMLPath (1, :) char = ''
@@ -79,9 +81,9 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             projectFolder = fileparts(fileparts(app.AuthResourceFolder));
             app.ProfileAvatarHTMLPath = fullfile(projectFolder, 'src', 'Anatel', '+ws', '+auth', 'profileAvatar.html');
 
-            gridLayout = uigridlayout(app.UIFigure, [2, 4]);
+            gridLayout = uigridlayout(app.UIFigure, [2, 5]);
             gridLayout.RowHeight = {22, '1x'};
-            gridLayout.ColumnWidth = {'1x', 22, 22, 22};
+            gridLayout.ColumnWidth = {'1x', 22, 22, 22, 22};
 
             app.URLDropDown = uidropdown(gridLayout, ...
                                          'Editable', 'on', ...
@@ -97,13 +99,20 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             app.DebugImage.Layout.Row = 1;
             app.DebugImage.Layout.Column = 2;
 
+            app.ExecutionModeImage = uiimage(gridLayout, ...
+                                             'ImageClickedFcn', @(~, ~) app.toggleDownloadExecutionMode());
+            app.ExecutionModeImage.Layout.Row = 1;
+            app.ExecutionModeImage.Layout.Column = 3;
+            app.refreshDownloadExecutionModeImage()
+
             app.DownloadPanel = ui.DownloadPanel(gridLayout, ...
                 'DownloaderFactory', @(request) app.createDownloader(request), ...
-                'executionMode', 'MATLABEnvironment', ...
+                'executionMode', app.DownloadExecutionMode, ...
+                'CollisionPolicy', app.downloadCollisionPolicy(), ...
                 'tempPath', fullfile(tempdir, 'F5BrowserTestApp-downloads'), ...
                 'targetPath', app.DefaultServerDownloadPath);
             app.DownloadPanel.AvatarHTML.Layout.Row = 1;
-            app.DownloadPanel.AvatarHTML.Layout.Column = 3;
+            app.DownloadPanel.AvatarHTML.Layout.Column = 4;
             app.DownloadPanel.CompletedFcn = @(taskID, info, taskInfo) ...
                 app.onDownloadCompleted(taskID, info, taskInfo);
             app.DownloadPanel.ErrorFcn = @(taskID, exception, taskInfo) ...
@@ -113,11 +122,11 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             app.ProfileAvatarHTML.HTMLEventReceivedFcn = @(~, event) app.onProfileAvatarEvent(event);
             app.ProfileAvatarHTML.HTMLSource = app.ProfileAvatarHTMLPath;
             app.ProfileAvatarHTML.Layout.Row = 1;
-            app.ProfileAvatarHTML.Layout.Column = 4;
+            app.ProfileAvatarHTML.Layout.Column = 5;
 
             app.HTMLView = uihtml(gridLayout, 'HTMLSource', '<html><body></body></html>');
             app.HTMLView.Layout.Row = 2;
-            app.HTMLView.Layout.Column = [1, 4];
+            app.HTMLView.Layout.Column = [1, 5];
 
             app.ProfileMenu = uipanel(app.UIFigure, 'Visible', 'off', 'Title', 'Perfil');
             menuLayout = uigridlayout(app.ProfileMenu, [3, 1]);
@@ -193,6 +202,25 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
         function toggleDebugMode(app)
             app.DebugMode = ~app.DebugMode;
             app.refreshDebugImage()
+        end
+
+        function toggleDownloadExecutionMode(app)
+            if strcmp(app.DownloadExecutionMode, 'webApp')
+                app.DownloadExecutionMode = 'desktopStandaloneApp';
+            else
+                app.DownloadExecutionMode = 'webApp';
+            end
+            app.DownloadPanel.executionMode = app.DownloadExecutionMode;
+            app.DownloadPanel.setCollisionPolicy(app.downloadCollisionPolicy());
+            app.refreshDownloadExecutionModeImage()
+        end
+
+        function policy = downloadCollisionPolicy(app)
+            if strcmp(app.DownloadExecutionMode, 'webApp')
+                policy = 'askInRow';
+            else
+                policy = 'overwrite';
+            end
         end
 
         function onProfileAvatarEvent(app, event)
@@ -338,6 +366,16 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
                 app.DebugImage.ImageSource = fullfile(app.AuthResourceFolder, 'debug-alt-active.svg');
             else
                 app.DebugImage.ImageSource = fullfile(app.AuthResourceFolder, 'debug-alt.svg');
+            end
+        end
+
+        function refreshDownloadExecutionModeImage(app)
+            if strcmp(app.DownloadExecutionMode, 'webApp')
+                app.ExecutionModeImage.ImageSource = fullfile(app.AuthResourceFolder, 'globe.svg');
+                app.ExecutionModeImage.Tooltip = 'Web App Server mode';
+            else
+                app.ExecutionModeImage.ImageSource = fullfile(app.AuthResourceFolder, 'vm.svg');
+                app.ExecutionModeImage.Tooltip = 'Desktop mode';
             end
         end
 

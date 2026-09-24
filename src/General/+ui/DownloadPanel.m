@@ -31,6 +31,7 @@ classdef DownloadPanel < handle
     properties (SetAccess = private)
         AvatarHTML
         DownloaderFactory
+        DestinationResolver
         Manager
     end
 
@@ -74,6 +75,7 @@ classdef DownloadPanel < handle
                 options.targetPath (1,:) char = ''
                 options.CollisionPolicy (1,:) char = 'askInRow'
                 options.PartialConflictPolicy (1,:) char = 'askInRow'
+                options.DestinationResolver = []
             end
 
             obj.ParentContainer = parentContainer;
@@ -84,6 +86,12 @@ classdef DownloadPanel < handle
             end
 
             obj.DownloaderFactory = options.DownloaderFactory;
+            if ~isempty(options.DestinationResolver) && ...
+                    ~isa(options.DestinationResolver, 'function_handle')
+                error('ui:DownloadPanel:invalidDestinationResolver', ...
+                      'DestinationResolver must be a function handle or empty.')
+            end
+            obj.DestinationResolver = options.DestinationResolver;
             obj.executionMode = options.executionMode;
             obj.TempPath = char(options.tempPath);
             obj.TargetPath = char(options.targetPath);
@@ -210,6 +218,15 @@ classdef DownloadPanel < handle
             % ISACTIVE Return true when a task targets filePath.
             tf = obj.Manager.isActive(filePath);
         end
+
+        %-----------------------------------------------------------------%
+        function setCollisionPolicy(obj, value)
+            % SETCOLLISIONPOLICY Update the panel and manager policies together.
+            obj.CollisionPolicy = value;
+            if ~isempty(obj.Manager) && isvalid(obj.Manager)
+                obj.Manager.CollisionPolicy = obj.CollisionPolicy;
+            end
+        end
     end
 
 
@@ -240,6 +257,9 @@ classdef DownloadPanel < handle
             obj.renderTask(snapshot)
             obj.refreshDownloadContainer()
             obj.updateDownloadAvatar()
+            if strcmp(snapshot.LifecycleState, 'awaitingConflictDecision')
+                obj.show()
+            end
         end
 
         %-----------------------------------------------------------------%
@@ -756,15 +776,32 @@ classdef DownloadPanel < handle
             if ~isempty(strtrim(obj.TargetPath))
                 defaultName = fullfile(obj.TargetPath, fileName);
             end
-            [selectedName, selectedFolder] = uiputfile('*.*', '', defaultName);
-            if isequal(selectedName, 0)
+            if isempty(obj.DestinationResolver)
+                [selectedName, selectedFolder] = uiputfile('*.*', '', defaultName);
+                resolution = struct('Cancelled', isequal(selectedName, 0), ...
+                                    'TargetFolder', selectedFolder, ...
+                                    'FileName', selectedName);
+            else
+                context = struct('ExecutionMode', obj.executionMode, ...
+                                 'URL', url, ...
+                                 'SuggestedFileName', fileName, ...
+                                 'InitialFolder', obj.TargetPath, ...
+                                 'UIFigure', obj.UIFigure);
+                resolution = obj.DestinationResolver(context);
+            end
+            resolution = normalizeDestinationResolution(resolution);
+            if resolution.Cancelled
                 finalPath = '';
                 cancelled = true;
                 allowSourceFilename = false;
                 return
             end
-            figure(obj.UIFigure)
-            finalPath = fullfile(selectedFolder, selectedName);
+            resolution.FileName = appendSourceExtension(resolution.FileName, ...
+                                                         fileName, isUsefulURLName);
+            if isempty(obj.DestinationResolver)
+                figure(obj.UIFigure)
+            end
+            finalPath = fullfile(resolution.TargetFolder, resolution.FileName);
             allowSourceFilename = false;
         end
 
@@ -877,6 +914,63 @@ function value = shortTaskID()
 value = char(matlab.lang.internal.uuid());
 value = regexprep(value, '-', '');
 value = value(1:min(8, numel(value)));
+end
+
+%-----------------------------------------------------------------%
+function resolution = normalizeDestinationResolution(resolution)
+if ~isstruct(resolution) || ~isscalar(resolution)
+    error('ui:DownloadPanel:invalidDestinationResolution', ...
+          'DestinationResolver must return a scalar struct.')
+end
+if ~isfield(resolution, 'Cancelled') || isempty(resolution.Cancelled)
+    resolution.Cancelled = false;
+end
+if ~isscalar(resolution.Cancelled) || ...
+        ~(islogical(resolution.Cancelled) || isnumeric(resolution.Cancelled))
+    error('ui:DownloadPanel:invalidDestinationResolution', ...
+          'DestinationResolver Cancelled must be a logical scalar.')
+end
+resolution.Cancelled = logical(resolution.Cancelled);
+if resolution.Cancelled
+    resolution.TargetFolder = '';
+    resolution.FileName = '';
+    return
+end
+requiredFields = {'TargetFolder', 'FileName'};
+for fieldIndex = 1:numel(requiredFields)
+    fieldName = requiredFields{fieldIndex};
+    if ~isfield(resolution, fieldName) || ...
+            ~(ischar(resolution.(fieldName)) || isStringScalar(resolution.(fieldName))) || ...
+            isempty(strtrim(char(resolution.(fieldName))))
+        error('ui:DownloadPanel:invalidDestinationResolution', ...
+              'DestinationResolver must return a nonempty %s.', fieldName)
+    end
+    resolution.(fieldName) = char(resolution.(fieldName));
+end
+if ~isfolder(resolution.TargetFolder)
+    error('ui:DownloadPanel:invalidDestinationResolution', ...
+          'DestinationResolver TargetFolder must be an existing folder.')
+end
+if ~strcmp(resolution.FileName, download.downloadFileName(resolution.FileName, 'download')) || ...
+        contains(resolution.FileName, {'/', '\\'})
+    error('ui:DownloadPanel:invalidDestinationResolution', ...
+          'DestinationResolver FileName must be a valid file name without a folder path.')
+end
+end
+
+%-----------------------------------------------------------------%
+function fileName = appendSourceExtension(fileName, sourceFileName, isUsefulSourceName)
+if ~isUsefulSourceName
+    return
+end
+[~, ~, selectedExtension] = fileparts(fileName);
+if ~isempty(selectedExtension)
+    return
+end
+[~, ~, sourceExtension] = fileparts(sourceFileName);
+if ~isempty(sourceExtension)
+    fileName = [fileName, sourceExtension];
+end
 end
 
 %-----------------------------------------------------------------%

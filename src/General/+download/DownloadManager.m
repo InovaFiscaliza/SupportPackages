@@ -318,7 +318,6 @@ classdef DownloadManager < handle
             task.LifecycleState = 'awaitingConflictDecision';
             task.UpdatedAt = utcNow();
             obj.Tasks{taskID} = task;
-            obj.notifySnapshot(task)
 
             if strcmp(conflictType, 'target')
                 policy = obj.CollisionPolicy;
@@ -328,7 +327,9 @@ classdef DownloadManager < handle
             if strcmp(policy, 'reject')
                 policy = 'cancel';
             end
-            if ~strcmp(policy, 'askInRow')
+            if strcmp(policy, 'askInRow')
+                obj.notifySnapshot(task)
+            else
                 obj.resolveConflict(taskID, policy)
             end
         end
@@ -385,6 +386,7 @@ classdef DownloadManager < handle
             task.UpdatedAt = task.CompletedAt;
             snapshot = obj.snapshot(task);
             obj.releaseDownloader(task)
+            cleanupTemporaryFiles(task)
             obj.Tasks{taskID} = task;
             obj.notifySnapshot(snapshot)
             invokeCallback(obj.CompletedFcn, taskID, info, snapshot)
