@@ -135,32 +135,14 @@ Os itens abaixo tratam da evolução dos testes e das funcionalidades de downloa
 os detalhes arquiteturais do item 1 estão documentados em
 [`src/General/+download/README.md`](../../src/General/+download/README.md).
 
-3.5 **Create debug stop button svg**
-
-4. **Change the download avatar contract from aggregate count/speed to a
-	 per-download speed list.**
-	 - `TaskSnapshot` must expose both `MeasuredRate` and `EstimatedRate`, in
-		 bytes per second, plus a `RateSource` value. The panel maps the snapshots
-		 of represented tasks to the avatar's speed list.
-	 - Send one speed value per represented download; the number of orbiting
-		 circles must equal the list length. Preserve a stable ordering, preferably
-		 task creation order, and exclude silent tasks by default.
-	 - A paused, pending-conflict, or otherwise represented task with
-		 no current rate sends zero and produces a stationary red circle. Positive
-		 measured or explicitly permitted estimated rates retain active animation.
-	 - The F5 application uses `ui.DownloadPanel`, which renders downloads with
-		 `pingDownloadAvatar.html` using per-download IDs, rates, and progress.
-	 - Keep `downloadAvatar.html` and `checkDownloadHtml.m` only as legacy assets
-		 and harness; new integrations should use `pingDownloadAvatar.html`.
-
-5. **Make the empty panel a first-class state.**
+1. **Make the empty panel a first-class state.**
 	 - Clicking the avatar must open or bring the panel to the front even when
 		 there are no downloads.
 	 - In that state, show only the configured title bar, the `Download` label,
 		 and the close control aligned with the panel's top-right corner.
 	 - Add a harness case for opening, closing, and reopening the empty panel.
 
-6. **Replace the progress bar with a reusable animated `uihtml` status
+2. **Replace the progress bar with a reusable animated `uihtml` status
 	 component.**
 	 - Implement the component as `src/General/+ui/html/downloadStatus.html`
 		 and include it in compiled applications together with the avatar asset.
@@ -175,7 +157,7 @@ os detalhes arquiteturais do item 1 estão documentados em
 	 - Verify desktop MATLAB and Web App Server rendering before integrating it
 		 into every row.
 
-7. **Define and implement persistent download history.**
+3. **Define and implement persistent download history.**
 	 - History belongs to `DownloadManager` or to an injected provider-neutral
 		 history store, never to `DownloadPanel` or a downloader adapter. The
 		 manager must receive the history-file location or store explicitly and
@@ -201,7 +183,7 @@ os detalhes arquiteturais do item 1 estão documentados em
 	 - Keep history fields in manager snapshots so the panel can render completed
 		 entries without owning the JSON representation.
 
-8. **Redesign the download rows around the finalized state model.**
+4. **Redesign the download rows around the finalized state model.**
 	 - Render manager snapshots, not private downloader objects. Active or
 	  paused downloads use a 3-row by 4-column layout: filename; progress plus
 	  pause/resume and cancel controls; then byte count, speed, estimated
@@ -221,7 +203,7 @@ os detalhes arquiteturais do item 1 estão documentados em
 		  coverage for every row state, including canceled downloads and unavailable
 		 completed files.
 
-9. **Use historical speeds in the examples.**
+5. **Use historical speeds in the examples.**
 	 - Before a new transfer has enough samples, the manager may obtain an
 		 estimated rate from history using the closest available key: exact URL,
 		 host and filename, then a global default.
