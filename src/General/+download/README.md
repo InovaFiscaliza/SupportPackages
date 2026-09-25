@@ -84,9 +84,13 @@ handles or downloader internals.
 A normalized `DownloadRequest` contains the URL, task ID, temporary folder,
 target folder, filename, final path, display mode, task-scoped partial/chunk
 paths, and applicable conflict policies. A `TaskSnapshot` contains the task ID,
-lifecycle state, paths, received and total bytes, measured and estimated rates,
-rate-source information, timestamps, and error information. Neither contract
-exposes UI handles or downloader internals.
+lifecycle state, paths, received and total bytes, progress fraction, a measured
+`TransferRate` in bytes per second, timestamps, and error information, along
+with task and conflict state. `TransferRate` is `NaN` until enough progress
+samples are available. The snapshot does not contain a separate estimated rate
+or rate-source field; `ui.DownloadPanel` derives the estimated remaining time
+from the remaining bytes and `TransferRate`. Neither contract exposes UI handles
+or downloader internals.
 
 `DisplayMode` accepts `normal` or `silent` and belongs to the manager task
 state, not to URL inference or downloader behavior. Silent tasks retain the
