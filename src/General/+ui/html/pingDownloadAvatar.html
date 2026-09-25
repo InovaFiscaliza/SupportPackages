@@ -17,9 +17,11 @@
         }
 
         #download-button {
-            width: 24px;
-            height: 24px;
-            flex: 0 0 24px;
+            width: 100%;
+            height: 100%;
+            max-width: 24px;
+            max-height: 24px;
+            flex: 0 0 auto;
             display: block;
             padding: 0;
             border: 0;
@@ -33,8 +35,8 @@
         }
 
         .download-svg {
-            width: 24px;
-            height: 24px;
+            width: 100%;
+            height: 100%;
             display: block;
         }
     </style>
@@ -47,13 +49,14 @@
         <svg width="24" height="24" viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg">
             <g id="download-indicators"></g>
             <g id="download-arrow">
-                <path d="M 12,2 V 19"
+                <path d="M 12,3 V 19"
                     style="fill:#424242;fill-opacity:1;stroke:#424242;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-dashoffset:3.40157;stroke-opacity:1;stop-color:#000000" />
                 <path d="m 6,12 6,7 6,-7"
                     style="fill:none;fill-opacity:1;stroke:#424242;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-dashoffset:3.40157;stroke-opacity:1;stop-color:#000000" />
                 <path d="M 1,22 H 23"
                     style="fill:#424242;fill-opacity:1;stroke:#424242;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-dashoffset:3.40157;stroke-opacity:1;stop-color:#000000" />
             </g>
+            <g id="download-pulse-overlays"></g>
         </svg>
     </template>
 
@@ -71,13 +74,18 @@
             var records = Object.create(null);
             var svg = downloadTemplate.content.firstElementChild.cloneNode(true);
             var indicatorLayer = svg.querySelector('#download-indicators');
+            var pulseLayer = svg.querySelector('#download-pulse-overlays');
             var progressSpeedPixelsPerSecond = 40;
             var progressFrameIntervalMilliseconds = 50;
+            var pulseFramesPerOpacityStep = 20;
+            var pulseYPosition = 2;
+            var warningPathEndY = 21;
             var maxAnimatedProgressPoints = 4;
-            var minimumAnimatedRate = 100000;
+            var minimumAnimatedRate = 50000;
             var maxAnimatedRate = 20000000;
-            var warningColor = '#ffff00';
-            var opacityCycle = [0.1, 0.2, 0.3, 0.4, 0.5, 0.5, 0.4, 0.3, 0.2, 0.1];
+            var warningColor = '#ffbb00';
+            var progressColor = '#3030f0';
+            var opacityCycle = [1, 0.6, 0.1, 0.6];
             var animationFrame = null;
             var lastProgressFrameTime = null;
 
@@ -151,8 +159,8 @@
 
             function createPath(id, x, y, isPulse) {
                 var path = document.createElementNS(svgNamespace, 'path');
-                path.setAttribute('stroke', '#4242e1');
-                path.setAttribute('stroke-width', isPulse ? '4' : '2');
+                path.setAttribute('stroke', progressColor);
+                path.setAttribute('stroke-width', isPulse ? '3' : '2');
                 path.setAttribute('stroke-linecap', 'round');
                 path.setAttribute('stroke-linejoin', 'round');
                 path.setAttribute('fill', 'none');
@@ -160,10 +168,10 @@
                 if (isPulse) {
                     path.setAttribute('id', String(id));
                     path.setAttribute('stroke-opacity', '0.1');
-                    path.setAttribute('d', 'M ' + x + ',1 v 0.001');
+                    path.setAttribute('d', 'M ' + x + ',' + pulseYPosition + ' v 0.01');
                 } else {
                     path.setAttribute('stroke-opacity', '0.4');
-                    path.setAttribute('d', 'M ' + x + ',' + y + ' v 0.001');
+                    path.setAttribute('d', 'M ' + x + ',' + y + ' v 0.01');
                 }
                 return path;
             }
@@ -175,38 +183,48 @@
                     key: item.key,
                     coordinate: coordinate,
                     rate: null,
+                    visualState: null,
+                    isBlinking: false,
                     opacityIndex: 0,
-                    nextOpacityStepTime: null,
-                    pulsePath: createPath(item.id, coordinate, 1, true),
+                    pulseFrameCount: 0,
+                    pulseOpacity: null,
+                    pulsePath: createPath(item.id, coordinate, pulseYPosition, true),
                     progressPoints: []
                 };
-                indicatorLayer.appendChild(record.pulsePath);
+                pulseLayer.appendChild(record.pulsePath);
                 records[item.key] = record;
-                setRate(record, item.rate, now);
+                setRate(record, item.rate);
                 return record;
             }
 
-            function setRate(record, rate, now) {
-                if (record.rate === rate) {
+            function setRate(record, rate) {
+                var visualState = rate === 0 ? 'warning' :
+                    (rate > maxAnimatedRate ? 'steady' : 'active');
+                record.rate = rate;
+                if (record.visualState === visualState) {
                     return;
                 }
-                record.rate = rate;
+                record.visualState = visualState;
+                record.isBlinking = visualState !== 'steady';
                 record.opacityIndex = 0;
+                record.pulseFrameCount = 0;
                 if (rate === 0) {
+                    record.pulsePath.setAttribute('d', 'M ' + record.coordinate + ',' + pulseYPosition +
+                        ' v ' + (warningPathEndY - pulseYPosition));
                     record.pulsePath.setAttribute('stroke', warningColor);
-                    record.pulsePath.setAttribute('stroke-width', '8');
-                    record.pulsePath.setAttribute('stroke-opacity', '1');
-                    record.nextOpacityStepTime = null;
+                    record.pulsePath.setAttribute('stroke-width', '3');
+                    record.pulseOpacity = opacityCycle[0];
+                    record.pulsePath.setAttribute('stroke-opacity', String(record.pulseOpacity));
                 } else {
-                    record.pulsePath.setAttribute('stroke', '#4242e1');
-                    record.pulsePath.setAttribute('stroke-width', '4');
+                    record.pulsePath.setAttribute('d', 'M ' + record.coordinate + ',' + pulseYPosition + ' v 0.01');
+                    record.pulsePath.setAttribute('stroke', progressColor);
+                    record.pulsePath.setAttribute('stroke-width', '3');
                     if (rate > maxAnimatedRate) {
-                        record.pulsePath.setAttribute('stroke-opacity', '0.6');
-                        record.nextOpacityStepTime = null;
+                        record.pulseOpacity = 0.6;
                     } else {
-                        record.pulsePath.setAttribute('stroke-opacity', String(opacityCycle[0]));
-                        record.nextOpacityStepTime = now + 100000000 / rate;
+                        record.pulseOpacity = opacityCycle[0];
                     }
+                    record.pulsePath.setAttribute('stroke-opacity', String(record.pulseOpacity));
                 }
             }
 
@@ -274,7 +292,7 @@
             }
 
             function removeRecord(record) {
-                indicatorLayer.removeChild(record.pulsePath);
+                pulseLayer.removeChild(record.pulsePath);
                 for (var index = 0; index < record.progressPoints.length; index += 1) {
                     indicatorLayer.removeChild(record.progressPoints[index].path);
                 }
@@ -305,39 +323,38 @@
                 for (var itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
                     var item = items[itemIndex];
                     var record = records[item.key] || createRecord(item, now);
-                    setRate(record, item.rate, now);
+                    setRate(record, item.rate);
                     updateProgress(record, item.progressCount, now);
                 }
                 scheduleAnimation();
             }
 
-            function advanceOpacity(record, timestamp) {
-                if (record.nextOpacityStepTime === null || timestamp < record.nextOpacityStepTime) {
+            function advanceOpacity(record) {
+                if (!record.isBlinking) {
                     return;
                 }
-                var stepInterval = 100000000 / record.rate;
-                var steps = Math.floor((timestamp - record.nextOpacityStepTime) / stepInterval) + 1;
-                record.opacityIndex = (record.opacityIndex + steps) % opacityCycle.length;
-                record.nextOpacityStepTime += steps * stepInterval;
-                record.pulsePath.setAttribute('stroke-opacity', String(opacityCycle[record.opacityIndex]));
+                record.pulseFrameCount += 1;
+                if (record.pulseFrameCount < pulseFramesPerOpacityStep) {
+                    return;
+                }
+                record.pulseFrameCount = 0;
+                record.opacityIndex = (record.opacityIndex + 1) % opacityCycle.length;
+                var opacity = opacityCycle[record.opacityIndex];
+                if (opacity !== record.pulseOpacity) {
+                    record.pulseOpacity = opacity;
+                    record.pulsePath.setAttribute('stroke-opacity', String(opacity));
+                }
             }
 
-            function advanceProgress(timestamp) {
-                if (lastProgressFrameTime === null) {
-                    lastProgressFrameTime = timestamp;
-                    return;
-                }
-                if (timestamp - lastProgressFrameTime < progressFrameIntervalMilliseconds) {
-                    return;
-                }
-                lastProgressFrameTime = timestamp;
-                Object.keys(records).forEach(function (key) {
-                    var points = records[key].progressPoints;
-                    for (var index = 0; index < points.length; index += 1) {
-                        var point = points[index];
-                        if (!point.moving) {
-                            continue;
-                        }
+            function advanceProgress(record, timestamp, shouldUpdate) {
+                var hasMovingPoint = false;
+                var points = record.progressPoints;
+                for (var index = 0; index < points.length; index += 1) {
+                    var point = points[index];
+                    if (!point.moving) {
+                        continue;
+                    }
+                    if (shouldUpdate) {
                         var elapsedSeconds = (timestamp - point.lastRenderedAt) / 1000;
                         var nextPosition = Math.min(point.targetY,
                             point.position + progressSpeedPixelsPerSecond * elapsedSeconds);
@@ -351,14 +368,16 @@
                             }
                         }
                     }
-                });
+                    hasMovingPoint = hasMovingPoint || point.moving;
+                }
+                return hasMovingPoint;
             }
 
             function hasAnimationWork() {
                 var keys = Object.keys(records);
                 for (var keyIndex = 0; keyIndex < keys.length; keyIndex += 1) {
                     var record = records[keys[keyIndex]];
-                    if (record.nextOpacityStepTime !== null) {
+                    if (record.isBlinking) {
                         return true;
                     }
                     for (var pointIndex = 0; pointIndex < record.progressPoints.length; pointIndex += 1) {
@@ -372,11 +391,20 @@
 
             function animate(timestamp) {
                 animationFrame = null;
-                Object.keys(records).forEach(function (key) {
-                    advanceOpacity(records[key], timestamp);
-                });
-                advanceProgress(timestamp);
-                if (hasAnimationWork()) {
+                var shouldUpdateProgress = lastProgressFrameTime === null ||
+                    timestamp - lastProgressFrameTime >= progressFrameIntervalMilliseconds;
+                if (shouldUpdateProgress) {
+                    lastProgressFrameTime = timestamp;
+                }
+                var hasWork = false;
+                var keys = Object.keys(records);
+                for (var keyIndex = 0; keyIndex < keys.length; keyIndex += 1) {
+                    var record = records[keys[keyIndex]];
+                    advanceOpacity(record);
+                    hasWork = hasWork || record.isBlinking;
+                    hasWork = advanceProgress(record, timestamp, shouldUpdateProgress) || hasWork;
+                }
+                if (hasWork) {
                     animationFrame = requestAnimationFrame(animate);
                 } else {
                     lastProgressFrameTime = null;

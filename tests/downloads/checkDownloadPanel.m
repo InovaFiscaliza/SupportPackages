@@ -32,7 +32,7 @@ mainLayout.Padding = [16, 16, 16, 16];
 mainLayout.RowSpacing = 8;
 mainLayout.ColumnSpacing = 16;
 mainLayout.RowHeight = {'1x', '1x', '1x', '1x', '2x'};
-mainLayout.ColumnWidth = {'1x', 22};
+mainLayout.ColumnWidth = {'1x', 24};
 
 for sampleIndex = 1:numel(sampleNames)
     linkHTML = uihtml(mainLayout, ...
@@ -58,6 +58,12 @@ panel = ui.DownloadPanel(mainLayout, ...
                          'CollisionPolicy', 'askInRow');
 panel.AvatarHTML.Layout.Row = 1;
 panel.AvatarHTML.Layout.Column = 2;
+drawnow
+avatarPixelPosition = getpixelposition(panel.AvatarHTML, true);
+if any(avatarPixelPosition(3:4) < 24)
+    error('checkDownloadPanel:avatarTooSmall', ...
+          'The ping download avatar needs a MATLAB host of at least 24-by-24 pixels.')
+end
 if ~endsWith(char(panel.AvatarHTML.HTMLSource), 'pingDownloadAvatar.html')
     error('checkDownloadPanel:unexpectedAvatarSource', ...
           'ui.DownloadPanel must use pingDownloadAvatar.html.')

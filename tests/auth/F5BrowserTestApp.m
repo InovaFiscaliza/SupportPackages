@@ -84,8 +84,8 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             app.ProfileAvatarHTMLPath = fullfile(projectFolder, 'src', 'Anatel', '+ws', '+auth', 'profileAvatar.html');
 
             gridLayout = uigridlayout(app.UIFigure, [2, 6]);
-            gridLayout.RowHeight = {22, '1x'};
-            gridLayout.ColumnWidth = {22, 22, 22, '1x', 22, 22};
+            gridLayout.RowHeight = {24, '1x'};
+            gridLayout.ColumnWidth = {22, 22, 22, '1x', 24, 22};
 
             app.ExecutionModeImage = uiimage(gridLayout, ...
                                              'ImageClickedFcn', @(~, ~) app.toggleDownloadExecutionMode());
