@@ -400,12 +400,13 @@ classdef DownloadPanel < handle
         %-----------------------------------------------------------------%
         function task = createTaskGraphics(obj, taskID, fileName)
             obj.ensureDownloadContainer()
+            taskBackgroundColor = max(0, obj.UIFigure.Color - 0.04);
+            progressTrackColor = max(0, taskBackgroundColor - 0.03);
 
             task = struct('ID', taskID, ...
                           'FileName', fileName, ...
                           'ProgressFraction', 0, ...
                           'Dialog', [], ...
-                          'Separator', [], ...
                           'GridLayout', [], ...
                           'StatusLabel', [], ...
                           'BytesLabel', [], ...
@@ -421,12 +422,9 @@ classdef DownloadPanel < handle
 
             task.Dialog = uipanel(obj.DownloadStack, ...
                                   'BorderType', 'none', ...
-                                  'BackgroundColor', obj.UIFigure.Color);
-            task.Separator = uipanel(obj.DownloadStack, ...
-                                     'BorderType', 'none', ...
-                                     'BackgroundColor', [0.55, 0.55, 0.55], ...
-                                     'Visible', 'off');
+                                  'BackgroundColor', taskBackgroundColor);
             task.GridLayout = uigridlayout(task.Dialog, [5, 3]);
+            task.GridLayout.BackgroundColor = taskBackgroundColor;
             task.GridLayout.Padding = [16, 12, 16, 8];
             task.GridLayout.RowSpacing = 4;
             task.GridLayout.RowHeight = {24, 20, 46, 30, 1};
@@ -442,7 +440,7 @@ classdef DownloadPanel < handle
 
             task.ProgressTrack = uipanel(task.GridLayout, ...
                                          'BorderType', 'none', ...
-                                         'BackgroundColor', obj.UIFigure.Color);
+                                         'BackgroundColor', progressTrackColor);
             task.ProgressTrack.Layout.Row = 2;
             task.ProgressTrack.Layout.Column = [1, 3];
 
@@ -478,10 +476,12 @@ classdef DownloadPanel < handle
 
             task.ConflictPanel = uipanel(task.GridLayout, ...
                                          'BorderType', 'none', ...
+                                         'BackgroundColor', taskBackgroundColor, ...
                                          'Visible', 'off');
             task.ConflictPanel.Layout.Row = 5;
             task.ConflictPanel.Layout.Column = [1, 3];
             conflictLayout = uigridlayout(task.ConflictPanel, [1, 3]);
+            conflictLayout.BackgroundColor = taskBackgroundColor;
             conflictLayout.Padding = [0, 0, 0, 0];
             conflictLayout.ColumnWidth = {'1x', '1x', '1x'};
             task.ConflictButtons = gobjects(1, 3);
@@ -542,7 +542,7 @@ classdef DownloadPanel < handle
 
         %-----------------------------------------------------------------%
         function deleteTaskGraphics(~, task)
-            handles = {task.Dialog, task.Separator};
+            handles = {task.Dialog};
             for handleIndex = 1:numel(handles)
                 handle = handles{handleIndex};
                 try
@@ -583,8 +583,8 @@ classdef DownloadPanel < handle
                                           'Units', 'pixels', ...
                                           'BackgroundColor', obj.UIFigure.Color);
             obj.DownloadStack = uigridlayout(obj.DownloadContent, [1, 1]);
-            obj.DownloadStack.Padding = [0, 0, 0, 0];
-            obj.DownloadStack.RowSpacing = 0;
+            obj.DownloadStack.Padding = [5, 5, 5, 5];
+            obj.DownloadStack.RowSpacing = 5;
             obj.DownloadStack.ColumnWidth = {'1x'};
             obj.DownloadStack.RowHeight = {154};
             obj.positionDownloadContainer()
@@ -622,15 +622,12 @@ classdef DownloadPanel < handle
             end
 
             activeIDs = fliplr(activeIDs);
-            rowHeights = repmat({1}, 1, 2*numel(activeIDs));
+            rowHeights = repmat({1}, 1, numel(activeIDs));
             for row = 1:numel(activeIDs)
                 task = obj.DownloadTasks{activeIDs(row)};
-                rowHeights{2*row - 1} = task.RowHeight;
-                task.Dialog.Layout.Row = 2*row - 1;
+                rowHeights{row} = task.RowHeight;
+                task.Dialog.Layout.Row = row;
                 task.Dialog.Layout.Column = 1;
-                task.Separator.Layout.Row = 2*row;
-                task.Separator.Layout.Column = 1;
-                task.Separator.Visible = ternary(row < numel(activeIDs), 'on', 'off');
             end
             obj.DownloadStack.RowHeight = rowHeights;
             obj.positionDownloadContainer()
@@ -654,11 +651,16 @@ classdef DownloadPanel < handle
             borderInset = 2;
             panelGap = 12;
             activeHeight = 0;
+            activeTaskCount = 0;
             for orderIndex = 1:numel(obj.DownloadOrder)
                 task = obj.getTask(obj.DownloadOrder(orderIndex));
                 if ~isempty(task)
-                    activeHeight = activeHeight + task.RowHeight + 1;
+                    activeHeight = activeHeight + task.RowHeight;
+                    activeTaskCount = activeTaskCount + 1;
                 end
+            end
+            if activeTaskCount > 0
+                activeHeight = activeHeight + 2 * 5 + (activeTaskCount - 1) * 5;
             end
             contentHeight = max(1, activeHeight);
             requiredPanelHeight = contentHeight + headerHeight + 2 * borderInset;
