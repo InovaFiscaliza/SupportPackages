@@ -48,10 +48,7 @@ classdef DownloadPanel < handle
         DownloadOrder = []
         DownloadFileNames cell = cell(0, 2)
         AvatarHTMLReady (1,1) logical = false
-        AvatarState struct = struct('level', 0, ...
-                                    'inProgress', false, ...
-                                    'ballCount', 0, ...
-                                    'speedRadiansPerSecond', 0)
+        AvatarState struct = struct('id', {}, 'rate', {}, 'progress', {})
         OriginalWindowButtonDownFcn = []
         IsDeleting (1,1) logical = false
     end
@@ -235,7 +232,7 @@ classdef DownloadPanel < handle
 
 
     % Private implementation: HTML events, task state, row controls, layout,
-    % conflict handling, and aggregate avatar updates.
+    % conflict handling, and per-download avatar updates.
     methods (Access = private)
         %-----------------------------------------------------------------%
         function onManagerSnapshot(obj, snapshot)
@@ -719,39 +716,32 @@ classdef DownloadPanel < handle
 
         %-----------------------------------------------------------------%
         function updateDownloadAvatar(obj)
-            activeCount = 0;
-            receivedBytes = 0;
-            totalBytes = 0;
-            transferRate = 0;
+            state = struct('id', {}, 'rate', {}, 'progress', {});
 
             for taskID = 1:numel(obj.DownloadTasks)
                 task = obj.DownloadTasks{taskID};
                 if isempty(task) || ~isfield(task, 'Snapshot') || ...
                         isempty(fieldnames(task.Snapshot)) || ...
-                        ~strcmp(task.Snapshot.LifecycleState, 'active')
+                        ~ismember(task.Snapshot.LifecycleState, {'active', 'paused'})
                     continue
                 end
                 snapshot = task.Snapshot;
-                activeCount = activeCount + 1;
-                if isfinite(snapshot.ReceivedBytes)
-                    receivedBytes = receivedBytes + max(0, double(snapshot.ReceivedBytes));
+                rate = double(snapshot.TransferRate);
+                if strcmp(snapshot.LifecycleState, 'paused')
+                    rate = 0;
+                elseif ~isfinite(rate) || (rate ~= 0 && rate < 100000)
+                    rate = 100000;
                 end
-                if ~isempty(snapshot.TotalBytes) && isfinite(snapshot.TotalBytes) && snapshot.TotalBytes > 0
-                    totalBytes = totalBytes + double(snapshot.TotalBytes);
+                progress = double(snapshot.ProgressFraction);
+                if ~isfinite(progress)
+                    progress = 0;
                 end
-                if isfinite(snapshot.TransferRate) && snapshot.TransferRate > 0
-                    transferRate = transferRate + double(snapshot.TransferRate);
-                end
+                progress = min(1, max(0, progress)) * 100;
+                state(end+1) = struct('id', double(snapshot.ID), ...
+                                      'rate', rate, ...
+                                      'progress', progress); %#ok<AGROW>
             end
 
-            percentage = 0;
-            if totalBytes > 0
-                percentage = min(100, receivedBytes / totalBytes * 100);
-            end
-            state = struct('level', avatarLevel(percentage), ...
-                           'inProgress', activeCount > 0, ...
-                           'ballCount', activeCount, ...
-                           'speedRadiansPerSecond', transferRate / 1024^2 * 2 * pi);
             if isequal(state, obj.AvatarState)
                 return
             end
@@ -890,7 +880,7 @@ end
 
 %-----------------------------------------------------------------%
 function sourcePath = avatarHTMLPath()
-sourcePath = fullfile(fileparts(mfilename('fullpath')), 'html', 'downloadAvatar.html');
+sourcePath = fullfile(fileparts(mfilename('fullpath')), 'html', 'pingDownloadAvatar.html');
 end
 
 %-----------------------------------------------------------------%
@@ -1069,17 +1059,6 @@ if remainingMinutes == 0
     text = sprintf('%.0f h', hours);
 else
     text = sprintf('%.0f h %.0f min', hours, remainingMinutes);
-end
-end
-
-%-----------------------------------------------------------------%
-function level = avatarLevel(percentage)
-if percentage <= 0
-    level = 0;
-elseif percentage >= 90
-    level = 10;
-else
-    level = ceil(percentage / 10);
 end
 end
 

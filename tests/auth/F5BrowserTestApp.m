@@ -94,7 +94,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             app.URLDropDown.Layout.Column = 1;
 
             app.DebugImage = uiimage(gridLayout, ...
-                                     'ImageSource', fullfile(app.AuthResourceFolder, 'debug-alt.svg'), ...
+                                     'ImageSource', fullfile(app.AuthResourceFolder, 'debug-start.svg'), ...
                                      'ImageClickedFcn', @(~, ~) app.toggleDebugMode());
             app.DebugImage.Layout.Row = 1;
             app.DebugImage.Layout.Column = 2;
@@ -363,9 +363,9 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
 
         function refreshDebugImage(app)
             if app.DebugMode
-                app.DebugImage.ImageSource = fullfile(app.AuthResourceFolder, 'debug-alt-active.svg');
+                app.DebugImage.ImageSource = fullfile(app.AuthResourceFolder, 'debug-stop.svg');
             else
-                app.DebugImage.ImageSource = fullfile(app.AuthResourceFolder, 'debug-alt.svg');
+                app.DebugImage.ImageSource = fullfile(app.AuthResourceFolder, 'debug-start.svg');
             end
         end
 

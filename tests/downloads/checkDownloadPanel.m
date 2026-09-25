@@ -2,9 +2,9 @@ function uiFigure = checkDownloadPanel
 % CHECKDOWNLOADPANEL Open the sample-link UI harness for ui.DownloadPanel.
 %
 % The harness presents four clickable sample links in the first column, the
-% download avatar in the second column, an execution log in row five, and a
-% trash icon for deleting the local temp and target folders. Each sample uses
-% DownloadPanelFakeDownloader with a different size and transfer speed.
+% ping download avatar in the second column, an execution log in row five, and
+% a trash icon for deleting the local temp and target folders. Each sample
+% uses DownloadPanelFakeDownloader with a different size and transfer speed.
 %
 % The returned figure remains open until the user closes it.
 
@@ -58,6 +58,10 @@ panel = ui.DownloadPanel(mainLayout, ...
                          'CollisionPolicy', 'askInRow');
 panel.AvatarHTML.Layout.Row = 1;
 panel.AvatarHTML.Layout.Column = 2;
+if ~endsWith(char(panel.AvatarHTML.HTMLSource), 'pingDownloadAvatar.html')
+    error('checkDownloadPanel:unexpectedAvatarSource', ...
+          'ui.DownloadPanel must use pingDownloadAvatar.html.')
+end
 
 trashImage = uiimage(mainLayout, ...
                      'ImageSource', fullfile(projectFolder, 'src', 'General', 'icons', 'download-trash.svg'), ...

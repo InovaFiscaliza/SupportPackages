@@ -74,7 +74,7 @@ F5BrowserTestApp
 ### Interface
 
 - **Combo box de URL** (editável), pré-populado com endpoints de teste. Navega tanto ao   pressionar Enter sobre uma URL digitada quanto ao selecionar um item. URLs novas são acrescentadas ao histórico mas não serão recuperadas entre sessões.
-- **Imagem de debug** (<img src="debug-alt.svg" alt="ícone de debug" width="16" height="16"> / <img src="debug-alt-active.svg" alt="ícone de debug" width="16" height="16">), ao lado do combo: controla a abertura das DevTools do navegador de autenticação e a gravação do estado bruto do navegador em arquivo de log. O ícone muda de cor quando o modo de debug está ativo.
+- **Imagem de debug** (<img src="debug-start.svg" alt="ícone de debug" width="16" height="16"> / <img src="debug-stop.svg" alt="ícone de debug" width="16" height="16">), ao lado do combo: controla a abertura das DevTools do navegador de autenticação e a gravação do estado bruto do navegador em arquivo de log. O ícone muda de cor quando o modo de debug está ativo.
 - **Modo de execução** (![ícone desktop](vm.svg) / ![ícone Web App Server](globe.svg)), ao lado do debug: indica o comportamento desktop ou Web App Server. O clique alterna o modo usado pelos próximos downloads e permite testar a compatibilidade com os dois modos de execução dos aplicativos.
 - **Avatar de downloads**, entre o debug e o avatar de perfil: mostra o progresso agregado da fila, uma bola por download ativo e a velocidade agregada. O clique abre ou traz para frente o painel de downloads.
 - **Avatar de perfil**, à direita: desconectado, conectado com inicial ou conectado com foto circular. O clique conecta ou abre o menu de perfil, que contém a opção de desconectar.
@@ -148,9 +148,10 @@ os detalhes arquiteturais do item 1 estão documentados em
 	 - A paused, pending-conflict, or otherwise represented task with
 		 no current rate sends zero and produces a stationary red circle. Positive
 		 measured or explicitly permitted estimated rates retain active animation.
-	 - Update `DownloadPanel`, `downloadAvatar.html`, and `checkDownloadHtml`
-		 together. Document the units, ordering, empty-list behavior, and the
-		 distinction between estimated and measured rates.
+	 - The F5 application uses `ui.DownloadPanel`, which renders downloads with
+		 `pingDownloadAvatar.html` using per-download IDs, rates, and progress.
+	 - Keep `downloadAvatar.html` and `checkDownloadHtml.m` only as legacy assets
+		 and harness; new integrations should use `pingDownloadAvatar.html`.
 
 5. **Make the empty panel a first-class state.**
 	 - Clicking the avatar must open or bring the panel to the front even when

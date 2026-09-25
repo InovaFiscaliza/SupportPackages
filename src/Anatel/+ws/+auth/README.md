@@ -77,7 +77,7 @@ authFolder = fileparts(which('ws.auth.F5Session'));
 uiFolder = fileparts(which('ui.DownloadPanel'));
 authResources = fullfile(authFolder, 'resources');
 authProfileAvatar = fullfile(authFolder, 'profileAvatar.html');
-uiDownloadAvatar = fullfile(uiFolder, 'html', 'downloadAvatar.html');
+uiDownloadAvatar = fullfile(uiFolder, 'html', 'pingDownloadAvatar.html');
 ```
 
 Com `compiler.build.standaloneApplication`:
@@ -159,8 +159,10 @@ esse evento para iniciar o login ou abrir o menu do perfil.
 `ui.DownloadPanel` fica em `src/General/+ui` e é independente de
 `F5Session`. Ele recebe um `DownloaderFactory`, renderiza snapshots do
 `download.DownloadManager` e traduz ações da UI em comandos do manager.
-O HTML em `src/General/+ui/html/downloadAvatar.html` é um detalhe do painel e
-deve ser incluído explicitamente em aplicações compiladas.
+O HTML em `src/General/+ui/html/pingDownloadAvatar.html` é o avatar ativo do
+painel e deve ser incluído explicitamente em aplicações compiladas. O antigo
+`downloadAvatar.html` permanece apenas como legado para seu harness isolado
+`tests/downloads/checkDownloadHtml.m`.
 
 Os serviços provider-neutral ficam em `src/General/+download`: use
 `download.downloadFileName`, `download.downloadSourceMetadata`,

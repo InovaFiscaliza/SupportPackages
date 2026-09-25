@@ -30,7 +30,8 @@ src/General/
 ├── +ui/
 │   ├── DownloadPanel.m
 │   └── html/
-│       ├── downloadAvatar.html
+│       ├── downloadAvatar.html (legacy)
+│       ├── pingDownloadAvatar.html
 │       └── downloadStatus.html
 └── +download/
     ├── DownloadManager.m
@@ -68,10 +69,13 @@ the panel uses `uiputfile`. In `webApp` mode the callback and `uiputfile` are
 both bypassed: the panel requires an existing `TargetPath` and derives the
 filename from the URL.
 
-The download avatar is
-[`downloadAvatar.html`](../+ui/html/downloadAvatar.html), beside the panel's
-UI implementation. It is not part of this provider-neutral package. The
-optional `downloadStatus.html` asset follows the same UI ownership rule.
+The active download avatar is
+[`pingDownloadAvatar.html`](../+ui/html/pingDownloadAvatar.html), beside the
+panel's UI implementation. It is not part of this provider-neutral package.
+The old [`downloadAvatar.html`](../+ui/html/downloadAvatar.html) is retained as
+a legacy asset for `tests/downloads/checkDownloadHtml.m`; it is not used by
+`ui.DownloadPanel`. The optional `downloadStatus.html` asset follows the same
+UI ownership rule.
 
 ### Manager contract
 
@@ -153,14 +157,17 @@ implementations are not maintained as permanent duplicate wrappers.
 
 Add `src/General` to the MATLAB path so `ui.*` and `download.*` resolve as
 sibling packages. Do not add either package folder directly. `+download` code
-files are regular code dependencies. UI assets such as `downloadAvatar.html`
-and `downloadStatus.html` must be included explicitly as additional files in
-compiled applications; `profileAvatar.html` remains under `+ws/+auth`.
+files are regular code dependencies. UI assets such as
+`pingDownloadAvatar.html` and `downloadStatus.html` must be included explicitly
+as additional files in compiled applications; `profileAvatar.html` remains
+under `+ws/+auth`. The legacy `downloadAvatar.html` is only needed when running
+its dedicated legacy harness.
 
 The avatar asset is resolved relative to `DownloadPanel.m`. Its MATLAB-to-HTML
-protocol uses the `downloadAvatarReady` and `downloadAvatarClick` events and
-the cached state sent after the ready event. Compiled applications must include
-the asset explicitly rather than copying it into the consuming application.
+protocol sends one `{id, rate, progress}` struct per active visible download
+and uses the `downloadAvatarReady` and `downloadAvatarClick` events. Compiled
+applications must include the asset explicitly rather than copying it into
+the consuming application.
 
 Validate the generic package with `tests/downloads/checkDownloadHttp.m`, validate the
 manager contract without UI using `tests/downloads/checkDownloadManager.m`, and

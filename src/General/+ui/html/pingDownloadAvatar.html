@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #download-button {
+            width: 24px;
+            height: 24px;
+            flex: 0 0 24px;
+            display: block;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        #download-button:focus-visible {
+            outline: 1px solid #4242e1;
+            outline-offset: -1px;
+        }
+
+        .download-svg {
+            width: 24px;
+            height: 24px;
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <button id="download-button" type="button" aria-label="Downloads"></button>
+
+    <template id="download-template">
+        <svg width="24" height="24" viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg">
+            <g id="download-indicators"></g>
+            <g id="download-arrow">
+                <path d="M 12,2 V 19"
+                    style="fill:#424242;fill-opacity:1;stroke:#424242;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-dashoffset:3.40157;stroke-opacity:1;stop-color:#000000" />
+                <path d="m 6,12 6,7 6,-7"
+                    style="fill:none;fill-opacity:1;stroke:#424242;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-dashoffset:3.40157;stroke-opacity:1;stop-color:#000000" />
+                <path d="M 1,22 H 23"
+                    style="fill:#424242;fill-opacity:1;stroke:#424242;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-dashoffset:3.40157;stroke-opacity:1;stop-color:#000000" />
+            </g>
+        </svg>
+    </template>
+
+    <script>
+        (function () {
+            'use strict';
+
+            var svgNamespace = 'http://www.w3.org/2000/svg';
+            var downloadButton = document.getElementById('download-button');
+            var downloadTemplate = document.getElementById('download-template');
+            var matlabHtmlComponent = null;
+            var coordinateOrder = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23,
+                2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22];
+            var freeCoordinates = coordinateOrder.slice();
+            var records = Object.create(null);
+            var svg = downloadTemplate.content.firstElementChild.cloneNode(true);
+            var indicatorLayer = svg.querySelector('#download-indicators');
+            var progressSpeedPixelsPerSecond = 40;
+            var progressFrameIntervalMilliseconds = 50;
+            var maxAnimatedProgressPoints = 4;
+            var minimumAnimatedRate = 100000;
+            var maxAnimatedRate = 20000000;
+            var warningColor = '#ffff00';
+            var opacityCycle = [0.1, 0.2, 0.3, 0.4, 0.5, 0.5, 0.4, 0.3, 0.2, 0.1];
+            var animationFrame = null;
+            var lastProgressFrameTime = null;
+
+            svg.classList.add('download-svg');
+            downloadButton.appendChild(svg);
+
+            function sendEvent(eventName, payload) {
+                if (matlabHtmlComponent && typeof matlabHtmlComponent.sendEventToMATLAB === 'function') {
+                    matlabHtmlComponent.sendEventToMATLAB(eventName, payload);
+                } else if (typeof sendEventToMATLAB === 'function') {
+                    sendEventToMATLAB(eventName, payload);
+                }
+            }
+
+            function sendReady() {
+                sendEvent('downloadAvatarReady', { type: 'ready' });
+            }
+
+            function sendError(message) {
+                sendEvent('pingDownloadAvatarError', { type: 'error', message: message });
+            }
+
+            function normalizeItems(value) {
+                var items;
+                if (value === null || typeof value === 'undefined') {
+                    items = [];
+                } else if (Array.isArray(value)) {
+                    items = value.slice(0, coordinateOrder.length);
+                } else if (typeof value === 'object') {
+                    items = [value];
+                } else {
+                    throw new TypeError('Data must be a list of download objects.');
+                }
+
+                var normalized = [];
+                var seen = Object.create(null);
+                for (var index = 0; index < items.length; index += 1) {
+                    var item = items[index];
+                    var itemNumber = index + 1;
+                    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+                        throw new TypeError('Download item ' + itemNumber + ' must be an object.');
+                    }
+                    if (typeof item.id !== 'number' || !Number.isSafeInteger(item.id)) {
+                        throw new TypeError('Download item ' + itemNumber + ': id must be a safe integer number.');
+                    }
+                    if (typeof item.rate !== 'number' || item.rate === Infinity) {
+                        throw new TypeError('Download item ' + itemNumber + ': rate must be a number.');
+                    }
+                    if (typeof item.progress !== 'number' || !isFinite(item.progress) || item.progress < 0 || item.progress > 100) {
+                        throw new TypeError('Download item ' + itemNumber + ': progress must be a number from 0 to 100.');
+                    }
+
+                    var key = String(item.id);
+                    var rate = item.rate;
+                    if (rate !== 0 && (!isFinite(rate) || rate < minimumAnimatedRate)) {
+                        rate = minimumAnimatedRate;
+                    }
+                    if (seen[key]) {
+                        continue;
+                    }
+                    seen[key] = true;
+                    normalized.push({
+                        id: item.id,
+                        key: key,
+                        rate: rate,
+                        progressCount: Math.round(item.progress / 5)
+                    });
+                }
+                return normalized;
+            }
+
+            function createPath(id, x, y, isPulse) {
+                var path = document.createElementNS(svgNamespace, 'path');
+                path.setAttribute('stroke', '#4242e1');
+                path.setAttribute('stroke-width', isPulse ? '4' : '2');
+                path.setAttribute('stroke-linecap', 'round');
+                path.setAttribute('stroke-linejoin', 'round');
+                path.setAttribute('fill', 'none');
+                path.setAttribute('data-download-id', String(id));
+                if (isPulse) {
+                    path.setAttribute('id', String(id));
+                    path.setAttribute('stroke-opacity', '0.1');
+                    path.setAttribute('d', 'M ' + x + ',1 v 0.001');
+                } else {
+                    path.setAttribute('stroke-opacity', '0.4');
+                    path.setAttribute('d', 'M ' + x + ',' + y + ' v 0.001');
+                }
+                return path;
+            }
+
+            function createRecord(item, now) {
+                var coordinate = freeCoordinates.shift();
+                var record = {
+                    id: item.id,
+                    key: item.key,
+                    coordinate: coordinate,
+                    rate: null,
+                    opacityIndex: 0,
+                    nextOpacityStepTime: null,
+                    pulsePath: createPath(item.id, coordinate, 1, true),
+                    progressPoints: []
+                };
+                indicatorLayer.appendChild(record.pulsePath);
+                records[item.key] = record;
+                setRate(record, item.rate, now);
+                return record;
+            }
+
+            function setRate(record, rate, now) {
+                if (record.rate === rate) {
+                    return;
+                }
+                record.rate = rate;
+                record.opacityIndex = 0;
+                if (rate === 0) {
+                    record.pulsePath.setAttribute('stroke', warningColor);
+                    record.pulsePath.setAttribute('stroke-width', '8');
+                    record.pulsePath.setAttribute('stroke-opacity', '1');
+                    record.nextOpacityStepTime = null;
+                } else {
+                    record.pulsePath.setAttribute('stroke', '#4242e1');
+                    record.pulsePath.setAttribute('stroke-width', '4');
+                    if (rate > maxAnimatedRate) {
+                        record.pulsePath.setAttribute('stroke-opacity', '0.6');
+                        record.nextOpacityStepTime = null;
+                    } else {
+                        record.pulsePath.setAttribute('stroke-opacity', String(opacityCycle[0]));
+                        record.nextOpacityStepTime = now + 100000000 / rate;
+                    }
+                }
+            }
+
+            function freeAnimationSlot(points) {
+                var usedSlots = Object.create(null);
+                for (var index = 0; index < points.length; index += 1) {
+                    if (points[index].moving) {
+                        usedSlots[points[index].slot] = true;
+                    }
+                }
+                for (var slot = 0; slot < maxAnimatedProgressPoints; slot += 1) {
+                    if (!usedSlots[slot]) {
+                        return slot;
+                    }
+                }
+                return -1;
+            }
+
+            function setSettledPath(point) {
+                point.moving = false;
+                point.slot = -1;
+                point.position = point.targetY;
+                point.path.setAttribute('d', 'M ' + point.x + ',' + point.targetY + ' V 22');
+            }
+
+            function createProgressPoint(record, index, animate, now) {
+                var targetY = 20 - index;
+                var slot = animate ? freeAnimationSlot(record.progressPoints) : -1;
+                var startY = slot >= 0 ? 1 + slot : targetY;
+                var shouldMove = slot >= 0 && targetY > startY;
+                var path = createPath(record.id, record.coordinate, startY, false);
+                var point = {
+                    path: path,
+                    x: record.coordinate,
+                    targetY: targetY,
+                    position: startY,
+                    lastRenderedAt: now,
+                    moving: shouldMove,
+                    slot: shouldMove ? slot : -1
+                };
+                if (!shouldMove) {
+                    setSettledPath(point);
+                }
+                indicatorLayer.appendChild(path);
+                record.progressPoints.push(point);
+            }
+
+            function updateProgress(record, targetCount, now) {
+                var points = record.progressPoints;
+                while (points.length > targetCount) {
+                    var removedPoint = points.pop();
+                    indicatorLayer.removeChild(removedPoint.path);
+                }
+
+                var firstAnimatedIndex = Math.max(0, targetCount - maxAnimatedProgressPoints);
+                for (var index = 0; index < Math.min(points.length, firstAnimatedIndex); index += 1) {
+                    if (points[index].moving) {
+                        setSettledPath(points[index]);
+                    }
+                }
+
+                for (var pointIndex = points.length; pointIndex < targetCount; pointIndex += 1) {
+                    createProgressPoint(record, pointIndex, pointIndex >= firstAnimatedIndex, now);
+                }
+            }
+
+            function removeRecord(record) {
+                indicatorLayer.removeChild(record.pulsePath);
+                for (var index = 0; index < record.progressPoints.length; index += 1) {
+                    indicatorLayer.removeChild(record.progressPoints[index].path);
+                }
+                freeCoordinates.push(record.coordinate);
+                delete records[record.key];
+            }
+
+            function syncItems(value) {
+                var items;
+                try {
+                    items = normalizeItems(value);
+                } catch (error) {
+                    sendError(error.message);
+                    return;
+                }
+
+                var now = performance.now();
+                var activeKeys = Object.create(null);
+                for (var index = 0; index < items.length; index += 1) {
+                    activeKeys[items[index].key] = true;
+                }
+                Object.keys(records).forEach(function (key) {
+                    if (!activeKeys[key]) {
+                        removeRecord(records[key]);
+                    }
+                });
+
+                for (var itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
+                    var item = items[itemIndex];
+                    var record = records[item.key] || createRecord(item, now);
+                    setRate(record, item.rate, now);
+                    updateProgress(record, item.progressCount, now);
+                }
+                scheduleAnimation();
+            }
+
+            function advanceOpacity(record, timestamp) {
+                if (record.nextOpacityStepTime === null || timestamp < record.nextOpacityStepTime) {
+                    return;
+                }
+                var stepInterval = 100000000 / record.rate;
+                var steps = Math.floor((timestamp - record.nextOpacityStepTime) / stepInterval) + 1;
+                record.opacityIndex = (record.opacityIndex + steps) % opacityCycle.length;
+                record.nextOpacityStepTime += steps * stepInterval;
+                record.pulsePath.setAttribute('stroke-opacity', String(opacityCycle[record.opacityIndex]));
+            }
+
+            function advanceProgress(timestamp) {
+                if (lastProgressFrameTime === null) {
+                    lastProgressFrameTime = timestamp;
+                    return;
+                }
+                if (timestamp - lastProgressFrameTime < progressFrameIntervalMilliseconds) {
+                    return;
+                }
+                lastProgressFrameTime = timestamp;
+                Object.keys(records).forEach(function (key) {
+                    var points = records[key].progressPoints;
+                    for (var index = 0; index < points.length; index += 1) {
+                        var point = points[index];
+                        if (!point.moving) {
+                            continue;
+                        }
+                        var elapsedSeconds = (timestamp - point.lastRenderedAt) / 1000;
+                        var nextPosition = Math.min(point.targetY,
+                            point.position + progressSpeedPixelsPerSecond * elapsedSeconds);
+                        if (nextPosition - point.position > 1 || nextPosition >= point.targetY) {
+                            point.position = nextPosition;
+                            point.lastRenderedAt = timestamp;
+                            if (point.position >= point.targetY) {
+                                setSettledPath(point);
+                            } else {
+                                point.path.setAttribute('d', 'M ' + point.x + ',' + Number(point.position.toFixed(2)) + ' v 0.001');
+                            }
+                        }
+                    }
+                });
+            }
+
+            function hasAnimationWork() {
+                var keys = Object.keys(records);
+                for (var keyIndex = 0; keyIndex < keys.length; keyIndex += 1) {
+                    var record = records[keys[keyIndex]];
+                    if (record.nextOpacityStepTime !== null) {
+                        return true;
+                    }
+                    for (var pointIndex = 0; pointIndex < record.progressPoints.length; pointIndex += 1) {
+                        if (record.progressPoints[pointIndex].moving) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+
+            function animate(timestamp) {
+                animationFrame = null;
+                Object.keys(records).forEach(function (key) {
+                    advanceOpacity(records[key], timestamp);
+                });
+                advanceProgress(timestamp);
+                if (hasAnimationWork()) {
+                    animationFrame = requestAnimationFrame(animate);
+                } else {
+                    lastProgressFrameTime = null;
+                }
+            }
+
+            function scheduleAnimation() {
+                if (animationFrame === null && hasAnimationWork()) {
+                    lastProgressFrameTime = null;
+                    animationFrame = requestAnimationFrame(animate);
+                }
+            }
+
+            window.pingDownloadAvatarSetup = function (htmlComponent) {
+                matlabHtmlComponent = htmlComponent;
+                htmlComponent.addEventListener('DataChanged', function () {
+                    syncItems(htmlComponent.Data);
+                });
+                if (typeof htmlComponent.Data !== 'undefined') {
+                    syncItems(htmlComponent.Data);
+                }
+                sendReady();
+            };
+
+            var lastPointerClick = 0;
+            function notifyClick() {
+                var now = Date.now();
+                if (now - lastPointerClick < 250) {
+                    return;
+                }
+                lastPointerClick = now;
+                sendEvent('downloadAvatarClick', { type: 'click' });
+            }
+
+            downloadButton.addEventListener('pointerdown', notifyClick);
+            downloadButton.addEventListener('mousedown', notifyClick);
+            downloadButton.addEventListener('click', notifyClick);
+
+            syncItems([]);
+        }());
+
+        function setup(htmlComponent) {
+            window.pingDownloadAvatarSetup(htmlComponent);
+        }
+    </script>
+</body>
+
+</html>
