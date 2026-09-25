@@ -2,7 +2,7 @@ classdef (Abstract) RFDataHub
 
     properties (Constant)
         %-----------------------------------------------------------------%
-        FLOATDIFF = 1e-5
+        FLOAT_TOLERANCE = 1e-5
     end
     
     methods (Static = true)
@@ -229,28 +229,30 @@ classdef (Abstract) RFDataHub
 
 
         %-----------------------------------------------------------------%
-        function stdDescription = Description(obj, idx, addAuxiliarInfo)
+        function description = Description(obj, idx, addAuxiliarInfo)
             arguments 
                 obj
                 idx
                 addAuxiliarInfo logical = true
             end
             mergeCount = obj.MergeCount(idx);
-            if mergeCount == "1"; mergeNote = '';
-            else;                 mergeNote = sprintf(', M=%s', mergeCount);
+            if mergeCount == "1"
+                mergeNote = '';
+            else
+                mergeNote = sprintf(', M=%s', mergeCount);
             end
 
-            stdDescription = sprintf('[%s] %s, %s, %s (Fistel = %d, Estação = %d%s), %s/%s', obj.Source(idx),       ...
-                                                                                         obj.Status(idx),       ...
-                                                                                         obj.StationClass(idx), ...
-                                                                                         obj.Name(idx),         ...
-                                                                                         obj.Fistel(idx),       ...
-                                                                                         obj.Station(idx),      ...
-                                                                                         mergeNote,             ...
-                                                                                         obj.Location(idx),     ...
-                                                                                         obj.State(idx));
+            description = sprintf('[%s] %s, %s, %s (Fistel = %d, Estação = %d%s), %s/%s', obj.Source(idx),       ...
+                                                                                          obj.Status(idx),       ...
+                                                                                          obj.StationClass(idx), ...
+                                                                                          obj.Name(idx),         ...
+                                                                                          obj.Fistel(idx),       ...
+                                                                                          obj.Station(idx),      ...
+                                                                                          mergeNote,             ...
+                                                                                          obj.Location(idx),     ...
+                                                                                          obj.State(idx));
             if addAuxiliarInfo
-                stdDescription = sprintf('%s @ (Latitude = %.6fº, Longitude = %.6fº)', stdDescription, obj.Latitude(idx), obj.Longitude(idx));
+                description = sprintf('%s @ (Latitude = %.6fº, Longitude = %.6fº)', description, obj.Latitude(idx), obj.Longitude(idx));
             end
         end
 
@@ -325,7 +327,6 @@ classdef (Abstract) RFDataHub
             );
         end
 
-
         %-----------------------------------------------------------------%
         function [logInfo, msgError] = queryLog(RFDataHubLog, logIndex)
             logInfo  = '';
@@ -345,7 +346,7 @@ classdef (Abstract) RFDataHub
                 nPoints
             end
             
-            FLOATDIFF = model.RFDataHub.FLOATDIFF;
+            FLOAT_TOLERANCE = model.RFDataHub.FLOAT_TOLERANCE;
 
             % Em 25/09/2024, identificados quatro formatos para o campo "AntennaPattern".
             % - Formato mais comum, com 25754 registros:
@@ -379,16 +380,41 @@ classdef (Abstract) RFDataHub
                 end
             end
     
-            if (abs(x0(1)-0) <= FLOATDIFF) && (abs(x0(end)-2*pi) > FLOATDIFF)
+            if (abs(x0(1)-0) <= FLOAT_TOLERANCE) && (abs(x0(end)-2*pi) > FLOAT_TOLERANCE)
                 x0(end+1) = 2*pi;
                 q0(end+1) = q0(1);
-            elseif (abs(x0(1)-0) > FLOATDIFF) && (abs(x0(end)-2*pi) <= FLOATDIFF)
+            elseif (abs(x0(1)-0) > FLOAT_TOLERANCE) && (abs(x0(end)-2*pi) <= FLOAT_TOLERANCE)
                 x0 = [0, x0];
                 q0 = [q0(end), q0];
             end
 
             x1 = linspace(0,2*pi,nPoints);
             q1 = interp1(x0, q0, x1, "spline", "extrap");
+        end
+
+        %-----------------------------------------------------------------%
+        function isMerged = isEmissionMerged(details)
+            % Identifica se registro é obtido a partir da mesclagem de várias
+            % estações.
+            isMerged = false;
+        
+            try
+                details = jsondecode(details);
+                if ~isfield(details, 'MergeCount')
+                    return
+                end
+    
+                mergeCount = details.MergeCount;
+                if ischar(mergeCount) || isstring(mergeCount)
+                    mergeCount = str2double(mergeCount);
+                end
+    
+                if isnumeric(mergeCount) && isscalar(mergeCount) && ~isnan(mergeCount) && mergeCount ~= 1
+                    isMerged = true;
+                    return
+                end
+            catch
+            end
         end
     end
 end

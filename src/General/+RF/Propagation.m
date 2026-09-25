@@ -2,14 +2,14 @@ classdef (Abstract) Propagation
 
     methods (Static = true)
         %-----------------------------------------------------------------%
-        function [pathLoss, distKm, Azimuth] = PathLoss(txSite, rxSite, propModel)
+        function [pathLoss, distKm, az] = PathLoss(txSite, rxSite, propModel)
             arguments
                 txSite
                 rxSite
                 propModel char {mustBeMember(propModel, {'Free space'})} = 'Free space'
             end
 
-             [distKm, Azimuth] = RF.Propagation.Distance(txSite, rxSite);
+             [distKm, az] = RF.Propagation.Distance(txSite, rxSite, 'km');
              switch propModel
                  case 'Free space'
                      pathLoss = fspl(distKm*1000, physconst('LightSpeed')/txSite.TransmitterFrequency);
@@ -19,39 +19,38 @@ classdef (Abstract) Propagation
         end
 
         %-----------------------------------------------------------------%
-        function [Rn, distM, d1, Azimuth] = FresnelZone(txSite, rxSite, nPoints)
+        function [rn, distMeters, d1, az] = FresnelZone(txSite, rxSite, numPoints)
             arguments
                 txSite
                 rxSite
-                nPoints = 256
+                numPoints = 256
             end
 
-            [distM, Azimuth] = RF.Propagation.Distance(txSite, rxSite, 'm');
-            d1 = linspace(0, distM, nPoints)';
-            d2 = distM-d1;
+            [distMeters, az] = RF.Propagation.Distance(txSite, rxSite, 'm');
+            d1 = linspace(0, distMeters, numPoints)';
+            d2 = distMeters-d1;
         
             lambda = physconst('LightSpeed')/txSite.TransmitterFrequency;
-            Rn = sqrt(((d1.*d2)/distM) * lambda);
+            rn = sqrt(((d1.*d2)/distMeters) * lambda);
         end
 
         %-----------------------------------------------------------------%
-        function [Distance, Azimuth] = Distance(txSite, rxSite, Unit)
+        function [dist, az] = Distance(txSite, rxSite, unit)
             arguments
                 txSite
                 rxSite
-                Unit char {mustBeMember(Unit, {'m', 'km'})} = 'km'
+                unit char {mustBeMember(unit, {'m', 'km'})} = 'km'
             end
             
-            [distArc, Azimuth] = distance(txSite.Latitude, txSite.Longitude, ...
-                                          rxSite.Latitude, rxSite.Longitude);
-            Distance = deg2km(distArc);
-            if strcmp(Unit, 'm')
-                Distance = Distance * 1000;
+            [distArc, az] = distance(txSite.Latitude, txSite.Longitude, rxSite.Latitude, rxSite.Longitude);
+            dist = deg2km(distArc);
+            if strcmp(unit, 'm')
+                dist = dist * 1000;
             end
         end
 
         %-----------------------------------------------------------------%
-        function [Status, idxFirstObstruction] = LOS(yTerrain, yLOS, yFresnel)
+        function [status, firstObstructionIdx] = LOS(yTerrain, yLOS, yFresnel)
             % Não usada a função do MATLAB LOS porque ela usa o modelo de elevação 
             % "USGS GMTED2010", que pode diferir daquele que é apresentado em tela, 
             % o que seria esquisito.
@@ -60,11 +59,11 @@ classdef (Abstract) Propagation
             totalObstructionPerBin = yTerrain > yFresnelUp;
 
             if any(totalObstructionPerBin)
-                Status = false;
-                idxFirstObstruction = find(totalObstructionPerBin, 1);
+                status = false;
+                firstObstructionIdx = find(totalObstructionPerBin, 1);
             else
-                Status = true;
-                idxFirstObstruction = [];
+                status = true;
+                firstObstructionIdx = [];
             end
         end
     end
