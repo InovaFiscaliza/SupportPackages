@@ -155,7 +155,7 @@ report = checkDownloadSilent;
 ```
 
 O harness adiciona `src/General` ao caminho automaticamente. Quando executado,
-ele cria `tests/ui/temp` e `tests/ui/target` e usa essas pastas como pastas
+ele cria `tests/downloads/temp` e `tests/downloads/target` e usa essas pastas como pastas
 temporária e de destino simuladas.
 
 ## Cenários manuais

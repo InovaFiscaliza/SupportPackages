@@ -135,6 +135,8 @@ Os itens abaixo tratam da evolução dos testes e das funcionalidades de downloa
 os detalhes arquiteturais do item 1 estão documentados em
 [`src/General/+download/README.md`](../../src/General/+download/README.md).
 
+3.5 **Create debug stop button svg**
+
 4. **Change the download avatar contract from aggregate count/speed to a
 	 per-download speed list.**
 	 - `TaskSnapshot` must expose both `MeasuredRate` and `EstimatedRate`, in
@@ -168,7 +170,7 @@ os detalhes arquiteturais do item 1 estão documentados em
 		 must retain enough failed or warning state for the component to display it
 		 before the row is removed or archived.
 	 - Keep the component independent of authentication and make its MATLAB to
-		 HTML data contract testable from `tests/ui`.
+		 HTML data contract testable from `tests/downloads`.
 	 - Verify desktop MATLAB and Web App Server rendering before integrating it
 		 into every row.
 
@@ -225,18 +227,6 @@ os detalhes arquiteturais do item 1 estão documentados em
 	 - Expose the estimate separately from measured transfer rate. Once real
 		 progress samples exist, measured rate takes precedence and the estimate
 		 must not be presented as measured data.
-	 - Demonstrate the behavior in `tests/ui` with deterministic history before
+	 - Demonstrate the behavior in `tests/downloads` with deterministic history before
 		 relying on live F5 transfers. The avatar consumes the same stable speed
 		 list contract regardless of whether a value is measured or estimated.
-
-### Decisions to confirm before implementation
-
-- Should `DestinationResolver` be a callback supplied to `DownloadPanel` or a
-	separate reusable class? In either case, it must return a normalized request
-	without making `DownloadManager` depend on UI APIs.
-- Should cancel always delete partial files, or should a deployment be able
-	to retain them for later recovery? The manager must expose one explicit
-	policy rather than infer behavior from the button label.
-- Is backward compatibility with released consumers of `ui.download*`
-	required? If so, retain deprecated forwarding wrappers with a documented
-	removal point; otherwise perform the namespace migration without wrappers.

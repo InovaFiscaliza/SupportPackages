@@ -13,7 +13,7 @@ projectFolder = fileparts(fileparts(mFilePath));
 addpath(fullfile(projectFolder, 'src', 'General'))
 addpath(mFilePath)
 
-% Create isolated runtime folders below tests/ui when the harness starts.
+% Create isolated runtime folders below tests/downloads when the harness starts.
 tempPath = fullfile(mFilePath, 'temp');
 targetPath = fullfile(mFilePath, 'target');
 ensureFolder(tempPath)

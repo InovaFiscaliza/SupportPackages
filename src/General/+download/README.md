@@ -158,9 +158,9 @@ protocol uses the `downloadAvatarReady` and `downloadAvatarClick` events and
 the cached state sent after the ready event. Compiled applications must include
 the asset explicitly rather than copying it into the consuming application.
 
-Validate the generic package with `tests/ui/checkDownloadHttp.m`, validate the
-manager contract without UI using `tests/ui/checkDownloadManager.m`, and
-validate the panel/factory boundary with `tests/ui/checkDownloadPanel.m`. Real
+Validate the generic package with `tests/downloads/checkDownloadHttp.m`, validate the
+manager contract without UI using `tests/downloads/checkDownloadManager.m`, and
+validate the panel/factory boundary with `tests/downloads/checkDownloadPanel.m`. Real
 F5 authentication in `F5BrowserTestApp.m` is a later integration check and is
 not required for provider-neutral tests.
 
