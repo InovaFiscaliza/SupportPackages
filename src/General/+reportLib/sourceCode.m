@@ -313,7 +313,12 @@ classdef (Abstract) sourceCode
                         else
                             outputFormat = 'dd/mm/yyyy HH:MM:SS';
                         end
-                        editedCellValue = strjoin(cellstr(datestr(cellValue, outputFormat)), '<br>');
+
+                        if ~isnat(cellValue)
+                            editedCellValue = strjoin(cellstr(datestr(cellValue, outputFormat)), '<br>');
+                        else
+                            editedCellValue = '';
+                        end
 
                     case 'cell'
                         for ii = 1:numel(cellValue)

@@ -74,6 +74,45 @@ classdef (Abstract) Hash
 
             hashHex = sprintf('%02x', hashBytes);
         end
+
+
+        % MD5
+        function hash = md5(input)
+
+            numBytes = numel(input);
+
+            try
+                dotNetModule = System.Security.Cryptography.MD5CryptoServiceProvider;
+                dotNetModule.Initialize();
+
+                offset = 1;
+                while offset <= numBytes
+                    last = min(offset + 2^20 - 1, numBytes);
+                    chunk = input(offset:last);
+
+                    if last < numBytes
+                        dotNetModule.TransformBlock(chunk, 0, numel(chunk), chunk, 0);
+                    else
+                        dotNetModule.TransformFinalBlock(chunk, 0, numel(chunk));
+                    end
+
+                    offset = last + 1;
+                end
+                hashBytes = sprintf('%02x', uint8(dotNetModule.Hash));
+
+
+            catch dotNetError
+                try
+                    md5 = java.security.MessageDigest.getInstance('MD5');
+                    md5.update(typecast(input, 'int8')); % reinterpreta os bits, sem saturar valores >= 128
+                    hashBytes = lower(sprintf('%02x', typecast(md5.digest(), 'uint8')));
+
+               catch javaError
+                    error('Hash:sha1:UnexpectedError', 'Both MD5 backends failed. DotNet error: "%s", Java error: "%s"', dotNetError.message, javaError.message);
+               end
+            end
+            hash = hashBytes;
+        end
     end
 
 end

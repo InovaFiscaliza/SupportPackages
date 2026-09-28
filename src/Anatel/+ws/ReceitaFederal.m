@@ -174,13 +174,136 @@ classdef ReceitaFederal < ws.WebServiceBase
                 case 'EFDI'
                     % Migrar Python>>MATLAB
                     % consultar_situacao_efdi(CNPJ, IE, file_id)
+                    CNPJ = '';
+                    IE = '';
+                    file_id = '';
+
+                    if numel(varargin) >= 3
+                        CNPJ = char(string(varargin{1}));
+                        IE = char(string(varargin{2}));
+                        file_id = char(string(varargin{3}));
+                    elseif ~isempty(varargin)
+                        sourceObj = varargin{1};
+
+                        if isstruct(sourceObj)
+                            if isfield(sourceObj, 'CompanyInfo') && ~isempty(sourceObj.CompanyInfo)
+                                companyInfo = sourceObj.CompanyInfo;
+                                if numel(companyInfo) > 1
+                                    companyInfo = companyInfo(end);
+                                end
+                                if isfield(companyInfo, 'CNPJ')
+                                    CNPJ = char(string(companyInfo.CNPJ));
+                                end
+                                if isfield(companyInfo, 'IE')
+                                    IE = char(string(companyInfo.IE));
+                                end
+                            end
+
+                            if isfield(sourceObj, 'Hash')
+                                file_id = char(string(sourceObj.Hash));
+                            end
+
+                        elseif isobject(sourceObj)
+                            if isprop(sourceObj, 'CompanyInfo') && ~isempty(sourceObj.CompanyInfo)
+                                companyInfo = sourceObj.CompanyInfo;
+                                if numel(companyInfo) > 1
+                                    companyInfo = companyInfo(end);
+                                end
+                                if isfield(companyInfo, 'CNPJ')
+                                    CNPJ = char(string(companyInfo.CNPJ));
+                                end
+                                if isfield(companyInfo, 'IE')
+                                    IE = char(string(companyInfo.IE));
+                                end
+                            end
+
+                            if isprop(sourceObj, 'Hash')
+                                file_id = char(string(sourceObj.Hash));
+                            end
+                        end
+                    end
+
+                    CNPJ = strtrim(CNPJ);
+                    IE = strtrim(IE);
+                    file_id = strtrim(file_id);
+
+                    if isempty(CNPJ)
+                        error('ReceitaFederal:EFDI:MissingCNPJ', 'Não foi possível obter o CNPJ para consulta EFDI.');
+                    end
+                    if isempty(IE)
+                        error('ReceitaFederal:EFDI:MissingIE', 'Não foi possível obter a IE para consulta EFDI.');
+                    end
+                    if isempty(file_id)
+                        error('ReceitaFederal:EFDI:MissingHash', 'Não foi possível obter a identificação do arquivo (hash) para consulta EFDI.');
+                    end
+
+                    header = { ...
+                        'Content-Type',  'text/xml; charset=utf-8', ...
+                        'Accept',        'application/soap+xml, application/dime, multipart/related, text/*', ...
+                        'User-Agent',    'Axis/1.4', ...
+                        'Host',          'www.sped.fazenda.gov.br', ...
+                        'Cache-Control', 'no-cache', ...
+                        'Pragma',        'no-cache', ...
+                        'SOAPAction',    'http://br.gov.serpro.spedfiscalserver/consulta/consultarSituacaoEscrituracao' ...
+                    };
+
+                    body = sprintf([...
+                        '<?xml version="1.0" encoding="UTF-8"?>' ...
+                        '<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">' ...
+                            '<soap12:Body>' ...
+                                '<consultarSituacaoEscrituracao xmlns="http://br.gov.serpro.spedfiscalserver/consulta">' ...
+                                    '<niContribuinte>%s</niContribuinte>' ...
+                                    '<ieContribuinte>%s</ieContribuinte>' ...
+                                    '<identificacaoArquivo>%s</identificacaoArquivo>' ...
+                                '</consultarSituacaoEscrituracao>' ...
+                            '</soap12:Body>' ...
+                        '</soap12:Envelope>'], CNPJ, IE, file_id);
+
+                    response = ws.WebServiceBase.request(endPoint, 'POST', header, body);
+
+                    switch response.StatusCode
+                        case 'OK'
+                            APIResponse = parseResponse(obj, response.Body.char, 'Situacao');
+
+                            if isempty(fieldnames(APIResponse))
+                                responseBody = response.Body.char;
+                                situacaoText = extractBetween(responseBody, '<Situacao>', '</Situacao>');
+                                if isempty(situacaoText)
+                                    situacaoText = extractBetween(responseBody, '<ns:Situacao>', '</ns:Situacao>');
+                                end
+
+                                if isempty(situacaoText)
+                                    APIResponse = struct( ...
+                                        'situacao', 'R', ...
+                                        'message', 'O campo ''situacao'' não foi encontrado.' ...
+                                    );
+                                else
+                                    situacaoText = strtrim(situacaoText(1));
+                                    expectedMessage = 'A escrituração visualizada encontra-se na base de dados do Sped e corresponde à última escrituração fiscal enviada.';
+                                    if strcmp(situacaoText, expectedMessage)
+                                        APIResponse = struct( ...
+                                            'situacao', 'A', ...
+                                            'message', 'A escrituração visualizada se encontra na base de dados do SPED e corresponde à última escrituração fiscal enviada.' ...
+                                        );
+                                    else
+                                        APIResponse = struct( ...
+                                            'situacao', 'R', ...
+                                            'message', ['A escrituração visualizada não se encontra na base de dados do SPED. Mensagem encontrada: ', situacaoText] ...
+                                        );
+                                    end
+                                end
+                            end
+
+                        otherwise
+                            error(response.StatusCode)
+                    end
             end
         end
 
         %-----------------------------------------------------------------%
-        function resultStruct = parseResponse(obj, xmlString, xmlTag)
+        function resultStruct = parseResponse(~, xmlString, xmlTag)
             arguments
-                obj
+                ~
                 xmlString
                 xmlTag (1,:) char = 'SituacaoEscrituracaoResult'
             end
