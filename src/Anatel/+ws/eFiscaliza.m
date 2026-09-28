@@ -177,8 +177,8 @@ classdef eFiscaliza < ws.WebServiceBase
 
     methods (Static = true)
         %-----------------------------------------------------------------%
-        function varargout = getCredentials(loginMode, executionMode, jsBackDoor, eventName, context)
-            varargout = {};
+        function varargout = getCredentials(loginMode, executionMode, jsBackDoor, eventName, context, varargin)
+            varargout = {[]};
 
             switch loginMode
                 case 'manual'
@@ -210,7 +210,13 @@ classdef eFiscaliza < ws.WebServiceBase
                     struct('id', 'login',    'label', 'Usuário: ', 'type', 'text');
                     struct('id', 'password', 'label', 'Senha: ',   'type', 'password')
                 ];
-                sendEventToHTMLSource(jsBackDoor, 'customForm', struct('UUID', eventName, 'Fields', dialogBox, 'Context', context));
+                
+                formData = struct('UUID', eventName, 'Fields', dialogBox, 'Context', context);
+                if ~isempty(varargin)
+                    formData.Varargin = varargin;
+                end
+
+                sendEventToHTMLSource(jsBackDoor, 'customForm', formData);
             end
         end
 
