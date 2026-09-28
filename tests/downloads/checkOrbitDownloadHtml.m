@@ -1,7 +1,7 @@
 function uiFigure = checkDownloadHtml
 % CHECKDOWNLOADHTML Open the isolated download-avatar UI harness.
 %
-% This harness tests only the reusable downloadAvatar.html uihtml asset. It
+% This harness tests only the reusable orbitDownloadAvatar.html uihtml asset. It
 % does not start downloads, authenticate, access the network, or instantiate
 % ui.DownloadPanel. Sliders and a state button send representative visual
 % state to the HTML component, while the callback indicator confirms that the
@@ -11,7 +11,7 @@ function uiFigure = checkDownloadHtml
 
 mFilePath = fileparts(mfilename('fullpath'));
 projectFolder = fileparts(fileparts(mFilePath));
-downloadHtmlPath = fullfile(projectFolder, 'src', 'General', '+ui', 'html', 'downloadAvatar.html');
+downloadHtmlPath = fullfile(projectFolder, 'src', 'General', '+ui', 'html', 'orbitDownloadAvatar.html');
 
 currentProgress = 0;
 currentLevel = 0;
@@ -20,7 +20,7 @@ currentBallCount = 1;
 currentSpeedRadiansPerSecond = 5.2;
 blinkTimer = [];
 
-uiFigure = uifigure('Name', 'Teste do downloadAvatar.html', ...
+uiFigure = uifigure('Name', 'Teste do orbitDownloadAvatar.html', ...
                     'Position', [100, 100, 520, 300]);
 uiFigure.CloseRequestFcn = @closeFigure;
 
@@ -186,7 +186,7 @@ sendProgress()
     end
 
     function sendProgress()
-        % SENDPROGRESS Send the current visual state to downloadAvatar.html.
+        % SENDPROGRESS Send the current visual state to orbitDownloadAvatar.html.
         currentLevel = progressToLevel(currentProgress);
         if ~isempty(downloadHTML) && isvalid(downloadHTML)
             downloadHTML.Data = struct('level', currentLevel, ...
