@@ -10,6 +10,7 @@ tempPath = tempname;
 targetPath = tempname;
 mkdir(tempPath)
 mkdir(targetPath)
+historyFile = fullfile(tempPath, 'download-history.json');
 cleanup = onCleanup(@() removeFolders(tempPath, targetPath)); %#ok<NASGU>
 
 setappdata(0, 'checkDownloadManager_completed', struct('TaskID', [], 'FinalPath', ''))
@@ -18,6 +19,8 @@ setappdata(0, 'checkDownloadManager_factoryCallCount', 0)
 setappdata(0, 'checkDownloadManager_lastRequest', struct())
 manager = download.DownloadManager(...
     'DownloaderFactory', @createDownloader, ...
+    'HistoryFile', historyFile, ...
+    'TempFolder', tempPath, ...
     'CollisionPolicy', 'askInRow');
 manager.CompletedFcn = @completedDownload;
 manager.ErrorFcn = @failedDownload;
@@ -31,6 +34,41 @@ completed = getappdata(0, 'checkDownloadManager_completed');
 assert(completed.TaskID == taskID)
 assert(strcmp(completed.FinalPath, fullfile(targetPath, 'sample.bin')))
 assert(isempty(manager.getSnapshot(taskID)))
+history = manager.getHistory();
+assert(numel(history) == 1)
+completedEntry = history(1);
+assert(numel(completedEntry) == 1)
+assert(strcmp(completedEntry.LifecycleState, 'completed'))
+assert(completedEntry.isAvailable)
+assert(numel(completedEntry.AttemptedTimestamps) == 1)
+assert(startsWith(completedEntry.StartedAt, '20'))
+assert(endsWith(completedEntry.StartedAt, 'Z'))
+delete(manager)
+manager = download.DownloadManager(...
+    'DownloaderFactory', @createDownloader, ...
+    'HistoryFile', historyFile, ...
+    'TempFolder', tempPath, ...
+    'CollisionPolicy', 'askInRow');
+history = manager.getHistory();
+assert(numel(history) == 1)
+assert(strcmp(history(1).LogicalFileID, completedEntry.LogicalFileID))
+assert(history(1).isAvailable)
+delete(fullfile(targetPath, 'sample.bin'))
+delete(manager)
+manager = download.DownloadManager(...
+    'DownloaderFactory', @createDownloader, ...
+    'HistoryFile', historyFile, ...
+    'TempFolder', tempPath, ...
+    'CollisionPolicy', 'askInRow');
+history = manager.getHistory();
+assert(~history(1).isAvailable)
+retryID = manager.addDownload(request);
+history = manager.getHistory();
+assert(numel(history) == 2)
+assert(strcmp(history(2).LogicalFileID, completedEntry.LogicalFileID))
+assert(~strcmp(history(2).EntryID, completedEntry.EntryID))
+assert(numel(history(2).AttemptedTimestamps) == 2)
+assert(isempty(manager.getSnapshot(retryID)))
 
 existingPath = fullfile(targetPath, 'conflict.bin');
 fileID = fopen(existingPath, 'wb');
@@ -42,14 +80,47 @@ conflictID = manager.addDownload(conflictRequest);
 snapshot = manager.getSnapshot(conflictID);
 assert(strcmp(snapshot.LifecycleState, 'awaitingConflictDecision'))
 assert(strcmp(snapshot.ConflictType, 'target'))
-manager.resolveConflict(conflictID, 'uniqueName')
+manager.resolveConflict(conflictID, 'restart')
 completed = getappdata(0, 'checkDownloadManager_completed');
-assert(strcmp(completed.FinalPath, fullfile(targetPath, 'conflict (1).bin')))
+assert(strcmp(completed.FinalPath, fullfile(targetPath, 'conflict.bin')))
 lastRequest = getappdata(0, 'checkDownloadManager_lastRequest');
-assert(strcmp(lastRequest.CollisionAction, 'uniqueName'))
+assert(strcmp(lastRequest.CollisionAction, 'overwrite'))
+assert(isfile(fullfile(targetPath, 'conflict.bin')))
+assert(dir(fullfile(targetPath, 'conflict.bin')).bytes == 20)
 assert(isempty(manager.getSnapshot(conflictID)))
 errored = getappdata(0, 'checkDownloadManager_failed');
 assert(~errored)
+
+keepTargetPath = fullfile(targetPath, 'keep-existing.bin');
+writeFile(keepTargetPath, uint8([1, 2, 3, 4, 5, 6, 7]))
+keepRequest = request;
+keepRequest.FileName = 'keep-existing.bin';
+factoryCallCount = getappdata(0, 'checkDownloadManager_factoryCallCount');
+keepID = manager.addDownload(keepRequest);
+keepSnapshot = manager.getSnapshot(keepID);
+assert(strcmp(keepSnapshot.LifecycleState, 'awaitingConflictDecision'))
+manager.resolveConflict(keepID, 'keep')
+assert(getappdata(0, 'checkDownloadManager_factoryCallCount') == factoryCallCount)
+history = manager.getHistory();
+keepEntry = history(strcmp({history.TargetPath}, keepTargetPath));
+assert(numel(keepEntry) == 1)
+assert(strcmp(keepEntry.LifecycleState, 'completed'))
+assert(keepEntry.isAvailable)
+assert(keepEntry.DownloadedBytes == 7)
+assert(numel(keepEntry.AttemptedTimestamps) == 1)
+assert(manager.deleteHistoryEntry(keepEntry.EntryID))
+assert(isfile(keepTargetPath))
+
+history = manager.getHistory();
+conflictEntry = history(strcmp({history.TargetPath}, fullfile(targetPath, 'conflict.bin')));
+assert(numel(conflictEntry) == 1)
+restartedID = manager.restartHistoryEntry(conflictEntry.EntryID);
+assert(isempty(manager.getSnapshot(restartedID)))
+history = manager.getHistory();
+conflictEntries = history(strcmp({history.LogicalFileID}, conflictEntry.LogicalFileID));
+assert(numel(conflictEntries) == 2)
+assert(~strcmp(conflictEntries(1).EntryID, conflictEntries(2).EntryID))
+assert(numel(conflictEntries(2).AttemptedTimestamps) == 2)
 
 overwritePath = fullfile(targetPath, 'overwrite.bin');
 writeFile(overwritePath, uint8(1))
@@ -119,6 +190,8 @@ assert(getappdata(0, 'checkDownloadManager_factoryCallCount') == factoryCallCoun
 
 rejectManager = download.DownloadManager(...
     'DownloaderFactory', @createDownloader, ...
+    'HistoryFile', fullfile(tempPath, 'reject-history.json'), ...
+    'TempFolder', tempPath, ...
     'CollisionPolicy', 'reject');
 rejectID = rejectManager.addDownload(conflictRequest);
 assert(isempty(rejectManager.getSnapshot(rejectID)))
@@ -127,7 +200,9 @@ delete(rejectManager)
 
 setappdata(0, 'DownloadManagerFakeDownloaderAutoComplete', false)
 setappdata(0, 'checkDownloadManager_reordered', false)
-holdManager = download.DownloadManager('DownloaderFactory', @createDownloader);
+holdManager = download.DownloadManager('DownloaderFactory', @createDownloader, ...
+                                       'HistoryFile', fullfile(tempPath, 'hold-history.json'), ...
+                                       'TempFolder', tempPath);
 holdManager.TaskReorderedFcn = @reorderedDownload;
 holdRequest = request;
 holdRequest.FileName = 'held.bin';
@@ -137,16 +212,110 @@ duplicateID = holdManager.addDownload(holdRequest);
 assert(duplicateID == holdID)
 assert(getappdata(0, 'checkDownloadManager_reordered'))
 assert(strcmp(heldSnapshot.LifecycleState, 'active'))
+assert(isfield(heldSnapshot, 'HistoryEntry'))
+assert(strcmp(heldSnapshot.HistoryEntry.LogicalFileID, ...
+              heldSnapshot.LogicalFileID))
 holdManager.pause(holdID)
 pausedSnapshot = holdManager.getSnapshot(holdID);
 assert(strcmp(pausedSnapshot.LifecycleState, 'paused'))
 assert(isfile(pausedSnapshot.PartialPath))
+holdManager.resume(holdID)
+history = holdManager.getHistory();
+assert(strcmp(history(end).LifecycleState, 'active'))
+holdManager.pause(holdID)
+history = holdManager.getHistory();
+assert(strcmp(history(end).LifecycleState, 'paused'))
+assert(numel(history(end).AttemptedTimestamps) == 2)
 holdManager.cancel(holdID)
+history = holdManager.getHistory();
+assert(isempty(history))
 assert(isempty(holdManager.getSnapshot(holdID)))
 assert(~isfile(pausedSnapshot.PartialPath))
 delete(holdManager)
 rmappdata(0, 'DownloadManagerFakeDownloaderAutoComplete')
 rmappdata(0, 'checkDownloadManager_reordered')
+
+recoveryTempPath = tempname;
+recoveryTargetPath = tempname;
+mkdir(recoveryTempPath)
+mkdir(recoveryTargetPath)
+recoveryCleanup = onCleanup(@() removeFolders(recoveryTempPath, ...
+                                              recoveryTargetPath)); %#ok<NASGU>
+setappdata(0, 'DownloadManagerFakeDownloaderAutoComplete', false)
+recoveryHistoryFile = fullfile(recoveryTempPath, 'history.json');
+recoveryManager = download.DownloadManager(...
+    'DownloaderFactory', @createDownloader, ...
+    'HistoryFile', recoveryHistoryFile, ...
+    'TempFolder', recoveryTempPath);
+recoveryRequest = struct('URL', 'https://example.test/recovery.bin', ...
+                         'TempFolder', recoveryTempPath, ...
+                         'TargetFolder', recoveryTargetPath, ...
+                         'FileName', 'recovery.bin');
+recoveryTaskID = recoveryManager.addDownload(recoveryRequest);
+recoverySnapshot = recoveryManager.getSnapshot(recoveryTaskID);
+writeFile(recoverySnapshot.PartialPath, uint8([1, 2, 3, 4, 5]))
+delete(recoveryManager)
+recoveryHistoryStore = download.DownloadHistoryStore(recoveryHistoryFile);
+recoveryHistory = recoveryHistoryStore.getEntries();
+duplicateInterruptedEntry = recoveryHistory(1);
+duplicateInterruptedEntry.EntryID = 'interrupted-retry';
+duplicateInterruptedEntry.TaskID = 'deadbeef';
+duplicateInterruptedEntry.TemporaryPath = fullfile(recoveryTempPath, ...
+                                                  'deadbeef_recovery.bin.part');
+duplicateInterruptedEntry.ChunkPath = [duplicateInterruptedEntry.TemporaryPath, '.chunk'];
+duplicateInterruptedEntry.DownloadedBytes = 8;
+duplicateInterruptedEntry.UpdatedAt = char(datetime('now', 'TimeZone', 'UTC', ...
+    'Format', "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"));
+writeFile(duplicateInterruptedEntry.TemporaryPath, uint8(1:8))
+recoveryHistoryStore.upsert(duplicateInterruptedEntry)
+recoveredManager = download.DownloadManager(...
+    'DownloaderFactory', @createDownloader, ...
+    'HistoryFile', recoveryHistoryFile, ...
+    'TempFolder', recoveryTempPath);
+recoveredHistory = recoveredManager.getHistory();
+assert(numel(recoveredHistory) == 2)
+assert(all(strcmp({recoveredHistory.LifecycleState}, 'interrupted')))
+assert(all(arrayfun(@(entry) isfile(entry.TemporaryPath), recoveredHistory)))
+factoryCallCount = getappdata(0, 'checkDownloadManager_factoryCallCount');
+restoredTaskIDs = recoveredManager.restoreInterruptedDownloads();
+assert(numel(restoredTaskIDs) == 1)
+restoredSnapshot = recoveredManager.getSnapshot(restoredTaskIDs(1));
+assert(strcmp(restoredSnapshot.LifecycleState, 'awaitingConflictDecision'))
+assert(strcmp(restoredSnapshot.ConflictType, 'partial'))
+assert(restoredSnapshot.ReceivedBytes == 8)
+assert(strcmp(restoredSnapshot.PartialPath, duplicateInterruptedEntry.TemporaryPath))
+assert(getappdata(0, 'checkDownloadManager_factoryCallCount') == factoryCallCount)
+restoredHistory = recoveredManager.getHistory();
+assert(numel(restoredHistory) == 3)
+assert(sum(strcmp({restoredHistory.LifecycleState}, 'awaitingConflictDecision')) == 1)
+delete(recoveredManager)
+rmappdata(0, 'DownloadManagerFakeDownloaderAutoComplete')
+
+corruptTempPath = tempname;
+mkdir(corruptTempPath)
+corruptCleanup = onCleanup(@() removeFolders(corruptTempPath)); %#ok<NASGU>
+corruptHistoryFile = fullfile(corruptTempPath, 'history.json');
+fileID = fopen(corruptHistoryFile, 'w');
+fwrite(fileID, '{invalid json', 'char');
+fclose(fileID);
+orphanPath = fullfile(corruptTempPath, 'deadbeef_orphan.bin.part');
+writeFile(orphanPath, uint8([1, 2, 3]))
+legacyOrphanPath = fullfile(corruptTempPath, 'legacy-orphan.part');
+writeFile(legacyOrphanPath, uint8([4, 5]))
+unrelatedPath = fullfile(corruptTempPath, 'keep.bin');
+writeFile(unrelatedPath, uint8(9))
+corruptManager = download.DownloadManager(...
+    'DownloaderFactory', @createDownloader, ...
+    'HistoryFile', corruptHistoryFile, ...
+    'TempFolder', corruptTempPath);
+assert(~isfile(orphanPath))
+assert(~isfile(legacyOrphanPath))
+assert(isfile(unrelatedPath))
+assert(isempty(corruptManager.getHistory()))
+assert(isfile(corruptHistoryFile))
+emptyHistoryDocument = jsondecode(fileread(corruptHistoryFile));
+assert(isempty(emptyHistoryDocument.Entries))
+delete(corruptManager)
 
 report = struct('CompletedTaskID', completed.TaskID, ...
                 'ConflictTarget', completed.FinalPath, ...

@@ -233,12 +233,8 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             app.refreshSilentDownloadModeImage()
         end
 
-        function policy = downloadCollisionPolicy(app)
-            if strcmp(app.DownloadExecutionMode, 'webApp')
-                policy = 'askInRow';
-            else
-                policy = 'overwrite';
-            end
+        function policy = downloadCollisionPolicy(~)
+            policy = 'askInRow';
         end
 
         function onProfileAvatarEvent(app, event)

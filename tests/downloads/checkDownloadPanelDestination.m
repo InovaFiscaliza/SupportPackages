@@ -28,6 +28,20 @@ webPanel = ui.DownloadPanel(layout, ...
     'executionMode', 'webApp', ...
     'tempPath', tempPath, ...
     'targetPath', webTargetPath);
+policyRejected = false;
+try
+    webPanel.CollisionPolicy = 'uniqueName';
+catch
+    policyRejected = true;
+end
+assert(policyRejected)
+policyRejected = false;
+try
+    webPanel.CollisionPolicy = 'overwrite';
+catch
+    policyRejected = true;
+end
+assert(policyRejected)
 webTaskID = webPanel.addDownload('https://example.test/download/web.bin');
 webSnapshot = webPanel.Manager.getSnapshot(webTaskID);
 assert(~resolverCalled)
@@ -69,24 +83,34 @@ delete(desktopPanel)
 
 createFile(fullfile(desktopTargetPath, 'overwrite.bin'))
 resolverFileName = 'overwrite.bin';
+resolverFileName = 'overwrite.bin';
 factoryCalled = false;
-overwritePanel = ui.DownloadPanel(layout, ...
+keepPanel = ui.DownloadPanel(layout, ...
     'DownloaderFactory', @createDownloader, ...
     'DestinationResolver', @resolveDesktopDestination, ...
     'executionMode', 'desktopStandaloneApp', ...
-    'CollisionPolicy', 'overwrite', ...
     'tempPath', tempPath, ...
     'targetPath', webTargetPath);
-overwriteTaskID = overwritePanel.addDownload('https://example.test/download/overwrite.bin');
-assert(factoryCalled)
-assert(strcmp(factoryRequest.CollisionAction, 'overwrite'))
+keepTaskID = keepPanel.addDownload('https://example.test/download/overwrite.bin');
+keepSnapshot = keepPanel.Manager.getSnapshot(keepTaskID);
+assert(strcmp(keepSnapshot.LifecycleState, 'awaitingConflictDecision'))
+assert(~factoryCalled)
+keepPanel.Manager.resolveConflict(keepTaskID, 'keep')
+assert(~factoryCalled)
 assert(isfile(fullfile(desktopTargetPath, 'overwrite.bin')))
-assert(dir(fullfile(desktopTargetPath, 'overwrite.bin')).bytes == 20)
-assert(isempty(overwritePanel.Manager.getSnapshot(overwriteTaskID)))
+assert(dir(fullfile(desktopTargetPath, 'overwrite.bin')).bytes == 1)
+keptHistory = keepPanel.Manager.getHistory();
+keptEntry = keptHistory(strcmp({keptHistory.TargetPath}, ...
+                               fullfile(desktopTargetPath, 'overwrite.bin')));
+assert(numel(keptEntry) == 1)
+assert(strcmp(keptEntry.LifecycleState, 'completed'))
+assert(keptEntry.isAvailable)
+assert(keptEntry.DownloadedBytes == 1)
+assert(isempty(keepPanel.Manager.getSnapshot(keepTaskID)))
 downloadContainers = findall(uiFigure, 'Type', 'uipanel', 'BorderType', 'line');
-assert(isempty(downloadContainers) || ...
-    all(strcmp({downloadContainers.Visible}, 'off')))
-delete(overwritePanel)
+assert(numel(downloadContainers) == 1)
+assert(strcmp(downloadContainers.Visible, 'on'))
+delete(keepPanel)
 
 resolverFileName = 'renamed';
 factoryCalled = false;
@@ -108,7 +132,7 @@ delete(renamedPanel)
 report = struct('WebTaskID', webTaskID, ...
                 'PartialTaskID', partialTaskID, ...
                 'DesktopTaskID', desktopTaskID, ...
-                'OverwriteTaskID', overwriteTaskID, ...
+                'KeepTaskID', keepTaskID, ...
                 'RenamedTaskID', renamedTaskID, ...
                 'DesktopResolverCalled', resolverCalled);
 

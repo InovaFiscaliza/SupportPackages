@@ -39,23 +39,38 @@ pausedSnapshot = panel.Manager.getSnapshot(taskID);
 assert(strcmp(pausedSnapshot.LifecycleState, 'paused'))
 assert(isnan(pausedSnapshot.TransferRate))
 
+partialPath = fullfile(tempPath, 'seed_interrupted.bin.part');
+fileID = fopen(partialPath, 'wb');
+assert(fileID ~= -1)
+fwrite(fileID, uint8([1, 2, 3, 4, 5]))
+fclose(fileID)
+pendingTaskID = panel.addDownload( ...
+    'https://example.test/download/interrupted.bin');
+pendingSnapshot = panel.Manager.getSnapshot(pendingTaskID);
+assert(strcmp(pendingSnapshot.LifecycleState, 'awaitingConflictDecision'))
+assert(strcmp(pendingSnapshot.ConflictType, 'partial'))
+
 avatarData = panel.AvatarHTML.Data;
 for attempt = 1:20
     drawnow
-    if isstruct(avatarData) && numel(avatarData) == 1 && ...
-            isfield(avatarData, 'id') && avatarData.id == taskID
+    if isstruct(avatarData) && numel(avatarData) == 2 && ...
+            all(ismember([taskID, pendingTaskID], [avatarData.id]))
         break
     end
     pause(0.05)
     avatarData = panel.AvatarHTML.Data;
 end
-assert(isstruct(avatarData) && numel(avatarData) == 1)
-assert(avatarData.id == taskID)
-assert(avatarData.rate == 0)
+assert(isstruct(avatarData) && numel(avatarData) == 2)
+pausedAvatar = avatarData([avatarData.id] == taskID);
+pendingAvatar = avatarData([avatarData.id] == pendingTaskID);
+assert(numel(pausedAvatar) == 1 && pausedAvatar.rate == 0)
+assert(numel(pendingAvatar) == 1 && pendingAvatar.rate == 0)
 
 report = struct('TaskID', taskID, ...
+                'PendingTaskID', pendingTaskID, ...
                 'LifecycleState', pausedSnapshot.LifecycleState, ...
-                'AvatarRate', avatarData.rate);
+                'PausedAvatarRate', pausedAvatar.rate, ...
+                'PendingAvatarRate', pendingAvatar.rate);
 
     function downloader = createDownloader(request)
         downloader = DownloadManagerFakeDownloader(request);

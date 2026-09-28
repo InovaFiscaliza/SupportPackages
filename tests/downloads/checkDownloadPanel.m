@@ -18,20 +18,31 @@ tempPath = fullfile(mFilePath, 'temp');
 targetPath = fullfile(mFilePath, 'target');
 ensureFolder(tempPath)
 ensureFolder(targetPath)
+existingTargetPath = fullfile(targetPath, 'sample-existing.bin');
+if ~isfile(existingTargetPath)
+    writeHarnessFile(existingTargetPath, uint8([1, 2, 3, 4]))
+end
 
-sampleNames = {'sample1.bin', 'sample2.bin', 'sample3.bin', 'sample4.bin'};
+sampleNames = {'sample1.bin', 'sample2.bin', 'sample3.bin', 'sample4.bin', ...
+               'sample-failed.bin', 'sample-existing.bin', ...
+               'sample-partial.bin', 'sample-cancel.bin'};
 sampleLabels = sampleNames;
 sampleLabels{4} = 'sample4.bin [silent]';
+sampleLabels{5} = 'sample-failed.bin [failure]';
+sampleLabels{6} = 'sample-existing.bin [keep/restart]';
+sampleLabels{7} = 'sample-partial.bin [continue/restart]';
+sampleLabels{8} = 'sample-cancel.bin [cancel]';
 executionLog = {'Ready. Click a sample link to start a download.'};
+seedPanelHistory(tempPath, targetPath)
 
 uiFigure = uifigure('Name', 'Teste do ui.DownloadPanel', ...
-                    'Position', [100, 100, 720, 420]);
+                    'Position', [100, 100, 720, 560]);
 uiFigure.CloseRequestFcn = @closeFigure;
-mainLayout = uigridlayout(uiFigure, [5, 2]);
+mainLayout = uigridlayout(uiFigure, [numel(sampleNames) + 1, 2]);
 mainLayout.Padding = [16, 16, 16, 16];
 mainLayout.RowSpacing = 8;
 mainLayout.ColumnSpacing = 16;
-mainLayout.RowHeight = {'1x', '1x', '1x', '1x', '2x'};
+mainLayout.RowHeight = [repmat({'1x'}, 1, numel(sampleNames)), {'2x'}];
 mainLayout.ColumnWidth = {'1x', 24};
 
 for sampleIndex = 1:numel(sampleNames)
@@ -47,7 +58,7 @@ statusLabel = uilabel(mainLayout, ...
                       'VerticalAlignment', 'top', ...
                       'WordWrap', 'on', ...
                       'BackgroundColor', uiFigure.Color);
-statusLabel.Layout.Row = 5;
+statusLabel.Layout.Row = numel(sampleNames) + 1;
 statusLabel.Layout.Column = 1;
 
 panel = ui.DownloadPanel(mainLayout, ...
@@ -56,6 +67,20 @@ panel = ui.DownloadPanel(mainLayout, ...
                          'tempPath', tempPath, ...
                          'targetPath', targetPath, ...
                          'CollisionPolicy', 'askInRow');
+            startupHistory = panel.Manager.getHistory();
+            interruptedRows = find(strcmp({startupHistory.LogicalFileID}, ...
+                               'history-interrupted.bin') & ...
+                           strcmp({startupHistory.LifecycleState}, ...
+                               'awaitingConflictDecision'));
+            assert(numel(interruptedRows) == 1)
+            assert(isfile(startupHistory(interruptedRows(end)).TemporaryPath))
+            assert(startupHistory(interruptedRows(end)).DownloadedBytes == 5)
+            interruptedAttempts = find(strcmp({startupHistory.LogicalFileID}, ...
+                                  'history-interrupted.bin'));
+assert(numel(interruptedAttempts) >= 2)
+            partialConflictLabels = findall(uiFigure, 'Type', 'uilabel', ...
+                                'Text', 'Partial download found for history-interrupted.bin');
+            assert(numel(partialConflictLabels) == 1)
 panel.AvatarHTML.Layout.Row = 1;
 panel.AvatarHTML.Layout.Column = 2;
 drawnow
@@ -72,7 +97,7 @@ end
 trashImage = uiimage(mainLayout, ...
                      'ImageSource', fullfile(projectFolder, 'src', 'General', 'icons', 'download-trash.svg'), ...
                      'ImageClickedFcn', @clearDownloadFolders);
-trashImage.Layout.Row = 5;
+trashImage.Layout.Row = numel(sampleNames) + 1;
 trashImage.Layout.Column = 2;
 
 panel.CompletedFcn = @completed;
@@ -80,6 +105,9 @@ panel.ErrorFcn = @failed;
 
     function downloader = createDownloader(request)
         % CREATEDOWNLOADER Build the deterministic sample downloader.
+        if strcmp(request.FileName, 'sample-failed.bin')
+            request.SimulateFailure = true;
+        end
         downloader = DownloadPanelFakeDownloader(request);
     end
 
@@ -94,6 +122,10 @@ panel.ErrorFcn = @failed;
             displayMode = 'normal';
             if sampleIndex == 4
                 displayMode = 'silent';
+            end
+            if sampleIndex == 7
+                writeHarnessFile(fullfile(tempPath, ...
+                                          'seed_sample-partial.bin.part'), uint8([1, 2, 3, 4]));
             end
             panel.addDownload(sampleURL, 'DisplayMode', displayMode);
             appendLog(sprintf('Started %s.', sampleLabel));
@@ -156,6 +188,99 @@ if ~isfolder(folderPath)
         error('checkDownloadPanel:folderUnavailable', '%s', message)
     end
 end
+end
+
+function seedPanelHistory(tempPath, targetPath)
+historyPath = fullfile(tempPath, 'download-history.json');
+store = download.DownloadHistoryStore(historyPath);
+nowText = char(datetime('now', 'TimeZone', 'UTC', ...
+                        'Format', "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"));
+existingTargetPath = fullfile(targetPath, 'sample-existing.bin');
+if ~isfile(existingTargetPath)
+    writeHarnessFile(existingTargetPath, uint8([1, 2, 3, 4]))
+end
+if ~isempty(store.getEntries())
+    entries = store.getEntries();
+    interruptedPath = fullfile(targetPath, 'history-interrupted.bin');
+    interruptedEntryIndices = find(strcmp({entries.LogicalFileID}, ...
+                                           'history-interrupted.bin'));
+    if isempty(interruptedEntryIndices)
+        interruptedEntry = historyEntry('harness-interrupted', ...
+                                        'history-interrupted.bin', ...
+                                        interruptedPath, tempPath, ...
+                                        'interrupted', 5, false, {}, nowText);
+        writeHarnessFile(interruptedEntry.TemporaryPath, uint8([1, 2, 3, 4, 5]))
+        store.upsert(interruptedEntry)
+    else
+        interruptedEntry = entries(interruptedEntryIndices(end));
+        if ~isfile(interruptedEntry.TemporaryPath)
+            writeHarnessFile(interruptedEntry.TemporaryPath, uint8([1, 2, 3, 4, 5]))
+        end
+    end
+    return
+end
+
+completedPath = fullfile(targetPath, 'history-completed.bin');
+writeHarnessFile(completedPath, uint8(zeros(1, 128, 'uint8')))
+entries = [historyEntry('harness-completed', 'history-completed.bin', ...
+                        completedPath, tempPath, 'completed', 128, true, {}, nowText), ...
+           historyEntry('harness-failed', 'history-failed.bin', ...
+                        fullfile(targetPath, 'history-failed.bin'), tempPath, ...
+                        'failed', 64, false, {'Simulated test failure'}, nowText), ...
+           historyEntry('harness-unavailable', 'history-unavailable.bin', ...
+                        fullfile(targetPath, 'history-unavailable.bin'), tempPath, ...
+                        'completed', 0, false, {}, nowText)];
+olderInterruptedEntry = historyEntry('harness-interrupted-old', ...
+                                     'history-interrupted.bin', ...
+                                     fullfile(targetPath, 'history-interrupted.bin'), ...
+                                     tempPath, 'interrupted', 3, false, {}, nowText);
+latestInterruptedEntry = historyEntry('harness-interrupted', ...
+                                      'history-interrupted.bin', ...
+                                      fullfile(targetPath, 'history-interrupted.bin'), ...
+                                      tempPath, 'interrupted', 5, false, {}, nowText);
+writeHarnessFile(olderInterruptedEntry.TemporaryPath, uint8([1, 2, 3]))
+writeHarnessFile(latestInterruptedEntry.TemporaryPath, uint8([1, 2, 3, 4, 5]))
+entries = [entries, olderInterruptedEntry, latestInterruptedEntry];
+for entryIndex = 1:numel(entries)
+    store.upsert(entries(entryIndex))
+end
+end
+
+function entry = historyEntry(entryID, logicalFileID, targetPath, tempPath, ...
+                              lifecycleState, downloadedBytes, isAvailable, ...
+                              errorMessages, timestamp)
+taskID = regexprep(entryID, '[^a-zA-Z0-9]', '');
+taskID = taskID(max(1, numel(taskID) - 7):end);
+entry = struct('EntryID', entryID, ...
+                'LogicalFileID', logicalFileID, ...
+                'TaskID', taskID, ...
+                'SourceURL', ['https://example.test/', logicalFileID], ...
+                'TargetPath', targetPath, ...
+                'TemporaryPath', fullfile(tempPath, [taskID, '_', logicalFileID, '.part']), ...
+                'ChunkPath', fullfile(tempPath, [taskID, '_', logicalFileID, '.part.chunk']), ...
+                'BackupPath', '', ...
+                'TempFolder', tempPath, ...
+                'StartedAt', timestamp, ...
+                'CompletedAt', timestamp, ...
+                'UpdatedAt', timestamp, ...
+                'LifecycleState', lifecycleState, ...
+                'DownloadedBytes', downloadedBytes, ...
+                'MeasuredSpeed', [], ...
+                'RateSource', 'none', ...
+                'ErrorMessages', {errorMessages}, ...
+                'AttemptedTimestamps', {{timestamp}}, ...
+                'isAvailable', isAvailable);
+end
+
+function writeHarnessFile(filePath, bytes)
+folderPath = fileparts(filePath);
+if ~isfolder(folderPath)
+    mkdir(folderPath)
+end
+fileID = fopen(filePath, 'wb');
+assert(fileID ~= -1)
+cleanup = onCleanup(@() fclose(fileID)); %#ok<NASGU>
+fwrite(fileID, bytes, 'uint8');
 end
 
 

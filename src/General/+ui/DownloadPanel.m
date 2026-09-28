@@ -33,6 +33,7 @@ classdef DownloadPanel < handle
         DownloaderFactory
         DestinationResolver
         Manager
+        HistoryFile (1,:) char = ''
     end
 
     properties (Access = private)
@@ -45,6 +46,8 @@ classdef DownloadPanel < handle
         DownloadContent
         DownloadStack
         DownloadTasks = {}
+        HistoryTasks = {}
+        NextHistoryRowID (1,1) double = 0
         DownloadOrder = []
         DownloadFileNames cell = cell(0, 2)
         AvatarHTMLReady (1,1) logical = false
@@ -70,6 +73,7 @@ classdef DownloadPanel < handle
                 options.executionMode (1,:) char = 'MATLABEnvironment'
                 options.tempPath (1,:) char = tempdir
                 options.targetPath (1,:) char = ''
+                options.historyFile (1,:) char = ''
                 options.CollisionPolicy (1,:) char = 'askInRow'
                 options.PartialConflictPolicy (1,:) char = 'askInRow'
                 options.DestinationResolver = []
@@ -93,13 +97,20 @@ classdef DownloadPanel < handle
             obj.executionMode = options.executionMode;
             obj.TempPath = char(options.tempPath);
             obj.TargetPath = char(options.targetPath);
+            obj.HistoryFile = char(options.historyFile);
+            if isempty(obj.HistoryFile)
+                obj.HistoryFile = fullfile(obj.TempPath, 'download-history.json');
+            end
             obj.CollisionPolicy = options.CollisionPolicy;
             obj.PartialConflictPolicy = options.PartialConflictPolicy;
             obj.Manager = download.DownloadManager(...
                 'DownloaderFactory', obj.DownloaderFactory, ...
+                'HistoryFile', obj.HistoryFile, ...
+                'TempFolder', obj.TempPath, ...
                 'CollisionPolicy', obj.CollisionPolicy, ...
                 'PartialConflictPolicy', obj.PartialConflictPolicy, ...
                 'IncludeSilentTasks', options.IncludeSilentTasks);
+            obj.HistoryFile = obj.Manager.HistoryFile;
             obj.Manager.SnapshotFcn = @(snapshot) obj.onManagerSnapshot(snapshot);
             obj.Manager.TaskReorderedFcn = @(snapshot) obj.onManagerTaskReordered(snapshot);
             obj.Manager.CompletedFcn = @(taskID, info, snapshot) ...
@@ -113,6 +124,7 @@ classdef DownloadPanel < handle
 
             obj.OriginalWindowButtonDownFcn = obj.UIFigure.WindowButtonDownFcn;
             obj.UIFigure.WindowButtonDownFcn = @(source, event) obj.onFigureButtonDown(source, event);
+            obj.Manager.restoreInterruptedDownloads();
         end
 
         %-----------------------------------------------------------------%
@@ -132,7 +144,14 @@ classdef DownloadPanel < handle
                     obj.deleteTaskGraphics(task)
                 end
             end
+            for historyIndex = 1:numel(obj.HistoryTasks)
+                task = obj.HistoryTasks{historyIndex};
+                if ~isempty(task)
+                    obj.deleteTaskGraphics(task)
+                end
+            end
             obj.DownloadTasks = {};
+            obj.HistoryTasks = {};
             obj.DownloadOrder = [];
             obj.closeDownloadContainer()
 
@@ -156,6 +175,7 @@ classdef DownloadPanel < handle
                 obj
                 url (1,:) char {mustBeNonempty}
                 options.DisplayMode (1,:) char = 'normal'
+                options.LogicalFileID (1,:) char = ''
             end
 
             url = char(url);
@@ -174,6 +194,9 @@ classdef DownloadPanel < handle
                              'FinalPath', finalPath, ...
                              'DisplayMode', options.DisplayMode, ...
                              'AllowSourceFilename', allowSourceFilename);
+            if ~isempty(options.LogicalFileID)
+                request.LogicalFileID = options.LogicalFileID;
+            end
             taskID = obj.Manager.addDownload(request);
         end
 
@@ -181,8 +204,13 @@ classdef DownloadPanel < handle
         function show(obj)
             % SHOW Make the download popup visible and bring it to the front.
             if isempty(obj.DownloadDialog) || ~isvalid(obj.DownloadDialog)
-                return
+                if isempty(obj.Manager.getHistory())
+                    return
+                end
+                obj.ensureDownloadContainer()
             end
+            obj.syncHistoryRows()
+            obj.refreshDownloadContainer()
             obj.DownloadDialog.Visible = 'on';
             drawnow
             obj.positionDownloadContainer()
@@ -204,8 +232,13 @@ classdef DownloadPanel < handle
             if isempty(task)
                 return
             end
-
-            obj.Manager.cancel(taskID)
+            if taskID < 0 || ismember(task.Snapshot.LifecycleState, ...
+                    {'completed', 'failed', 'interrupted'})
+                obj.Manager.deleteHistoryEntry(task.HistoryEntryID)
+                obj.removeTask(taskID)
+            else
+                obj.Manager.cancel(taskID)
+            end
         end
 
         %-----------------------------------------------------------------%
@@ -245,17 +278,35 @@ classdef DownloadPanel < handle
                 obj.removeTask(taskID)
                 return
             end
-            task = obj.getTask(taskID);
-            if isempty(task)
-                task = obj.createTaskGraphics(taskID, snapshot.FileName);
-                task.Snapshot = snapshot;
-                obj.DownloadTasks{taskID} = task;
-                obj.DownloadOrder(end+1) = taskID;
-            else
-                task.Snapshot = snapshot;
-                obj.DownloadTasks{taskID} = task;
+            if isfield(snapshot, 'HistoryEntry')
+                obj.removeOtherLogicalRows(snapshot.HistoryEntry, taskID)
             end
-            obj.renderTask(snapshot)
+
+            task = obj.getTask(taskID);
+            if ismember(snapshot.LifecycleState, {'completed', 'failed'})
+                if isempty(task)
+                    task = obj.createHistoryTaskGraphics(taskID, snapshot.HistoryEntry);
+                    task.RowKind = 'concluded';
+                    obj.DownloadOrder(end+1) = taskID;
+                elseif ~strcmp(task.RowKind, 'concluded')
+                    obj.deleteTaskGraphics(task)
+                    task = obj.createHistoryTaskGraphics(taskID, snapshot.HistoryEntry);
+                    task.RowKind = 'concluded';
+                end
+                task.Snapshot = snapshot;
+                task.HistoryEntry = snapshot.HistoryEntry;
+                obj.DownloadTasks{taskID} = task;
+                obj.renderHistoryRow(task, snapshot.HistoryEntry)
+            else
+                if isempty(task)
+                    task = obj.createTaskGraphics(taskID, snapshot.FileName);
+                    obj.DownloadOrder(end+1) = taskID;
+                end
+                task.Snapshot = snapshot;
+                obj.DownloadTasks{taskID} = task;
+                obj.renderTask(snapshot)
+            end
+            obj.sortDownloadOrder()
             obj.refreshDownloadContainer()
             obj.updateDownloadAvatar()
             if strcmp(snapshot.LifecycleState, 'awaitingConflictDecision')
@@ -265,24 +316,18 @@ classdef DownloadPanel < handle
 
         %-----------------------------------------------------------------%
         function onManagerTaskReordered(obj, snapshot)
-            if isempty(snapshot) || obj.IsDeleting || isempty(obj.getTask(snapshot.ID))
+            if isempty(snapshot) || obj.IsDeleting
                 return
             end
-            obj.DownloadOrder(obj.DownloadOrder == snapshot.ID) = [];
-            obj.DownloadOrder(end+1) = snapshot.ID;
-            obj.refreshDownloadContainer()
-            obj.show()
         end
 
         %-----------------------------------------------------------------%
         function onManagerCompleted(obj, taskID, info, snapshot)
-            obj.removeTask(taskID)
             invokeCallback(obj.CompletedFcn, taskID, info, snapshot)
         end
 
         %-----------------------------------------------------------------%
         function onManagerError(obj, taskID, exception, snapshot)
-            obj.removeTask(taskID)
             invokeCallback(obj.ErrorFcn, taskID, exception, snapshot)
         end
 
@@ -293,34 +338,23 @@ classdef DownloadPanel < handle
                 return
             end
             task.Snapshot = snapshot;
-            task.StatusLabel.Text = snapshot.FileName;
-            elapsedSeconds = snapshotElapsedSeconds(snapshot);
-            task.BytesLabel.Text = progressText(snapshot.ReceivedBytes, ...
-                                                snapshot.TotalBytes, ...
-                                                elapsedSeconds, ...
-                                                snapshot.TransferRate);
-            task.ProgressFraction = snapshot.ProgressFraction;
-            task.Snapshot = snapshot;
-
             if strcmp(snapshot.LifecycleState, 'awaitingConflictDecision')
                 obj.renderConflict(task, snapshot)
             else
-                task.ConflictPanel.Visible = 'off';
-                task.PauseButton.Visible = 'on';
-                task.CancelButton.Visible = 'on';
-                task.GridLayout.RowHeight = {24, 20, 46, 30, 1};
-                task.RowHeight = 154;
                 if strcmp(snapshot.LifecycleState, 'paused')
-                    task.PauseButton.Text = 'Resume';
+                    obj.setActionIcon(task.ActionButton, 'download-start.svg', ...
+                                      'Start or continue download');
                 else
-                    task.PauseButton.Text = 'Pause';
+                    obj.setActionIcon(task.ActionButton, 'download-pause.svg', ...
+                                      'Pause download');
                 end
-                if ismember(snapshot.LifecycleState, {'stopped', 'completed', 'failed', 'canceled'})
-                    task.PauseButton.Visible = 'off';
-                    task.CancelButton.Visible = 'off';
-                    task.StatusLabel.Text = sprintf('%s (%s)', snapshot.FileName, ...
-                                                    snapshot.LifecycleState);
-                end
+                task.ProgressFraction = snapshot.ProgressFraction;
+                elapsedSeconds = snapshotElapsedSeconds(snapshot);
+                task.BytesLabel.Text = ['  ', progressText(snapshot.ReceivedBytes, ...
+                                                              snapshot.TotalBytes, ...
+                                                              elapsedSeconds, ...
+                                                              snapshot.TransferRate)];
+                task.StatusLabel.Text = snapshot.FileName;
             end
             obj.DownloadTasks{snapshot.ID} = task;
             obj.updateProgressScale(task)
@@ -330,26 +364,58 @@ classdef DownloadPanel < handle
         function renderConflict(obj, task, snapshot)
             if strcmp(snapshot.ConflictType, 'target')
                 task.StatusLabel.Text = sprintf('%s already exists', snapshot.FileName);
-                task.BytesLabel.Text = 'Choose an action to continue.';
-                actionLabels = {'Overwrite', 'Save as new', 'Cancel'};
-                actions = {'overwrite', 'uniqueName', 'cancel'};
+                task.ProgressFraction = 1;
+                task.BytesLabel.Text = ['  ', sprintf( ...
+                    '%s already exists. Start keeps it; Restart downloads it again.', ...
+                    formatBytes(snapshot.ReceivedBytes))];
+                obj.setActionIcon(task.ActionButton, 'download-start.svg', ...
+                                  'Keep existing file');
             else
                 task.StatusLabel.Text = sprintf('Partial download found for %s', snapshot.FileName);
-                task.BytesLabel.Text = 'Resume, restart, or cancel this download.';
-                actionLabels = {'Resume', 'Restart', 'Cancel'};
-                actions = {'resume', 'restart', 'cancel'};
+                task.BytesLabel.Text = ['  ', sprintf( ...
+                    '%s downloaded. Continue resumes this partial file.', ...
+                    formatBytes(snapshot.ReceivedBytes))];
+                obj.setActionIcon(task.ActionButton, 'download-continue.svg', ...
+                                  'Continue partial download');
             end
-            for buttonIndex = 1:numel(task.ConflictButtons)
-                task.ConflictButtons(buttonIndex).Text = actionLabels{buttonIndex};
-                task.ConflictButtons(buttonIndex).ButtonPushedFcn = ...
-                    @(~, ~) obj.Manager.resolveConflict(snapshot.ID, actions{buttonIndex});
-                task.ConflictButtons(buttonIndex).Enable = 'on';
+            task.StatusLabel.FontColor = [0.15, 0.15, 0.15];
+            task.ActionButton.Visible = 'on';
+            task.RestartButton.Visible = 'on';
+            task.CancelButton.Visible = 'on';
+            task.ProgressFraction = max(0, min(task.ProgressFraction, 1));
+        end
+
+        %-----------------------------------------------------------------%
+        function renderHistoryRow(obj, task, entry)
+            task.HistoryEntry = entry;
+            task.StatusLabel.Text = task.FileName;
+            task.StatusLabel.FontColor = [0.15, 0.15, 0.15];
+            if strcmp(entry.LifecycleState, 'failed')
+                task.StatusLabel.FontColor = [0.75, 0.05, 0.05];
             end
-            task.ConflictPanel.Visible = 'on';
-            task.PauseButton.Visible = 'off';
-            task.CancelButton.Visible = 'off';
-            task.GridLayout.RowHeight = {24, 20, 46, 30, 30};
-            task.RowHeight = 190;
+            task.BytesLabel.Text = ['  ', historyStatusText(entry)];
+            task.Snapshot = struct('ID', task.ID, ...
+                                   'HistoryEntryID', entry.EntryID, ...
+                                   'LifecycleState', entry.LifecycleState, ...
+                                   'HistoryEntry', entry, ...
+                                   'AttemptedTimestamps', {entry.AttemptedTimestamps}, ...
+                                   'TransferRate', NaN, ...
+                                   'ProgressFraction', double(entry.isAvailable));
+            if isfield(task, 'StrikeLine') && isgraphics(task.StrikeLine)
+                task.StrikeLine.Visible = strcmp(entry.LifecycleState, 'failed');
+            end
+            obj.updateStrikeLine(task)
+            if task.ID < 0
+                obj.HistoryTasks{abs(task.ID)} = task;
+            else
+                obj.DownloadTasks{task.ID} = task;
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function setActionIcon(~, button, iconName, tooltip)
+            button.ImageSource = downloadIconPath(iconName);
+            button.Tooltip = tooltip;
         end
 
         %-----------------------------------------------------------------%
@@ -402,6 +468,9 @@ classdef DownloadPanel < handle
 
             task = struct('ID', taskID, ...
                           'FileName', fileName, ...
+                          'RowKind', 'active', ...
+                          'HistoryEntryID', '', ...
+                          'HistoryEntry', struct(), ...
                           'ProgressFraction', 0, ...
                           'Dialog', [], ...
                           'GridLayout', [], ...
@@ -409,107 +478,314 @@ classdef DownloadPanel < handle
                           'BytesLabel', [], ...
                           'ProgressTrack', [], ...
                           'ProgressFill', [], ...
-                          'ProgressMarkers', [], ...
-                          'PauseButton', [], ...
+                          'ActionButton', [], ...
+                          'RestartButton', [], ...
                           'CancelButton', [], ...
-                          'ConflictPanel', [], ...
-                          'ConflictButtons', [], ...
-                          'RowHeight', 154, ...
+                          'StrikeLine', [], ...
+                          'RowHeight', 90, ...
                           'Snapshot', struct());
 
             task.Dialog = uipanel(obj.DownloadStack, ...
                                   'BorderType', 'none', ...
                                   'BackgroundColor', taskBackgroundColor);
-            task.GridLayout = uigridlayout(task.Dialog, [5, 3]);
+            task.GridLayout = uigridlayout(task.Dialog, [3, 4]);
             task.GridLayout.BackgroundColor = taskBackgroundColor;
-            task.GridLayout.Padding = [16, 12, 16, 8];
+            task.GridLayout.Padding = [12, 8, 12, 8];
             task.GridLayout.RowSpacing = 4;
-            task.GridLayout.RowHeight = {24, 20, 46, 30, 1};
-            task.GridLayout.ColumnWidth = {'1x', 90, 90};
+            task.GridLayout.RowHeight = {22, 22, 22};
+            task.GridLayout.ColumnWidth = {'1x', 32, 32, 32};
 
             task.StatusLabel = uilabel(task.GridLayout, ...
                                        'Text', fileName, ...
+                                       'FontWeight', 'bold', ...
                                        'HorizontalAlignment', 'left', ...
                                        'VerticalAlignment', 'bottom', ...
                                        'WordWrap', 'on');
             task.StatusLabel.Layout.Row = 1;
-            task.StatusLabel.Layout.Column = [1, 3];
+            task.StatusLabel.Layout.Column = [1, 4];
 
             task.ProgressTrack = uipanel(task.GridLayout, ...
                                          'BorderType', 'none', ...
-                                         'BackgroundColor', progressTrackColor);
+                                         'BackgroundColor', progressTrackColor, ...
+                                         'Tooltip', 'Download progress');
             task.ProgressTrack.Layout.Row = 2;
-            task.ProgressTrack.Layout.Column = [1, 3];
+            task.ProgressTrack.Layout.Column = 1;
 
             task.ProgressFill = uipanel(task.ProgressTrack, ...
                                         'BorderType', 'none', ...
                                         'BackgroundColor', [0, 0.447, 0.741], ...
                                         'Units', 'pixels', ...
                                         'Position', [0, 0, 0, 1]);
-            task.ProgressMarkers = gobjects(1, 5);
-            for markerIndex = 1:numel(task.ProgressMarkers)
-                task.ProgressMarkers(markerIndex) = uipanel(task.ProgressTrack, ...
-                                                             'BorderType', 'none', ...
-                                                             'BackgroundColor', [0.45, 0.45, 0.45], ...
-                                                             'Units', 'pixels', ...
-                                                             'Position', [0, 0, 1, 1]);
-            end
 
             task.BytesLabel = uilabel(task.GridLayout, 'Text', '', 'WordWrap', 'on');
             task.BytesLabel.Layout.Row = 3;
-            task.BytesLabel.Layout.Column = [1, 3];
+            task.BytesLabel.Layout.Column = [1, 4];
 
-            task.PauseButton = uibutton(task.GridLayout, ...
-                                        'Text', 'Pause', ...
-                                        'ButtonPushedFcn', @(~, ~) obj.togglePause(taskID));
-            task.PauseButton.Layout.Row = 4;
-            task.PauseButton.Layout.Column = 2;
+            task.ActionButton = uiimage(task.GridLayout, ...
+                                         'ImageSource', downloadIconPath('download-pause.svg'), ...
+                                         'ScaleMethod', 'fit', ...
+                                         'Tooltip', 'Pause download', ...
+                                         'ImageClickedFcn', @(~, ~) obj.activateTask(taskID));
+            task.ActionButton.Layout.Row = 2;
+            task.ActionButton.Layout.Column = 2;
 
-            task.CancelButton = uibutton(task.GridLayout, ...
-                                         'Text', 'Cancel', ...
-                                         'ButtonPushedFcn', @(~, ~) obj.cancel(taskID));
-            task.CancelButton.Layout.Row = 4;
-            task.CancelButton.Layout.Column = 3;
+            task.RestartButton = uiimage(task.GridLayout, ...
+                                          'ImageSource', downloadIconPath('download-restart.svg'), ...
+                                          'ScaleMethod', 'fit', ...
+                                          'Tooltip', 'Restart download', ...
+                                          'ImageClickedFcn', @(~, ~) obj.restartRow(taskID));
+            task.RestartButton.Layout.Row = 2;
+            task.RestartButton.Layout.Column = 3;
 
-            task.ConflictPanel = uipanel(task.GridLayout, ...
-                                         'BorderType', 'none', ...
-                                         'BackgroundColor', taskBackgroundColor, ...
-                                         'Visible', 'off');
-            task.ConflictPanel.Layout.Row = 5;
-            task.ConflictPanel.Layout.Column = [1, 3];
-            conflictLayout = uigridlayout(task.ConflictPanel, [1, 3]);
-            conflictLayout.BackgroundColor = taskBackgroundColor;
-            conflictLayout.Padding = [0, 0, 0, 0];
-            conflictLayout.ColumnWidth = {'1x', '1x', '1x'};
-            task.ConflictButtons = gobjects(1, 3);
-            task.ConflictButtons(1) = uibutton(conflictLayout, ...
-                                               'Text', 'Overwrite', ...
-                                               'ButtonPushedFcn', @(~, ~) obj.Manager.resolveConflict(taskID, 'overwrite'));
-            task.ConflictButtons(2) = uibutton(conflictLayout, ...
-                                               'Text', 'Save as new', ...
-                                               'ButtonPushedFcn', @(~, ~) obj.Manager.resolveConflict(taskID, 'uniqueName'));
-            task.ConflictButtons(3) = uibutton(conflictLayout, ...
-                                               'Text', 'Cancel', ...
-                                               'ButtonPushedFcn', @(~, ~) obj.Manager.resolveConflict(taskID, 'cancel'));
-            drawnow
+            task.CancelButton = uiimage(task.GridLayout, ...
+                                         'ImageSource', downloadIconPath('download-trash.svg'), ...
+                                         'ScaleMethod', 'fit', ...
+                                         'Tooltip', 'Cancel and remove download', ...
+                                         'ImageClickedFcn', @(~, ~) obj.cancel(taskID));
+            task.CancelButton.Layout.Row = 2;
+            task.CancelButton.Layout.Column = 4;
+            task.StrikeLine = uipanel(task.Dialog, ...
+                                      'BorderType', 'none', ...
+                                      'BackgroundColor', [0.75, 0.05, 0.05], ...
+                                      'Visible', 'off', ...
+                                      'Units', 'pixels', ...
+                                      'Position', [0, 0, 0, 1]);
             obj.updateProgressScale(task)
         end
 
         %-----------------------------------------------------------------%
+        function task = createHistoryTaskGraphics(obj, rowID, entry)
+            obj.ensureDownloadContainer()
+            [~, baseName, extension] = fileparts(entry.TargetPath);
+            fileName = [baseName, extension];
+            task = struct('ID', rowID, ...
+                          'FileName', fileName, ...
+                          'RowKind', 'history', ...
+                          'HistoryEntryID', entry.EntryID, ...
+                          'HistoryEntry', entry, ...
+                          'ProgressFraction', double(entry.isAvailable), ...
+                          'Dialog', [], ...
+                          'GridLayout', [], ...
+                          'StatusLabel', [], ...
+                          'BytesLabel', [], ...
+                          'ProgressTrack', [], ...
+                          'ProgressFill', [], ...
+                          'ActionButton', [], ...
+                          'RestartButton', [], ...
+                          'CancelButton', [], ...
+                          'StrikeLine', [], ...
+                          'RowHeight', 59, ...
+                          'Snapshot', struct());
+
+            task.Dialog = uipanel(obj.DownloadStack, ...
+                                  'BorderType', 'none', ...
+                                  'BackgroundColor', max(0, obj.UIFigure.Color - 0.04));
+            task.GridLayout = uigridlayout(task.Dialog, [2, 4]);
+            task.GridLayout.Padding = [12, 6, 12, 6];
+            task.GridLayout.RowSpacing = 3;
+            task.GridLayout.RowHeight = {22, 22};
+            task.GridLayout.ColumnWidth = {'1x', '1x', 32, 32};
+            task.StatusLabel = uilabel(task.GridLayout, ...
+                                       'Text', fileName, ...
+                                       'FontWeight', 'bold', ...
+                                       'HorizontalAlignment', 'left', ...
+                                       'VerticalAlignment', 'center', ...
+                                       'WordWrap', 'on');
+            task.StatusLabel.Layout.Row = 1;
+            task.StatusLabel.Layout.Column = [1, 2];
+            task.RestartButton = uiimage(task.GridLayout, ...
+                                          'ImageSource', downloadIconPath('download-restart.svg'), ...
+                                          'ScaleMethod', 'fit', ...
+                                          'Tooltip', 'Restart download', ...
+                                          'ImageClickedFcn', @(~, ~) obj.restartRow(rowID));
+            task.RestartButton.Layout.Row = 1;
+            task.RestartButton.Layout.Column = 3;
+            task.CancelButton = uiimage(task.GridLayout, ...
+                                         'ImageSource', downloadIconPath('download-trash.svg'), ...
+                                         'ScaleMethod', 'fit', ...
+                                         'Tooltip', 'Remove history entry', ...
+                                         'ImageClickedFcn', @(~, ~) obj.cancel(rowID));
+            task.CancelButton.Layout.Row = 1;
+            task.CancelButton.Layout.Column = 4;
+            task.BytesLabel = uilabel(task.GridLayout, ...
+                                      'Text', '', ...
+                                      'HorizontalAlignment', 'left', ...
+                                      'VerticalAlignment', 'center', ...
+                                      'WordWrap', 'on');
+            task.BytesLabel.Layout.Row = 2;
+            task.BytesLabel.Layout.Column = [1, 4];
+            task.StrikeLine = uipanel(task.Dialog, ...
+                                      'BorderType', 'none', ...
+                                      'BackgroundColor', [0.75, 0.05, 0.05], ...
+                                      'Visible', 'off', ...
+                                      'Units', 'pixels', ...
+                                      'Position', [0, 0, 0, 1]);
+            task.Snapshot = struct('ID', rowID, ...
+                                   'HistoryEntryID', entry.EntryID, ...
+                                   'LifecycleState', entry.LifecycleState, ...
+                                   'HistoryEntry', entry, ...
+                                   'AttemptedTimestamps', {entry.AttemptedTimestamps}, ...
+                                   'TransferRate', NaN, ...
+                                   'ProgressFraction', task.ProgressFraction);
+            obj.renderHistoryRow(task, entry)
+        end
+
         %-----------------------------------------------------------------%
-        function togglePause(obj, taskID)
+        %-----------------------------------------------------------------%
+        function activateTask(obj, taskID)
             task = obj.getTask(taskID);
             if isempty(task) || ~isfield(task, 'Snapshot') || isempty(fieldnames(task.Snapshot))
                 return
             end
 
-            if strcmp(task.Snapshot.LifecycleState, 'paused')
+            if strcmp(task.Snapshot.LifecycleState, 'awaitingConflictDecision')
+                if strcmp(task.Snapshot.ConflictType, 'target')
+                    obj.Manager.resolveConflict(taskID, 'keep')
+                else
+                    obj.Manager.resolveConflict(taskID, 'resume')
+                end
+            elseif strcmp(task.Snapshot.LifecycleState, 'paused')
                 obj.Manager.resume(taskID)
             elseif strcmp(task.Snapshot.LifecycleState, 'active')
                 obj.Manager.pause(taskID)
-            else
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function updateStrikeLine(~, task)
+            if isempty(task.StrikeLine) || ~isgraphics(task.StrikeLine) || ...
+                    ~isgraphics(task.StatusLabel) || ~isgraphics(task.Dialog)
                 return
             end
+            labelPosition = getpixelposition(task.StatusLabel, true);
+            dialogPosition = getpixelposition(task.Dialog, true);
+            estimatedTextWidth = min(labelPosition(3), ...
+                                     numel(task.FileName) * task.StatusLabel.FontSize * 0.56);
+            lineX = max(0, labelPosition(1) - dialogPosition(1) + 8);
+            lineY = labelPosition(2) - dialogPosition(2) + round(labelPosition(4) * 0.55);
+            task.StrikeLine.Position = [lineX, lineY, estimatedTextWidth, 2];
+        end
+
+        %-----------------------------------------------------------------%
+        function restartRow(obj, taskID)
+            task = obj.getTask(taskID);
+            if isempty(task)
+                return
+            end
+            if taskID > 0 && strcmp(task.Snapshot.LifecycleState, 'awaitingConflictDecision')
+                obj.Manager.resolveConflict(taskID, 'restart')
+            elseif taskID < 0 || strcmp(task.RowKind, 'concluded') || ...
+                    ismember(task.Snapshot.LifecycleState, {'completed', 'failed', 'interrupted'})
+                obj.Manager.restartHistoryEntry(task.HistoryEntryID)
+            else
+                obj.Manager.restart(taskID)
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function syncHistoryRows(obj)
+            entries = obj.Manager.getHistory();
+            displayEntries = entries([]);
+            displayIdentities = {};
+            for entryIndex = 1:numel(entries)
+                entry = entries(entryIndex);
+                if ~ismember(entry.LifecycleState, {'completed', 'failed'})
+                    continue
+                end
+                identity = historyIdentity(entry);
+                identityIndex = find(strcmp(displayIdentities, identity), 1);
+                if isempty(identityIndex)
+                    displayIdentities{end+1} = identity;
+                    displayEntries(end+1) = entry; %#ok<AGROW>
+                else
+                    displayEntries(identityIndex) = entry;
+                end
+            end
+
+            for entryIndex = 1:numel(displayEntries)
+                entry = displayEntries(entryIndex);
+                if obj.hasLogicalDownloadRow(entry)
+                    continue
+                end
+                obj.NextHistoryRowID = obj.NextHistoryRowID - 1;
+                rowID = obj.NextHistoryRowID;
+                task = obj.createHistoryTaskGraphics(rowID, entry);
+                obj.HistoryTasks{abs(rowID)} = task;
+                obj.DownloadOrder(end+1) = rowID;
+            end
+            obj.sortDownloadOrder()
+        end
+
+        %-----------------------------------------------------------------%
+        function tf = hasLogicalDownloadRow(obj, entry)
+            tf = false;
+            taskLists = {obj.DownloadTasks, obj.HistoryTasks};
+            for listIndex = 1:numel(taskLists)
+                tasks = taskLists{listIndex};
+                for taskIndex = 1:numel(tasks)
+                    task = tasks{taskIndex};
+                    if isempty(task) || ~isfield(task, 'Snapshot') || ...
+                            ~isfield(task.Snapshot, 'HistoryEntry')
+                        continue
+                    end
+                    if sameLogicalDownload(task.Snapshot.HistoryEntry, entry)
+                        tf = true;
+                        return
+                    end
+                end
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function removeOtherLogicalRows(obj, entry, keepTaskID)
+            for taskID = 1:numel(obj.DownloadTasks)
+                task = obj.DownloadTasks{taskID};
+                if isempty(task) || task.ID == keepTaskID || ...
+                        ~isfield(task, 'Snapshot') || ...
+                        ~isfield(task.Snapshot, 'HistoryEntry') || ...
+                        ~sameLogicalDownload(task.Snapshot.HistoryEntry, entry)
+                    continue
+                end
+                obj.deleteTaskGraphics(task)
+                obj.DownloadTasks{taskID} = [];
+                obj.DownloadOrder(obj.DownloadOrder == task.ID) = [];
+            end
+
+            for historyIndex = 1:numel(obj.HistoryTasks)
+                task = obj.HistoryTasks{historyIndex};
+                if isempty(task) || task.ID == keepTaskID || ...
+                        ~isfield(task, 'Snapshot') || ...
+                        ~isfield(task.Snapshot, 'HistoryEntry') || ...
+                        ~sameLogicalDownload(task.Snapshot.HistoryEntry, entry)
+                    continue
+                end
+                obj.deleteTaskGraphics(task)
+                obj.HistoryTasks{historyIndex} = [];
+                obj.DownloadOrder(obj.DownloadOrder == task.ID) = [];
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function sortDownloadOrder(obj)
+            rowIDs = obj.DownloadOrder;
+            if numel(rowIDs) < 2
+                return
+            end
+            sortKeys = zeros(numel(rowIDs), 2);
+            for rowIndex = 1:numel(rowIDs)
+                task = obj.getTask(rowIDs(rowIndex));
+                state = task.Snapshot.LifecycleState;
+                if ismember(state, {'paused', 'awaitingConflictDecision'})
+                    group = 1;
+                elseif ismember(state, {'created', 'active'})
+                    group = 2;
+                else
+                    group = 3;
+                end
+                sortKeys(rowIndex, :) = [group, rowIndex];
+            end
+            [~, sortedIndices] = sortrows(sortKeys, [1, 2]);
+            obj.DownloadOrder = rowIDs(sortedIndices);
         end
 
         %-----------------------------------------------------------------%
@@ -519,7 +795,11 @@ classdef DownloadPanel < handle
                 return
             end
             obj.deleteTaskGraphics(task)
-            obj.DownloadTasks{taskID} = [];
+            if taskID < 0
+                obj.HistoryTasks{abs(taskID)} = [];
+            else
+                obj.DownloadTasks{taskID} = [];
+            end
             obj.DownloadOrder(obj.DownloadOrder == taskID) = [];
             obj.refreshDownloadContainer()
             obj.updateDownloadAvatar()
@@ -528,10 +808,21 @@ classdef DownloadPanel < handle
         %-----------------------------------------------------------------%
         function task = getTask(obj, taskID)
             task = [];
-            if ~isscalar(taskID) || taskID < 1 || taskID > numel(obj.DownloadTasks)
+            if ~isscalar(taskID) || ~isnumeric(taskID) || taskID == 0
                 return
             end
-            task = obj.DownloadTasks{taskID};
+            if taskID > 0
+                if taskID > numel(obj.DownloadTasks)
+                    return
+                end
+                task = obj.DownloadTasks{taskID};
+            else
+                historyIndex = abs(taskID);
+                if historyIndex > numel(obj.HistoryTasks)
+                    return
+                end
+                task = obj.HistoryTasks{historyIndex};
+            end
             if isempty(task)
                 task = [];
             end
@@ -583,7 +874,7 @@ classdef DownloadPanel < handle
             obj.DownloadStack.Padding = [5, 5, 5, 5];
             obj.DownloadStack.RowSpacing = 5;
             obj.DownloadStack.ColumnWidth = {'1x'};
-            obj.DownloadStack.RowHeight = {154};
+            obj.DownloadStack.RowHeight = {96};
             obj.positionDownloadContainer()
         end
 
@@ -603,25 +894,24 @@ classdef DownloadPanel < handle
                 return
             end
 
-            activeIDs = obj.DownloadOrder;
-            isValidTask = false(size(activeIDs));
-            for taskIndex = 1:numel(activeIDs)
-                task = obj.getTask(activeIDs(taskIndex));
+            rowIDs = obj.DownloadOrder;
+            isValidTask = false(size(rowIDs));
+            for taskIndex = 1:numel(rowIDs)
+                task = obj.getTask(rowIDs(taskIndex));
                 isValidTask(taskIndex) = ~isempty(task) && ...
                     ~isempty(task.Dialog) && isvalid(task.Dialog);
             end
-            activeIDs = activeIDs(isValidTask);
-            obj.DownloadOrder = activeIDs;
+            rowIDs = rowIDs(isValidTask);
+            obj.DownloadOrder = rowIDs;
 
-            if isempty(activeIDs)
+            if isempty(rowIDs)
                 obj.closeDownloadContainer()
                 return
             end
 
-            activeIDs = fliplr(activeIDs);
-            rowHeights = repmat({1}, 1, numel(activeIDs));
-            for row = 1:numel(activeIDs)
-                task = obj.DownloadTasks{activeIDs(row)};
+            rowHeights = repmat({1}, 1, numel(rowIDs));
+            for row = 1:numel(rowIDs)
+                task = obj.getTask(rowIDs(row));
                 rowHeights{row} = task.RowHeight;
                 task.Dialog.Layout.Row = row;
                 task.Dialog.Layout.Column = 1;
@@ -679,7 +969,7 @@ classdef DownloadPanel < handle
             obj.DownloadTitleLabel.Position = [8, 0, max(1, contentWidth - 32), headerHeight];
             closeIconSize = 16;
             closeIconMargin = 4;
-            obj.CloseImage.Position = [max(closeIconMargin, contentWidth - closeIconSize - closeIconMargin), ...
+            obj.CloseImage.Position = [max(0, contentWidth - closeIconSize), ...
                                        max(closeIconMargin, (headerHeight - closeIconSize) / 2), ...
                                        closeIconSize, closeIconSize];
         end
@@ -704,14 +994,6 @@ classdef DownloadPanel < handle
             trackWidth = max(0, trackSize(3));
             trackHeight = max(1, trackSize(4));
             task.ProgressFill.Position = [0, 0, task.ProgressFraction * trackWidth, trackHeight];
-            markerWidth = 1;
-            markerXPositions = round((0:4) / 4 * max(0, trackWidth - markerWidth));
-            for markerIndex = 1:numel(task.ProgressMarkers)
-                marker = task.ProgressMarkers(markerIndex);
-                if ~isempty(marker) && isvalid(marker)
-                    marker.Position = [markerXPositions(markerIndex), 0, markerWidth, trackHeight];
-                end
-            end
         end
 
         %-----------------------------------------------------------------%
@@ -721,13 +1003,20 @@ classdef DownloadPanel < handle
             for taskID = 1:numel(obj.DownloadTasks)
                 task = obj.DownloadTasks{taskID};
                 if isempty(task) || ~isfield(task, 'Snapshot') || ...
-                        isempty(fieldnames(task.Snapshot)) || ...
-                        ~ismember(task.Snapshot.LifecycleState, {'active', 'paused'})
+                        isempty(fieldnames(task.Snapshot))
                     continue
                 end
                 snapshot = task.Snapshot;
+                isPaused = strcmp(snapshot.LifecycleState, 'paused');
+                isWaitingForPartial = strcmp(snapshot.LifecycleState, ...
+                                             'awaitingConflictDecision') && ...
+                                      strcmp(snapshot.ConflictType, 'partial');
+                if ~ismember(snapshot.LifecycleState, {'active', 'paused'}) && ...
+                        ~isWaitingForPartial
+                    continue
+                end
                 rate = double(snapshot.TransferRate);
-                if strcmp(snapshot.LifecycleState, 'paused')
+                if isPaused || isWaitingForPartial
                     rate = 0;
                 elseif ~isfinite(rate) || (rate ~= 0 && rate < 100000)
                     rate = 100000;
@@ -847,7 +1136,7 @@ classdef DownloadPanel < handle
         function set.CollisionPolicy(obj, value)
             % SET.COLLISIONPOLICY Validate the target-conflict policy.
             value = char(value);
-            allowedValues = {'askInRow', 'overwrite', 'uniqueName', 'reject'};
+            allowedValues = {'askInRow', 'reject'};
             if ~ismember(value, allowedValues)
                 error('ui:DownloadPanel:invalidCollisionPolicy', ...
                       'CollisionPolicy is not supported.')
@@ -885,8 +1174,27 @@ end
 
 %-----------------------------------------------------------------%
 function sourcePath = closeIconPath()
-sourcePath = fullfile(fileparts(fileparts(mfilename('fullpath'))), ...
-                     'icons', 'close-16px-red.svg');
+sourcePath = generalIconPath('close-16px-red.svg');
+end
+
+%-----------------------------------------------------------------%
+function sourcePath = downloadIconPath(iconName)
+sourcePath = generalIconPath(iconName);
+end
+
+%-----------------------------------------------------------------%
+function sourcePath = generalIconPath(iconName)
+classPath = which('ui.DownloadPanel');
+if isempty(classPath)
+    error('ui:DownloadPanel:classPathUnavailable', ...
+          'Could not resolve the ui.DownloadPanel class path.')
+end
+generalFolder = fileparts(fileparts(classPath));
+sourcePath = fullfile(generalFolder, 'icons', iconName);
+if ~isfile(sourcePath)
+    error('ui:DownloadPanel:iconNotFound', ...
+          'Could not find the download icon at "%s".', sourcePath)
+end
 end
 
 %-----------------------------------------------------------------%
@@ -1025,6 +1333,46 @@ text = strjoin(groups, ' ');
 end
 
 %-----------------------------------------------------------------%
+function text = historyStatusText(entry)
+timestamp = entry.CompletedAt;
+if isempty(timestamp)
+    timestamp = entry.UpdatedAt;
+end
+if isempty(timestamp)
+    timestampText = '-';
+else
+    try
+        completedAt = datetime(timestamp, ...
+                               'InputFormat', "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", ...
+                               'TimeZone', 'UTC');
+        completedAt.Format = 'dd/MM/yy HH:mm';
+        timestampText = char(completedAt);
+    catch
+        timestampText = timestamp;
+    end
+end
+if entry.DownloadedBytes > 0
+    sizeText = sprintf('%s bytes (%s)', ...
+                       formatBytes(entry.DownloadedBytes), ...
+                       formatTotalBytes(entry.DownloadedBytes));
+else
+    sizeText = '0 bytes';
+end
+text = sprintf('%s | %s', timestampText, sizeText);
+if strcmp(entry.LifecycleState, 'failed')
+    text = ['Failed | ', text];
+    if ~isempty(entry.ErrorMessages)
+        text = [text, ' | ', entry.ErrorMessages{end}];
+    end
+elseif strcmp(entry.LifecycleState, 'interrupted')
+    text = ['Interrupted | ', text];
+end
+if strcmp(entry.LifecycleState, 'completed') && ~entry.isAvailable
+    text = ['Unavailable | ', text];
+end
+end
+
+%-----------------------------------------------------------------%
 function text = formatTotalBytes(value)
 value = double(value);
 scales = [1024^3, 1024^2, 1024];
@@ -1080,4 +1428,21 @@ if condition
 else
     value = falseValue;
 end
+end
+
+%-----------------------------------------------------------------%
+function value = historyIdentity(entry)
+value = [num2str(numel(entry.LogicalFileID)), ':', ...
+         entry.LogicalFileID, entry.SourceURL];
+end
+
+%-----------------------------------------------------------------%
+function tf = sameLogicalDownload(firstEntry, secondEntry)
+tf = isstruct(firstEntry) && isscalar(firstEntry) && ...
+     isstruct(secondEntry) && isscalar(secondEntry) && ...
+     isfield(firstEntry, 'LogicalFileID') && ...
+     isfield(secondEntry, 'LogicalFileID') && ...
+     isfield(firstEntry, 'SourceURL') && isfield(secondEntry, 'SourceURL') && ...
+     strcmp(firstEntry.LogicalFileID, secondEntry.LogicalFileID) && ...
+     strcmp(firstEntry.SourceURL, secondEntry.SourceURL);
 end

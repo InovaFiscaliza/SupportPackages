@@ -107,11 +107,44 @@ The lifecycle vocabulary is authoritative:
 
 - `pause` stops transfer while preserving resumable temporary state;
 - `cancel` stops transfer, removes task-scoped temporary files, and removes the
-    task from the panel;
+ `cancel` stops transfer, removes task-scoped temporary files and the history
+    entry, and leaves any completed target file untouched;
 - `restart` discards the partial state before starting again;
-- target conflicts use `overwrite`, `uniqueName` (shown as **Save as new**),
-    and `cancel`;
+- target conflicts use `keep`, `restart`, and `cancel`;
 - partial-file conflicts use `resume`, `restart`, and `cancel`.
+
+### Persistent history
+
+`DownloadManager` requires an explicit `HistoryFile` and exposes the resolved
+path as a read-only property. `ui.DownloadPanel` accepts `historyFile` and
+defaults it to `download-history.json` under `TempPath`. The manager owns the
+JSON representation and exposes normalized records through `getHistory()` and
+the `HistoryEntry` field in task snapshots.
+
+The JSON document has a schema version and a consistently ordered, pretty-
+printed `Entries` array, with one record per manager attempt. Records include
+entry and logical-file IDs, the task ID, URL, absolute target and temporary
+paths, UTC ISO 8601 timestamps, lifecycle state, downloaded bytes, measured
+speed and its source, error messages, target availability, and cumulative
+`AttemptedTimestamps` for every transfer start associated with the logical file.
+Unless a request provides `LogicalFileID`, the manager hashes the canonical
+target path so later attempts to that destination share an identity while
+retaining separate entry and task IDs.
+
+The manager writes history on lifecycle transitions using a same-directory
+temporary file followed by replacement. A missing history starts empty; an
+invalid document is quarantined and treated as empty. Startup refreshes byte
+counts from matching partial files, marks stale active attempts as interrupted,
+checks completed-target availability, and removes unreferenced task-scoped and
+legacy `.part` staging files from the configured temporary folders. Unrelated
+files are left alone. Cleanup uses the host trash when available and permanently
+deletes the temporary file only when the host provides no usable trash API.
+
+When `ui.DownloadPanel` initializes, it re-registers interrupted attempts whose
+partial files still exist. They appear as partial-file conflicts with
+`Continue`, `Restart`, and `Cancel`; no transfer starts until the user chooses
+an action. The newest interrupted entry for a given partial path is restored,
+so repeated panel initialization does not create duplicate rows.
 
 The panel translates user actions into manager commands and renders snapshots.
 Task state has one owner: the manager owns transfer state, while the panel owns
@@ -120,10 +153,12 @@ only UI handles and presentation state.
 When a target or partial file conflict is detected with the corresponding
 policy set to `askInRow`, the manager emits a pending snapshot. The panel
 renders the appropriate row choices without opening a modal dialog:
-`Overwrite`, **Save as new**, and `Cancel` for target conflicts, or `Resume`,
-`Restart`, and `Cancel` for partial files. Automatic policies such as
-`overwrite` are applied before any pending snapshot is emitted. The manager
-rechecks the destination before publication.
+`Keep`, `Restart`, and `Cancel` for target conflicts, or `Continue`, `Restart`,
+and `Cancel` for partial files. Keeping a target records a completed available
+attempt without starting a transfer. Restart explicitly replaces the target.
+Deleting a concluded row removes its history and remaining temporary files but
+does not delete the target file. The manager rechecks the destination before
+publication.
 
 ### Adapter boundary
 

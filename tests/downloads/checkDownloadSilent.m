@@ -18,7 +18,9 @@ setappdata(0, 'checkDownloadSilent_snapshotCount', 0)
 setappdata(0, 'checkDownloadSilent_completedCount', 0)
 setappdata(0, 'checkDownloadSilent_errorCount', 0)
 manager = download.DownloadManager(...
-    'DownloaderFactory', @createManagerDownloader);
+    'DownloaderFactory', @createManagerDownloader, ...
+    'HistoryFile', fullfile(tempPath, 'manager-history.json'), ...
+    'TempFolder', tempPath);
 manager.SnapshotFcn = @recordSnapshot;
 manager.CompletedFcn = @recordCompleted;
 manager.ErrorFcn = @recordError;
@@ -37,6 +39,9 @@ errorTaskID = manager.addDownload(errorRequest);
 assert(getappdata(0, 'checkDownloadSilent_snapshotCount') == 0)
 assert(getappdata(0, 'checkDownloadSilent_errorCount') == 1)
 assert(isempty(manager.getSnapshot(errorTaskID)))
+history = manager.getHistory();
+assert(strcmp(history(end).LifecycleState, 'failed'))
+assert(~isempty(history(end).ErrorMessages))
 
 normalRequest = requestFor('manager-normal.bin', targetPath, tempPath);
 normalTaskID = manager.addDownload(normalRequest);
@@ -45,6 +50,8 @@ assert(isempty(manager.getSnapshot(normalTaskID)))
 
 includedManager = download.DownloadManager(...
     'DownloaderFactory', @createManagerDownloader, ...
+    'HistoryFile', fullfile(tempPath, 'included-history.json'), ...
+    'TempFolder', tempPath, ...
     'IncludeSilentTasks', true);
 includedManager.SnapshotFcn = @recordSnapshot;
 setappdata(0, 'DownloadManagerFakeDownloaderAutoComplete', false)

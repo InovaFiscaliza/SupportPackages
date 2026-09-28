@@ -102,11 +102,10 @@ linha do painel, que é aberto automaticamente quando a intervenção do usuári
 é necessária, e resolvidos pelo manager.
 
 No modo desktop deste app, um conflito com o target escolhido no `uiputfile` é
-resolvido automaticamente com **Overwrite**, pois a escolha do destino já foi
-confirmada pelo usuário. Se o usuário informar outro nome, esse nome passa a
-ser o target final e o conflito com o nome original deixa de existir. Quando o
-nome informado não contém extensão, o painel acrescenta a extensão do arquivo
-indicado pela URL, quando disponível.
+apresentado na linha do painel, com as opções de manter o arquivo existente,
+reiniciar o download ou cancelar. O `uiputfile` ainda permite escolher outro
+nome no modo desktop; no Web App Server, o nome deriva da URL e não pode ser
+renomeado. O reinício explícito substitui o arquivo existente.
 
 O avatar de perfil usa o componente compartilhado
 [`profileAvatar.html`](../../src/Anatel/+ws/+auth/profileAvatar.html). O harness
@@ -135,6 +134,13 @@ Os itens abaixo tratam da evolução dos testes e das funcionalidades de downloa
 os detalhes arquiteturais do item 1 estão documentados em
 [`src/General/+download/README.md`](../../src/General/+download/README.md).
 
+O histórico persistente foi implementado no manager; o schema e a recuperação
+estão documentados no README do módulo de downloads.
+
+O redesenho do painel, incluindo os estados de conflito, o histórico concluído e
+as ações por ícone, foi implementado em `ui.DownloadPanel` e está descrito no
+README de `tests/downloads`.
+
 1. **Make the empty panel a first-class state.**
 	 - Clicking the avatar must open or bring the panel to the front even when
 		 there are no downloads.
@@ -157,53 +163,7 @@ os detalhes arquiteturais do item 1 estão documentados em
 	 - Verify desktop MATLAB and Web App Server rendering before integrating it
 		 into every row.
 
-3. **Define and implement persistent download history.**
-	 - History belongs to `DownloadManager` or to an injected provider-neutral
-		 history store, never to `DownloadPanel` or a downloader adapter. The
-		 manager must receive the history-file location or store explicitly and
-		 load it at startup.
-	 - Use one JSON entry per download attempt. Link retries and restarts for the
-		 same logical file with a stable `LogicalFileID`; keep the active entry
-		 associated with the manager task by `TaskID`.
-	 - Define one stable schema containing at least: entry and logical-file IDs,
-		 source URL, full target path, temporary path, start timestamp,
-		 completion timestamp, lifecycle state, downloaded byte count, measured
-		 speed, rate source, error messages, and `isAvailable`. Use ISO 8601 UTC
-		 timestamps.
-	 - Persist changes when a download starts, pauses, resumes, completes,
-		 fails, or is canceled. A history write must reflect the authoritative
-		 manager transition, not a UI callback.
-	 - At startup, reconcile history with target and temporary files. Update
-		 availability, refresh byte counts from matching temporary files, and move
-		 unreferenced task-scoped temporary files to the OS trash through a
-		 platform-neutral filesystem helper.
-	 - Make reconciliation and JSON writes tolerant of a missing or corrupt
-		 history file. Use an atomic replacement or equivalent strategy so a
-		 concurrent interruption cannot leave a partially written history file.
-	 - Keep history fields in manager snapshots so the panel can render completed
-		 entries without owning the JSON representation.
-
-4. **Redesign the download rows around the finalized state model.**
-	 - Render manager snapshots, not private downloader objects. Active or
-	  paused downloads use a 3-row by 4-column layout: filename; progress plus
-	  pause/resume and cancel controls; then byte count, speed, estimated
-		 remaining time, or status text.
-	 - Target conflicts show `Overwrite`, `Save as new`, and `Cancel`. Partial
-		 downloads show `Resume`, `Restart`, and `Cancel`, and retain the known
-		 byte count. The panel sends these choices to `DownloadManager`.
-	 - Completed history entries use a 2-row by 3-column layout with filename,
-		 restart/delete-history actions, timestamp, and file size. Missing target
-		 files use red struck-through text. Deleting history removes the history
-		 entry but does not delete the target file unless a separate file-delete
-		 command is selected.
-	 - Remove separator lines, use a slightly darker background per download,
-		 and add a clear gap between rows. Keep the close control at the panel's
-		 top-right corner.
-	 - Add manager tests for every lifecycle transition and visual harness
-		  coverage for every row state, including canceled downloads and unavailable
-		 completed files.
-
-5. **Use historical speeds in the examples.**
+3. **Use historical speeds in the examples.**
 	 - Before a new transfer has enough samples, the manager may obtain an
 		 estimated rate from history using the closest available key: exact URL,
 		 host and filename, then a global default.

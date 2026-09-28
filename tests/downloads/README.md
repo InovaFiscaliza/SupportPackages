@@ -80,6 +80,17 @@ snapshots, conclusão, remoção de tarefas e todas as decisões de conflito de
 destino e arquivo parcial. O manager mantém a tarefa e o downloader; o painel
 possui somente handles de apresentação e snapshots renderizados.
 
+O teste também verifica a persistência do histórico entre reconstruções,
+transições de pausa/retomada/cancelamento, identidade lógica estável,
+reconciliação de arquivos concluídos, recuperação de bytes de parciais
+interrompidas e seu retorno ao estado de conflito parcial, além da limpeza de
+parciais legadas e por tarefa quando o JSON do histórico está corrompido, sem
+remover arquivos não relacionados. Por padrão,
+o painel armazena o histórico ao lado dos arquivos temporários. O manager usado
+diretamente recebe `HistoryFile`
+explicitamente; `TempFolder` pode ser informado quando a limpeza inicial deve
+examinar outra pasta.
+
 `checkDownloadPanelDestination.m` cria uma figura invisível e injeta um
 `DestinationResolver` determinístico. O teste confirma que modos desktop usam
 o destino retornado pelo callback e que `webApp` usa `TargetPath` sem chamar o
@@ -128,10 +139,19 @@ arquivo concluído é publicado na pasta de destino somente depois que a
 transferência é bem-sucedida.
 
 O painel oferece suporte a vários downloads simultâneos, pausar/retomar e cancelar,
-conflitos de destino (**Overwrite**, **Save as new**, **Cancel**) e conflitos de
-arquivos parciais (**Resume**, **Restart**, **Cancel**). A aplicação mantém
-apenas as responsabilidades específicas do F5 relacionadas à autenticação,
-registro e comunicação de erros.
+O painel oferece suporte a vários downloads simultâneos, pausar/retomar,
+reiniciar e cancelar, conflitos de destino (**Manter**, **Reiniciar**, **Cancelar**)
+e conflitos de arquivos parciais (**Continuar**, **Reiniciar**, **Cancelar**).
+Arquivos concluídos e com falha permanecem no histórico renderizado pelo painel.
+A aplicação mantém apenas as responsabilidades específicas do F5 relacionadas
+à autenticação, registro e comunicação de erros.
+
+O JSON mantém um registro por tentativa, mas o painel mostra somente uma linha
+por `LogicalFileID` e URL, usando o estado da tentativa mais recente. Ao
+inicializar, o painel procura tentativas interrompidas cujo arquivo parcial
+ainda existe e as registra novamente no manager. O download lógico aparece
+diretamente como conflito de parcial, com **Continuar**, **Reiniciar** e
+**Cancelar**; nenhum downloader é iniciado até o usuário escolher uma ação.
 
 ## Execução do harness
 
@@ -199,11 +219,16 @@ temporária e de destino simuladas.
   `target` com todo o seu conteúdo. As pastas são recriadas automaticamente
   quando outro link de exemplo é clicado.
 - Arquivos de destino existentes usam a linha de conflito compartilhada com
-  **Overwrite**, **Save as new** e **Cancel**.
-- Com a política `askInRow`, ao detectar um conflito de destino ou de arquivo
-  parcial, o painel é aberto automaticamente para exibir as escolhas
-  **Overwrite**/**Save as new** ou **Resume**/**Restart**. Políticas automáticas
-  como `overwrite` não exibem os controles de confirmação.
+  **Manter**, **Reiniciar** e **Cancelar**. Manter conclui a tentativa sem
+  transferir novamente os bytes; Reiniciar substitui o arquivo apenas após
+  escolha explícita.
+- Com a política `askInRow`, um arquivo parcial oferece **Continuar**,
+  **Reiniciar** e **Cancelar**. O painel mostra downloads pausados primeiro,
+  depois ativos e por fim os registros concluídos, preservando a ordem de
+  inclusão em cada grupo.
+- Cancelar uma linha concluída remove o registro de histórico, mas preserva o
+  arquivo de destino; cancelar um download inacabado também remove seus
+  temporários.
 - A linha de download exercita callbacks de progresso, callbacks de conclusão
   e limpeza de arquivos temporários.
 
