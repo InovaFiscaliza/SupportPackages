@@ -41,6 +41,13 @@ classdef F5Session < handle
     end
 
 
+    events
+        % Raised after login, logout, or a profile refresh, including those
+        % triggered implicitly by reads and downloads.
+        AuthenticationChanged
+    end
+
+
     properties (Access = private, Transient, NonCopyable)
         %-----------------------------------------------------------------%
         CookieHeader (1, :) char    = ''
@@ -75,7 +82,7 @@ classdef F5Session < handle
 
         %-----------------------------------------------------------------%
         function delete(obj)
-            logout(obj)
+            clearCredentials(obj)
         end
 
         %-----------------------------------------------------------------%
@@ -141,6 +148,7 @@ classdef F5Session < handle
                 if hasLanded(obj, state)
                     obj.CookieHeader = strtrim(state.cookie);
                     updateUserProfile(obj)
+                    notify(obj, 'AuthenticationChanged')
                     break
                 end
 
@@ -164,12 +172,11 @@ classdef F5Session < handle
         function logout(obj)
             % LOGOUT Discards the in-memory session and closes the embedded window.
 
-            closeBrowser(obj)
-
-            % Overwrites the buffer before releasing it.
-            obj.CookieHeader(:) = ' ';
-            obj.CookieHeader    = '';
-            obj.UserProfile     = struct();
+            wasAuthenticated = obj.IsAuthenticated;
+            clearCredentials(obj)
+            if wasAuthenticated
+                notify(obj, 'AuthenticationChanged')
+            end
         end
 
         %-----------------------------------------------------------------%
@@ -280,6 +287,16 @@ classdef F5Session < handle
 
 
     methods (Access = private)
+        %-----------------------------------------------------------------%
+        function clearCredentials(obj)
+            closeBrowser(obj)
+
+            % Overwrites the buffer before releasing it.
+            obj.CookieHeader(:) = ' ';
+            obj.CookieHeader    = '';
+            obj.UserProfile     = struct();
+        end
+
         %-----------------------------------------------------------------%
         function openBrowser(obj)
             if ~exist('matlab.internal.webwindow', 'class')
@@ -525,6 +542,7 @@ classdef F5Session < handle
             profileFields = response.getFields('X-User-Profile');
             if ~isempty(profileFields)
                 obj.UserProfile = ws.auth.F5Session.getLoginProfile(response);
+                notify(obj, 'AuthenticationChanged')
                 data = obj.UserProfile;
                 return
             end

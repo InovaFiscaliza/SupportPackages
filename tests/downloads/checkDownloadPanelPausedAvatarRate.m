@@ -50,17 +50,37 @@ pendingSnapshot = panel.Manager.getSnapshot(pendingTaskID);
 assert(strcmp(pendingSnapshot.LifecycleState, 'awaitingConflictDecision'))
 assert(strcmp(pendingSnapshot.ConflictType, 'partial'))
 
+promotedTaskID = panel.addDownload('https://example.test/download/promoted.bin', ...
+                                   'DisplayMode', 'silent');
+otherTaskID = panel.addDownload('https://example.test/download/other.bin');
+promotedSnapshot = panel.Manager.getSnapshot(promotedTaskID);
+duplicateTaskID = panel.addDownload('https://example.test/download/promoted.bin');
+assert(duplicateTaskID == promotedTaskID)
+duplicateSnapshot = panel.Manager.getSnapshot(promotedTaskID);
+assert(strcmp(duplicateSnapshot.DisplayMode, 'normal'))
+assert(isequal(duplicateSnapshot.AttemptedTimestamps, ...
+               promotedSnapshot.AttemptedTimestamps))
+drawnow
+promotedLabels = findall(uiFigure, 'Type', 'uilabel', 'Text', 'promoted.bin');
+assert(numel(promotedLabels) == 1)
+promotedRow = promotedLabels(1).Parent.Parent;
+assert(promotedRow.Layout.Row == 1)
+downloadContainers = findall(uiFigure, 'Type', 'uipanel', 'BorderType', 'line');
+assert(numel(downloadContainers) == 1)
+assert(strcmp(downloadContainers.Visible, 'on'))
+
 avatarData = panel.AvatarHTML.Data;
 for attempt = 1:20
     drawnow
-    if isstruct(avatarData) && numel(avatarData) == 2 && ...
-            all(ismember([taskID, pendingTaskID], [avatarData.id]))
+    if isstruct(avatarData) && numel(avatarData) == 4 && ...
+            all(ismember([taskID, pendingTaskID, promotedTaskID, otherTaskID], ...
+                         [avatarData.id]))
         break
     end
     pause(0.05)
     avatarData = panel.AvatarHTML.Data;
 end
-assert(isstruct(avatarData) && numel(avatarData) == 2)
+assert(isstruct(avatarData) && numel(avatarData) == 4)
 pausedAvatar = avatarData([avatarData.id] == taskID);
 pendingAvatar = avatarData([avatarData.id] == pendingTaskID);
 assert(numel(pausedAvatar) == 1 && pausedAvatar.rate == 0)
@@ -68,6 +88,8 @@ assert(numel(pendingAvatar) == 1 && pendingAvatar.rate == 0)
 
 report = struct('TaskID', taskID, ...
                 'PendingTaskID', pendingTaskID, ...
+                'PromotedTaskID', promotedTaskID, ...
+                'DuplicateTaskID', duplicateTaskID, ...
                 'LifecycleState', pausedSnapshot.LifecycleState, ...
                 'PausedAvatarRate', pausedAvatar.rate, ...
                 'PendingAvatarRate', pendingAvatar.rate);

@@ -76,7 +76,7 @@ F5BrowserTestApp
 - **Combo box de URL** (editável), pré-populado com endpoints de teste. Navega tanto ao   pressionar Enter sobre uma URL digitada quanto ao selecionar um item. URLs novas são acrescentadas ao histórico mas não serão recuperadas entre sessões.
 - **Imagem de debug** (<img src="debug-start.svg" alt="ícone de debug" width="16" height="16"> / <img src="debug-stop.svg" alt="ícone de debug" width="16" height="16">), ao lado do combo: controla a abertura das DevTools do navegador de autenticação e a gravação do estado bruto do navegador em arquivo de log. O ícone muda de cor quando o modo de debug está ativo.
 - **Modo de execução** (![ícone desktop](vm.svg) / ![ícone Web App Server](globe.svg)), ao lado do debug: indica o comportamento desktop ou Web App Server. O clique alterna o modo usado pelos próximos downloads e permite testar a compatibilidade com os dois modos de execução dos aplicativos.
-- **Avatar de downloads**, entre o debug e o avatar de perfil: mostra o progresso agregado da fila, uma bola por download ativo e a velocidade agregada. O clique abre ou traz para frente o painel de downloads.
+- **Avatar de downloads**, entre o modo silencioso e o avatar de perfil: mostra indicadores individuais de progresso e atividade dos downloads visíveis. O clique abre ou traz para frente o painel de downloads.
 - **Avatar de perfil**, à direita: desconectado, conectado com inicial ou conectado com foto circular. O clique conecta ou abre o menu de perfil, que contém a opção de desconectar.
 - **Área de conteúdo** (`uihtml`), ocupando o restante da figura.
 
@@ -106,6 +106,12 @@ apresentado na linha do painel, com as opções de manter o arquivo existente,
 reiniciar o download ou cancelar. O `uiputfile` ainda permite escolher outro
 nome no modo desktop; no Web App Server, o nome deriva da URL e não pode ser
 renomeado. O reinício explícito substitui o arquivo existente.
+
+Solicitações não terminais com a mesma URL e o mesmo nome de arquivo selecionado
+são deduplicadas, independentemente da pasta de destino ou do modo normal/silencioso.
+Repetir uma solicitação normal para uma tarefa silenciosa torna a tarefa visível,
+promove sua linha e abre o painel. A repetição não cria uma nova tentativa; pausar
+e retomar também não acrescenta um timestamp de tentativa.
 
 O avatar de perfil usa o componente compartilhado
 [`profileAvatar.html`](../../src/Anatel/+ws/+auth/profileAvatar.html). O harness

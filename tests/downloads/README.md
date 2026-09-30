@@ -1,12 +1,12 @@
-# tests/ui
+# tests/downloads
 
 Esta pasta contém o harness manual de UI e o dublê de teste de
 `src/General/+ui/DownloadPanel` e `src/General/+download/DownloadManager`.
 
-Ela também contém harnesses visuais isolados para os avatares. O antigo
-`downloadAvatar.html` permanece legado, exercitado apenas pelo seu harness; o
-painel e novas integrações usam `pingDownloadAvatar.html`. Os harnesses de
-avatar e de painel são deliberadamente separados: os primeiros verificam os
+Ela também contém harnesses visuais isolados para os avatares. O painel usa
+`pingDownloadAvatar.html`; `orbitDownloadAvatar.html` é uma alternativa visual
+agregada, exercitada apenas pelo harness `checkOrbitDownloadHtml`. Os harnesses
+de avatar e de painel são deliberadamente separados: os primeiros verificam os
 protocolos de apresentação HTML, enquanto o painel verifica a UI MATLAB, a
 fábrica de downloaders, o ciclo de vida das tarefas e o comportamento do sistema
 de arquivos.
@@ -19,7 +19,7 @@ de arquivos.
 | [`checkDownloadPanelDestination.m`](checkDownloadPanelDestination.m) | Verifica automaticamente a resolução de destino nos modos desktop e Web App. |
 | [`checkDownloadManager.m`](checkDownloadManager.m) | Verifica o ciclo de vida e conflitos do manager sem UI. |
 | [`checkDownloadSilent.m`](checkDownloadSilent.m) | Verifica tarefas silenciosas, callbacks e inclusão opcional na apresentação. |
-| [`checkDownloadHtml.m`](checkDownloadHtml.m) | Harness legado de `downloadAvatar.html`. |
+| [`checkOrbitDownloadHtml.m`](checkOrbitDownloadHtml.m) | Harness visual opcional de `orbitDownloadAvatar.html`, com progresso agregado e órbita. |
 | [`checkPingDownloadHtml.m`](checkPingDownloadHtml.m) | Testa o recurso `uihtml` `pingDownloadAvatar.html` com IDs, taxas e progresso por download. |
 | [`checkDownloadPanelPausedAvatarRate.m`](checkDownloadPanelPausedAvatarRate.m) | Confirma que downloads pausados chegam ao avatar com taxa zero. |
 | [`checkDownloadHttp.m`](checkDownloadHttp.m) | Faz um teste rápido do transporte HTTP público, do fallback de nome de arquivo e do isolamento de cookies por host exato. |
@@ -32,16 +32,15 @@ sua dependência injetada: ele fornece progresso determinístico orientado por
 timer e comportamento do sistema de arquivos sem tráfego de rede, autenticação
 F5 ou `backgroundPool`.
 
-`checkDownloadHtml` é um harness legado, intencionalmente separado do painel.
-Ele testa apenas o protocolo antigo de apresentação de `downloadAvatar.html`:
-níveis de progresso, estado ativo, quantidade de esferas em órbita, velocidade
-da órbita, evento de pronto e evento de clique. Não é usado pelo painel atual e
-permanece apenas para testar o asset legado.
+`checkOrbitDownloadHtml` é um harness visual opcional, separado do painel.
+Ele testa o protocolo agregado de `orbitDownloadAvatar.html`: níveis de
+progresso, estado ativo, quantidade de esferas em órbita, velocidade da órbita,
+evento de pronto e evento de clique. Não é usado pelo painel atual.
 
 ## Harnesses isolados de avatar
 
-`checkDownloadHtml.m` cria uma pequena `uifigure` contendo o componente `uihtml`
-legado `downloadAvatar.html` e controles para seu estado visual:
+`checkOrbitDownloadHtml.m` cria uma pequena `uifigure` contendo o componente
+`uihtml` opcional `orbitDownloadAvatar.html` e controles para seu estado visual:
 
 - Progresso de `0%` a `100%`, convertido nos níveis de avatar de `0` a `10`.
 - Estado de animação ativo/inativo.
@@ -60,25 +59,29 @@ segundo e progresso entre `0` e `100`. Os controles permitem variar até 23
 downloads, o progresso e a taxa, além de confirmar o evento de clique e erros
 de validação recebidos pelo MATLAB.
 
-`checkDownloadPanelPausedAvatarRate.m` cria um download simulado, pausa a tarefa
-no manager e verifica que `ui.DownloadPanel` mantém seu ID no avatar e envia
-`rate = 0`, apesar de o snapshot pausado conter `TransferRate = NaN`.
+`checkDownloadPanelPausedAvatarRate.m` verifica taxa zero para tarefas pausadas
+e parciais em espera. Também confirma que uma solicitação normal repetida pode
+recuperar uma tarefa silenciosa, promover sua linha ao topo e abrir o painel
+sem acrescentar um timestamp de tentativa.
 
 ## Integração com DownloadPanel
 
 `checkDownloadPanel.m` exercita `ui.DownloadPanel` com
-`DownloadPanelFakeDownloader`. Ele fornece quatro links de exemplo com tamanhos
-e velocidades diferentes, progresso das tarefas, comportamento de
-pausar/retomar/cancelar, escolhas para conflitos de destino e de arquivos parciais
-e os controles de fechar/lixeira. O painel usa internamente o recurso
-`pingDownloadAvatar.html`, que apresenta cada download ativo visível com ID,
-taxa de transferência e progresso individuais. Downloads silenciosos continuam
-fora do avatar, como no comportamento anterior.
+`DownloadPanelFakeDownloader`. Ele fornece links para quatro tamanhos e
+velocidades, além de cenários de falha, destino existente, arquivo parcial e
+cancelamento. O harness cobre progresso, pausa/retomada/cancelamento e escolhas
+de conflito. O painel usa internamente o recurso
+`pingDownloadAvatar.html`, que apresenta cada tarefa visível com ID, taxa de
+transferência e progresso individuais. Isso inclui tarefas ativas, pausadas e
+parciais em espera. Tarefas silenciosas não aparecem no avatar; uma solicitação
+normal correspondente as torna visíveis.
 
 `checkDownloadManager.m` exercita o manager sem criar `uifigure`: confirma
-snapshots, conclusão, remoção de tarefas e todas as decisões de conflito de
-destino e arquivo parcial. O manager mantém a tarefa e o downloader; o painel
-possui somente handles de apresentação e snapshots renderizados.
+snapshots, conclusão, remoção de tarefas, deduplicação por URL e nome, timestamps
+de tentativa, retomada e decisões de conflito de destino e arquivo parcial. A
+retomada e a repetição deduplicada não acrescentam timestamp. O manager mantém a
+tarefa e o downloader; o painel possui somente handles de apresentação e
+snapshots renderizados.
 
 O teste também verifica a persistência do histórico entre reconstruções,
 transições de pausa/retomada/cancelamento, identidade lógica estável,
@@ -110,12 +113,15 @@ o login do F5.
 
 Para URLs sem um nome útil, o painel reutiliza o fallback gerado para novas
 tentativas durante a vida da mesma instância, permitindo oferecer um arquivo
-`.part` parado para retomada. Se a fonte ignorar o cabeçalho HTTP `Range`, não
-é possível continuar byte a byte; o worker detecta a resposta `200` e baixa a
-fonte novamente desde o início.
+`.part` parado para retomada. A deduplicação de tarefas não terminais compara a
+URL exata e o nome de arquivo selecionado, sem distinguir a pasta de destino ou
+o modo de exibição. Se a fonte ignorar o cabeçalho HTTP `Range`, não é possível
+continuar byte a byte; o worker detecta a resposta `200` e baixa a fonte
+novamente desde o início.
 
 Depois que o recurso informa que está pronto, o painel envia um array de structs
-para `pingDownloadAvatar.html`, com um item para cada download ativo visível:
+para `pingDownloadAvatar.html`, com um item para cada tarefa ativa, pausada ou
+parcial em espera que esteja visível:
 
 - `id`: ID numérico da tarefa no gerenciador.
 - `rate`: taxa atual em bytes por segundo; taxas ainda não medidas são enviadas como `100000`.
@@ -138,7 +144,6 @@ específicas da tarefa são armazenados na pasta temporária configurada, e o
 arquivo concluído é publicado na pasta de destino somente depois que a
 transferência é bem-sucedida.
 
-O painel oferece suporte a vários downloads simultâneos, pausar/retomar e cancelar,
 O painel oferece suporte a vários downloads simultâneos, pausar/retomar,
 reiniciar e cancelar, conflitos de destino (**Manter**, **Reiniciar**, **Cancelar**)
 e conflitos de arquivos parciais (**Continuar**, **Reiniciar**, **Cancelar**).
@@ -153,20 +158,21 @@ ainda existe e as registra novamente no manager. O download lógico aparece
 diretamente como conflito de parcial, com **Continuar**, **Reiniciar** e
 **Cancelar**; nenhum downloader é iniciado até o usuário escolher uma ação.
 
-## Execução do harness
+## Execução dos harnesses
 
-A partir da raiz do repositório, adicione a pasta de testes ao caminho do MATLAB
-e execute:
+A partir da raiz do repositório, adicione as pastas de código e testes ao caminho
+do MATLAB e execute:
 
 ```matlab
-addpath(fullfile(pwd, 'tests', 'ui'))
+addpath(fullfile(pwd, 'src', 'General'))
+addpath(fullfile(pwd, 'tests', 'downloads'))
 uiFigure = checkDownloadPanel;
 ```
 
-Para executar o harness legado do avatar antigo:
+Para executar o harness do avatar agregado opcional:
 
 ```matlab
-uiFigure = checkDownloadHtml;
+uiFigure = checkOrbitDownloadHtml;
 ```
 
 Para executar o teste isolado do novo avatar por download:
@@ -214,7 +220,11 @@ temporária e de destino simuladas.
 - **`sample1.bin`** baixa 10 MB a 250 kB/s.
 - **`sample2.bin`** baixa 20 MB a 500 kB/s.
 - **`sample3.bin`** baixa 30 MB a 750 kB/s.
-- **`sample4.bin`** baixa 40 MB a 1 MB/s.
+- **`sample4.bin`** baixa 40 MB a 1 MB/s no modo silencioso.
+- **`sample-failed.bin`** conclui com falha simulada para exercitar a notificação de erro.
+- **`sample-existing.bin`** exercita manter o destino existente ou reiniciar a transferência.
+- **`sample-partial.bin`** exercita continuar ou reiniciar um arquivo parcial.
+- **`sample-cancel.bin`** exercita o cancelamento de uma transferência ativa.
 - O **ícone de lixeira** para as tarefas ativas e remove as pastas `temp` e
   `target` com todo o seu conteúdo. As pastas são recriadas automaticamente
   quando outro link de exemplo é clicado.

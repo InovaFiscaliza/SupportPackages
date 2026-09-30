@@ -49,11 +49,14 @@ classdef DownloadPanel < handle
         HistoryTasks = {}
         NextHistoryRowID (1,1) double = 0
         DownloadOrder = []
+        PromotedTaskID (1,1) double = NaN
         DownloadFileNames cell = cell(0, 2)
         AvatarHTMLReady (1,1) logical = false
         AvatarState struct = struct('id', {}, 'rate', {}, 'progress', {})
         OriginalWindowButtonDownFcn = []
         IsDeleting (1,1) logical = false
+        IsConstructing (1,1) logical = true
+        ShowWhenAvatarReady (1,1) logical = false
     end
 
 
@@ -125,6 +128,7 @@ classdef DownloadPanel < handle
             obj.OriginalWindowButtonDownFcn = obj.UIFigure.WindowButtonDownFcn;
             obj.UIFigure.WindowButtonDownFcn = @(source, event) obj.onFigureButtonDown(source, event);
             obj.Manager.restoreInterruptedDownloads();
+            obj.IsConstructing = false;
         end
 
         %-----------------------------------------------------------------%
@@ -203,6 +207,7 @@ classdef DownloadPanel < handle
         %-----------------------------------------------------------------%
         function show(obj)
             % SHOW Make the download popup visible and bring it to the front.
+            obj.ShowWhenAvatarReady = false;
             if isempty(obj.DownloadDialog) || ~isvalid(obj.DownloadDialog)
                 if isempty(obj.Manager.getHistory())
                     return
@@ -310,7 +315,7 @@ classdef DownloadPanel < handle
             obj.refreshDownloadContainer()
             obj.updateDownloadAvatar()
             if strcmp(snapshot.LifecycleState, 'awaitingConflictDecision')
-                obj.show()
+                obj.requestShow()
             end
         end
 
@@ -319,6 +324,22 @@ classdef DownloadPanel < handle
             if isempty(snapshot) || obj.IsDeleting
                 return
             end
+            if isempty(obj.getTask(snapshot.ID))
+                obj.onManagerSnapshot(snapshot)
+            end
+            obj.PromotedTaskID = snapshot.ID;
+            obj.requestShow()
+        end
+
+        %-----------------------------------------------------------------%
+        function requestShow(obj)
+            % The caller has not placed the avatar yet during construction,
+            % so anchoring the popup now would use its auto-flow grid cell.
+            if obj.IsConstructing
+                obj.ShowWhenAvatarReady = true;
+                return
+            end
+            obj.show()
         end
 
         %-----------------------------------------------------------------%
@@ -434,6 +455,10 @@ classdef DownloadPanel < handle
                     (isstruct(payload) && isfield(payload, 'type') && strcmp(string(payload.type), 'ready'))
                 obj.AvatarHTMLReady = true;
                 obj.AvatarHTML.Data = obj.AvatarState;
+                if obj.ShowWhenAvatarReady && ~obj.IsConstructing
+                    obj.ShowWhenAvatarReady = false;
+                    obj.show()
+                end
                 return
             end
 
@@ -775,7 +800,9 @@ classdef DownloadPanel < handle
             for rowIndex = 1:numel(rowIDs)
                 task = obj.getTask(rowIDs(rowIndex));
                 state = task.Snapshot.LifecycleState;
-                if ismember(state, {'paused', 'awaitingConflictDecision'})
+                if task.ID == obj.PromotedTaskID
+                    group = 0;
+                elseif ismember(state, {'paused', 'awaitingConflictDecision'})
                     group = 1;
                 elseif ismember(state, {'created', 'active'})
                     group = 2;

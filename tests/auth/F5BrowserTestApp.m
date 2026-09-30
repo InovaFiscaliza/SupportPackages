@@ -6,6 +6,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
 
     properties (Access = private)
         Session
+        SessionListener
         UIFigure matlab.ui.Figure
         URLDropDown matlab.ui.control.DropDown
         ExecutionModeImage matlab.ui.control.Image
@@ -14,10 +15,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
         DownloadPanel
         ProfileAvatarHTML matlab.ui.control.HTML
         HTMLView matlab.ui.control.HTML
-        ProfileMenu matlab.ui.container.Panel
-        ProfileNameLabel matlab.ui.control.Label
-        ProfileDetailsLabel matlab.ui.control.Label
-        SignOutButton matlab.ui.control.Button
+        ProfilePanel
         DebugMode (1,1) logical = false
         DownloadExecutionMode (1, :) char = 'desktopStandaloneApp'
         SilentDownloadMode (1,1) logical = false
@@ -59,6 +57,12 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
         end
 
         function delete(app)
+            if ~isempty(app.SessionListener) && isvalid(app.SessionListener)
+                delete(app.SessionListener)
+            end
+            if ~isempty(app.ProfilePanel) && isvalid(app.ProfilePanel)
+                delete(app.ProfilePanel)
+            end
             if ~isempty(app.DownloadPanel) && isvalid(app.DownloadPanel)
                 delete(app.DownloadPanel)
             end
@@ -79,7 +83,6 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             app.UIFigure.CloseRequestFcn = @(~, ~) delete(app);
             app.AuthResourceFolder = fileparts(mfilename('fullpath'));
             app.DefaultServerDownloadPath = app.AuthResourceFolder;
-            app.Session = ws.auth.F5Session(app.AuthenticationURL);
             projectFolder = fileparts(fileparts(app.AuthResourceFolder));
             app.ProfileAvatarHTMLPath = fullfile(projectFolder, 'src', 'Anatel', '+ws', '+auth', 'profileAvatar.html');
 
@@ -136,27 +139,11 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             app.HTMLView.Layout.Row = 2;
             app.HTMLView.Layout.Column = [1, 6];
 
-            app.ProfileMenu = uipanel(app.UIFigure, 'Visible', 'off', 'Title', 'Perfil');
-            menuLayout = uigridlayout(app.ProfileMenu, [3, 1]);
-            menuLayout.Padding = [12, 8, 12, 8];
-            menuLayout.RowHeight = {30, '1x', 34};
+            app.ProfilePanel = ui.ProfilePanel(app.UIFigure, ...
+                'Anchor', app.ProfileAvatarHTML, ...
+                'SignOutFcn', @() app.signOut());
 
-            app.ProfileNameLabel = uilabel(menuLayout, 'Text', '', 'FontWeight', 'bold');
-            app.ProfileNameLabel.Layout.Row = 1;
-            app.ProfileNameLabel.Layout.Column = 1;
-
-            app.ProfileDetailsLabel = uilabel(menuLayout, ...
-                                               'Text', '', ...
-                                               'VerticalAlignment', 'top', ...
-                                               'WordWrap', 'on');
-            app.ProfileDetailsLabel.Layout.Row = 2;
-            app.ProfileDetailsLabel.Layout.Column = 1;
-
-            app.SignOutButton = uibutton(menuLayout, ...
-                                         'Text', 'desconectar', ...
-                                         'ButtonPushedFcn', @(~, ~) app.signOut());
-            app.SignOutButton.Layout.Row = 3;
-            app.SignOutButton.Layout.Column = 1;
+            app.setSession(ws.auth.F5Session(app.AuthenticationURL))
         end
 
         function navigate(app)
@@ -206,7 +193,8 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
 
         function profileImageClicked(app)
             if ~isempty(app.Session) && isvalid(app.Session) && app.Session.IsAuthenticated
-                app.toggleProfileMenu()
+                [~, profile] = app.Session.getAuthenticationInfo();
+                app.ProfilePanel.toggle(profile)
             else
                 app.connect()
             end
@@ -267,9 +255,27 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
 
         function downloader = createDownloader(app, request)
             if isempty(app.Session) || ~isvalid(app.Session)
-                app.Session = ws.auth.F5Session(app.AuthenticationURL);
+                app.setSession(ws.auth.F5Session(app.AuthenticationURL))
             end
             downloader = ws.auth.FileDownload(app.Session, request);
+        end
+
+        function setSession(app, session)
+            if ~isempty(app.SessionListener) && isvalid(app.SessionListener)
+                delete(app.SessionListener)
+            end
+            app.SessionListener = [];
+            app.Session = session;
+            if ~isempty(session)
+                app.SessionListener = addlistener(session, 'AuthenticationChanged', ...
+                    @(~, ~) app.onSessionAuthenticationChanged());
+            end
+        end
+
+        function onSessionAuthenticationChanged(app)
+            if isvalid(app) && ~isempty(app.UIFigure) && isvalid(app.UIFigure)
+                app.refreshStatus()
+            end
         end
 
         function onDownloadCompleted(app, ~, info, taskInfo)
@@ -296,38 +302,11 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             end
         end
 
-        function toggleProfileMenu(app)
-            if strcmp(app.ProfileMenu.Visible, 'on')
-                app.ProfileMenu.Visible = 'off';
-                return
-            end
-
-            [~, profile] = app.Session.getAuthenticationInfo();
-            app.ProfileNameLabel.Text = app.profileName(profile);
-            app.ProfileDetailsLabel.Text = app.profileDetails(profile);
-
-            drawnow
-            imagePosition = getpixelposition(app.ProfileAvatarHTML, true);
-            menuWidth = 300;
-            menuHeight = 240;
-            figureSize = app.UIFigure.Position(3:4);
-            menuX = min(max(8, imagePosition(1) + imagePosition(3) - menuWidth), ...
-                        max(8, figureSize(1) - menuWidth - 8));
-            menuY = imagePosition(2) - menuHeight - 4;
-            if menuY < 8
-                menuY = imagePosition(2) + imagePosition(4) + 4;
-            end
-
-            app.ProfileMenu.Position = [menuX, menuY, menuWidth, menuHeight];
-            app.ProfileMenu.Visible = 'on';
-            uistack(app.ProfileMenu, 'top')
-        end
-
         function signOut(app)
-            app.ProfileMenu.Visible = 'off';
+            app.ProfilePanel.hide()
             if ~isempty(app.Session) && isvalid(app.Session)
                 logout(app.Session)
-                app.Session = [];
+                app.setSession([])
             end
             app.HTMLView.HTMLSource = '<html><body></body></html>';
             app.refreshStatus()
@@ -348,7 +327,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
                 delete(app.Session)
             end
 
-            app.Session = ws.auth.F5Session(app.AuthenticationURL);
+            app.setSession(ws.auth.F5Session(app.AuthenticationURL))
             app.refreshStatus()
             progressDialog = uiprogressdlg(app.UIFigure, ...
                                            'Indeterminate', 'on', ...
@@ -369,8 +348,9 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             if isConnected
                 [~, profile] = app.Session.getAuthenticationInfo();
                 app.updateProfileAvatar(true, profile)
+                app.ProfilePanel.update(profile)
             else
-                app.ProfileMenu.Visible = 'off';
+                app.ProfilePanel.hide()
                 app.updateProfileAvatar(false, struct())
             end
         end
@@ -447,30 +427,6 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             else
                 initial = upper(strtrim(name(1)));
             end
-        end
-
-        function name = profileName(app, profile)
-            name = app.profileField(profile, {'NA_USER_NAME', 'name', 'displayName', 'username', 'userName'});
-            if isempty(name)
-                name = app.profileField(profile, {'NA_USER_EMAIL', 'email'});
-            end
-            if isempty(name)
-                name = 'Usuario autenticado';
-            end
-        end
-
-        function text = profileDetails(app, profile)
-            if ~isstruct(profile) || isempty(profile)
-                text = 'Dados do perfil indisponiveis.';
-                return
-            end
-            fields = fieldnames(profile);
-            lines = cell(size(fields));
-            for fieldIndex = 1:numel(fields)
-                fieldName = fields{fieldIndex};
-                lines{fieldIndex} = sprintf('%s: %s', fieldName, app.profileValueText(profile.(fieldName)));
-            end
-            text = strjoin(lines, newline);
         end
 
         function value = profileField(app, profile, candidates)

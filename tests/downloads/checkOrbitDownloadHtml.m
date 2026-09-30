@@ -1,5 +1,5 @@
-function uiFigure = checkDownloadHtml
-% CHECKDOWNLOADHTML Open the isolated download-avatar UI harness.
+function uiFigure = checkOrbitDownloadHtml
+% CHECKORBITDOWNLOADHTML Open the isolated orbit-avatar UI harness.
 %
 % This harness tests only the reusable orbitDownloadAvatar.html uihtml asset. It
 % does not start downloads, authenticate, access the network, or instantiate

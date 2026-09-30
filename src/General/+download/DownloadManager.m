@@ -83,6 +83,11 @@ classdef DownloadManager < handle
             duplicateTaskID = obj.findDuplicate(request);
             if ~isempty(duplicateTaskID)
                 taskID = duplicateTaskID;
+                task = obj.Tasks{taskID};
+                if strcmp(request.DisplayMode, 'normal') && strcmp(task.DisplayMode, 'silent')
+                    task.DisplayMode = 'normal';
+                    obj.Tasks{taskID} = task;
+                end
                 obj.notifyTaskReordered(taskID)
                 return
             end
@@ -262,7 +267,6 @@ classdef DownloadManager < handle
                 task.LifecycleState = 'active';
                 task.StartClock = tic;
                 task.UpdatedAt = utcNow();
-                task.AttemptedTimestamps{end+1} = timestampISO(task.UpdatedAt);
                 obj.Tasks{taskID} = task;
                 obj.persistTask(task)
                 obj.notifySnapshot(task)
@@ -771,9 +775,6 @@ classdef DownloadManager < handle
                     continue
                 end
                 if strcmp(task.URL, request.URL) && strcmpi(task.FileName, request.FileName)
-                    if ~strcmp(task.DisplayMode, request.DisplayMode)
-                        continue
-                    end
                     taskID = task.ID;
                     return
                 end

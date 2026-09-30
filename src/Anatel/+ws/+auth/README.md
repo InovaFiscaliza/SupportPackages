@@ -6,7 +6,7 @@ Módulo compartilhado de autenticação para aplicações MATLAB desktop que con
 |---|---|
 | `F5Session.m` | Sessão autenticada reutilizável (`ws.auth.F5Session`) |
 | `FileDownload.m` | Download assíncrono retomável em `backgroundPool` |
-| `DownloadProgressMonitor.m` | Reporta o andamento das transferências ao chamador |
+| `DownloadProgressMonitor.m` | Reporta o progresso de `F5Session.readBytes` quando o chamador fornece um callback |
 | [`DownloadManager`](../../../General/+download/DownloadManager.m) | Orquestra tarefas, conflitos, callbacks e snapshots sem conhecer UI ou F5 |
 | [`+download`](../../../General/+download) | Serviços HTTP, nomes de arquivos, metadados e worker provider-neutral |
 | `getMessage.m` | Carrega as mensagens localizadas do módulo |
@@ -159,10 +159,12 @@ esse evento para iniciar o login ou abrir o menu do perfil.
 `ui.DownloadPanel` fica em `src/General/+ui` e é independente de
 `F5Session`. Ele recebe um `DownloaderFactory`, renderiza snapshots do
 `download.DownloadManager` e traduz ações da UI em comandos do manager.
-O HTML em `src/General/+ui/html/pingDownloadAvatar.html` é o avatar ativo do
-painel e deve ser incluído explicitamente em aplicações compiladas. O antigo
-`downloadAvatar.html` permanece apenas como legado para seu harness isolado
-`tests/downloads/checkDownloadHtml.m`.
+O HTML em `src/General/+ui/html/pingDownloadAvatar.html` é o avatar usado pelo
+painel e deve ser incluído explicitamente em aplicações compiladas. O avatar
+agregado opcional `orbitDownloadAvatar.html` preserva a visualização de níveis
+e órbitas para comparação ou reutilização independente; não é carregado por
+`ui.DownloadPanel`. Seu harness manual é
+[`checkOrbitDownloadHtml.m`](../../../../tests/downloads/checkOrbitDownloadHtml.m).
 
 Os serviços provider-neutral ficam em `src/General/+download`: use
 `download.downloadFileName`, `download.downloadSourceMetadata`,
@@ -205,21 +207,30 @@ Passar uma sessão não inicia autenticação. O login é feito somente quando o
 download recebe uma resposta de autenticação para o host F5. URLs públicas
 HTTP ou HTTPS são baixadas sem cookies. URLs autenticadas exigem HTTPS.
 
-O nome de arquivo usa, nesta ordem, um nome explícito, o último segmento útil
-da URL, `Content-Disposition` (`filename*` antes de `filename`) e um fallback
-no formato `YYMMDD_HHmm_<dominio>_<UID>.download`. Os pontos do domínio são
-substituídos por hífens, por exemplo
-`260923_1430_httpbin-org_a1b2c3d4.download`.
-O `DownloadPanel` reutiliza o fallback gerado para a mesma URL durante a vida
-do painel, permitindo encontrar um arquivo parcial depois de `stop`.
+O painel sugere o último segmento útil da URL como nome de arquivo. Em modos
+desktop, o nome escolhido pelo usuário é usado como destino. Em `webApp`, não há
+diálogo: se a URL não tiver um nome útil, o painel cria um fallback no formato
+`YYMMDD_HHmm_<dominio>_<UID>.download`; para esse caso, `FileDownload` pode
+substituí-lo pelo nome de `Content-Disposition` (`filename*` antes de
+`filename`). Os pontos do domínio são substituídos por hífens, por exemplo
+`260923_1430_httpbin-org_a1b2c3d4.download`. O painel reutiliza o fallback
+gerado para a mesma URL durante sua vida, permitindo encontrar um arquivo
+parcial depois de `stop`.
 
 `executionMode` aceita `webApp`, `desktopStandaloneApp` e
 `MATLABEnvironment`. O último usa o mesmo comportamento de download do modo
 desktop. Em todos os modos, quando o destino já existe, a linha fica em espera
-com os controles **Overwrite**, **Save as new** e **Cancel** abaixo da barra;
-o downloader só é criado depois da escolha. O callback de conclusão deve
+com os controles **Keep existing**, **Restart** e **Cancel** abaixo da barra;
+o downloader só é criado depois da escolha, exceto ao manter o arquivo existente.
+O callback de conclusão deve
 publicar o arquivo em `TargetFolder` e remover os arquivos temporários de
 sucesso.
+
+Tarefas não terminais são deduplicadas pela URL exata e pelo nome de arquivo
+selecionado, sem distinguir pasta de destino ou `DisplayMode`. Repetir uma
+solicitação normal para uma tarefa silenciosa torna a tarefa visível, promove
+sua linha e abre o painel. A repetição não registra uma nova tentativa; pausar
+e retomar também preserva os timestamps existentes.
 
 ### API pública
 
@@ -235,6 +246,7 @@ sucesso.
 | `IsAuthenticated` | Propriedade somente leitura. |
 | `UserProfile` | Perfil do usuário associado à sessão autenticada. Somente leitura para a aplicação. |
 | `getAuthenticationInfo()` | Retorna `[isAuthenticated, userProfile]`. Quando não autenticada, `userProfile` é um struct vazio. |
+| `AuthenticationChanged` | Evento disparado após login bem-sucedido, `logout` de uma sessão autenticada ou atualização do perfil, inclusive quando a autenticação é iniciada implicitamente por `read` ou `FileDownload`. Não é disparado por `delete`. |
 | `isSessionExpired(response)` | Estático. Avalia uma `ResponseMessage` já obtida. |
 
 ## Notas de segurança
@@ -258,4 +270,4 @@ Ver [tests/auth](../../../../tests/auth/README.md):
 
 - [checkF5Auth.m](../../../../tests/auth/checkF5Auth.m) — script de validação, seção a seção.
 - [F5BrowserTestApp.m](../../../../tests/auth/F5BrowserTestApp.m) — app `uifigure` que demonstra a integração completa.
-- [checkDownloadHtml.m](../../../../tests/auth/checkDownloadHtml.m) — harness isolado para testar progresso, bolas, velocidade e clique.
+- [checkOrbitDownloadHtml.m](../../../../tests/downloads/checkOrbitDownloadHtml.m) — harness isolado do avatar agregado opcional.

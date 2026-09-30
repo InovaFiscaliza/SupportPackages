@@ -15,11 +15,13 @@ not add the `+download` folder itself.
 | Module | Responsibility |
 |---|---|
 | [`DownloadManager.m`](DownloadManager.m) | Owns task registration, lifecycle transitions, task IDs, conflict decisions, downloader callbacks, snapshots, late-callback filtering, cleanup, and completion/error notifications. |
+| [`DownloadHistoryStore.m`](DownloadHistoryStore.m) | Reads, validates, and atomically writes the versioned persistent task history. |
 | [`downloadFileWorker.m`](downloadFileWorker.m) | Performs resumable chunked HTTP transfers, writes task-scoped temporary files, publishes completed files, retries recoverable failures, and reports progress. |
 | [`downloadHTTPResponse.m`](downloadHTTPResponse.m) | Sends HTTP `GET` and `HEAD` requests with cookie-aware redirect handling, byte ranges, authentication-response detection, and URL validation. |
 | [`downloadSourceMetadata.m`](downloadSourceMetadata.m) | Reads source headers and derives metadata such as the final URL and `Content-Disposition` filename before a transfer starts. |
 | [`downloadFileName.m`](downloadFileName.m) | Derives a safe filename from a URL or creates a deterministic fallback filename. |
 | [`downloadContentDispositionFileName.m`](downloadContentDispositionFileName.m) | Extracts and sanitizes `filename` and `filename*` values from a `Content-Disposition` header. |
+| [`moveToTrash.m`](moveToTrash.m) | Moves temporary files to the host trash when supported, falling back to deletion. |
 
 ## Architecture
 
@@ -30,16 +32,17 @@ src/General/
 ├── +ui/
 │   ├── DownloadPanel.m
 │   └── html/
-│       ├── downloadAvatar.html (legacy)
-│       ├── pingDownloadAvatar.html
-│       └── downloadStatus.html
+│       ├── orbitDownloadAvatar.html (optional aggregate-orbit alternative)
+│       └── pingDownloadAvatar.html
 └── +download/
     ├── DownloadManager.m
+    ├── DownloadHistoryStore.m
     ├── downloadContentDispositionFileName.m
     ├── downloadFileName.m
     ├── downloadFileWorker.m
     ├── downloadHTTPResponse.m
-    └── downloadSourceMetadata.m
+    ├── downloadSourceMetadata.m
+    └── moveToTrash.m
 
 src/Anatel/+ws/+auth/
 ├── F5Session.m
@@ -72,10 +75,11 @@ filename from the URL.
 The active download avatar is
 [`pingDownloadAvatar.html`](../+ui/html/pingDownloadAvatar.html), beside the
 panel's UI implementation. It is not part of this provider-neutral package.
-The old [`downloadAvatar.html`](../+ui/html/downloadAvatar.html) is retained as
-a legacy asset for `tests/downloads/checkDownloadHtml.m`; it is not used by
-`ui.DownloadPanel`. The optional `downloadStatus.html` asset follows the same
-UI ownership rule.
+The optional [`orbitDownloadAvatar.html`](../+ui/html/orbitDownloadAvatar.html)
+provides the older aggregate progress-and-orbit presentation. It is exercised
+by `tests/downloads/checkOrbitDownloadHtml.m` and is not loaded by
+`ui.DownloadPanel`. A separate `downloadStatus.html` component is not currently
+implemented or required by this package.
 
 ### Manager contract
 
@@ -88,26 +92,29 @@ handles or downloader internals.
 A normalized `DownloadRequest` contains the URL, task ID, temporary folder,
 target folder, filename, final path, display mode, task-scoped partial/chunk
 paths, and applicable conflict policies. A `TaskSnapshot` contains the task ID,
-lifecycle state, paths, received and total bytes, progress fraction, a measured
-`TransferRate` in bytes per second, timestamps, and error information, along
-with task and conflict state. `TransferRate` is `NaN` until enough progress
-samples are available. The snapshot does not contain a separate estimated rate
-or rate-source field; `ui.DownloadPanel` derives the estimated remaining time
-from the remaining bytes and `TransferRate`. Neither contract exposes UI handles
-or downloader internals.
+lifecycle state, paths, received and total bytes, progress fraction, measured
+`TransferRate` in bytes per second, `MeasuredSpeed`, `RateSource`, timestamps,
+and error information, along with task and conflict state. `TransferRate` is
+`NaN` until enough progress samples are available. The snapshot does not
+currently contain an estimated rate; `ui.DownloadPanel` derives the estimated
+remaining time from remaining bytes and measured `TransferRate`. Neither
+contract exposes UI handles or downloader internals.
 
 `DisplayMode` accepts `normal` or `silent` and belongs to the manager task
 state, not to URL inference or downloader behavior. Silent tasks retain the
 same lifecycle, downloader callbacks, cleanup, and completion/error callbacks,
 but their snapshots and reorder notifications are omitted from presentation by
-default. Set `IncludeSilentTasks` on `DownloadManager` to include those
+default. A normal request that matches an existing silent task promotes that
+task to normal presentation. Duplicate matching uses exact URL and
+case-insensitive filename, independent of destination folder and display mode.
+Set `IncludeSilentTasks` on `DownloadManager` to include otherwise-silent task
 snapshots in the panel and avatar without changing the downloader contract.
 
 The lifecycle vocabulary is authoritative:
 
 - `pause` stops transfer while preserving resumable temporary state;
-- `cancel` stops transfer, removes task-scoped temporary files, and removes the
- `cancel` stops transfer, removes task-scoped temporary files and the history
+- `resume` continues the paused transfer without adding a new attempt timestamp;
+- `cancel` stops transfer, removes task-scoped temporary files and the history
     entry, and leaves any completed target file untouched;
 - `restart` discards the partial state before starting again;
 - target conflicts use `keep`, `restart`, and `cancel`;
@@ -126,7 +133,8 @@ printed `Entries` array, with one record per manager attempt. Records include
 entry and logical-file IDs, the task ID, URL, absolute target and temporary
 paths, UTC ISO 8601 timestamps, lifecycle state, downloaded bytes, measured
 speed and its source, error messages, target availability, and cumulative
-`AttemptedTimestamps` for every transfer start associated with the logical file.
+`AttemptedTimestamps` for transfer attempts associated with the logical file.
+Resuming a paused task and recalling a duplicate do not add an attempt timestamp.
 Unless a request provides `LogicalFileID`, the manager hashes the canonical
 target path so later attempts to that destination share an identity while
 retaining separate entry and task IDs.
@@ -165,14 +173,8 @@ publication.
 Generic helpers use normalized request arguments and a provider-supplied
 `requestContext`. For F5-authenticated transfers, `ws.auth.FileDownload`
 supplies the context and invokes `@download.downloadFileWorker`. The generic
-worker does not inspect cookies or know about `F5Session`.
-
-The remaining
-[`src/Anatel/+ws/+auth/downloadFileWorker.m`](../../Anatel/+ws/+auth/downloadFileWorker.m)
-file is a compatibility wrapper during this migration. It delegates to
-`download.downloadFileWorker`; there is only one worker implementation. Once
-all external callers are confirmed to use the new namespace, the wrapper may be
-removed or retained as an explicitly documented compatibility entry point.
+worker does not inspect cookies or know about `F5Session`; there is one worker
+implementation in this provider-neutral package.
 
 No package calls into another provider's concrete implementation. The
 normalized request and provider `requestContext` are the only transfer
@@ -192,17 +194,17 @@ implementations are not maintained as permanent duplicate wrappers.
 
 Add `src/General` to the MATLAB path so `ui.*` and `download.*` resolve as
 sibling packages. Do not add either package folder directly. `+download` code
-files are regular code dependencies. UI assets such as
-`pingDownloadAvatar.html` and `downloadStatus.html` must be included explicitly
-as additional files in compiled applications; `profileAvatar.html` remains
-under `+ws/+auth`. The legacy `downloadAvatar.html` is only needed when running
-its dedicated legacy harness.
+files are regular code dependencies. Applications using `ui.DownloadPanel`
+must include `pingDownloadAvatar.html` explicitly as an additional file;
+`profileAvatar.html` remains under `+ws/+auth`. Include
+`orbitDownloadAvatar.html` only when an application separately uses that
+optional alternative. `downloadStatus.html` is not a current package asset.
 
-The avatar asset is resolved relative to `DownloadPanel.m`. Its MATLAB-to-HTML
-protocol sends one `{id, rate, progress}` struct per active visible download
-and uses the `downloadAvatarReady` and `downloadAvatarClick` events. Compiled
-applications must include the asset explicitly rather than copying it into
-the consuming application.
+The active avatar asset is resolved relative to `DownloadPanel.m`. Its
+MATLAB-to-HTML protocol sends one `{id, rate, progress}` struct per visible
+active, paused, or partial-conflict task and uses the `downloadAvatarReady` and
+`downloadAvatarClick` events. Compiled applications must include the asset
+explicitly rather than copying it into the consuming application.
 
 Validate the generic package with `tests/downloads/checkDownloadHttp.m`, validate the
 manager contract without UI using `tests/downloads/checkDownloadManager.m`, and
@@ -252,10 +254,12 @@ For a non-F5 provider, the factory can return any object implementing the
 manager downloader contract: `start`, `pause`, `resume`, and `stop` methods,
 plus `ProgressFcn`, `CompletedFcn`, and `ErrorFcn` callback properties.
 
-The panel deduplicates nonterminal tasks by URL and target filename. A repeated
-request returns the existing task and brings its row to the top. `Pause`
-stops transfer while retaining resumable temporary files. `Cancel` stops the
-transfer, deletes task temporary files, and removes the row.
+The panel deduplicates nonterminal tasks by exact URL and case-insensitive
+selected filename, regardless of target folder or display mode. A repeated
+request returns the existing task and brings its row to the top; recalling a
+silent task normally makes it visible. `Pause` stops transfer while retaining
+resumable temporary files. `Resume` does not create a new attempt timestamp.
+`Cancel` stops the transfer, deletes task temporary files, and removes the row.
 
 Generic errors use the `download:*` identifier namespace. Authentication and
 UI-specific errors remain owned by their respective adapter or presentation

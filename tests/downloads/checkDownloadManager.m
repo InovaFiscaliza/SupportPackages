@@ -60,6 +60,8 @@ manager = download.DownloadManager(...
     'HistoryFile', historyFile, ...
     'TempFolder', tempPath, ...
     'CollisionPolicy', 'askInRow');
+manager.CompletedFcn = @completedDownload;
+manager.ErrorFcn = @failedDownload;
 history = manager.getHistory();
 assert(~history(1).isAvailable)
 retryID = manager.addDownload(request);
@@ -206,15 +208,23 @@ holdManager = download.DownloadManager('DownloaderFactory', @createDownloader, .
 holdManager.TaskReorderedFcn = @reorderedDownload;
 holdRequest = request;
 holdRequest.FileName = 'held.bin';
+holdRequest.DisplayMode = 'silent';
 holdID = holdManager.addDownload(holdRequest);
 heldSnapshot = holdManager.getSnapshot(holdID);
-duplicateID = holdManager.addDownload(holdRequest);
+duplicateRequest = holdRequest;
+duplicateRequest.DisplayMode = 'normal';
+duplicateRequest.TargetFolder = fullfile(targetPath, 'alternate');
+duplicateID = holdManager.addDownload(duplicateRequest);
 assert(duplicateID == holdID)
 assert(getappdata(0, 'checkDownloadManager_reordered'))
 assert(strcmp(heldSnapshot.LifecycleState, 'active'))
 assert(isfield(heldSnapshot, 'HistoryEntry'))
 assert(strcmp(heldSnapshot.HistoryEntry.LogicalFileID, ...
               heldSnapshot.LogicalFileID))
+duplicateSnapshot = holdManager.getSnapshot(holdID);
+assert(strcmp(duplicateSnapshot.DisplayMode, 'normal'))
+assert(isequal(duplicateSnapshot.AttemptedTimestamps, ...
+               heldSnapshot.AttemptedTimestamps))
 holdManager.pause(holdID)
 pausedSnapshot = holdManager.getSnapshot(holdID);
 assert(strcmp(pausedSnapshot.LifecycleState, 'paused'))
@@ -222,10 +232,13 @@ assert(isfile(pausedSnapshot.PartialPath))
 holdManager.resume(holdID)
 history = holdManager.getHistory();
 assert(strcmp(history(end).LifecycleState, 'active'))
+assert(isequal(history(end).AttemptedTimestamps, ...
+               heldSnapshot.AttemptedTimestamps))
 holdManager.pause(holdID)
 history = holdManager.getHistory();
 assert(strcmp(history(end).LifecycleState, 'paused'))
-assert(numel(history(end).AttemptedTimestamps) == 2)
+assert(isequal(history(end).AttemptedTimestamps, ...
+               heldSnapshot.AttemptedTimestamps))
 holdManager.cancel(holdID)
 history = holdManager.getHistory();
 assert(isempty(history))
