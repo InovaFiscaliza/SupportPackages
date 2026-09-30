@@ -44,7 +44,7 @@ classdef eFiscaliza < ws.WebServiceBase
         function delete(obj)
             % Login automático (sessão F5 Big-IP) não pode ser descartado 
             % manualmente
-            if ~obj.mfaLogin
+            if obj.mfaLogin
                 return
             end
 
