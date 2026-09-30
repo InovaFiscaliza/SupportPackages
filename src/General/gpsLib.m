@@ -246,5 +246,53 @@ classdef (Abstract) gpsLib
                 monitoringType = 'undetermined';
             end
         end
+
+        %-----------------------------------------------------------------%
+        function label = lookupMunicipioIBGE(codMun)
+            arguments
+                codMun (1,:) char
+            end
+        
+            persistent municipioMap
+            if isempty(municipioMap)
+                municipioMap = gpsLib.loadMunicipioMap();
+            end
+        
+            label = '';
+            codMun = strtrim(codMun);
+            if isempty(codMun) || ~isKey(municipioMap, codMun)
+                return
+            end
+            label = municipioMap(codMun);
+        end
+
+        %-------------------------------------------------------------------------%
+        function municipioMap = loadMunicipioMap()
+            municipioMap = containers.Map('KeyType', 'char', 'ValueType', 'char');
+        
+            matData = gpsLib.checkIfIBGEIsGlobal();
+        
+            tbl = matData;
+            variableNames = string(tbl.Properties.VariableNames);
+            if ~ismember("Code", variableNames)
+                return
+            end
+        
+            labelColumnIndex = find(variableNames ~= "Code", 1, 'first');
+            if isempty(labelColumnIndex)
+                return
+            end
+        
+            codes = strtrim(string(tbl.Code));
+            labels = strtrim(string(tbl{:, labelColumnIndex}));
+            for ii = 1:height(tbl)
+                if ismissing(codes(ii)) || codes(ii) == ""
+                    continue
+                end
+                municipioMap(char(codes(ii))) = char(labels(ii));
+            end
+        end
+
+
     end
 end
