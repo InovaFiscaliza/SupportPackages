@@ -114,6 +114,9 @@ classdef Elevation < handle
                         % como fonte primária dos dados de elevação, com Open-Elevation 
                         % e ANATEL como fallback, nessa ordem.
 
+                        % Além disso, na API de elevação do Open-Meteo, o limite 
+                        % documentado é de até 100 coordenadas por requisição.
+
                         % Exemplos:
                         % https://api.open-elevation.com/api/v1/lookup?locations=41.161758,-8.583933|-12.5,-38.5
                         % http://rhfisnspdex02.anatel.gov.br/api/v1/lookup?locations=41.161758,-8.583933|-12.5,-38.5
@@ -129,6 +132,10 @@ classdef Elevation < handle
                         while batchStart <= nPoints
                             cumCharCount = cumsum(pointCharCount(batchStart:end));
                             fittingIdx = find(maxBatchChars > cumCharCount);
+                            if numel(fittingIdx) > 100
+                                fittingIdx(101:end) = [];
+                            end
+
                             lastIdx = batchStart + fittingIdx(end) - 1;
 
                             batchLat = path2D(batchStart:lastIdx, 1);
