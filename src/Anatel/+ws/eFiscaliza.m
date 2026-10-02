@@ -242,6 +242,13 @@ classdef eFiscaliza < ws.WebServiceBase
                 id = num2str(id);
             end
         end
-    end
 
+        %-----------------------------------------------------------------%
+        function sanitizedText = sanitizeForSEI(rawText)
+            sanitizedText = replace(rawText, {'↳', '~'}, {'&#x21B3;', '~ '});
+            sanitizedText = regexprep(sanitizedText, '[\x96\x97]', '-');
+            sanitizedText = regexprep(sanitizedText, '[\x80-\x9F]', '');
+            sanitizedText = regexprep(sanitizedText, '/(?=\S)', '/ ');
+        end
+    end
 end
