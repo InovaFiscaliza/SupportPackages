@@ -1,5 +1,5 @@
-function report = checkDownloadPanelPausedAvatarRate
-% CHECKDOWNLOADPANELPAUSEDAVATARRATE Verify paused tasks reach the avatar at rate zero.
+function report = checkTransferPanelPausedAvatarRate
+% CHECKTRANSFERPANELPAUSEDAVATARRATE Verify paused tasks reach the avatar at rate zero.
 
 mFilePath = fileparts(mfilename('fullpath'));
 projectFolder = fileparts(fileparts(mFilePath));
@@ -10,7 +10,7 @@ tempPath = tempname;
 targetPath = tempname;
 mkdir(tempPath)
 mkdir(targetPath)
-autoCompleteKey = 'DownloadManagerFakeDownloaderAutoComplete';
+autoCompleteKey = 'TransferManagerFakeTransferAutoComplete';
 hadAutoCompleteValue = isappdata(0, autoCompleteKey);
 if hadAutoCompleteValue
     originalAutoCompleteValue = getappdata(0, autoCompleteKey);
@@ -21,8 +21,8 @@ setappdata(0, autoCompleteKey, false)
 
 uiFigure = uifigure('Visible', 'off');
 layout = uigridlayout(uiFigure, [1, 1]);
-panel = ui.DownloadPanel(layout, ...
-    'DownloaderFactory', @createDownloader, ...
+panel = ui.TransferPanel(layout, ...
+    'TransferFactory', @createDownloader, ...
     'executionMode', 'webApp', ...
     'tempPath', tempPath, ...
     'targetPath', targetPath);
@@ -95,7 +95,7 @@ report = struct('TaskID', taskID, ...
                 'PendingAvatarRate', pendingAvatar.rate);
 
     function downloader = createDownloader(request)
-        downloader = DownloadManagerFakeDownloader(request);
+        downloader = TransferManagerFakeTransfer(request);
     end
 end
 

@@ -1,15 +1,17 @@
-classdef DownloadPanelFakeDownloader < handle
+classdef TransferPanelFakeTransfer < handle
 
-    % DOWNLOADPANELFAKEDOWNLOADER Deterministic downloader test double.
+    % TRANSFERPANELFAKETRANSFER Deterministic downloader test double.
     %
     % This class implements the downloader protocol required by
-    % ui.DownloadPanel. It uses a timer to emit progress, writes simulated
+    % ui.TransferPanel. It uses a timer to emit progress, writes simulated
     % partial data, publishes a fake target file, and invokes the configured
     % completion or error callback. It never performs network I/O.
 
     properties
         Request
-        BytesReceived (1,1) double = 0
+        Direction (1,:) char = 'download'
+        IsResumable (1,1) logical = true
+        TransferredBytes (1,1) double = 0
         TotalBytes (1,1) double
         BytesPerSecond (1,1) double
         WrittenBytes (1,1) double = 0
@@ -25,17 +27,19 @@ classdef DownloadPanelFakeDownloader < handle
     end
 
     methods
-        function obj = DownloadPanelFakeDownloader(request)
-            % DOWNLOADPANELFAKEDOWNLOADER Create a fake task from a request.
+        function obj = TransferPanelFakeTransfer(request)
+            % TRANSFERPANELFAKETRANSFER Create a fake task from a request.
             %
             % REQUEST is the normalized struct supplied by
-            % ui.DownloadPanel.DownloaderFactory.
+            % ui.TransferPanel.TransferFactory.
             obj.Request = request;
+            obj.Direction = request.Direction;
+            obj.IsResumable = strcmp(request.Direction, 'download');
             [obj.TotalBytes, obj.BytesPerSecond] = sampleProfile(request.FileName);
             if isfile(request.PartialPath)
                 fileInfo = dir(request.PartialPath);
-                obj.BytesReceived = min(obj.TotalBytes, fileInfo.bytes);
-                obj.WrittenBytes = obj.BytesReceived;
+                obj.TransferredBytes = min(obj.TotalBytes, fileInfo.bytes);
+                obj.WrittenBytes = obj.TransferredBytes;
             end
         end
 
@@ -99,14 +103,14 @@ classdef DownloadPanelFakeDownloader < handle
                 return
             end
 
-            obj.BytesReceived = min(obj.TotalBytes, ...
-                                    obj.BytesReceived + obj.BytesPerSecond * 0.1);
+            obj.TransferredBytes = min(obj.TotalBytes, ...
+                                       obj.TransferredBytes + obj.BytesPerSecond * 0.1);
             obj.writePartialFile()
             if ~isempty(obj.ProgressFcn)
-                obj.ProgressFcn(obj.BytesReceived, obj.TotalBytes)
+                obj.ProgressFcn(obj.TransferredBytes, obj.TotalBytes)
             end
 
-            if obj.BytesReceived >= obj.TotalBytes
+            if obj.TransferredBytes >= obj.TotalBytes
                 obj.finish()
             end
         end
@@ -116,7 +120,7 @@ classdef DownloadPanelFakeDownloader < handle
             if ~isfolder(obj.Request.TempFolder)
                 mkdir(obj.Request.TempFolder)
             end
-            bytesToWrite = floor(obj.BytesReceived) - obj.WrittenBytes;
+            bytesToWrite = floor(obj.TransferredBytes) - obj.WrittenBytes;
             if bytesToWrite <= 0
                 return
             end
@@ -124,7 +128,7 @@ classdef DownloadPanelFakeDownloader < handle
             partialPath = obj.Request.PartialPath;
             fileID = fopen(partialPath, 'ab');
             if fileID == -1
-                error('ui:DownloadPanelFakeDownloader:partialOpenFailed', ...
+                error('ui:TransferPanelFakeTransfer:partialOpenFailed', ...
                       'Could not create the partial file "%s".', partialPath)
             end
             cleanup = onCleanup(@() fclose(fileID));
@@ -134,7 +138,7 @@ classdef DownloadPanelFakeDownloader < handle
             chunkPath = obj.Request.ChunkPath;
             chunkID = fopen(chunkPath, 'wb');
             if chunkID == -1
-                error('ui:DownloadPanelFakeDownloader:chunkOpenFailed', ...
+                error('ui:TransferPanelFakeTransfer:chunkOpenFailed', ...
                       'Could not create the chunk file "%s".', chunkPath)
             end
             chunkCleanup = onCleanup(@() fclose(chunkID));
@@ -150,28 +154,29 @@ classdef DownloadPanelFakeDownloader < handle
             end
 
             if isfield(obj.Request, 'SimulateFailure') && obj.Request.SimulateFailure
-                obj.fail('ui:DownloadPanelFakeDownloader:simulatedFailure', ...
+                obj.fail('ui:TransferPanelFakeTransfer:simulatedFailure', ...
                          'Simulated failure for the panel state harness.')
                 return
             end
 
-            if isfile(obj.Request.FinalPath)
+            if isfile(obj.Request.LocalPath)
                 if strcmp(obj.Request.CollisionAction, 'overwrite')
-                    delete(obj.Request.FinalPath)
+                    delete(obj.Request.LocalPath)
                 else
-                    obj.fail('ui:DownloadPanelFakeDownloader:targetExists', ...
+                    obj.fail('ui:TransferPanelFakeTransfer:targetExists', ...
                              'The target file appeared while the download was running.')
                     return
                 end
             end
 
-            if ~isfolder(obj.Request.TargetFolder)
-                mkdir(obj.Request.TargetFolder)
+            localFolder = fileparts(obj.Request.LocalPath);
+            if ~isfolder(localFolder)
+                mkdir(localFolder)
             end
             partialPath = obj.Request.PartialPath;
-            fileID = fopen(obj.Request.FinalPath, 'wb');
+            fileID = fopen(obj.Request.LocalPath, 'wb');
             if fileID == -1
-                obj.fail('ui:DownloadPanelFakeDownloader:targetUnavailable', ...
+                obj.fail('ui:TransferPanelFakeTransfer:targetUnavailable', ...
                          'Could not create the fake target file.')
                 return
             end
@@ -188,8 +193,8 @@ classdef DownloadPanelFakeDownloader < handle
             end
 
             if ~isempty(obj.CompletedFcn)
-                obj.CompletedFcn(struct('FinalPath', obj.Request.FinalPath, ...
-                                        'BytesReceived', obj.BytesReceived, ...
+                obj.CompletedFcn(struct('LocalPath', obj.Request.LocalPath, ...
+                                        'TransferredBytes', obj.TransferredBytes, ...
                                         'TotalBytes', obj.TotalBytes));
             end
         end

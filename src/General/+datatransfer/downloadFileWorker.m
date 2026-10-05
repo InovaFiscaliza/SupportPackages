@@ -3,17 +3,17 @@ function result = downloadFileWorker(requestContext, request, chunkSize, maxRetr
 
 partialPath = request.PartialPath;
 chunkPath = request.ChunkPath;
-finalPath = fullfile(request.TargetFolder, request.FileName);
-bytesReceived = fileSize(partialPath);
+finalPath = request.LocalPath;
+transferredBytes = fileSize(partialPath);
 totalBytes = [];
 retryCount = 0;
 currentURL = request.URL;
 
 result = struct('Success', false, ...
                 'NeedsAuthentication', false, ...
-                'BytesReceived', bytesReceived, ...
+                'TransferredBytes', transferredBytes, ...
                 'TotalBytes', totalBytes, ...
-                'FinalPath', finalPath, ...
+                'LocalPath', finalPath, ...
                 'FinalURL', currentURL, ...
                 'ResolvedFileName', request.FileName, ...
                 'Error', []);
@@ -23,17 +23,17 @@ try
     if isfield(request, 'PartialAction') && strcmp(request.PartialAction, 'restart')
         deleteIfExists(partialPath)
         deleteIfExists(chunkPath)
-        bytesReceived = 0;
-        result.BytesReceived = 0;
+        transferredBytes = 0;
+        result.TransferredBytes = 0;
         request.PartialAction = 'none';
     end
 
     while true
         deleteIfExists(chunkPath)
-        firstByte = bytesReceived;
+        firstByte = transferredBytes;
         lastByte = firstByte + chunkSize - 1;
-        responseResult = download.downloadHTTPResponse(currentURL, requestContext, ...
-                                                  'GET', firstByte, lastByte);
+        responseResult = datatransfer.sendHTTPRequest(currentURL, requestContext, ...
+                                                  'GET', Range=sprintf('bytes=%d-%d', firstByte, lastByte));
         if responseResult.NeedsAuthentication
             result.NeedsAuthentication = true;
             result.FinalURL = responseResult.FinalURL;
@@ -45,7 +45,7 @@ try
         result.FinalURL = currentURL;
         statusCode = double(response.StatusCode);
         if statusCode < 200 || statusCode >= 300
-            error('download:downloadFileWorker:httpError', ...
+            error('datatransfer:downloadFileWorker:httpError', ...
                   'Request returned HTTP %d.', statusCode)
         end
 
@@ -58,13 +58,13 @@ try
         if isempty(data)
             data = uint8.empty(0, 1);
         elseif ~isa(data, 'uint8')
-            error('download:downloadFileWorker:unexpectedPayload', ...
+            error('datatransfer:downloadFileWorker:unexpectedPayload', ...
                   'Unexpected payload (%s) in raw reading.', class(data))
         end
 
         fileID = fopen(chunkPath, 'wb');
         if fileID == -1
-            error('download:downloadFileWorker:fileOpenFailed', ...
+            error('datatransfer:downloadFileWorker:fileOpenFailed', ...
                   'Could not write to "%s".', chunkPath)
         end
         cleanup = onCleanup(@() closeFileQuietly(fileID)); %#ok<NASGU>
@@ -76,41 +76,41 @@ try
         totalBytes = totalFromResponse(response, statusCode);
         if statusCode == 206
             appendFile(chunkPath, partialPath)
-            bytesReceived = firstByte + chunkBytes;
+            transferredBytes = firstByte + chunkBytes;
         else
             moveFileWithFallback(chunkPath, partialPath)
-            bytesReceived = chunkBytes;
+            transferredBytes = chunkBytes;
         end
 
         retryCount = 0;
         send(progressQueue, struct('Type', 'progress', ...
                                    'JobId', jobId, ...
-                                   'BytesReceived', bytesReceived, ...
+                                   'TransferredBytes', transferredBytes, ...
                                    'TotalBytes', totalBytes));
 
-        reachedTotal = ~isempty(totalBytes) && bytesReceived >= totalBytes;
+        reachedTotal = ~isempty(totalBytes) && transferredBytes >= totalBytes;
         if reachedTotal || chunkBytes < chunkSize || statusCode == 200
             publishFile(request, partialPath, finalPath)
             cleanupSuccessfulFiles(request, partialPath, chunkPath)
             result.Success = true;
-            result.BytesReceived = bytesReceived;
+            result.TransferredBytes = transferredBytes;
             result.TotalBytes = totalBytes;
             return
         end
     end
 catch exception
     deleteIfExists(chunkPath)
-    if retryCount < maxRetries && ~strcmp(exception.identifier, 'download:downloadFileWorker:fileOpenFailed')
+    if retryCount < maxRetries && ~strcmp(exception.identifier, 'datatransfer:downloadFileWorker:fileOpenFailed')
         retryCount = retryCount + 1;
         pause(2 * retryCount)
-        result = download.downloadFileWorker(requestContext, request, chunkSize, ...
+        result = datatransfer.downloadFileWorker(requestContext, request, chunkSize, ...
                                        maxRetries - retryCount, progressQueue, jobId);
         return
     end
 
     restoreBackup(request.BackupPath, finalPath)
     result.Error = exception;
-    result.BytesReceived = fileSize(partialPath);
+    result.TransferredBytes = fileSize(partialPath);
     result.TotalBytes = totalBytes;
 end
 end
@@ -122,7 +122,7 @@ if isempty(fields)
     value = '';
     return
 end
-value = download.downloadContentDispositionFileName(char(fields(1).Value));
+value = datatransfer.downloadContentDispositionFileName(char(fields(1).Value));
 end
 
 
@@ -148,12 +148,12 @@ end
 function appendFile(sourcePath, targetPath)
 sourceID = fopen(sourcePath, 'rb');
 if sourceID == -1
-    error('download:downloadFileWorker:fileOpenFailed', 'Could not read "%s".', sourcePath)
+    error('datatransfer:downloadFileWorker:fileOpenFailed', 'Could not read "%s".', sourcePath)
 end
 sourceCleanup = onCleanup(@() fclose(sourceID)); %#ok<NASGU>
 targetID = fopen(targetPath, 'ab');
 if targetID == -1
-    error('download:downloadFileWorker:fileOpenFailed', 'Could not write "%s".', targetPath)
+    error('datatransfer:downloadFileWorker:fileOpenFailed', 'Could not write "%s".', targetPath)
 end
 targetCleanup = onCleanup(@() fclose(targetID)); %#ok<NASGU>
 while true
@@ -167,12 +167,12 @@ end
 
 
 function publishFile(request, partialPath, finalPath)
-ensureFolder(request.TargetFolder)
+ensureFolder(fileparts(request.LocalPath))
 if isfile(finalPath)
     if isfield(request, 'CollisionAction') && strcmp(request.CollisionAction, 'overwrite')
         delete(finalPath)
     else
-        error('download:downloadFileWorker:targetExists', ...
+        error('datatransfer:downloadFileWorker:targetExists', ...
               'The target file "%s" already exists.', finalPath)
     end
 end
@@ -202,7 +202,7 @@ if moved
 end
 [copied, copyMessage] = copyfile(sourcePath, destinationPath, 'f');
 if ~copied
-    error('download:downloadFileWorker:fileTransferFailed', ...
+    error('datatransfer:downloadFileWorker:fileTransferFailed', ...
           'Could not move or copy "%s" to "%s": %s %s', ...
           sourcePath, destinationPath, message, copyMessage)
 end
@@ -214,7 +214,7 @@ function ensureFolder(folderPath)
 if ~isfolder(folderPath)
     [created, message] = mkdir(folderPath);
     if ~created && ~isfolder(folderPath)
-        error('download:downloadFileWorker:folderUnavailable', '%s', message)
+        error('datatransfer:downloadFileWorker:folderUnavailable', '%s', message)
     end
 end
 end

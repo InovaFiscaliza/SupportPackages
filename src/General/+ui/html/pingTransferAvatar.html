@@ -101,11 +101,11 @@
             }
 
             function sendReady() {
-                sendEvent('downloadAvatarReady', { type: 'ready' });
+                sendEvent('transferAvatarReady', { type: 'ready' });
             }
 
             function sendError(message) {
-                sendEvent('pingDownloadAvatarError', { type: 'error', message: message });
+                sendEvent('pingTransferAvatarError', { type: 'error', message: message });
             }
 
             function normalizeItems(value) {
@@ -418,7 +418,7 @@
                 }
             }
 
-            window.pingDownloadAvatarSetup = function (htmlComponent) {
+            window.pingTransferAvatarSetup = function (htmlComponent) {
                 matlabHtmlComponent = htmlComponent;
                 htmlComponent.addEventListener('DataChanged', function () {
                     syncItems(htmlComponent.Data);
@@ -436,7 +436,7 @@
                     return;
                 }
                 lastPointerClick = now;
-                sendEvent('downloadAvatarClick', { type: 'click' });
+                sendEvent('transferAvatarClick', { type: 'click' });
             }
 
             downloadButton.addEventListener('pointerdown', notifyClick);
@@ -447,7 +447,7 @@
         }());
 
         function setup(htmlComponent) {
-            window.pingDownloadAvatarSetup(htmlComponent);
+            window.pingTransferAvatarSetup(htmlComponent);
         }
     </script>
 </body>

@@ -1,16 +1,16 @@
-function uiFigure = checkPingDownloadHtml
-% CHECKPINGDOWNLOADHTML Open the isolated ping download-avatar UI harness.
+function uiFigure = checkPingTransferHtml
+% CHECKPINGTRANSFERHTML Open the isolated ping download-avatar UI harness.
 
 mFilePath = fileparts(mfilename('fullpath'));
 projectFolder = fileparts(fileparts(mFilePath));
-downloadHtmlPath = fullfile(projectFolder, 'src', 'General', '+ui', 'html', 'pingDownloadAvatar.html');
+downloadHtmlPath = fullfile(projectFolder, 'src', 'General', '+ui', 'html', 'pingTransferAvatar.html');
 
 currentDownloadCount = 3;
 currentProgress = 0;
 currentRate = 1e6;
 statusResetTimer = [];
 
-uiFigure = uifigure('Name', 'Teste do pingDownloadAvatar.html', ...
+uiFigure = uifigure('Name', 'Teste do pingTransferAvatar.html', ...
                     'Position', [100, 100, 560, 340]);
 uiFigure.CloseRequestFcn = @closeFigure;
 mainLayout = uigridlayout(uiFigure, [5, 2]);
@@ -128,12 +128,12 @@ sendDownloads()
             end
         end
 
-        if eventName == "downloadAvatarReady"
+        if eventName == "transferAvatarReady"
             statusLabel.Text = 'HTML pronto.';
-        elseif eventName == "downloadAvatarClick"
+        elseif eventName == "transferAvatarClick"
             statusLabel.Text = 'Clique recebido pelo MATLAB.';
             restartStatusResetTimer()
-        elseif eventName == "pingDownloadAvatarError"
+        elseif eventName == "pingTransferAvatarError"
             message = 'Dados de download inválidos.';
             if isstruct(payload) && isfield(payload, 'message')
                 message = char(payload.message);

@@ -231,8 +231,8 @@ classdef F5Session < handle
         end
 
         %-----------------------------------------------------------------%
-        function context = getDownloadContext(obj, url)
-            % GETDOWNLOADCONTEXT Return credentials only for the exact F5 host.
+        function context = getRequestContext(obj, url)
+            % GETREQUESTCONTEXT Return credentials only for the exact F5 host.
 
             arguments
                 obj
@@ -251,8 +251,8 @@ classdef F5Session < handle
         end
 
         %-----------------------------------------------------------------%
-        function context = authenticateForDownload(obj, url)
-            % AUTHENTICATEFORDOWNLOAD Reauthenticate an exact-host HTTPS URL.
+        function context = authenticateForRequest(obj, url)
+            % AUTHENTICATEFORREQUEST Reauthenticate an exact-host HTTPS URL.
 
             arguments
                 obj
@@ -265,7 +265,7 @@ classdef F5Session < handle
                       'Authenticated requests must target the exact F5 host "%s".', obj.Domain)
             end
             login(obj)
-            context = getDownloadContext(obj, url);
+            context = getRequestContext(obj, url);
             if isempty(context.CookieHeader)
                 error('ws:auth:F5Session:notAuthenticated', ...
                       'The F5 authentication did not produce session cookies.')
@@ -500,7 +500,7 @@ classdef F5Session < handle
         end
 
         %-----------------------------------------------------------------%
-        function validateDownloadURL(obj, url)
+        function validateRequestURL(obj, url)
             uri = matlab.net.URI(url);
             if ~strcmpi(char(uri.Host), obj.Domain)
                 error('ws:auth:F5Session:hostMismatch', ...
@@ -556,7 +556,7 @@ classdef F5Session < handle
 
         %-----------------------------------------------------------------%
         function response = sendRequest(obj, url, convertResponse, progressFcn)
-            validateDownloadURL(obj, url)
+            validateRequestURL(obj, url)
             header  = matlab.net.http.HeaderField('Cookie', obj.CookieHeader);
             request = matlab.net.http.RequestMessage('GET', header);
 

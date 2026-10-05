@@ -84,7 +84,9 @@ F5BrowserTestApp
 
 `navigate` acrescenta a URL ao histórico. Downloads são encaminhados primeiro
 ao painel e usam a mesma chamada para fontes públicas e protegidas; a sessão F5
-só autentica quando o servidor protegido exigir isso. As demais URLs garantem a
+só autentica quando o servidor protegido exigir isso. O contrato atual de
+`ws.auth.FileTransfer` aceita somente `Direction = 'download'`; o transporte de
+upload ainda não está implementado. As demais URLs garantem a
 sessão e fazem a leitura sob um `uiprogressdlg` indeterminado. Erros viram
 `uialert`, sem derrubar a aplicação.
 
@@ -97,7 +99,7 @@ mesmo e cria uma nova sessão quando a URL aponta para outro host.
 No modo desktop, o painel abre `uiputfile` antes de criar a tarefa. No modo Web
 App Server, usa diretamente a pasta de destino configurada na aplicação e não
 abre diálogos desktop. Depois dessa resolução, ambos os modos enviam a mesma
-solicitação normalizada ao `DownloadManager`; conflitos são apresentados na
+solicitação normalizada ao `datatransfer.TransferManager`; conflitos são apresentados na
 linha do painel, que é aberto automaticamente quando a intervenção do usuário
 é necessária, e resolvidos pelo manager.
 
@@ -134,48 +136,51 @@ A janela de autenticação é criada oculta e exibida apenas quando a navegaçã
 sai do host protegido ou demora além do limite de espera. Com uma sessão CEF
 válida, o login pode terminar sem uma janela visível.
 
-### TODO — remaining implementation order
+### TODO — ordem restante de implementação
 
 Os itens abaixo tratam da evolução dos testes e das funcionalidades de download;
 os detalhes arquiteturais do item 1 estão documentados em
-[`src/General/+download/README.md`](../../src/General/+download/README.md).
+[`src/General/+datatransfer/README.md`](../../src/General/+datatransfer/README.md).
 
 O histórico persistente foi implementado no manager; o schema e a recuperação
 estão documentados no README do módulo de downloads.
 
 O redesenho do painel, incluindo os estados de conflito, o histórico concluído e
-as ações por ícone, foi implementado em `ui.DownloadPanel` e está descrito no
-README de `tests/downloads`.
+as ações por ícone, foi implementado em `ui.TransferPanel` e está descrito no
+README de `tests/transfers`.
 
-1. **Make the empty panel a first-class state.**
-	 - Clicking the avatar must open or bring the panel to the front even when
-		 there are no downloads.
-	 - In that state, show only the configured title bar, the `Download` label,
-		 and the close control aligned with the panel's top-right corner.
-	 - Add a harness case for opening, closing, and reopening the empty panel.
+1. **Tornar o painel vazio um estado de primeira classe.**
+	 - Clicar no avatar deve abrir o painel ou trazê-lo para frente, mesmo quando
+		 não houver downloads.
+	 - Nesse estado, mostrar apenas a barra de título configurada, o rótulo
+		 `Download` e o controle de fechar alinhado ao canto superior direito do painel.
+	 - Adicionar um caso de teste para abrir, fechar e reabrir o painel vazio.
 
-2. **Replace the progress bar with a reusable animated `uihtml` status
-	 component.**
-	 - Implement the component as `src/General/+ui/html/downloadStatus.html`
-		 and include it in compiled applications together with the avatar asset.
-	 - Define explicit states for active download (constant blue), warning
-		 (blinking yellow), and error (blinking red), with precedence
+2. **Substituir a barra de progresso por um componente de status `uihtml`
+	 reutilizável e animado.**
+	 - Proposta futura: implementar o componente em
+		 `src/General/+ui/html/downloadStatus.html` e incluí-lo em aplicações
+		 compiladas junto com o recurso do avatar. Esse arquivo ainda não existe nem
+		 é um recurso de empacotamento atual.
+	 - Definir estados explícitos para download ativo (azul constante), aviso
+		 (amarelo piscante) e erro (vermelho piscante), com a precedência
 		 `error > warning > active > idle`.
-	 - Map manager snapshots to these visual states in the panel. The manager
-		 must retain enough failed or warning state for the component to display it
-		 before the row is removed or archived.
-	 - Keep the component independent of authentication and make its MATLAB to
-		 HTML data contract testable from `tests/downloads`.
-	 - Verify desktop MATLAB and Web App Server rendering before integrating it
-		 into every row.
+	 - Mapear os snapshots do manager para esses estados visuais no painel. O manager
+		 deve reter estado de falha ou aviso suficiente para o componente exibi-lo
+		 antes que a linha seja removida ou arquivada.
+	 - Manter o componente independente da autenticação e permitir que seu contrato
+		 de dados do MATLAB para o HTML seja testado em `tests/transfers`.
+	 - Verificar a renderização no MATLAB desktop e no Web App Server antes de
+		 integrá-lo a todas as linhas.
 
-3. **Use historical speeds in the examples.**
-	 - Before a new transfer has enough samples, the manager may obtain an
-		 estimated rate from history using the closest available key: exact URL,
-		 host and filename, then a global default.
-	 - Expose the estimate separately from measured transfer rate. Once real
-		 progress samples exist, measured rate takes precedence and the estimate
-		 must not be presented as measured data.
-	 - Demonstrate the behavior in `tests/downloads` with deterministic history before
-		 relying on live F5 transfers. The avatar consumes the same stable speed
-		 list contract regardless of whether a value is measured or estimated.
+3. **Usar velocidades históricas nos exemplos.**
+	 - Antes que uma nova transferência tenha amostras suficientes, o manager pode
+		 obter uma taxa estimada do histórico usando a chave disponível mais próxima:
+		 URL exata, host e nome do arquivo, depois um valor global padrão.
+	 - Expor a estimativa separadamente da taxa de transferência medida. Quando
+		 houver amostras reais de progresso, a taxa medida terá precedência e a
+		 estimativa não deverá ser apresentada como dado medido.
+	 - Demonstrar o comportamento em `tests/transfers` com um histórico determinístico
+		 antes de depender de transferências F5 reais. O avatar consome o mesmo
+		 contrato estável de lista de velocidades, independentemente de o valor ser
+		 medido ou estimado.

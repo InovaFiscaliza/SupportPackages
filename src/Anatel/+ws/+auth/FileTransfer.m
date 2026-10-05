@@ -1,14 +1,13 @@
-classdef FileDownload < handle
+classdef FileTransfer < handle
 
     properties (SetAccess = private)
         URL (1,:) char
         TaskID (1,:) char
         TempFolder (1,:) char
-        TargetFolder (1,:) char
         FileName (1,:) char
-        FinalPath (1,:) char
+        LocalPath (1,:) char
         PartialPath (1,:) char
-        BytesReceived (1,1) double = 0
+        TransferredBytes (1,1) double = 0
         TotalBytes = []
         IsRunning (1,1) logical = false
         IsPaused  (1,1) logical = false
@@ -37,7 +36,7 @@ classdef FileDownload < handle
 
     methods
         %-----------------------------------------------------------------%
-        function obj = FileDownload(session, request, chunkSize, maxRetries)
+        function obj = FileTransfer(session, request, chunkSize, maxRetries)
             arguments
                 session    (1,1) ws.auth.F5Session
                 request    (1,1) struct
@@ -51,9 +50,8 @@ classdef FileDownload < handle
             obj.URL             = request.URL;
             obj.TaskID          = request.TaskID;
             obj.TempFolder      = request.TempFolder;
-            obj.TargetFolder    = request.TargetFolder;
             obj.FileName        = request.FileName;
-            obj.FinalPath       = request.FinalPath;
+            obj.LocalPath       = request.LocalPath;
             obj.PartialPath     = request.PartialPath;
             obj.SourcePrepared  = request.SourcePrepared;
             obj.ChunkSize       = chunkSize;
@@ -68,16 +66,16 @@ classdef FileDownload < handle
                 return
             end
 
-            context = obj.Session.getDownloadContext(obj.URL);
+            context = obj.Session.getRequestContext(obj.URL);
             checkContentDisposition = isfield(obj.Request, 'AllowSourceFilename') && ...
                                       obj.Request.AllowSourceFilename;
-            metadata = download.downloadSourceMetadata(obj.URL, context, checkContentDisposition);
+            metadata = datatransfer.downloadSourceMetadata(obj.URL, context, checkContentDisposition);
             if metadata.NeedsAuthentication
-                context = obj.Session.authenticateForDownload(obj.URL);
-                metadata = download.downloadSourceMetadata(obj.URL, context, checkContentDisposition);
+                context = obj.Session.authenticateForRequest(obj.URL);
+                metadata = datatransfer.downloadSourceMetadata(obj.URL, context, checkContentDisposition);
             end
             if metadata.NeedsAuthentication
-                error('ws:auth:FileDownload:authenticationRequired', ...
+                error('ws:auth:FileTransfer:authenticationRequired', ...
                       'Authentication is required to download "%s".', obj.URL)
             end
 
@@ -88,10 +86,10 @@ classdef FileDownload < handle
                 end
             end
 
-            obj.FinalPath = fullfile(obj.TargetFolder, obj.FileName);
+            obj.LocalPath = fullfile(fileparts(obj.LocalPath), obj.FileName);
             obj.PartialPath = fullfile(obj.TempFolder, [obj.TaskID, '_', obj.FileName, '.part']);
             obj.Request.FileName = obj.FileName;
-            obj.Request.FinalPath = obj.FinalPath;
+            obj.Request.LocalPath = obj.LocalPath;
             obj.Request.PartialPath = obj.PartialPath;
             obj.Request.ChunkPath = [obj.PartialPath, '.chunk'];
             obj.RequestContext = context;
@@ -106,17 +104,17 @@ classdef FileDownload < handle
             end
             prepare(obj)
             if isempty(which('parfeval'))
-                error('ws:auth:FileDownload:backgroundUnavailable', ...
+                error('ws:auth:FileTransfer:backgroundUnavailable', ...
                       'Parallel Computing Toolbox is required for background downloads.')
             end
             try
                 pool = backgroundPool;
             catch poolError
-                error('ws:auth:FileDownload:backgroundUnavailable', ...
+                error('ws:auth:FileTransfer:backgroundUnavailable', ...
                       'Could not start the MATLAB background pool: %s', poolError.message)
             end
 
-            obj.RequestContext = obj.Session.getDownloadContext(obj.URL);
+            obj.RequestContext = obj.Session.getRequestContext(obj.URL);
             obj.AuthenticationRetried = false;
             startWorker(obj, pool)
         end
@@ -148,13 +146,13 @@ classdef FileDownload < handle
         %-----------------------------------------------------------------%
         function info = summary(obj)
             info = struct('TaskID',         obj.TaskID, ...
+                          'Direction',      obj.Request.Direction, ...
                           'URL',            obj.URL, ...
                           'TempFolder',     obj.TempFolder, ...
-                          'TargetFolder',   obj.TargetFolder, ...
                           'FileName',       obj.FileName, ...
-                          'FinalPath',      obj.FinalPath, ...
+                          'LocalPath',      obj.LocalPath, ...
                           'PartialPath',    obj.PartialPath, ...
-                          'BytesReceived', obj.BytesReceived, ...
+                          'TransferredBytes', obj.TransferredBytes, ...
                           'TotalBytes',    obj.TotalBytes);
         end
 
@@ -170,7 +168,7 @@ classdef FileDownload < handle
     methods (Access = private)
         %-----------------------------------------------------------------%
         function startWorker(obj, pool)
-            obj.BytesReceived = fileSize(obj.PartialPath);
+            obj.TransferredBytes = fileSize(obj.PartialPath);
             obj.TotalBytes    = [];
             obj.IsPaused      = false;
             obj.IsRunning     = true;
@@ -182,7 +180,7 @@ classdef FileDownload < handle
 
             request = obj.Request;
             obj.Request.PartialAction = 'none';
-            obj.Future = parfeval(pool, @download.downloadFileWorker, 1, ...
+            obj.Future = parfeval(pool, @datatransfer.downloadFileWorker, 1, ...
                                   obj.RequestContext, request, ...
                                   obj.ChunkSize, obj.MaxRetries, obj.ProgressQueue, jobId);
             obj.FutureObserver = afterEach(obj.Future, @(future) workerFinished(obj, future, jobId), ...
@@ -196,11 +194,11 @@ classdef FileDownload < handle
             end
 
             if strcmp(message.Type, 'progress')
-                obj.BytesReceived = message.BytesReceived;
+                obj.TransferredBytes = message.TransferredBytes;
                 obj.TotalBytes    = message.TotalBytes;
                 if ~isempty(obj.ProgressFcn)
                     try
-                        obj.ProgressFcn(obj.BytesReceived, obj.TotalBytes)
+                        obj.ProgressFcn(obj.TransferredBytes, obj.TotalBytes)
                     catch
                     end
                 end
@@ -228,13 +226,13 @@ classdef FileDownload < handle
             end
 
             obj.IsRunning     = false;
-            obj.BytesReceived = result.BytesReceived;
+            obj.TransferredBytes = result.TransferredBytes;
             obj.TotalBytes    = result.TotalBytes;
 
             if result.NeedsAuthentication && ~obj.AuthenticationRetried
                 try
                     obj.AuthenticationRetried = true;
-                    obj.RequestContext = obj.Session.authenticateForDownload(obj.URL);
+                    obj.RequestContext = obj.Session.authenticateForRequest(obj.URL);
                     startWorker(obj, backgroundPool)
                 catch exception
                     if ~isempty(obj.ErrorFcn)
@@ -280,16 +278,21 @@ function bytes = fileSize(filePath)
 end
 
 function request = normalizeRequest(request)
-requiredFields = {'URL', 'TaskID', 'TempFolder', 'TargetFolder', 'FileName'};
+if ~isfield(request, 'Direction') || ~ischar(request.Direction) || ...
+        ~strcmp(request.Direction, 'download')
+    error('ws:auth:FileTransfer:invalidRequest', ...
+          'Only download requests are supported until the upload adapter exists.')
+end
+
+requiredFields = {'URL', 'TaskID', 'TempFolder', 'LocalPath', 'FileName'};
 for fieldIndex = 1:numel(requiredFields)
     fieldName = requiredFields{fieldIndex};
     if ~isfield(request, fieldName) || ~ischar(request.(fieldName)) || isempty(request.(fieldName))
-        error('ws:auth:FileDownload:invalidRequest', ...
+        error('ws:auth:FileTransfer:invalidRequest', ...
               'The download request must contain a nonempty character field named %s.', fieldName)
     end
 end
 
-request.FinalPath = fullfile(request.TargetFolder, request.FileName);
 if ~isfield(request, 'PartialPath') || isempty(request.PartialPath)
     request.PartialPath = fullfile(request.TempFolder, [request.TaskID, '_', request.FileName, '.part']);
 end

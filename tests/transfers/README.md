@@ -1,10 +1,10 @@
-# tests/downloads
+# tests/transfers
 
 Esta pasta contém o harness manual de UI e o dublê de teste de
-`src/General/+ui/DownloadPanel` e `src/General/+download/DownloadManager`.
+`src/General/+ui/TransferPanel` e `src/General/+datatransfer/TransferManager`.
 
 Ela também contém harnesses visuais isolados para os avatares. O painel usa
-`pingDownloadAvatar.html`; `orbitDownloadAvatar.html` é uma alternativa visual
+`pingTransferAvatar.html`; `orbitDownloadAvatar.html` é uma alternativa visual
 agregada, exercitada apenas pelo harness `checkOrbitDownloadHtml`. Os harnesses
 de avatar e de painel são deliberadamente separados: os primeiros verificam os
 protocolos de apresentação HTML, enquanto o painel verifica a UI MATLAB, a
@@ -15,19 +15,19 @@ de arquivos.
 
 | Arquivo | Função |
 |---|---|
-| [`checkDownloadPanel.m`](checkDownloadPanel.m) | Abre um harness manual em `uifigure` para o painel reutilizável. |
-| [`checkDownloadPanelDestination.m`](checkDownloadPanelDestination.m) | Verifica automaticamente a resolução de destino nos modos desktop e Web App. |
-| [`checkDownloadManager.m`](checkDownloadManager.m) | Verifica o ciclo de vida e conflitos do manager sem UI. |
-| [`checkDownloadSilent.m`](checkDownloadSilent.m) | Verifica tarefas silenciosas, callbacks e inclusão opcional na apresentação. |
+| [`checkTransferPanel.m`](checkTransferPanel.m) | Abre um harness manual em `uifigure` para o painel reutilizável. |
+| [`checkTransferPanelDestination.m`](checkTransferPanelDestination.m) | Verifica automaticamente a resolução de destino nos modos desktop e Web App. |
+| [`checkTransferManager.m`](checkTransferManager.m) | Verifica o ciclo de vida e conflitos do manager sem UI. |
+| [`checkTransferSilent.m`](checkTransferSilent.m) | Verifica tarefas silenciosas, callbacks e inclusão opcional na apresentação. |
 | [`checkOrbitDownloadHtml.m`](checkOrbitDownloadHtml.m) | Harness visual opcional de `orbitDownloadAvatar.html`, com progresso agregado e órbita. |
-| [`checkPingDownloadHtml.m`](checkPingDownloadHtml.m) | Testa o recurso `uihtml` `pingDownloadAvatar.html` com IDs, taxas e progresso por download. |
-| [`checkDownloadPanelPausedAvatarRate.m`](checkDownloadPanelPausedAvatarRate.m) | Confirma que downloads pausados chegam ao avatar com taxa zero. |
+| [`checkPingTransferHtml.m`](checkPingTransferHtml.m) | Testa o recurso `uihtml` `pingTransferAvatar.html` com IDs, taxas e progresso por download. |
+| [`checkTransferPanelPausedAvatarRate.m`](checkTransferPanelPausedAvatarRate.m) | Confirma que downloads pausados chegam ao avatar com taxa zero. |
 | [`checkDownloadHttp.m`](checkDownloadHttp.m) | Faz um teste rápido do transporte HTTP público, do fallback de nome de arquivo e do isolamento de cookies por host exato. |
-| [`DownloadPanelFakeDownloader.m`](DownloadPanelFakeDownloader.m) | Simula o objeto downloader exigido por `ui.DownloadPanel`. |
-| [`DownloadManagerFakeDownloader.m`](DownloadManagerFakeDownloader.m) | Simula um downloader síncrono para o contrato do manager. |
+| [`TransferPanelFakeTransfer.m`](TransferPanelFakeTransfer.m) | Simula o objeto de transferência exigido por `ui.TransferPanel`. |
+| [`TransferManagerFakeTransfer.m`](TransferManagerFakeTransfer.m) | Simula uma transferência síncrona para o contrato do manager. |
 
-Esses arquivos têm responsabilidades diferentes. `checkDownloadPanel` é o
-harness de teste interativo propriamente dito. `DownloadPanelFakeDownloader` é
+Esses arquivos têm responsabilidades diferentes. `checkTransferPanel` é o
+harness de teste interativo propriamente dito. `TransferPanelFakeTransfer` é
 sua dependência injetada: ele fornece progresso determinístico orientado por
 timer e comportamento do sistema de arquivos sem tráfego de rede, autenticação
 F5 ou `backgroundPool`.
@@ -49,34 +49,34 @@ evento de pronto e evento de clique. Não é usado pelo painel atual.
 - Um indicador de clique que confirma que `downloadAvatarClick` chegou ao MATLAB.
 
 Este harness é exclusivamente de apresentação. Ele não cria arquivos
-temporários ou de destino, não inicia `ui.DownloadPanel`, não autentica nem
+temporários ou de destino, não inicia `ui.TransferPanel`, não autentica nem
 realiza transferências de rede.
 
-`checkPingDownloadHtml.m` exercita o novo avatar por meio de structs MATLAB com
+`checkPingTransferHtml.m` exercita o novo avatar por meio de structs MATLAB com
 os campos `id`, `rate` e `progress`. O harness envia struct vazio, escalar ou
 array conforme a quantidade selecionada, com IDs numéricos, taxa em bytes por
 segundo e progresso entre `0` e `100`. Os controles permitem variar até 23
 downloads, o progresso e a taxa, além de confirmar o evento de clique e erros
 de validação recebidos pelo MATLAB.
 
-`checkDownloadPanelPausedAvatarRate.m` verifica taxa zero para tarefas pausadas
+`checkTransferPanelPausedAvatarRate.m` verifica taxa zero para tarefas pausadas
 e parciais em espera. Também confirma que uma solicitação normal repetida pode
 recuperar uma tarefa silenciosa, promover sua linha ao topo e abrir o painel
 sem acrescentar um timestamp de tentativa.
 
-## Integração com DownloadPanel
+## Integração com TransferPanel
 
-`checkDownloadPanel.m` exercita `ui.DownloadPanel` com
-`DownloadPanelFakeDownloader`. Ele fornece links para quatro tamanhos e
+`checkTransferPanel.m` exercita `ui.TransferPanel` com
+`TransferPanelFakeTransfer`. Ele fornece links para quatro tamanhos e
 velocidades, além de cenários de falha, destino existente, arquivo parcial e
 cancelamento. O harness cobre progresso, pausa/retomada/cancelamento e escolhas
 de conflito. O painel usa internamente o recurso
-`pingDownloadAvatar.html`, que apresenta cada tarefa visível com ID, taxa de
+`pingTransferAvatar.html`, que apresenta cada tarefa visível com ID, taxa de
 transferência e progresso individuais. Isso inclui tarefas ativas, pausadas e
 parciais em espera. Tarefas silenciosas não aparecem no avatar; uma solicitação
 normal correspondente as torna visíveis.
 
-`checkDownloadManager.m` exercita o manager sem criar `uifigure`: confirma
+`checkTransferManager.m` exercita o manager sem criar `uifigure`: confirma
 snapshots, conclusão, remoção de tarefas, deduplicação por URL e nome, timestamps
 de tentativa, retomada e decisões de conflito de destino e arquivo parcial. A
 retomada e a repetição deduplicada não acrescentam timestamp. O manager mantém a
@@ -89,38 +89,38 @@ reconciliação de arquivos concluídos, recuperação de bytes de parciais
 interrompidas e seu retorno ao estado de conflito parcial, além da limpeza de
 parciais legadas e por tarefa quando o JSON do histórico está corrompido, sem
 remover arquivos não relacionados. Por padrão,
-o painel armazena o histórico ao lado dos arquivos temporários. O manager usado
+o painel armazena `transfer-history.json` ao lado dos arquivos temporários. O manager usado
 diretamente recebe `HistoryFile`
 explicitamente; `TempFolder` pode ser informado quando a limpeza inicial deve
 examinar outra pasta.
 
-`checkDownloadPanelDestination.m` cria uma figura invisível e injeta um
+`checkTransferPanelDestination.m` cria uma figura invisível e injeta um
 `DestinationResolver` determinístico. O teste confirma que modos desktop usam
 o destino retornado pelo callback e que `webApp` usa `TargetPath` sem chamar o
 resolver ou construir o downloader antes da decisão de conflito. Também
 confirma que um nome alternativo sem extensão recebe a extensão original da URL
 e é usado como o target final.
 
-`checkDownloadSilent.m` confirma que tarefas com `DisplayMode = 'silent'` não
+`checkTransferSilent.m` confirma que tarefas com `DisplayMode = 'silent'` não
 criam linhas nem progresso visível por padrão, mas ainda emitem conclusão e
 erro. Também verifica `IncludeSilentTasks = true` no manager.
 
 O exemplo de integração com F5 é [`F5BrowserTestApp.m`](../auth/F5BrowserTestApp.m).
-Ele fornece a fábrica `ws.auth.FileDownload` baseada na sessão, enquanto
-`ui.DownloadPanel` continua responsável pela UI de download e pelo ciclo de
+Ele fornece a fábrica `ws.auth.FileTransfer` baseada na sessão, enquanto
+`ui.TransferPanel` continua responsável pela UI de download e pelo ciclo de
 vida das tarefas. A mesma fábrica trata fontes HTTP/HTTPS públicas sem iniciar
 o login do F5.
 
 Para URLs sem um nome útil, o painel reutiliza o fallback gerado para novas
 tentativas durante a vida da mesma instância, permitindo oferecer um arquivo
 `.part` parado para retomada. A deduplicação de tarefas não terminais compara a
-URL exata e o nome de arquivo selecionado, sem distinguir a pasta de destino ou
-o modo de exibição. Se a fonte ignorar o cabeçalho HTTP `Range`, não é possível
+URL exata e o nome de arquivo selecionado em downloads, sem distinguir a pasta
+de destino ou o modo de exibição. Se a fonte ignorar o cabeçalho HTTP `Range`, não é possível
 continuar byte a byte; o worker detecta a resposta `200` e baixa a fonte
 novamente desde o início.
 
 Depois que o recurso informa que está pronto, o painel envia um array de structs
-para `pingDownloadAvatar.html`, com um item para cada tarefa ativa, pausada ou
+para `pingTransferAvatar.html`, com um item para cada tarefa ativa, pausada ou
 parcial em espera que esteja visível:
 
 - `id`: ID numérico da tarefa no gerenciador.
@@ -130,16 +130,16 @@ parcial em espera que esteja visível:
 Uma taxa pausada ou exatamente zero gera o ponto amarelo de alerta. `NaN` e taxas
 diferentes de zero abaixo de `100000` usam `100000` para a animação mínima.
 
-O recurso emite `downloadAvatarReady` e `downloadAvatarClick`, com os tipos de
+O recurso emite `transferAvatarReady` e `transferAvatarClick`, com os tipos de
 payload `ready` e `click`. O próprio recurso do avatar não acessa arquivos,
 autenticação ou serviços de rede.
 
 ## Integração de download com F5
 
 Quando `F5BrowserTestApp` recebe uma URL cujo segmento final do caminho possui
-uma extensão, ele delega a solicitação a `ui.DownloadPanel`. A fábrica da
-aplicação cria `ws.auth.FileDownload` com a sessão F5 autenticada.
-`FileDownload` transfere dados em `backgroundPool`; arquivos parciais e partes
+uma extensão, ele delega a solicitação a `ui.TransferPanel`. A fábrica da
+aplicação cria `ws.auth.FileTransfer` com a sessão F5 autenticada.
+`FileTransfer` transfere dados em `backgroundPool`; arquivos parciais e partes
 específicas da tarefa são armazenados na pasta temporária configurada, e o
 arquivo concluído é publicado na pasta de destino somente depois que a
 transferência é bem-sucedida.
@@ -151,12 +151,14 @@ Arquivos concluídos e com falha permanecem no histórico renderizado pelo paine
 A aplicação mantém apenas as responsabilidades específicas do F5 relacionadas
 à autenticação, registro e comunicação de erros.
 
-O JSON mantém um registro por tentativa, mas o painel mostra somente uma linha
-por `LogicalFileID` e URL, usando o estado da tentativa mais recente. Ao
-inicializar, o painel procura tentativas interrompidas cujo arquivo parcial
-ainda existe e as registra novamente no manager. O download lógico aparece
-diretamente como conflito de parcial, com **Continuar**, **Reiniciar** e
-**Cancelar**; nenhum downloader é iniciado até o usuário escolher uma ação.
+O JSON mantém um registro por tentativa. As linhas de histórico terminais do
+painel agrupam tentativas por direção, URL exata e `LocalPath` canônico, usando o
+estado mais recente; tarefas ativas permanecem separadas por ID de tarefa.
+`LogicalFileID` não é a chave dessas linhas: para downloads, é derivado da URL
+exata. Ao inicializar, o gerenciador restaura tentativas interrompidas elegíveis cujo
+arquivo temporário ainda existe. O download restaurado aparece como conflito
+parcial, com **Continuar**, **Reiniciar** e **Cancelar**; nenhum downloader é
+iniciado até o usuário escolher uma ação.
 
 ## Execução dos harnesses
 
@@ -165,8 +167,8 @@ do MATLAB e execute:
 
 ```matlab
 addpath(fullfile(pwd, 'src', 'General'))
-addpath(fullfile(pwd, 'tests', 'downloads'))
-uiFigure = checkDownloadPanel;
+addpath(fullfile(pwd, 'tests', 'transfers'))
+uiFigure = checkTransferPanel;
 ```
 
 Para executar o harness do avatar agregado opcional:
@@ -178,13 +180,13 @@ uiFigure = checkOrbitDownloadHtml;
 Para executar o teste isolado do novo avatar por download:
 
 ```matlab
-uiFigure = checkPingDownloadHtml;
+uiFigure = checkPingTransferHtml;
 ```
 
 Para verificar a taxa transmitida quando um download é pausado:
 
 ```matlab
-report = checkDownloadPanelPausedAvatarRate;
+report = checkTransferPanelPausedAvatarRate;
 ```
 
 Para executar o teste rápido do transporte público:
@@ -196,23 +198,23 @@ report = checkDownloadHttp;
 Para executar o teste isolado do manager:
 
 ```matlab
-report = checkDownloadManager;
+report = checkTransferManager;
 ```
 
 Para verificar a resolução de destino por modo:
 
 ```matlab
-report = checkDownloadPanelDestination;
+report = checkTransferPanelDestination;
 ```
 
 Para verificar tarefas silenciosas:
 
 ```matlab
-report = checkDownloadSilent;
+report = checkTransferSilent;
 ```
 
 O harness adiciona `src/General` ao caminho automaticamente. Quando executado,
-ele cria `tests/downloads/temp` e `tests/downloads/target` e usa essas pastas como pastas
+ele cria `tests/transfers/temp` e `tests/transfers/target` e usa essas pastas como pastas
 temporária e de destino simuladas.
 
 ## Cenários manuais
@@ -249,7 +251,7 @@ uma `uifigure` local do MATLAB; ele não inicia o MATLAB Web App Server.
 
 ## Contrato do downloader simulado
 
-`DownloadPanelFakeDownloader` expõe a mesma interface esperada de um downloader
+`TransferPanelFakeTransfer` expõe a mesma interface esperada de uma transferência
 real:
 
 - Métodos `start`, `pause`, `resume`, `stop` e `delete`.
@@ -258,13 +260,13 @@ real:
 
 O timer avança cada exemplo na velocidade configurada, grava bytes
 representativos em `Request.PartialPath` e `Request.ChunkPath` e publica um
-arquivo em `Request.FinalPath` com o tamanho configurado. Pausar preserva os
+arquivo em `Request.LocalPath` com o tamanho configurado. Pausar preserva os
 arquivos de preparação para permitir a continuação; cancelar remove os arquivos
 temporários e a linha correspondente. Uma
 conclusão bem-sucedida remove o arquivo parcial, o arquivo de partes e qualquer
 backup de sobrescrita. Intencionalmente, ele não modela o comportamento HTTP
 real, autenticação, novas tentativas ou publicação entre volumes; essas
-responsabilidades são cobertas por `ws.auth.FileDownload` e seu worker.
+responsabilidades são cobertas por `ws.auth.FileTransfer` e seu worker.
 
 ## Limitações
 

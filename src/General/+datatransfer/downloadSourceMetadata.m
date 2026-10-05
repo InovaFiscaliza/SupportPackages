@@ -7,9 +7,9 @@ arguments
     checkContentDisposition (1,1) logical = true
 end
 
-result = download.downloadHTTPResponse(url, requestContext, 'HEAD');
+result = datatransfer.sendHTTPRequest(url, requestContext, 'HEAD');
 response = result.Response;
-statusCode = double(response.StatusCode);
+    statusCode = double(response.StatusCode);
 
 if result.NeedsAuthentication
     metadata = struct('NeedsAuthentication', true, ...
@@ -25,7 +25,7 @@ if ismember(statusCode, [405, 501])
 end
 
 if statusCode < 200 || statusCode >= 300
-    error('download:downloadSourceMetadata:httpError', ...
+    error('datatransfer:downloadSourceMetadata:httpError', ...
           'Metadata request returned HTTP %d.', statusCode)
 end
 
@@ -37,9 +37,12 @@ end
 
 
 function metadata = fallbackToRangeRequest(url, requestContext)
-result = download.downloadHTTPResponse(url, requestContext, 'GET', 0, 0);
+% FALLBACKTORANGERESQUEST Fallback to a GET range request if HEAD fails or is insufficient.
+
+result = datatransfer.sendHTTPRequest(url, requestContext, 'GET', Range='bytes=0-0');
 response = result.Response;
 statusCode = double(response.StatusCode);
+
 if result.NeedsAuthentication
     metadata = struct('NeedsAuthentication', true, ...
                       'FinalURL', result.FinalURL, ...
@@ -48,8 +51,8 @@ if result.NeedsAuthentication
     return
 end
 if statusCode < 200 || statusCode >= 300
-    error('download:downloadSourceMetadata:httpError', ...
-          'Metadata request returned HTTP %d.', statusCode)
+    error('datatransfer:downloadSourceMetadata:httpError', ...
+          'Metadata fallback GET request returned HTTP %d.', statusCode)
 end
 metadata = metadataFromResponse(response, result.FinalURL, statusCode);
 end
@@ -60,7 +63,7 @@ contentDisposition = headerValue(response, 'Content-Disposition');
 metadata = struct('NeedsAuthentication', false, ...
                   'FinalURL', finalURL, ...
                   'StatusCode', statusCode, ...
-                  'ContentDispositionFileName', download.downloadContentDispositionFileName(contentDisposition));
+                  'ContentDispositionFileName', datatransfer.downloadContentDispositionFileName(contentDisposition));
 end
 
 

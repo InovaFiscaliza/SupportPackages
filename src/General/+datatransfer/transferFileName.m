@@ -1,13 +1,27 @@
-function [fileName, isUseful] = downloadFileName(url, fallbackID)
-% DOWNLOADFILENAME Derive a safe URL filename or a deterministic fallback.
+function [fileName, isUseful] = transferFileName(url, fallbackID, options)
+% TRANSFERFILENAME Derive a safe URL filename or a deterministic fallback.
 
 arguments
     url (1,:) char {mustBeNonempty}
     fallbackID (1,:) char = ''
+    options.SanitizeOnly (1,1) logical = false
 end
 
 fileName = '';
 isUseful = false;
+
+if options.SanitizeOnly && ~isempty(url)
+    unsafeCharacters = ismember(double(url), [0:31, 127:159, 34, 39, 47, 58, 92]);
+    sanitizedCandidate = url(~unsafeCharacters);
+    if ~isempty(sanitizedCandidate) && ...
+            ~ismember(sanitizedCandidate, {'.', '..'})
+        fileName = sanitizedCandidate;
+        isUseful = true;
+    end
+    return
+end
+
+% --- Original Logic (Backward Compatibility) ---
 try
     pathSegments = matlab.net.URI(url).Path;
     if ~isempty(pathSegments) && strlength(pathSegments(end)) > 0
@@ -19,6 +33,7 @@ try
         end
     end
 catch
+    % Fall through to fallback if URI parsing fails
 end
 
 if isUseful

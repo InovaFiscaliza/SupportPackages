@@ -2,7 +2,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
 
     % F5BrowserTestApp
     % Mini-navegador de teste para ws.auth.F5Session: autentica uma única vez
-    % e delega os downloads ao componente geral ui.DownloadPanel.
+    % e delega os downloads ao componente geral ui.TransferPanel.
 
     properties (Access = private)
         Session
@@ -12,7 +12,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
         ExecutionModeImage matlab.ui.control.Image
         DebugImage matlab.ui.control.Image
         DownloadModeImage matlab.ui.control.Image
-        DownloadPanel
+        TransferPanel
         ProfileAvatarHTML matlab.ui.control.HTML
         HTMLView matlab.ui.control.HTML
         ProfilePanel
@@ -63,8 +63,8 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             if ~isempty(app.ProfilePanel) && isvalid(app.ProfilePanel)
                 delete(app.ProfilePanel)
             end
-            if ~isempty(app.DownloadPanel) && isvalid(app.DownloadPanel)
-                delete(app.DownloadPanel)
+            if ~isempty(app.TransferPanel) && isvalid(app.TransferPanel)
+                delete(app.TransferPanel)
             end
             if ~isempty(app.Session) && isvalid(app.Session)
                 delete(app.Session)
@@ -116,17 +116,17 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             app.URLDropDown.Layout.Row = 1;
             app.URLDropDown.Layout.Column = 4;
 
-            app.DownloadPanel = ui.DownloadPanel(gridLayout, ...
-                'DownloaderFactory', @(request) app.createDownloader(request), ...
+            app.TransferPanel = ui.TransferPanel(gridLayout, ...
+                'TransferFactory', @(request) app.createDownloader(request), ...
                 'executionMode', app.DownloadExecutionMode, ...
                 'CollisionPolicy', app.downloadCollisionPolicy(), ...
                 'tempPath', fullfile(tempdir, 'F5BrowserTestApp-downloads'), ...
                 'targetPath', app.DefaultServerDownloadPath);
-            app.DownloadPanel.AvatarHTML.Layout.Row = 1;
-            app.DownloadPanel.AvatarHTML.Layout.Column = 5;
-            app.DownloadPanel.CompletedFcn = @(taskID, info, taskInfo) ...
+            app.TransferPanel.AvatarHTML.Layout.Row = 1;
+            app.TransferPanel.AvatarHTML.Layout.Column = 5;
+            app.TransferPanel.CompletedFcn = @(taskID, info, taskInfo) ...
                 app.onDownloadCompleted(taskID, info, taskInfo);
-            app.DownloadPanel.ErrorFcn = @(taskID, exception, taskInfo) ...
+            app.TransferPanel.ErrorFcn = @(taskID, exception, taskInfo) ...
                 app.onDownloadFailed(taskID, exception, taskInfo);
 
             app.ProfileAvatarHTML = uihtml(gridLayout);
@@ -160,7 +160,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
                     else
                         displayMode = 'normal';
                     end
-                    app.DownloadPanel.addDownload(url, 'DisplayMode', displayMode)
+                    app.TransferPanel.addDownload(url, 'DisplayMode', displayMode)
                     app.refreshStatus()
                     return
                 end
@@ -211,8 +211,8 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             else
                 app.DownloadExecutionMode = 'webApp';
             end
-            app.DownloadPanel.executionMode = app.DownloadExecutionMode;
-            app.DownloadPanel.setCollisionPolicy(app.downloadCollisionPolicy());
+            app.TransferPanel.executionMode = app.DownloadExecutionMode;
+            app.TransferPanel.setCollisionPolicy(app.downloadCollisionPolicy());
             app.refreshDownloadExecutionModeImage()
         end
 
@@ -257,7 +257,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             if isempty(app.Session) || ~isvalid(app.Session)
                 app.setSession(ws.auth.F5Session(app.AuthenticationURL))
             end
-            downloader = ws.auth.FileDownload(app.Session, request);
+            downloader = ws.auth.FileTransfer(app.Session, request);
         end
 
         function setSession(app, session)
@@ -281,8 +281,8 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
         function onDownloadCompleted(app, ~, info, taskInfo)
             logPath = app.downloadLogPath(taskInfo);
             F5BrowserTestApp.writeDownloadLog(logPath, sprintf(...
-                'END\nBytes received: %d\nFinal path: %s\n', ...
-                info.BytesReceived, info.FinalPath));
+                'END\nTransferred bytes: %d\nLocal path: %s\n', ...
+                info.TransferredBytes, info.LocalPath));
         end
 
         function onDownloadFailed(app, ~, exception, taskInfo)
@@ -291,7 +291,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
                 'ERROR\n%s\nEND\n', ...
                 getReport(exception, 'extended', 'hyperlinks', 'off')));
             uialert(app.UIFigure, ...
-                    F5BrowserTestApp.downloadErrorReport(exception, taskInfo.FinalPath, logPath), ...
+                    F5BrowserTestApp.downloadErrorReport(exception, taskInfo.LocalPath, logPath), ...
                     'Falha no download')
         end
 

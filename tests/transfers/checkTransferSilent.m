@@ -1,5 +1,5 @@
-function report = checkDownloadSilent
-% CHECKDOWNLOADSILENT Validate silent task lifecycle and presentation policy.
+function report = checkTransferSilent
+% CHECKTRANSFERSILENT Validate silent task lifecycle and presentation policy.
 
 mFilePath = fileparts(mfilename('fullpath'));
 projectFolder = fileparts(fileparts(mFilePath));
@@ -14,11 +14,11 @@ mkdir(targetPath)
 writeFile(blockedTarget, uint8(1));
 cleanup = onCleanup(@() cleanUp(tempPath, targetPath)); %#ok<NASGU>
 
-setappdata(0, 'checkDownloadSilent_snapshotCount', 0)
-setappdata(0, 'checkDownloadSilent_completedCount', 0)
-setappdata(0, 'checkDownloadSilent_errorCount', 0)
-manager = download.DownloadManager(...
-    'DownloaderFactory', @createManagerDownloader, ...
+setappdata(0, 'checkTransferSilent_snapshotCount', 0)
+setappdata(0, 'checkTransferSilent_completedCount', 0)
+setappdata(0, 'checkTransferSilent_errorCount', 0)
+manager = datatransfer.TransferManager(...
+    'TransferFactory', @createManagerDownloader, ...
     'HistoryFile', fullfile(tempPath, 'manager-history.json'), ...
     'TempFolder', tempPath);
 manager.SnapshotFcn = @recordSnapshot;
@@ -27,48 +27,48 @@ manager.ErrorFcn = @recordError;
 
 silentRequest = requestFor('manager-silent.bin', targetPath, tempPath);
 silentRequest.DisplayMode = 'silent';
-silentTaskID = manager.addDownload(silentRequest);
-assert(getappdata(0, 'checkDownloadSilent_snapshotCount') == 0)
-assert(getappdata(0, 'checkDownloadSilent_completedCount') == 1)
+silentTaskID = manager.addTransfer(silentRequest);
+assert(getappdata(0, 'checkTransferSilent_snapshotCount') == 0)
+assert(getappdata(0, 'checkTransferSilent_completedCount') == 1)
 assert(isfile(fullfile(targetPath, 'manager-silent.bin')))
 assert(isempty(manager.getSnapshot(silentTaskID)))
 
 errorRequest = requestFor('manager-error.bin', blockedTarget, tempPath);
 errorRequest.DisplayMode = 'silent';
-errorTaskID = manager.addDownload(errorRequest);
-assert(getappdata(0, 'checkDownloadSilent_snapshotCount') == 0)
-assert(getappdata(0, 'checkDownloadSilent_errorCount') == 1)
+errorTaskID = manager.addTransfer(errorRequest);
+assert(getappdata(0, 'checkTransferSilent_snapshotCount') == 0)
+assert(getappdata(0, 'checkTransferSilent_errorCount') == 1)
 assert(isempty(manager.getSnapshot(errorTaskID)))
 history = manager.getHistory();
 assert(strcmp(history(end).LifecycleState, 'failed'))
 assert(~isempty(history(end).ErrorMessages))
 
 normalRequest = requestFor('manager-normal.bin', targetPath, tempPath);
-normalTaskID = manager.addDownload(normalRequest);
-assert(getappdata(0, 'checkDownloadSilent_snapshotCount') > 0)
+normalTaskID = manager.addTransfer(normalRequest);
+assert(getappdata(0, 'checkTransferSilent_snapshotCount') > 0)
 assert(isempty(manager.getSnapshot(normalTaskID)))
 
-includedManager = download.DownloadManager(...
-    'DownloaderFactory', @createManagerDownloader, ...
+includedManager = datatransfer.TransferManager(...
+    'TransferFactory', @createManagerDownloader, ...
     'HistoryFile', fullfile(tempPath, 'included-history.json'), ...
     'TempFolder', tempPath, ...
     'IncludeSilentTasks', true);
 includedManager.SnapshotFcn = @recordSnapshot;
-setappdata(0, 'DownloadManagerFakeDownloaderAutoComplete', false)
+setappdata(0, 'TransferManagerFakeTransferAutoComplete', false)
 includedRequest = requestFor('manager-included.bin', targetPath, tempPath);
 includedRequest.DisplayMode = 'silent';
-includedTaskID = includedManager.addDownload(includedRequest);
-assert(getappdata(0, 'checkDownloadSilent_snapshotCount') > 0)
+includedTaskID = includedManager.addTransfer(includedRequest);
+assert(getappdata(0, 'checkTransferSilent_snapshotCount') > 0)
 includedManager.cancel(includedTaskID)
 delete(includedManager)
-rmappdata(0, 'DownloadManagerFakeDownloaderAutoComplete')
+rmappdata(0, 'TransferManagerFakeTransferAutoComplete')
 
 uiFigure = uifigure('Visible', 'off');
 layout = uigridlayout(uiFigure, [1, 1]);
 panelCompletedCount = 0;
 panelErrorCount = 0;
-panel = ui.DownloadPanel(layout, ...
-    'DownloaderFactory', @createPanelDownloader, ...
+panel = ui.TransferPanel(layout, ...
+    'TransferFactory', @createPanelDownloader, ...
     'executionMode', 'webApp', ...
     'tempPath', tempPath, ...
     'targetPath', targetPath);
@@ -87,14 +87,14 @@ assert(panelErrorCount == 1)
 assert(isempty(panel.Manager.getSnapshot(panelErrorTaskID)))
 assert(isempty(findall(uiFigure, 'Type', 'uipanel', 'BorderType', 'line')))
 
-silentCompletedCount = getappdata(0, 'checkDownloadSilent_completedCount');
-silentErrorCount = getappdata(0, 'checkDownloadSilent_errorCount');
+silentCompletedCount = getappdata(0, 'checkTransferSilent_completedCount');
+silentErrorCount = getappdata(0, 'checkTransferSilent_errorCount');
 delete(panel)
 delete(uiFigure)
 delete(manager)
-rmappdata(0, 'checkDownloadSilent_snapshotCount')
-rmappdata(0, 'checkDownloadSilent_completedCount')
-rmappdata(0, 'checkDownloadSilent_errorCount')
+rmappdata(0, 'checkTransferSilent_snapshotCount')
+rmappdata(0, 'checkTransferSilent_completedCount')
+rmappdata(0, 'checkTransferSilent_errorCount')
 
 report = struct('SilentCompleted', silentCompletedCount, ...
                 'SilentErrors', silentErrorCount, ...
@@ -102,30 +102,29 @@ report = struct('SilentCompleted', silentCompletedCount, ...
                 'PanelErrors', panelErrorCount);
 
     function downloader = createManagerDownloader(request)
-        downloader = DownloadManagerFakeDownloader(request);
+        downloader = TransferManagerFakeTransfer(request);
     end
 
     function downloader = createPanelDownloader(request)
         if strcmp(request.FileName, 'panel-error.bin')
-            request.TargetFolder = blockedTarget;
-            request.FinalPath = fullfile(blockedTarget, request.FileName);
+            request.LocalPath = fullfile(blockedTarget, request.FileName);
         end
-        downloader = DownloadManagerFakeDownloader(request);
+        downloader = TransferManagerFakeTransfer(request);
     end
 
     function recordSnapshot(~)
-        setappdata(0, 'checkDownloadSilent_snapshotCount', ...
-                   getappdata(0, 'checkDownloadSilent_snapshotCount') + 1);
+        setappdata(0, 'checkTransferSilent_snapshotCount', ...
+                   getappdata(0, 'checkTransferSilent_snapshotCount') + 1);
     end
 
     function recordCompleted(~, ~, ~)
-        setappdata(0, 'checkDownloadSilent_completedCount', ...
-                   getappdata(0, 'checkDownloadSilent_completedCount') + 1);
+        setappdata(0, 'checkTransferSilent_completedCount', ...
+                   getappdata(0, 'checkTransferSilent_completedCount') + 1);
     end
 
     function recordError(~, ~, ~)
-        setappdata(0, 'checkDownloadSilent_errorCount', ...
-                   getappdata(0, 'checkDownloadSilent_errorCount') + 1);
+        setappdata(0, 'checkTransferSilent_errorCount', ...
+                   getappdata(0, 'checkTransferSilent_errorCount') + 1);
     end
 
     function panelCompleted(~, ~, ~)
@@ -138,9 +137,10 @@ report = struct('SilentCompleted', silentCompletedCount, ...
 end
 
 function request = requestFor(fileName, targetFolder, tempFolder)
-request = struct('URL', ['https://example.test/', fileName], ...
+request = struct('Direction', 'download', ...
+                 'URL', ['https://example.test/', fileName], ...
                  'TempFolder', tempFolder, ...
-                 'TargetFolder', targetFolder, ...
+                 'LocalPath', fullfile(targetFolder, fileName), ...
                  'FileName', fileName);
 end
 

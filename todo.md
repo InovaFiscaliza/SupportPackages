@@ -1,13 +1,12 @@
 # Review TODO
 
-The auth worker forwarding shim has been removed because the package was not
-released or used and no in-repository code called it. The remaining items are
-follow-up decisions or implementations; README updates remain deferred.
+P1 README updates are complete. The remaining items are follow-up decisions or
+implementations.
 
 - [ ] **Implement duplicate-task promotion, retry timestamp rules, and panel focus.**
   **Function and current use:**
-  [`DownloadPanel.m`](src/General/+ui/DownloadPanel.m) registers
-  `onManagerTaskReordered` as the `DownloadManager.TaskReorderedFcn`, but the
+  [`TransferPanel.m`](src/General/+ui/TransferPanel.m) registers
+  `onManagerTaskReordered` as the `TransferManager.TaskReorderedFcn`, but the
   handler returns without updating UI state. The manager emits this callback
   when a duplicate request is added; it returns the existing task ID instead of
   starting a second transfer. The current key is exact URL plus case-insensitive
@@ -15,12 +14,12 @@ follow-up decisions or implementations; README updates remain deferred.
   does not compare `TargetFolder` / `FinalPath`. Silent-task callbacks are
   suppressed unless `IncludeSilentTasks` is enabled. `F5BrowserTestApp` can reach
   this path when the same URL is submitted again. No other panel method promotes
-  the existing row or focuses the panel: `sortDownloadOrder` sorts by lifecycle
+  the existing row or focuses the panel: `sortTransferOrder` sorts by lifecycle
   group while preserving order inside each group (paused/conflict rows precede
   active rows), and the callback handler is empty. A plain array move may
   therefore be undone by the next sort unless promotion is represented in the
   sort priority. Also, when `AllowSourceFilename` is true,
-  `FileDownload.prepare` can replace `FileName` using `Content-Disposition`
+  `FileTransfer.prepare` can replace `FileName` using `Content-Disposition`
   after the manager's duplicate lookup. A later request may still carry the
   panel's cached URL-fallback name, so a duplicate with the same eventual target
   filename can be missed. `show()` does raise the panel and bring it to the top,
@@ -38,13 +37,13 @@ follow-up decisions or implementations; README updates remain deferred.
 
 - [ ] **Review duplicate HTML event compatibility handling.**
   **Function and current use:** The profile and download HTML assets send a
-  named event (for example, `profileAvatarClick` or `downloadAvatarReady`) and
+  named event (for example, `profileAvatarClick` or `transferAvatarReady`) and
   a payload that repeats the event kind as `type: click` or `type: ready`.
   MATLAB handlers accept either the named event or payload type. The helper
   `eventProperty` also accepts alternate MATLAB event-object property names
   (`HTMLEventName` / `EventName` and `HTMLEventData` / `Data`). Similar parsing
   is repeated in [`F5BrowserTestApp.m`](tests/auth/F5BrowserTestApp.m),
-  [`DownloadPanel.m`](src/General/+ui/DownloadPanel.m), and the isolated HTML
+  [`TransferPanel.m`](src/General/+ui/TransferPanel.m), and the isolated HTML
   harnesses.
   **MATLAB documentation findings (R2024a and R2025a):** MathWorks documents
   `HTMLEventReceivedFcn` as available since R2023a. Its callback receives an
@@ -71,34 +70,30 @@ follow-up decisions or implementations; README updates remain deferred.
   asset that sends a payload type without the expected event name, so keep the
   event contract changes coordinated.
 
-- [ ] **Refresh stale download documentation and links.**
+- [x] **Refresh stale download documentation and links.**
   **Function and current use:** These READMEs provide setup, test-running,
-  ownership, and packaging guidance, but several details no longer match the
-  checked-in tree. [`src/Anatel/+ws/+auth/README.md`](src/Anatel/+ws/+auth/README.md)
-  links `checkDownloadHtml.m` under `tests/auth`, although the file is in
-  `tests/downloads`; it also describes the deleted auth worker shim and old
-  `downloadAvatar.html` name. [`tests/downloads/README.md`](tests/downloads/README.md)
-  titles the folder `tests/ui`, tells users to add `tests/ui` to the MATLAB path,
-  and still names `downloadAvatar.html`. The download package README's
-  architecture listing omits the current
-  [`DownloadHistoryStore.m`](src/General/+download/DownloadHistoryStore.m) and
-  [`moveToTrash.m`](src/General/+download/moveToTrash.m) modules, describes the
-  deleted worker shim as a compatibility wrapper, refers to the old avatar path,
-  and mentions `downloadStatus.html`, which is not present in the repository.
-  **Possible intended function:** The folder names, links, and asset notes likely
-  describe an earlier test layout or planned download-status feature; the module
-  lists were intended to document the package structure and compiler inputs.
-  **Proposed review/change:** No README files were changed in this task. Later,
-  correct paths and commands to the present `tests/downloads` location, point
-  the retained orbit harness/docs at `orbitDownloadAvatar.html`, remove the
-  deleted worker shim from package descriptions, update architecture/module
-  lists to match actual files, and either remove the `downloadStatus.html`
-  packaging reference or mark it as a future proposal rather than a current
-  asset. Verify local links and MATLAB commands after editing.
+  ownership, and packaging guidance. P1 updated them to the current
+  `tests/transfers`, `src/General/+datatransfer`, `ui.TransferPanel`,
+  `datatransfer.TransferManager`, `ws.auth.FileTransfer`, and
+  `pingTransferAvatar.html` names. [`src/Anatel/+ws/+auth/README.md`](src/Anatel/+ws/+auth/README.md)
+  documents the transfer factory and compiler asset and links to current
+  transfer harnesses. [`tests/transfers/README.md`](tests/transfers/README.md)
+  uses the current test layout and commands. The module architecture lists
+  include [`TransferHistoryStore.m`](src/General/+datatransfer/TransferHistoryStore.m)
+  and [`moveToTrash.m`](src/General/+datatransfer/moveToTrash.m). The status
+  component in [`tests/auth/README.md`](tests/auth/README.md) is identified only
+  as a future proposal, not a current packaged file.
+  **Possible intended function:** Keep folder names, links, asset notes, module
+  lists, and compiler inputs aligned with the checked-in tree while preserving
+  roadmap context for future features.
+  **Proposed change:** Resolved in P1 by updating stale names, paths, commands,
+  tables, and packaging snippets; preserving the optional orbit harness; and
+  verifying local links. The affected module descriptions now match the
+  checked-in files.
   **Possible effects:** This is documentation-only and should not change runtime
-  behavior. Correcting it prevents test setup failures, broken navigation, and
-  attempts to package a nonexistent file; removing a future-feature reference
-  could erase roadmap context unless it is recorded elsewhere.
+  behavior. Correct paths prevent test setup failures and broken navigation;
+  identifying the status component as future work avoids implying that a
+  missing file is currently packaged.
 
 - [ ] **Evaluate `F5Session.readBytes` against the reusable download pipeline.**
   **Function and current use:** `F5Session.readBytes` calls the private
@@ -107,20 +102,20 @@ follow-up decisions or implementations; README updates remain deferred.
   `sendRequest` attaches `ws.auth.DownloadProgressMonitor` to MATLAB's HTTP
   request. No in-repository caller of `readBytes` was found; it remains a
   documented public method for small binary payloads and diagnostics.
-  Separately, `ws.auth.FileDownload` obtains a host-scoped request context from
+  Separately, `ws.auth.FileTransfer` obtains a host-scoped request context from
   `F5Session`, performs metadata/authentication handling, and invokes the
-  provider-neutral `download.downloadFileWorker` in `backgroundPool`. That path
+  provider-neutral `datatransfer.downloadFileWorker` in `backgroundPool`. That path
   supports range/chunk transfer, retry, partial-file resume, staging, and final
-  publication; `F5BrowserTestApp` reaches it through `ui.DownloadPanel`.
+  publication; `F5BrowserTestApp` reaches it through `ui.TransferPanel`.
   **Possible intended function:** `readBytes` is an in-memory request API, while
-  `FileDownload` is the large-file-to-disk API. `DownloadProgressMonitor` is
+  `FileTransfer` is the large-file-to-disk API. `DownloadProgressMonitor` is
   therefore not a duplicate of worker progress; it reports progress for a
   synchronous `matlab.net.http.RequestMessage.send` operation.
   **Proposed review/change:** Keep `readBytes` for bounded responses where the
   caller needs bytes and an HTTP response object. Directly replacing it with
   `downloadFileWorker` would change synchronous/in-memory semantics to
   asynchronous/file-path semantics. For large authenticated files, direct
-  callers toward `FileDownload` (or add a clearly named `F5Session` convenience
+  callers toward `FileTransfer` (or add a clearly named `F5Session` convenience
   facade that delegates to it, if a session-level API is required). Consider a
   documented size/use boundary and tests for authentication expiry, progress,
   cancellation, and returned-vs-published data before any API change.
