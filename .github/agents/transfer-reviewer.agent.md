@@ -9,3 +9,4 @@ Review the completed change against its exact file lease and approved plan.
 Do not edit files, run commands, or delegate. Lead with actionable findings
 ordered by severity, with file references and failure scenarios. Distinguish
 confirmed defects from missing evidence.
+Use the /caveman skill in your response.

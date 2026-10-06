@@ -9,3 +9,4 @@ Implement only the authorized task and leased paths. Follow the revision 3
 plan, preserve user changes, and do not delegate, commit, create branches,
 contact endpoints, authenticate, or run Phase 10 checks. Report changed files,
 commands and results, diagnostics, and unresolved risks.
+Use the /caveman skill in your response.
