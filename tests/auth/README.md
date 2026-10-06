@@ -23,7 +23,7 @@ componente HTML.
 
 ## checkF5Auth.m
 
-Script organizado em seções (`%%`), pensado para execução com **Ctrl+Enter**, uma de cada vez. O cabeçalho define `loginURL`, `targetURL` e `debugFile`, além de acrescentar `src/Anatel` ao path. O log de `debugFile` pode conter valores de cookies; não o use durante um login ou uma sessão autenticada.
+Script organizado em seções (`%%`), pensado para execução com **Ctrl+Enter**, uma de cada vez. O cabeçalho define `loginURL`, `targetURL` e `debugFile`, além de acrescentar `src/Anatel` ao path. `debugFile` preserva intencionalmente a captura bruta para diagnóstico; a exposição de cookies é inerente a esse recurso e não deve ser eliminada alterando a captura. Trate o arquivo como sensível: mantenha-o local, não o versione nem compartilhe e apague-o após o diagnóstico.
 
 ### Test1 — Login interativo
 
@@ -74,7 +74,7 @@ F5BrowserTestApp
 ### Interface
 
 - **Combo box de URL** (editável), pré-populado com endpoints de teste. Navega tanto ao   pressionar Enter sobre uma URL digitada quanto ao selecionar um item. URLs novas são acrescentadas ao histórico mas não serão recuperadas entre sessões.
-- **Imagem de debug** (<img src="debug-start.svg" alt="ícone de debug" width="16" height="16"> / <img src="debug-stop.svg" alt="ícone de debug" width="16" height="16">), ao lado do combo: controla a abertura das DevTools do navegador de autenticação e a gravação do estado bruto do navegador em arquivo de log. Esse estado pode conter valores de cookies; não use o modo de debug durante uma sessão autenticada. O ícone muda de cor quando o modo de debug está ativo.
+- **Imagem de debug** (<img src="debug-start.svg" alt="ícone de debug" width="16" height="16"> / <img src="debug-stop.svg" alt="ícone de debug" width="16" height="16">), ao lado do combo: controla a abertura das DevTools do navegador de autenticação e a gravação intencional do estado bruto do navegador em arquivo de log. O risco de incluir valores de cookies é inerente a esse procedimento de diagnóstico; não altere nem remova a captura bruta para evitar esse risco. Proteja o arquivo como dado sensível e apague-o após o diagnóstico. O ícone muda de cor quando o modo de debug está ativo.
 - **Modo de execução** (![ícone desktop](vm.svg) / ![ícone Web App Server](globe.svg)), ao lado do upload: indica o comportamento desktop ou Web App Server. O clique alterna o modo usado pelos próximos downloads e uploads.
 - **Upload**: abre o seletor de arquivo no modo desktop e envia o arquivo para a URL selecionada. No modo Web App Server, usa o arquivo de teste fixo descrito abaixo.
 - **Avatar de transferências**, entre o modo silencioso e o avatar de perfil: mostra indicadores individuais de progresso e atividade das transferências visíveis. O clique abre ou traz para frente o painel de transferências.
