@@ -3,10 +3,12 @@
 Gerenciamento neutro de transferências HTTP para aplicações MATLAB.
 
 Este pacote contém a orquestração neutra de transferências e o transporte HTTP de
-downloads, compartilhados por fontes públicas e adaptadores específicos de provedor
-como `ws.auth.FileTransfer`. O gerenciador também valida solicitações de upload, mas
-o envio do corpo do arquivo ainda pertence à fase P4; a descoberta de capacidades
-de upload por `OPTIONS` pertence à fase P3. O pacote não depende de `uifigure`,
+downloads e uploads preparados, compartilhados por fontes públicas e adaptadores
+específicos de provedor como `ws.auth.FileTransfer`. O worker `uploadFileWorker`
+executa uploads multipart, raw e Tus; a descoberta de capacidades por `OPTIONS`
+pertence à P3, enquanto a integração do adaptador e da interface de upload permanece
+nas fases seguintes.
+O pacote não depende de `uifigure`,
 `uihtml`, `ui.TransferPanel`, sessões de autenticação, cookies ou outras classes de
 apresentação.
 
@@ -20,8 +22,12 @@ adicione a própria pasta `+datatransfer`.
 | [`TransferManager.m`](TransferManager.m) | Responsável pelo registro de tarefas, transições de ciclo de vida, IDs de tarefas, decisões de conflito, callbacks do downloader, snapshots, filtragem de callbacks tardios, limpeza e notificações de conclusão/erro. |
 | [`TransferHistoryStore.m`](TransferHistoryStore.m) | Lê, valida e escreve atomicamente o histórico de tarefas persistente versionado. |
 | [`downloadFileWorker.m`](downloadFileWorker.m) | Executa transferências HTTP fragmentadas retomáveis, escreve arquivos temporários com escopo de tarefa, publica arquivos concluídos, tenta novamente falhas recuperáveis e relata progresso. |
-| [`sendHTTPRequest.m`](sendHTTPRequest.m) | Envia `GET`, `HEAD`, `OPTIONS`, `POST`, `PUT`, `PATCH` e `DELETE`. As opções aceitam `Range`, cabeçalhos permitidos, corpo `uint8` ou `ContentProvider`, `FollowRedirects` e `ProgressMonitor`. Redirecionamentos são tratados manualmente; corpos não são repetidos nem redirecionados. Cookies ficam limitados ao host F5 exato em HTTPS. |
-| [`uploadCapabilities.m`](uploadCapabilities.m) | Descobre capacidades com `OPTIONS` e, quando necessário em host F5, `HEAD`; interpreta `Allow` e cabeçalhos Tus e seleciona o protocolo sem enviar corpo. Aceita um sender opcional para respostas simuladas. Esta descoberta pertence à P3; o envio do arquivo permanece na P4. |
+| [`sendHTTPRequest.m`](sendHTTPRequest.m) | Envia `GET`, `HEAD`, `OPTIONS`, `POST`, `PUT`, `PATCH` e `DELETE`. As opções aceitam `Range`, cabeçalhos permitidos, corpo `uint8` ou `ContentProvider`, `FollowRedirects`, `ProgressMonitor` e um `ResponseConsumer` opcional. Redirecionamentos são tratados manualmente; corpos não são repetidos nem redirecionados. Cookies ficam limitados ao host F5 exato em HTTPS. |
+| [`uploadCapabilities.m`](uploadCapabilities.m) | Descobre capacidades com `OPTIONS` e, quando necessário em host F5, `HEAD`; interpreta `Allow` e cabeçalhos Tus e seleciona o protocolo sem enviar corpo. Aceita um sender opcional para respostas simuladas. Esta descoberta pertence à P3; o transporte do arquivo é executado por `uploadFileWorker`. |
+| [`uploadFileWorker.m`](uploadFileWorker.m) | Executa uploads preparados nos protocolos multipart, raw ou Tus, transmite arquivos sem carregá-los integralmente na memória e publica apenas offsets Tus confirmados pelo servidor. |
+| [`UploadFileProvider.m`](UploadFileProvider.m) | Lê somente o arquivo de origem e informa os bytes exatos retornados pelo provedor para o progresso raw e multipart. |
+| [`UploadProgressMonitor.m`](UploadProgressMonitor.m) | Publica bytes cumulativos exatos do payload do arquivo para uploads raw e multipart, sem estimar o envelope HTTP. |
+| [`UploadResponseBodyConsumer.m`](UploadResponseBodyConsumer.m) | Captura durante a recepção até 64 KiB do corpo de resposta do upload e descarta o excedente sem interromper a leitura. |
 | [`transferFileName.m`](transferFileName.m) | Deriva um nome de arquivo seguro a partir de uma URL ou cria um nome de arquivo de fallback determinístico. |
 | [`downloadContentDispositionFileName.m`](downloadContentDispositionFileName.m) | Extrai e sanitiza valores `filename` e `filename*` de um cabeçalho `Content-Disposition`. |
 | [`moveToTrash.m`](moveToTrash.m) | Move arquivos temporários para a lixeira do host quando suportado, recorrendo à exclusão. |
@@ -103,8 +109,19 @@ O gerenciador usa a fábrica injetada em `TransferFactory` e oferece
 No contrato de upload, o gerenciador exige um arquivo de origem existente e regular,
 aplica `MaxUploadBytes` (padrão: 200 MiB; excesso gera
 `datatransfer:TransferManager:uploadTooLarge`), valida `FormFieldName` e os nomes
-dos campos adicionais e sanitiza o nome remoto `FileName`. Isso não implementa
-transporte de upload: ainda não há processador, adaptador ou interface de upload.
+dos campos adicionais e sanitiza o nome remoto `FileName`. O worker de upload de
+corpo foi implementado na P4; a integração do adaptador e do
+gerenciador na P5 e a interface de upload na P6 ficam para as fases seguintes.
+Raw e multipart publicam o
+progresso exato dos bytes do arquivo lidos; o progresso Tus permanece limitado ao
+offset confirmado pelo servidor.
+
+Em uma falha de PATCH Tus, quando existe uma resposta do PATCH, `StatusCode`,
+`ResponseHeaders`, `ResponseBody` (limitado a 64 KiB) e `ResponseTruncated` continuam
+descrevendo essa resposta, enquanto `UploadOffset` e `TransferredBytes` refletem
+somente o offset confirmado por HEAD. Sem resposta do PATCH, a resposta conhecida de
+HEAD pode fornecer esses campos; um HEAD 404/410 ainda produz erro de recurso Tus
+indisponível sem substituir a evidência de uma resposta PATCH.
 
 Snapshots, adaptadores, resultados e mensagens do worker, e o histórico usam
 `TransferredBytes`. O callback `ProgressFcn` recebe

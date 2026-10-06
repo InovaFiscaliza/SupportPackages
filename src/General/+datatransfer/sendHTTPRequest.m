@@ -10,6 +10,7 @@ arguments
     options.Body = []
     options.FollowRedirects = []
     options.ProgressMonitor = []
+    options.ResponseConsumer = []
 end
 
 rangeValue = normalizeRange(options.Range);
@@ -18,6 +19,7 @@ body = validateBody(options.Body);
 hasBody = ~isequal(body, []);
 followRedirects = resolveFollowRedirects(options.FollowRedirects, method);
 progressMonitorFactory = resolveProgressMonitor(options.ProgressMonitor);
+responseConsumer = resolveResponseConsumer(options.ResponseConsumer);
 
 maxRedirects = 5;
 currentURL = url;
@@ -26,7 +28,8 @@ redirectCount = 0;
 while true
     validateRequestURL(currentURL)
     response = sendRequest(currentURL, requestContext, method, headers, ...
-                           rangeValue, body, hasBody, progressMonitorFactory);
+                           rangeValue, body, hasBody, progressMonitorFactory, ...
+                           responseConsumer);
     statusCode = double(response.StatusCode);
 
     if isAuthenticationResponse(statusCode) && shouldAuthenticate(currentURL, requestContext)
@@ -72,7 +75,7 @@ end
 end
 
 
-function response = sendRequest(url, requestContext, method, headers, rangeValue, body, hasBody, progressMonitorFactory)
+function response = sendRequest(url, requestContext, method, headers, rangeValue, body, hasBody, progressMonitorFactory, responseConsumer)
 requestHeaders = headers;
 if ~isempty(rangeValue)
     requestHeaders(end+1) = matlab.net.http.HeaderField('Range', rangeValue);
@@ -96,13 +99,30 @@ if ~isempty(progressMonitorFactory)
     httpOptions.UseProgressMonitor = true;
 end
 try
-    response = request.send(url, httpOptions);
+    if isempty(responseConsumer)
+        response = request.send(url, httpOptions);
+    else
+        response = request.send(url, httpOptions, responseConsumer);
+    end
 catch cause
     exception = MException('datatransfer:sendHTTPRequest:networkError', ...
                            'The HTTP transport request failed.');
     exception = addCause(exception, cause);
     throw(exception)
 end
+end
+
+
+function consumer = resolveResponseConsumer(value)
+consumer = [];
+if isempty(value)
+    return
+end
+if ~isa(value, 'matlab.net.http.io.ContentConsumer') || ~isscalar(value)
+    error('datatransfer:sendHTTPRequest:invalidResponseConsumer', ...
+          'ResponseConsumer must be empty or a scalar ContentConsumer.')
+end
+consumer = value;
 end
 
 
