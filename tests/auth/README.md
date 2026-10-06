@@ -75,26 +75,34 @@ F5BrowserTestApp
 
 - **Combo box de URL** (editável), pré-populado com endpoints de teste. Navega tanto ao   pressionar Enter sobre uma URL digitada quanto ao selecionar um item. URLs novas são acrescentadas ao histórico mas não serão recuperadas entre sessões.
 - **Imagem de debug** (<img src="debug-start.svg" alt="ícone de debug" width="16" height="16"> / <img src="debug-stop.svg" alt="ícone de debug" width="16" height="16">), ao lado do combo: controla a abertura das DevTools do navegador de autenticação e a gravação do estado bruto do navegador em arquivo de log. O ícone muda de cor quando o modo de debug está ativo.
-- **Modo de execução** (![ícone desktop](vm.svg) / ![ícone Web App Server](globe.svg)), ao lado do debug: indica o comportamento desktop ou Web App Server. O clique alterna o modo usado pelos próximos downloads e permite testar a compatibilidade com os dois modos de execução dos aplicativos.
-- **Avatar de downloads**, entre o modo silencioso e o avatar de perfil: mostra indicadores individuais de progresso e atividade dos downloads visíveis. O clique abre ou traz para frente o painel de downloads.
+- **Modo de execução** (![ícone desktop](vm.svg) / ![ícone Web App Server](globe.svg)), ao lado do upload: indica o comportamento desktop ou Web App Server. O clique alterna o modo usado pelos próximos downloads e uploads.
+- **Upload**: abre o seletor de arquivo no modo desktop e envia o arquivo para a URL selecionada. No modo Web App Server, usa o arquivo de teste fixo descrito abaixo.
+- **Avatar de transferências**, entre o modo silencioso e o avatar de perfil: mostra indicadores individuais de progresso e atividade das transferências visíveis. O clique abre ou traz para frente o painel de transferências.
 - **Avatar de perfil**, à direita: desconectado, conectado com inicial ou conectado com foto circular. O clique conecta ou abre o menu de perfil, que contém a opção de desconectar.
 - **Área de conteúdo** (`uihtml`), ocupando o restante da figura.
 
 ### Comportamento
 
-`navigate` acrescenta a URL ao histórico. Downloads são encaminhados primeiro
+`navigate` acrescenta URLs de navegação ao histórico. Downloads são encaminhados
 ao painel e usam a mesma chamada para fontes públicas e protegidas; a sessão F5
-só autentica quando o servidor protegido exigir isso. O contrato atual de
-`ws.auth.FileTransfer` aceita somente `Direction = 'download'`; o transporte de
-upload ainda não está implementado. As demais URLs garantem a
-sessão e fazem a leitura sob um `uiprogressdlg` indeterminado. Erros viram
-`uialert`, sem derrubar a aplicação.
+só autentica quando o servidor protegido exigir isso. As opções de upload não
+iniciam uma navegação ao serem selecionadas. O `TransferFactory` cria
+`ws.auth.FileTransfer` com a sessão atual, e o ícone de upload chama
+`TransferPanel.addUpload` para a URL selecionada. `navigate` chama
+`ensureSession` e faz leitura sob um `uiprogressdlg` indeterminado apenas para
+URLs que não são classificadas como downloads nem como destinos exclusivos de
+upload. Erros viram `uialert`, sem derrubar a aplicação.
 
 Os itens `https://httpbin.org/bytes/1024` e
 `http://httpbin.org/bytes/1024` exercitam downloads públicos sem login. Os itens
-do host `fiscalizacao.anatel.gov.br` exercitam o mesmo fluxo com autenticação F5
-sob demanda. `ensureSession` reutiliza a sessão enquanto o host permanece o
-mesmo e cria uma nova sessão quando a URL aponta para outro host.
+`https://httpbin.org/post` e `https://httpbin.org/put` são destinos públicos de
+upload; o app usa POST para `/post` e PUT para `/put`. Selecioná-los não envia
+uma requisição, que só começa ao clicar no ícone de upload. O item
+`[F5 protegido: endpoint de upload não configurado]` é apenas
+um placeholder: selecioná-lo ou clicar no ícone não navega nem autentica. Os
+itens do host `fiscalizacao.anatel.gov.br` exercitam o fluxo de leitura com
+autenticação F5 sob demanda. `ensureSession` reutiliza a sessão enquanto o host
+permanece o mesmo e cria uma nova sessão quando a URL aponta para outro host.
 
 No modo desktop, o painel abre `uiputfile` antes de criar a tarefa. No modo Web
 App Server, usa diretamente a pasta de destino configurada na aplicação e não
@@ -102,6 +110,11 @@ abre diálogos desktop. Depois dessa resolução, ambos os modos enviam a mesma
 solicitação normalizada ao `datatransfer.TransferManager`; conflitos são apresentados na
 linha do painel, que é aberto automaticamente quando a intervenção do usuário
 é necessária, e resolvidos pelo manager.
+
+Para uploads, no modo desktop `TransferPanel.addUpload` abre `uigetfile` para
+selecionar a origem. No modo Web App Server, o app passa explicitamente
+`tests/transfers/target/upload-test.txt` como `LocalPath`; esse arquivo de teste
+deve existir no ambiente que executa o app.
 
 No modo desktop deste app, um conflito com o target escolhido no `uiputfile` é
 apresentado na linha do painel, com as opções de manter o arquivo existente,

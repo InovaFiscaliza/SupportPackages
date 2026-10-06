@@ -10,6 +10,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
         UIFigure matlab.ui.Figure
         URLDropDown matlab.ui.control.DropDown
         ExecutionModeImage matlab.ui.control.Image
+        UploadImage matlab.ui.control.Image
         DebugImage matlab.ui.control.Image
         DownloadModeImage matlab.ui.control.Image
         TransferPanel
@@ -31,6 +32,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
 
     properties (Constant, Access = private)
         AuthenticationURL = 'https://fiscalizacao.anatel.gov.br/rffusion/api/users/login'
+        ProtectedUploadEndpointPlaceholder = '[F5 protegido: endpoint de upload não configurado]'
         DefaultURLs = {'https://fiscalizacao.anatel.gov.br/rffusion/api/users/me', ...
                        'https://fiscalizacao.anatel.gov.br/rffusion/api/map/stations', ...
                        'https://fiscalizacao.anatel.gov.br/rffusion/api/host/10321/zabbix_metrics', ...
@@ -38,7 +40,9 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
                        'https://fiscalizacao.anatel.gov.br/downloads/2024/RO/1100205/176/p-1f25532e--rfeye002210_240819_T175952.bin', ...
                        'https://fiscalizacao.anatel.gov.br/downloads/2026/SP/3549805/79/p-6b9f7d03--rfeye002266_260901_T073300.bin', ...
                        'https://httpbin.org/bytes/1024', ...
-                       'http://httpbin.org/bytes/1024'}
+                       'http://httpbin.org/bytes/1024', ...
+                       'https://httpbin.org/post', ...
+                       'https://httpbin.org/put'}
     end
 
 
@@ -86,9 +90,9 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             projectFolder = fileparts(fileparts(app.AuthResourceFolder));
             app.ProfileAvatarHTMLPath = fullfile(projectFolder, 'src', 'Anatel', '+ws', '+auth', 'profileAvatar.html');
 
-            gridLayout = uigridlayout(app.UIFigure, [2, 6]);
+            gridLayout = uigridlayout(app.UIFigure, [2, 7]);
             gridLayout.RowHeight = {24, '1x'};
-            gridLayout.ColumnWidth = {22, 22, 22, '1x', 24, 22};
+            gridLayout.ColumnWidth = {22, 22, 22, 22, '1x', 24, 22};
 
             app.ExecutionModeImage = uiimage(gridLayout, ...
                                              'ImageClickedFcn', @(~, ~) app.toggleDownloadExecutionMode());
@@ -96,34 +100,43 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             app.ExecutionModeImage.Layout.Column = 1;
             app.refreshDownloadExecutionModeImage()
 
+            app.UploadImage = uiimage(gridLayout, ...
+                'ImageSource', fullfile(fileparts(fileparts(app.AuthResourceFolder)), ...
+                                        'src', 'General', 'icons', 'transfer-upload.svg'), ...
+                'ImageClickedFcn', @(~, ~) app.uploadSelectedFile());
+            app.UploadImage.Layout.Row = 1;
+            app.UploadImage.Layout.Column = 2;
+            app.UploadImage.Tooltip = 'Enviar arquivo para a URL selecionada';
+
             app.DebugImage = uiimage(gridLayout, ...
                                      'ImageSource', fullfile(app.AuthResourceFolder, 'debug-start.svg'), ...
                                      'ImageClickedFcn', @(~, ~) app.toggleDebugMode());
             app.DebugImage.Layout.Row = 1;
-            app.DebugImage.Layout.Column = 2;
+            app.DebugImage.Layout.Column = 3;
 
             app.DownloadModeImage = uiimage(gridLayout, ...
                                             'ImageClickedFcn', @(~, ~) app.toggleSilentDownloadMode());
             app.DownloadModeImage.Layout.Row = 1;
-            app.DownloadModeImage.Layout.Column = 3;
+            app.DownloadModeImage.Layout.Column = 4;
             app.refreshSilentDownloadModeImage()
 
             app.URLDropDown = uidropdown(gridLayout, ...
                                          'Editable', 'on', ...
-                                         'Items', app.DefaultURLs, ...
+                                         'Items', [app.DefaultURLs, ...
+                                                   {app.ProtectedUploadEndpointPlaceholder}], ...
                                          'Value', '<digite uma URL ou selecione>');
             app.URLDropDown.ValueChangedFcn = @(~, ~) app.navigate();
             app.URLDropDown.Layout.Row = 1;
-            app.URLDropDown.Layout.Column = 4;
+            app.URLDropDown.Layout.Column = 5;
 
             app.TransferPanel = ui.TransferPanel(gridLayout, ...
-                'TransferFactory', @(request) app.createDownloader(request), ...
+                'TransferFactory', @(request) ws.auth.FileTransfer(app.Session, request), ...
                 'executionMode', app.DownloadExecutionMode, ...
                 'CollisionPolicy', app.downloadCollisionPolicy(), ...
                 'tempPath', fullfile(tempdir, 'F5BrowserTestApp-downloads'), ...
                 'targetPath', app.DefaultServerDownloadPath);
             app.TransferPanel.AvatarHTML.Layout.Row = 1;
-            app.TransferPanel.AvatarHTML.Layout.Column = 5;
+            app.TransferPanel.AvatarHTML.Layout.Column = 6;
             app.TransferPanel.CompletedFcn = @(taskID, info, taskInfo) ...
                 app.onDownloadCompleted(taskID, info, taskInfo);
             app.TransferPanel.ErrorFcn = @(taskID, exception, taskInfo) ...
@@ -133,11 +146,11 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             app.ProfileAvatarHTML.HTMLEventReceivedFcn = @(~, event) app.onProfileAvatarEvent(event);
             app.ProfileAvatarHTML.HTMLSource = app.ProfileAvatarHTMLPath;
             app.ProfileAvatarHTML.Layout.Row = 1;
-            app.ProfileAvatarHTML.Layout.Column = 6;
+            app.ProfileAvatarHTML.Layout.Column = 7;
 
             app.HTMLView = uihtml(gridLayout, 'HTMLSource', '<html><body></body></html>');
             app.HTMLView.Layout.Row = 2;
-            app.HTMLView.Layout.Column = [1, 6];
+            app.HTMLView.Layout.Column = [1, 7];
 
             app.ProfilePanel = ui.ProfilePanel(app.UIFigure, ...
                 'Anchor', app.ProfileAvatarHTML, ...
@@ -148,7 +161,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
 
         function navigate(app)
             url = strtrim(app.URLDropDown.Value);
-            if isempty(url)
+            if isempty(url) || F5BrowserTestApp.isUploadOnlyURL(url)
                 return
             end
             app.addToHistory(url)
@@ -178,6 +191,40 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             end
 
             app.refreshStatus()
+        end
+
+        function uploadSelectedFile(app)
+            url = strtrim(app.URLDropDown.Value);
+            if strcmp(url, app.ProtectedUploadEndpointPlaceholder)
+                uialert(app.UIFigure, ...
+                        'O endpoint de upload F5 protegido ainda não foi configurado.', ...
+                        'Upload indisponível')
+                return
+            end
+            if isempty(url) || strcmp(url, '<digite uma URL ou selecione>')
+                uialert(app.UIFigure, 'Selecione uma URL de upload.', 'Upload indisponível')
+                return
+            end
+
+            uploadMethod = 'POST';
+            if strcmp(url, 'https://httpbin.org/put')
+                uploadMethod = 'PUT';
+            end
+
+            try
+                if strcmp(app.DownloadExecutionMode, 'webApp')
+                    projectFolder = fileparts(fileparts(app.AuthResourceFolder));
+                    localPath = fullfile(projectFolder, 'tests', 'transfers', ...
+                                         'target', 'upload-test.txt');
+                    app.TransferPanel.addUpload(url, 'LocalPath', localPath, ...
+                                                'Method', uploadMethod)
+                else
+                    app.TransferPanel.addUpload(url, 'Method', uploadMethod)
+                end
+                app.refreshStatus()
+            catch ME
+                uialert(app.UIFigure, ME.message, 'Falha no upload')
+            end
         end
 
         function connect(app)
@@ -253,13 +300,6 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             end
         end
 
-        function downloader = createDownloader(app, request)
-            if isempty(app.Session) || ~isvalid(app.Session)
-                app.setSession(ws.auth.F5Session(app.AuthenticationURL))
-            end
-            downloader = ws.auth.FileTransfer(app.Session, request);
-        end
-
         function setSession(app, session)
             if ~isempty(app.SessionListener) && isvalid(app.SessionListener)
                 delete(app.SessionListener)
@@ -306,7 +346,7 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
             app.ProfilePanel.hide()
             if ~isempty(app.Session) && isvalid(app.Session)
                 logout(app.Session)
-                app.setSession([])
+                app.setSession(ws.auth.F5Session(app.AuthenticationURL))
             end
             app.HTMLView.HTMLSource = '<html><body></body></html>';
             app.refreshStatus()
@@ -502,6 +542,12 @@ classdef F5BrowserTestApp < matlab.apps.AppBase
                 tf = lastSegmentIsFile;
             catch
             end
+        end
+
+        function tf = isUploadOnlyURL(url)
+            tf = any(strcmp(url, {'https://httpbin.org/post', ...
+                                  'https://httpbin.org/put', ...
+                                  F5BrowserTestApp.ProtectedUploadEndpointPlaceholder}));
         end
 
         function report = downloadErrorReport(exception, filePath, logPath)
