@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
 
 <head>
     <meta charset="utf-8">
@@ -43,19 +43,13 @@
 </head>
 
 <body>
-    <button id="download-button" type="button" aria-label="Downloads"></button>
+    <button id="download-button" type="button" aria-label="Transferências"></button>
 
     <template id="download-template">
         <svg width="24" height="24" viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg">
             <g id="download-indicators"></g>
-            <g id="download-arrow">
-                <path d="M 12,3 V 19"
-                    style="fill:#424242;fill-opacity:1;stroke:#424242;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-dashoffset:3.40157;stroke-opacity:1;stop-color:#000000" />
-                <path d="m 6,12 6,7 6,-7"
-                    style="fill:none;fill-opacity:1;stroke:#424242;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-dashoffset:3.40157;stroke-opacity:1;stop-color:#000000" />
-                <path d="M 1,22 H 23"
-                    style="fill:#424242;fill-opacity:1;stroke:#424242;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-dashoffset:3.40157;stroke-opacity:1;stop-color:#000000" />
-            </g>
+            <text id="direction-arrow" x="12" y="18" text-anchor="middle"
+                font-family="Arial, sans-serif" font-size="18" font-weight="600" fill="#424242">↓</text>
             <g id="download-pulse-overlays"></g>
         </svg>
     </template>
@@ -85,11 +79,13 @@
             var maxAnimatedRate = 20000000;
             var warningColor = '#ffbb00';
             var progressColor = '#3030f0';
+            var uploadColor = '#1f8f4e';
             var opacityCycle = [1, 0.6, 0.1, 0.6];
             var animationFrame = null;
             var lastProgressFrameTime = null;
 
             svg.classList.add('download-svg');
+            var directionArrow = svg.querySelector('#direction-arrow');
             downloadButton.appendChild(svg);
 
             function sendEvent(eventName, payload) {
@@ -113,11 +109,11 @@
                 if (value === null || typeof value === 'undefined') {
                     items = [];
                 } else if (Array.isArray(value)) {
-                    items = value.slice(0, coordinateOrder.length);
+                    items = value.slice();
                 } else if (typeof value === 'object') {
                     items = [value];
                 } else {
-                    throw new TypeError('Data must be a list of download objects.');
+                    throw new TypeError('Os dados devem ser uma lista de transferências.');
                 }
 
                 var normalized = [];
@@ -126,18 +122,25 @@
                     var item = items[index];
                     var itemNumber = index + 1;
                     if (!item || typeof item !== 'object' || Array.isArray(item)) {
-                        throw new TypeError('Download item ' + itemNumber + ' must be an object.');
+                        throw new TypeError('O item de transferência ' + itemNumber + ' deve ser um objeto.');
+                    }
+                    if (item.direction !== 'download' && item.direction !== 'upload') {
+                        throw new TypeError('Item de transferência ' + itemNumber +
+                            ': direction deve ser "download" ou "upload".');
                     }
                     if (typeof item.id !== 'number' || !Number.isSafeInteger(item.id)) {
-                        throw new TypeError('Download item ' + itemNumber + ': id must be a safe integer number.');
+                        throw new TypeError('Item de transferência ' + itemNumber + ': id deve ser um número inteiro seguro.');
                     }
                     if (typeof item.rate !== 'number' || item.rate === Infinity) {
-                        throw new TypeError('Download item ' + itemNumber + ': rate must be a number.');
+                        throw new TypeError('Item de transferência ' + itemNumber + ': rate deve ser um número.');
                     }
                     if (typeof item.progress !== 'number' || !isFinite(item.progress) || item.progress < 0 || item.progress > 100) {
-                        throw new TypeError('Download item ' + itemNumber + ': progress must be a number from 0 to 100.');
+                        throw new TypeError('Item de transferência ' + itemNumber + ': progress deve ser um número entre 0 e 100.');
                     }
 
+                    if (index >= coordinateOrder.length) {
+                        continue;
+                    }
                     var key = String(item.id);
                     var rate = item.rate;
                     if (rate !== 0 && (!isFinite(rate) || rate < minimumAnimatedRate)) {
@@ -150,6 +153,7 @@
                     normalized.push({
                         id: item.id,
                         key: key,
+                        direction: item.direction,
                         rate: rate,
                         progressCount: Math.round(item.progress / 5)
                     });
@@ -157,9 +161,9 @@
                 return normalized;
             }
 
-            function createPath(id, x, y, isPulse) {
+            function createPath(id, x, y, isPulse, direction) {
                 var path = document.createElementNS(svgNamespace, 'path');
-                path.setAttribute('stroke', progressColor);
+                path.setAttribute('stroke', direction === 'upload' ? uploadColor : progressColor);
                 path.setAttribute('stroke-width', isPulse ? '3' : '2');
                 path.setAttribute('stroke-linecap', 'round');
                 path.setAttribute('stroke-linejoin', 'round');
@@ -181,6 +185,7 @@
                 var record = {
                     id: item.id,
                     key: item.key,
+                    direction: item.direction,
                     coordinate: coordinate,
                     rate: null,
                     visualState: null,
@@ -188,13 +193,27 @@
                     opacityIndex: 0,
                     pulseFrameCount: 0,
                     pulseOpacity: null,
-                    pulsePath: createPath(item.id, coordinate, pulseYPosition, true),
+                    pulsePath: createPath(item.id, coordinate, pulseYPosition, true, item.direction),
                     progressPoints: []
                 };
                 pulseLayer.appendChild(record.pulsePath);
                 records[item.key] = record;
                 setRate(record, item.rate);
                 return record;
+            }
+
+            function setDirection(record, direction) {
+                if (record.direction === direction) {
+                    return;
+                }
+                record.direction = direction;
+                var color = direction === 'upload' ? uploadColor : progressColor;
+                if (record.rate !== 0) {
+                    record.pulsePath.setAttribute('stroke', color);
+                }
+                for (var index = 0; index < record.progressPoints.length; index += 1) {
+                    record.progressPoints[index].path.setAttribute('stroke', color);
+                }
             }
 
             function setRate(record, rate) {
@@ -217,7 +236,7 @@
                     record.pulsePath.setAttribute('stroke-opacity', String(record.pulseOpacity));
                 } else {
                     record.pulsePath.setAttribute('d', 'M ' + record.coordinate + ',' + pulseYPosition + ' v 0.01');
-                    record.pulsePath.setAttribute('stroke', progressColor);
+                    record.pulsePath.setAttribute('stroke', record.direction === 'upload' ? uploadColor : progressColor);
                     record.pulsePath.setAttribute('stroke-width', '3');
                     if (rate > maxAnimatedRate) {
                         record.pulseOpacity = 0.6;
@@ -255,7 +274,7 @@
                 var slot = animate ? freeAnimationSlot(record.progressPoints) : -1;
                 var startY = slot >= 0 ? 1 + slot : targetY;
                 var shouldMove = slot >= 0 && targetY > startY;
-                var path = createPath(record.id, record.coordinate, startY, false);
+                var path = createPath(record.id, record.coordinate, startY, false, record.direction);
                 var point = {
                     path: path,
                     x: record.coordinate,
@@ -309,6 +328,15 @@
                     return;
                 }
 
+                var hasDownloads = false;
+                var hasUploads = false;
+                for (var directionIndex = 0; directionIndex < items.length; directionIndex += 1) {
+                    hasDownloads = hasDownloads || items[directionIndex].direction === 'download';
+                    hasUploads = hasUploads || items[directionIndex].direction === 'upload';
+                }
+                directionArrow.textContent = hasDownloads && hasUploads ? '↕' :
+                    (hasUploads ? '↑' : '↓');
+
                 var now = performance.now();
                 var activeKeys = Object.create(null);
                 for (var index = 0; index < items.length; index += 1) {
@@ -323,6 +351,7 @@
                 for (var itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
                     var item = items[itemIndex];
                     var record = records[item.key] || createRecord(item, now);
+                    setDirection(record, item.direction);
                     setRate(record, item.rate);
                     updateProgress(record, item.progressCount, now);
                 }

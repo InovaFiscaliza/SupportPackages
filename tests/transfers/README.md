@@ -20,7 +20,7 @@ de arquivos.
 | [`checkTransferManager.m`](checkTransferManager.m) | Verifica o ciclo de vida e conflitos do manager sem UI. |
 | [`checkTransferSilent.m`](checkTransferSilent.m) | Verifica tarefas silenciosas, callbacks e inclusão opcional na apresentação. |
 | [`checkOrbitDownloadHtml.m`](checkOrbitDownloadHtml.m) | Harness visual opcional de `orbitDownloadAvatar.html`, com progresso agregado e órbita. |
-| [`checkPingTransferHtml.m`](checkPingTransferHtml.m) | Testa o recurso `uihtml` `pingTransferAvatar.html` com IDs, taxas e progresso por download. |
+| [`checkPingTransferHtml.m`](checkPingTransferHtml.m) | Testa o recurso `uihtml` `pingTransferAvatar.html` com IDs, taxas, progresso e direção por transferência. |
 | [`checkTransferPanelPausedAvatarRate.m`](checkTransferPanelPausedAvatarRate.m) | Confirma que downloads pausados chegam ao avatar com taxa zero. |
 | [`checkDownloadHttp.m`](checkDownloadHttp.m) | Faz um teste rápido do transporte HTTP público, do fallback de nome de arquivo e do isolamento de cookies por host exato. |
 | [`TransferPanelFakeTransfer.m`](TransferPanelFakeTransfer.m) | Simula o objeto de transferência exigido por `ui.TransferPanel`. |
@@ -52,12 +52,13 @@ Este harness é exclusivamente de apresentação. Ele não cria arquivos
 temporários ou de destino, não inicia `ui.TransferPanel`, não autentica nem
 realiza transferências de rede.
 
-`checkPingTransferHtml.m` exercita o novo avatar por meio de structs MATLAB com
-os campos `id`, `rate` e `progress`. O harness envia struct vazio, escalar ou
-array conforme a quantidade selecionada, com IDs numéricos, taxa em bytes por
-segundo e progresso entre `0` e `100`. Os controles permitem variar até 23
-downloads, o progresso e a taxa, além de confirmar o evento de clique e erros
-de validação recebidos pelo MATLAB.
+`checkPingTransferHtml.m` exercita o avatar por meio de structs MATLAB com os
+campos `id`, `rate`, `progress` e `direction`, que aceita somente `download` ou
+`upload`. O harness envia struct vazio, escalar ou array conforme a quantidade
+selecionada, com IDs numéricos, taxa em bytes por segundo e progresso entre `0`
+e `100`. Os controles permitem variar até 23 transferências, escolher downloads,
+uploads ou ambos, ajustar progresso e taxa, além de confirmar o evento de clique
+e erros de validação recebidos pelo MATLAB.
 
 `checkTransferPanelPausedAvatarRate.m` verifica taxa zero para tarefas pausadas
 e parciais em espera. Também confirma que uma solicitação normal repetida pode
@@ -138,8 +139,8 @@ parcial em espera que esteja visível:
 Uma taxa pausada ou exatamente zero gera o ponto amarelo de alerta. `NaN` e taxas
 diferentes de zero abaixo de `100000` usam `100000` para a animação mínima. Um
 upload ativo não retomável também envia `100000` quando a taxa ainda não foi
-medida. A atualização do HTML e de seu harness para validar e exibir a direção
-pertence à P7.
+medida. `pingTransferAvatar.html` valida `direction` e exibe setas distintas para
+downloads, uploads ou ambos; o harness inclui esse campo nos dados enviados.
 
 O recurso emite `transferAvatarReady` e `transferAvatarClick`, com os tipos de
 payload `ready` e `click`. O próprio recurso do avatar não acessa arquivos,
@@ -188,7 +189,7 @@ Para executar o harness do avatar agregado opcional:
 uiFigure = checkOrbitDownloadHtml;
 ```
 
-Para executar o teste isolado do novo avatar por download:
+Para executar o teste isolado do avatar de transferências:
 
 ```matlab
 uiFigure = checkPingTransferHtml;
