@@ -4,10 +4,11 @@ Gerenciamento neutro de transferências HTTP para aplicações MATLAB.
 
 Este pacote contém a orquestração neutra de transferências e o transporte HTTP de
 downloads e uploads preparados, compartilhados por fontes públicas e adaptadores
-específicos de provedor como `ws.auth.FileTransfer`. O worker `uploadFileWorker`
-executa uploads multipart, raw e Tus; a descoberta de capacidades por `OPTIONS`
-pertence à P3, enquanto a integração do adaptador e da interface de upload permanece
-nas fases seguintes.
+específicos de provedor como `ws.auth.FileTransfer`. `HTTPFileTransfer` possui o
+ciclo de vida comum e seleciona o worker por direção. O worker `uploadFileWorker`
+executa uploads multipart, raw e Tus; `prepare` chama `uploadCapabilities` uma vez
+para descobrir capacidades antes do envio do corpo. A integração do adapter F5 foi
+incluída no escopo da P5; a interface de upload permanece na P6.
 O pacote não depende de `uifigure`,
 `uihtml`, `ui.TransferPanel`, sessões de autenticação, cookies ou outras classes de
 apresentação.
@@ -20,6 +21,7 @@ adicione a própria pasta `+datatransfer`.
 | Módulo | Responsabilidade |
 |---|---|
 | [`TransferManager.m`](TransferManager.m) | Responsável pelo registro de tarefas, transições de ciclo de vida, IDs de tarefas, decisões de conflito, callbacks do downloader, snapshots, filtragem de callbacks tardios, limpeza e notificações de conclusão/erro. |
+| [`HTTPFileTransfer.m`](HTTPFileTransfer.m) | Possui a preparação e o ciclo de vida assíncrono comum; seleciona `downloadFileWorker` ou `uploadFileWorker`, protege callbacks por geração e publica progresso, estado, conclusão e erro. |
 | [`TransferHistoryStore.m`](TransferHistoryStore.m) | Lê, valida e escreve atomicamente o histórico de tarefas persistente versionado. |
 | [`downloadFileWorker.m`](downloadFileWorker.m) | Executa transferências HTTP fragmentadas retomáveis, escreve arquivos temporários com escopo de tarefa, publica arquivos concluídos, tenta novamente falhas recuperáveis e relata progresso. |
 | [`sendHTTPRequest.m`](sendHTTPRequest.m) | Envia `GET`, `HEAD`, `OPTIONS`, `POST`, `PUT`, `PATCH` e `DELETE`. As opções aceitam `Range`, cabeçalhos permitidos, corpo `uint8` ou `ContentProvider`, `FollowRedirects`, `ProgressMonitor` e um `ResponseConsumer` opcional. Redirecionamentos são tratados manualmente; corpos não são repetidos nem redirecionados. Cookies ficam limitados ao host F5 exato em HTTPS. |
@@ -34,7 +36,7 @@ adicione a própria pasta `+datatransfer`.
 
 ## Arquitetura
 
-O subsistema de download é dividido em três limites:
+O subsistema de transferências é dividido em limites de aplicação, transporte genérico e autenticação:
 
 ```text
 src/General/
@@ -44,6 +46,7 @@ src/General/
 │       ├── orbitDownloadAvatar.html (alternativa agregada de órbita opcional)
 │       └── pingTransferAvatar.html
 └── +datatransfer/
+    ├── HTTPFileTransfer.m
     ├── TransferManager.m
     ├── TransferHistoryStore.m
     ├── downloadContentDispositionFileName.m
@@ -64,7 +67,7 @@ src/Anatel/+ws/+auth/
 
 | Limite | Propriedade | Não deve possuir |
 |---|---|---|
-| `datatransfer.*` | Transferência HTTP neutra em relação ao provedor, tratamento de resposta, metadados de origem, derivação de nome de arquivo, preparação com escopo de tarefa, publicação e orquestração de transferência. | Controles de interface do usuário, figuras, sessões de autenticação, cookies ou comportamento específico do provedor. |
+| `datatransfer.*` | Transferência HTTP neutra em relação ao provedor, ciclo de vida assíncrono, seleção de worker, tratamento de resposta, metadados de origem, derivação de nome de arquivo, preparação e publicação. | Controles de interface do usuário, figuras, sessões de autenticação, cookies ou comportamento específico do provedor. |
 | [`ui.TransferPanel`](../+ui/TransferPanel.m) | Apresentação, controles de linha, estado do avatar, callbacks da interface do usuário e renderização de snapshots do gerenciador. | Ciclo de vida de transferência, autenticação, inspeção de cookies ou chamadas diretas do downloader. |
 | `ws.auth` | Tratamento de sessão F5, captura de cookies, reautenticação, recuperação de perfil e o adaptador `FileTransfer`. | Interface do usuário genérica e implementações de transferência neutras em relação ao provedor. |
 
@@ -98,6 +101,10 @@ comandos `start`, `pause`, `resume` e `cancel`, callbacks da transferência,
 filtragem de callbacks tardios, limpeza, decisões de conflito, snapshots e
 notificações de conclusão/erro. Ele expõe snapshots e eventos, nunca
 manipuladores da interface do usuário ou detalhes internos do adaptador.
+`SnapshotFcn(snapshot)` publica snapshots e `TaskReorderedFcn(snapshot)` informa
+mudanças de ordem. `CompletedFcn(id, info, snapshot)` e
+`ErrorFcn(id, exception, snapshot)` notificam resultados terminais, inclusive
+para tarefas silenciosas.
 
 O método `addTransfer(request)` recebe `Direction` (`'download'` ou `'upload'`),
 `URL` remota, `LocalPath` absoluto, `TempFolder` e `FileName` (em uploads, o nome
@@ -110,8 +117,8 @@ No contrato de upload, o gerenciador exige um arquivo de origem existente e regu
 aplica `MaxUploadBytes` (padrão: 200 MiB; excesso gera
 `datatransfer:TransferManager:uploadTooLarge`), valida `FormFieldName` e os nomes
 dos campos adicionais e sanitiza o nome remoto `FileName`. O worker de upload de
-corpo foi implementado na P4; a integração do adaptador e do
-gerenciador na P5 e a interface de upload na P6 ficam para as fases seguintes.
+corpo foi concluído na P4. A P5 cobre o ciclo de vida genérico, o adaptador F5 e
+a persistência de offsets; a interface de upload permanece na P6.
 Raw e multipart publicam o
 progresso exato dos bytes do arquivo lidos; o progresso Tus permanece limitado ao
 offset confirmado pelo servidor.
@@ -209,16 +216,50 @@ não exclui o arquivo de destino. O gerenciador verifica novamente o destino ant
 publicação.
 
 ### Limite do adaptador
+O worker de upload de corpo foi implementado na P4; o ciclo de vida genérico,
+a integração do adaptador F5 e a persistência dos offsets foram implementados na
+P5. A interface de upload permanece na P6.
 
-Os auxiliares genéricos usam argumentos de solicitação normalizados e um `requestContext` fornecido pelo provedor.
-Para transferências autenticadas pelo F5, `ws.auth.FileTransfer`
-fornece o contexto e invoca `@datatransfer.downloadFileWorker`. O worker genérico
-não inspeciona cookies ou conhece `F5Session`; há uma implementação de worker
-neste pacote neutro em relação ao provedor.
+`datatransfer.HTTPFileTransfer` possui a preparação e o ciclo de vida da
+transferência, chama `downloadSourceMetadata` para downloads e chama
+`uploadCapabilities` uma vez em `prepare` para uploads. Depois da preparação,
+despacha para `downloadFileWorker` ou `uploadFileWorker` com os valores resolvidos.
+Aplicações sem F5 podem usar `@(request) datatransfer.HTTPFileTransfer(request)`.
 
-Nenhum pacote chama a implementação concreta de outro provedor. A
-solicitação normalizada e o `requestContext` do provedor são os únicos limites de transferência
-entre serviços genéricos e adaptadores de autenticação.
+O adaptador implementa `prepare`, `start`, `pause`, `resume`, `stop` e `delete`;
+expõe `IsRunning`, `IsPaused` e `IsResumable`; e aceita os callbacks
+`ProgressFcn`, `CompletedFcn`, `ErrorFcn` e `StateFcn`. `CompletedFcn(info)` é
+chamado uma vez após a conclusão confirmada. `ErrorFcn(exception)` é chamado
+uma vez em falha terminal; cancelamento não é falha. Em downloads, o callback
+recebe um `MException`; em uploads, recebe um struct com `identifier`, `message`,
+`StatusCode` e `OutcomeUncertain` para preservar resultados ambíguos.
+`prepare` retorna um struct escalar com `Direction`, `URL`, `LocalPath`,
+`FileName`, `TotalBytes`, `IsResumable`, `ResolvedProtocol`, `TusMaxSize`,
+`UploadURL` e `UploadOffset`; o manager aplica esse estado inicial à tarefa.
+`StateFcn(state)` recebe um struct escalar com `IsResumable`, `ResolvedProtocol`,
+`UploadURL` e `UploadOffset`, sem credenciais, e publica atualizações do worker,
+incluindo URL e offset Tus confirmados. O manager mantém `IsResumable` na tarefa
+e no snapshot. No histórico, `ResolvedProtocol` é gravado como `Protocol`.
+`UploadURL` e `UploadOffset` só contêm estado útil para uploads Tus retomáveis;
+`IsResumable` permanece na tarefa e no snapshot, não no histórico. O manager
+associa callbacks à geração da tarefa, ignora callbacks obsoletos e os limpa ao
+liberar o adaptador.
+
+Para transferências autenticadas pelo F5, `ws.auth.FileTransfer` herda de
+`datatransfer.HTTPFileTransfer` e substitui somente `acquireContext` e
+`reauthenticate`, delegando a `F5Session.getRequestContext` e
+`F5Session.authenticateForRequest`. O worker genérico recebe um `requestContext`
+opaco; `HTTPFileTransfer` não inspeciona cookies nem conhece `F5Session`.
+A autenticação ocorre no preflight de `prepare`, antes do primeiro corpo. Em
+Tus, após `NeedsAuthentication`, o adaptador só recomeça quando um `HEAD` seguro
+permite usar o último `Upload-Offset` confirmado; publica esse offset antes de
+retomar. Se `OutcomeUncertain` permanece verdadeiro, não há retry automático.
+Uploads one-shot nunca são repetidos após possível envio; resultados ambíguos
+são expostos ao manager.
+
+Nenhum pacote genérico chama a implementação concreta de outro provedor. A
+solicitação normalizada e o `requestContext` opaco são os limites entre o
+transporte genérico e os adaptadores de autenticação.
 
 ### Política de namespace e erro
 

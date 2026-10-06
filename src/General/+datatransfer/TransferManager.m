@@ -164,6 +164,7 @@ classdef TransferManager < handle
                           'Response', [], ...
                           'SourceChangedMessage', '', ...
                           'Downloader', [], ...
+                          'CallbackGeneration', 0, ...
                           'LifecycleState', 'created', ...
                           'ConflictType', '', ...
                           'CollisionAction', 'none', ...
@@ -396,6 +397,12 @@ classdef TransferManager < handle
             request.ChunkPath = '';
             request.CollisionAction = 'none';
             request.PartialAction = 'restart';
+            if strcmp(task.Direction, 'upload')
+                request.SourcePrepared = false;
+                request.ResolvedProtocol = '';
+                request.UploadURL = '';
+                request.UploadOffset = 0;
+            end
             obj.cancel(taskID)
             newTaskID = obj.addTransfer(request);
         end
@@ -566,8 +573,20 @@ classdef TransferManager < handle
                 downloader = obj.TransferFactory(request);
                 validateDownloader(downloader)
                 task.Downloader = downloader;
+                task.CallbackGeneration = task.CallbackGeneration + 1;
+                callbackGeneration = task.CallbackGeneration;
                 obj.Tasks{taskID} = task;
-                if isprop(downloader, 'IsResumable')
+                downloader.ProgressFcn = @(transferredBytes, totalBytes) ...
+                    obj.onProgress(taskID, callbackGeneration, transferredBytes, totalBytes);
+                downloader.CompletedFcn = @(info) ...
+                    obj.onCompleted(taskID, callbackGeneration, info);
+                downloader.ErrorFcn = @(exception) ...
+                    obj.onError(taskID, callbackGeneration, exception);
+                if isprop(downloader, 'StateFcn')
+                    downloader.StateFcn = @(state) ...
+                        obj.onState(taskID, callbackGeneration, state);
+                end
+                if task.SourcePrepared && isprop(downloader, 'IsResumable')
                     try
                         resumableValue = downloader.IsResumable;
                         if islogical(resumableValue) && isscalar(resumableValue) && ...
@@ -582,6 +601,10 @@ classdef TransferManager < handle
 
                 if ~task.SourcePrepared && ismethod(downloader, 'prepare')
                     sourceInfo = prepare(downloader);
+                    task = obj.getTask(taskID);
+                    if isempty(task) || task.IsStopped || obj.IsDeleting
+                        return
+                    end
                     previousIsResumable = task.IsResumable;
                     task = applySourceInfo(task, sourceInfo);
                     task.SourcePrepared = true;
@@ -598,6 +621,7 @@ classdef TransferManager < handle
                         obj.Tasks{taskID} = task;
                         obj.notifySnapshot(task)
                     end
+                    obj.persistTask(task)
                 end
 
                 existingPartialPath = '';
@@ -638,10 +662,6 @@ classdef TransferManager < handle
                 task.UpdatedAt = utcNow();
                 obj.Tasks{taskID} = task;
                 obj.persistTask(task)
-                downloader.ProgressFcn = @(transferredBytes, totalBytes) ...
-                    obj.onProgress(taskID, transferredBytes, totalBytes);
-                downloader.CompletedFcn = @(info) obj.onCompleted(taskID, info);
-                downloader.ErrorFcn = @(exception) obj.onError(taskID, exception);
                 obj.notifySnapshot(task)
                 start(downloader)
             catch exception
@@ -714,9 +734,48 @@ classdef TransferManager < handle
             end
         end
 
-        function onProgress(obj, taskID, transferredBytes, totalBytes)
+        function onState(obj, taskID, callbackGeneration, state)
             task = obj.getTask(taskID);
-            if isempty(task) || ~strcmp(task.LifecycleState, 'active') || obj.IsDeleting
+            if isempty(task) || task.CallbackGeneration ~= callbackGeneration || ...
+                    isempty(task.Downloader) || task.IsStopped || ...
+                    ~strcmp(task.LifecycleState, 'active') || obj.IsDeleting || ...
+                    ~isstruct(state) || ~isscalar(state)
+                return
+            end
+            if isfield(state, 'IsResumable') && islogical(state.IsResumable) && ...
+                    isscalar(state.IsResumable)
+                task.IsResumable = state.IsResumable;
+            end
+            if isfield(state, 'ResolvedProtocol') && ischar(state.ResolvedProtocol) && ...
+                    isrow(state.ResolvedProtocol) && ...
+                    ismember(state.ResolvedProtocol, {'', 'multipart', 'raw', 'tus'})
+                task.ResolvedProtocol = state.ResolvedProtocol;
+            end
+            if isfield(state, 'UploadURL') && ischar(state.UploadURL) && ...
+                    isrow(state.UploadURL)
+                task.UploadURL = state.UploadURL;
+            end
+            if isfield(state, 'UploadOffset') && isnumeric(state.UploadOffset) && ...
+                    isscalar(state.UploadOffset) && isfinite(state.UploadOffset) && ...
+                    state.UploadOffset >= 0
+                task.UploadOffset = double(state.UploadOffset);
+                if strcmp(task.Direction, 'upload')
+                    task.TransferredBytes = task.UploadOffset;
+                end
+            end
+            if ~isempty(task.TotalBytes) && task.TotalBytes > 0
+                task.ProgressFraction = min(task.TransferredBytes / task.TotalBytes, 1);
+            end
+            task.UpdatedAt = utcNow();
+            obj.Tasks{taskID} = task;
+            obj.persistTask(task)
+            obj.notifySnapshot(task)
+        end
+
+        function onProgress(obj, taskID, callbackGeneration, transferredBytes, totalBytes)
+            task = obj.getTask(taskID);
+            if isempty(task) || task.CallbackGeneration ~= callbackGeneration || ...
+                    ~strcmp(task.LifecycleState, 'active') || obj.IsDeleting
                 return
             end
             task.TransferredBytes = double(transferredBytes);
@@ -746,9 +805,10 @@ classdef TransferManager < handle
             obj.notifySnapshot(task)
         end
 
-        function onCompleted(obj, taskID, info)
+        function onCompleted(obj, taskID, callbackGeneration, info)
             task = obj.getTask(taskID);
-            if isempty(task) || task.IsStopped || obj.IsDeleting
+            if isempty(task) || task.CallbackGeneration ~= callbackGeneration || ...
+                    task.IsStopped || ~strcmp(task.LifecycleState, 'active') || obj.IsDeleting
                 return
             end
             if ~isstruct(info)
@@ -816,7 +876,12 @@ classdef TransferManager < handle
             obj.Tasks{taskID} = [];
         end
 
-        function onError(obj, taskID, exception)
+        function onError(obj, taskID, callbackGeneration, exception)
+            task = obj.getTask(taskID);
+            if isempty(task) || task.CallbackGeneration ~= callbackGeneration || ...
+                    task.IsStopped || ~strcmp(task.LifecycleState, 'active') || obj.IsDeleting
+                return
+            end
             obj.failTask(taskID, exception)
         end
 
@@ -896,6 +961,9 @@ classdef TransferManager < handle
                 end
                 if isprop(downloader, 'ErrorFcn')
                     downloader.ErrorFcn = [];
+                end
+                if isprop(downloader, 'StateFcn')
+                    downloader.StateFcn = [];
                 end
             catch
             end

@@ -5,7 +5,7 @@ Módulo compartilhado de autenticação para aplicações MATLAB desktop que con
 | Arquivo | Descrição |
 |---|---|
 | `F5Session.m` | Sessão autenticada reutilizável (`ws.auth.F5Session`) |
-| `FileTransfer.m` | Transferência assíncrona retomável em `backgroundPool` |
+| `FileTransfer.m` | Adaptador de contexto F5 para `datatransfer.HTTPFileTransfer` |
 | `DownloadProgressMonitor.m` | Reporta o progresso de `F5Session.readBytes` quando o chamador fornece um callback |
 | [`TransferManager`](../../../General/+datatransfer/TransferManager.m) | Orquestra tarefas, conflitos, callbacks e snapshots sem conhecer UI ou F5 |
 | [`+datatransfer`](../../../General/+datatransfer) | Serviços HTTP, nomes de arquivos, metadados e worker provider-neutral |
@@ -51,14 +51,14 @@ Pontos-chave da implementação:
 
 - **Detecção de conclusão** — polling a cada 0,25 s executando `JSON.stringify({url: location.href, cookie: document.cookie})` na página. A URL de login deve terminar no host protegido com uma resposta HTTP `200`; o corpo dessa página pode ser vazio. Considera-se concluído quando os cookies obrigatórios (`LastMRH_Session` e `F5_ST`) estão presentes. Uma resposta `204` não é adequada para esse fluxo porque mantém o documento do provedor de identidade, cujo `document.cookie` não expõe os cookies do F5. Depois disso, a classe faz uma tentativa independente de ler `X-User-Profile` usando a `LoginURL` e os cookies capturados.
 - **Leitura dos cookies** — possível via `document.cookie` porque os cookies do APM não são marcados `HttpOnly`. Nenhuma API nativa de gerenciamento de cookies é necessária.
-- **Download independente** — para arquivos grandes, `FileTransfer` executa as requisições por blocos em `backgroundPool`, mantendo a interface livre para outras requisições. O arquivo parcial pode ser retomado.
+- **Transferência independente** — `datatransfer.HTTPFileTransfer` prepara e executa downloads ou uploads em `backgroundPool`, mantendo a interface livre. Downloads e uploads Tus podem ser retomados conforme seus protocolos.
 - **Janela sob demanda** — a janela é criada oculta. Só é exibida quando o fluxo sai do host protegido (redirecionamento ao IdP) ou quando o *landing* silencioso demora mais que 2 s. Se o CEF ainda tiver uma sessão válida, o login ocorre sem qualquer janela visível.
 - **Detecção de expiração** — o transporte HTTP desativa redirecionamentos automáticos do MATLAB e os trata manualmente. Para um contexto elegível no host F5 exato em HTTPS, uma resposta `3xx` sinaliza `NeedsAuthentication`; requisições com corpo nunca seguem nem repetem um redirecionamento. Códigos `401` e `403`, ou um corpo HTML de login, também indicam sessão expirada.
 
 ## Pré-requisitos do ambiente
 
 - MATLAB **R2024b ou superior** (multiplataforma: Windows, macOS e Linux).
-- Parallel Computing Toolbox para downloads assíncronos com `FileTransfer`.
+- Parallel Computing Toolbox para transferências assíncronas com `FileTransfer`.
 - Acesso de rede ao host protegido e ao IdP.
 - Usuário com acesso autorizado ao serviço para concluir o login e aprovar o push a cada nova sessão.
 
@@ -155,13 +155,13 @@ e órbitas para comparação ou reutilização independente; não é carregado p
 `ui.TransferPanel`. Seu harness manual é
 [`checkOrbitDownloadHtml.m`](../../../../tests/transfers/checkOrbitDownloadHtml.m).
 
-Os serviços provider-neutral ficam em `src/General/+datatransfer`: use
-`datatransfer.transferFileName`, `datatransfer.downloadSourceMetadata`,
-`datatransfer.sendHTTPRequest` e `datatransfer.downloadFileWorker` para o
-transporte e o processamento genérico de downloads. O `FileTransfer` é o
-adaptador F5 de download: fornece o `requestContext` autenticado e passa
-`@datatransfer.downloadFileWorker` ao `backgroundPool`. O manager recebe somente
-a fábrica injetada e nunca inspeciona cookies, sessões ou handles de UI.
+Os serviços provider-neutral ficam em `src/General/+datatransfer`.
+`datatransfer.HTTPFileTransfer` possui o ciclo de vida comum, prepara metadados
+de download ou capacidades de upload e seleciona o worker por direção. O
+`ws.auth.FileTransfer` herda essa classe e substitui somente `acquireContext` e
+`reauthenticate`, usando `F5Session.getRequestContext` e
+`F5Session.authenticateForRequest`. O manager recebe somente a fábrica injetada
+e nunca inspeciona cookies, sessões ou handles de UI.
 
 ```matlab
 panel = ui.TransferPanel(parentContainer, ...
@@ -176,16 +176,28 @@ panel.addDownload(url);
 ```
 
 O factory recebe uma struct normalizada com `Direction`, `URL`, `TaskID`,
-`TempFolder`, `LocalPath` e `FileName`; `LocalPath` é o destino local do download.
-O construtor de `FileTransfer` exige esses campos e aceita somente
-`Direction = 'download'` até que exista um adaptador de upload. O callback
-`ProgressFcn` recebe `(transferredBytes, totalBytes)`, e o resumo de conclusão
-inclui `LocalPath` e `TransferredBytes`.
-O objeto devolvido deve expor
-`start`, `pause`, `resume`, `stop`, `ProgressFcn`, `CompletedFcn` e
-`ErrorFcn`. O painel passa a solicitação à fábrica; `FileTransfer` executa o
-worker de download. A mesma fábrica pode tratar fontes públicas e F5 sem que o
+`TempFolder`, `LocalPath` e `FileName`; `LocalPath` é destino no download e
+origem no upload. O construtor de `FileTransfer` exige esses campos. O callback
+`ProgressFcn` recebe `(transferredBytes, totalBytes)`. `prepare` retorna um
+struct escalar com `Direction`, `URL`, `LocalPath`, `FileName`, `TotalBytes`,
+`IsResumable`, `ResolvedProtocol`, `TusMaxSize`, `UploadURL` e `UploadOffset`.
+`StateFcn(state)` recebe um struct escalar com `IsResumable`, `ResolvedProtocol`,
+`UploadURL` e `UploadOffset`, sem credenciais. O callback publica atualizações do
+worker, incluindo URL e offset Tus confirmados. O resumo de conclusão inclui
+`LocalPath` e `TransferredBytes`.
+O objeto devolvido deve implementar `prepare`, `start`, `pause`, `resume`,
+`stop` e `delete`; expor `IsRunning`, `IsPaused` e `IsResumable`; e aceitar os
+callbacks `ProgressFcn`, `CompletedFcn`, `ErrorFcn` e `StateFcn`.
+`CompletedFcn(info)` é chamado uma vez após a conclusão confirmada.
+`ErrorFcn(exception)` é chamado uma vez em falha terminal; cancelamento não é
+falha. Em downloads, o callback recebe um `MException`; em uploads, recebe um
+struct com `identifier`, `message`, `StatusCode` e `OutcomeUncertain` para
+preservar resultados ambíguos. O painel passa a solicitação à fábrica;
+`HTTPFileTransfer` executa o worker correspondente à direção. A mesma fábrica
+pode tratar fontes públicas e F5 sem que o
 painel conheça o transporte.
+Os hooks protegidos têm as assinaturas `acquireContext(obj, url)` e
+`reauthenticate(obj, url)`; ambos recebem a URL e retornam o `requestContext`.
 
 Para uma aplicação que usa F5, o factory pode sempre usar a mesma chamada:
 
@@ -197,9 +209,14 @@ panel = ui.TransferPanel(parentContainer, ...
     'targetPath', targetFolder);
 ```
 
-Passar uma sessão não inicia autenticação. O login é feito somente quando o
-download recebe uma resposta de autenticação para o host F5. URLs públicas
-HTTP ou HTTPS são baixadas sem cookies. URLs autenticadas exigem HTTPS.
+Passar uma sessão não inicia autenticação. O login ocorre no preflight antes do
+primeiro corpo. Em Tus, após `NeedsAuthentication`, o adaptador só recomeça
+quando um `HEAD` seguro permite usar o último `Upload-Offset` confirmado; esse
+offset é publicado antes da retomada. Se `OutcomeUncertain` permanece
+verdadeiro, não há retry automático. Uploads one-shot nunca são repetidos após
+possível envio; resultados ambíguos são reportados ao manager. URLs públicas
+HTTP ou HTTPS não recebem cookies F5.
+Cookies autenticados permanecem limitados ao host exato em HTTPS.
 
 O painel sugere o último segmento útil da URL como nome de arquivo. Em modos
 desktop, o nome escolhido pelo usuário é usado como destino. Em `webApp`, não há
@@ -235,7 +252,7 @@ e retomar também preserva os timestamps existentes.
 | `logout(obj)` | Descarta os cookies da memória e fecha a janela. |
 | `read(obj, url, autoReauthenticate)` | GET autenticado, com o payload convertido pelo tipo de conteúdo. Em caso de sessão expirada, dispara nova autenticação (padrão) ou lança erro. |
 | `readBytes(obj, url, autoReauthenticate, progressFcn)` | Idem, sem conversão do payload: devolve `uint8`. Útil para pequenos payloads binários ou diagnósticos. `progressFcn` é chamado como `f(bytesRecebidos, bytesTotais)`. |
-| `FileTransfer(session, request, chunkSize, maxRetries)` | Cria um download assíncrono retomável. A solicitação exige `Direction = 'download'`, `URL`, `TaskID`, `TempFolder`, `LocalPath` e `FileName`; uploads são rejeitados até existir o adaptador correspondente. URLs públicas e F5 são aceitas; `start` autentica sob demanda somente após uma resposta de autenticação do host exato da sessão. |
+| `FileTransfer(session, request, chunkSize, maxRetries)` | Cria uma transferência HTTP assíncrona. A solicitação exige `Direction` (`download` ou `upload`), `URL`, `TaskID`, `TempFolder`, `LocalPath` e `FileName`. O preflight autentica antes do envio; o corpo não é repetido depois de uma possível submissão. |
 | `debugInfo(obj)` | Diagnóstico: `LoginURL`, `IsAuthenticated`, `CookieCount` e `CookieNames`. |
 | `IsAuthenticated` | Propriedade somente leitura. |
 | `UserProfile` | Perfil do usuário associado à sessão autenticada. Somente leitura para a aplicação. |
