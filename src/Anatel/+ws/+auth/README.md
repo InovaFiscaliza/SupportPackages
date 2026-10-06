@@ -282,12 +282,12 @@ os timestamps existentes.
 
 ## Notas de segurança
 
-- Os cookies existem **em memória**, em propriedade privada, pelo tempo de vida do objeto. `debugFile` grava o estado bruto do navegador e pode persistir valores de cookies, o que contraria a política de segurança deste plano. Não use esse parâmetro com uma sessão autenticada.
-- O valor do cookie não é persistido em disco. Durante um `FileTransfer`, uma cópia em memória do cabeçalho é enviada ao worker de `backgroundPool` para que a transferência seja independente da thread principal.
+- Os cookies existem **em memória**, em propriedade privada, pelo tempo de vida do objeto. `debugFile` captura intencionalmente o estado bruto e decodificado do navegador para preservar a fidelidade do diagnóstico; essa captura pode persistir valores de cookies. A exposição é um risco inerente e uma característica deliberada do procedimento de debug, não algo a corrigir removendo ou mascarando a captura. Trate o arquivo como sensível: mantenha-o local, não o versione nem compartilhe e apague-o após o diagnóstico. Essa funcionalidade é uma exceção deliberada à regra geral de não registrar credenciais.
+- Em operação normal, o valor do cookie não é persistido em disco. A exceção é o uso intencional de `debugFile`, descrito acima. Durante um `FileTransfer`, uma cópia em memória do cabeçalho é enviada ao worker de `backgroundPool` para que a transferência seja independente da thread principal.
 - Cookies são enviados somente por HTTPS para o host exatamente igual a `F5Session.Domain`. Não são enviados para subdomínios, domínio pai, outros hosts ou após um redirecionamento para outro host. O escopo não considera caminhos: a regra é exclusivamente o host exato e o esquema HTTPS.
 - A sessão é opcional do ponto de vista do transporte: uma URL pública não recebe cookies F5. A existência de um objeto `F5Session` não dispara login durante a construção de `FileTransfer`.
 - `debugInfo` expõe apenas nomes e quantidade de cookies, nunca os valores.
-- Não use `debugFile` em fluxos autenticados nem retenha arquivos de diagnóstico que possam conter credenciais.
+- Ative `debugFile` somente quando necessário para diagnóstico e proteja qualquer arquivo que possa conter credenciais.
 - `logout` sobrescreve o buffer do cabeçalho antes de liberá-lo.
 - `logout` **não** encerra a sessão no lado do F5 nem limpa o cookie jar do CEF, que vive enquanto o processo do MATLAB existir. Um novo `login` após `logout` tende a concluir silenciosamente, reaproveitando a sessão do navegador.
 
