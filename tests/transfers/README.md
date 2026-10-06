@@ -3,6 +3,11 @@
 Esta pasta contém o harness manual de UI e o dublê de teste de
 `src/General/+ui/TransferPanel` e `src/General/+datatransfer/TransferManager`.
 
+Os harnesses desta pasta não validam o transporte real de uploads, o preflight
+HTTP ou o comportamento do servidor. Os contratos dos protocolos e de segurança
+estão no [README do pacote `datatransfer`](../../src/General/+datatransfer/README.md);
+os harnesses de upload permanecem na validação deferida da Fase 10.
+
 Ela também contém harnesses visuais isolados para os avatares. O painel usa
 `pingTransferAvatar.html`; `orbitDownloadAvatar.html` é uma alternativa visual
 agregada, exercitada apenas pelo harness `checkOrbitDownloadHtml`. Os harnesses
@@ -81,7 +86,7 @@ normal correspondente as torna visíveis.
 snapshots, conclusão, remoção de tarefas, deduplicação por URL e nome, timestamps
 de tentativa, retomada e decisões de conflito de destino e arquivo parcial. A
 retomada e a repetição deduplicada não acrescentam timestamp. O manager mantém a
-tarefa e o downloader; o painel possui somente handles de apresentação e
+tarefa e o adaptador de transferência; o painel possui somente handles de apresentação e
 snapshots renderizados.
 
 O teste também verifica a persistência do histórico entre reconstruções,
@@ -98,7 +103,7 @@ examinar outra pasta.
 `checkTransferPanelDestination.m` cria uma figura invisível e injeta um
 `DestinationResolver` determinístico. O teste confirma que modos desktop usam
 o destino retornado pelo callback e que `webApp` usa `TargetPath` sem chamar o
-resolver ou construir o downloader antes da decisão de conflito. Também
+resolver ou construir o adaptador de transferência antes da decisão de conflito. Também
 confirma que um nome alternativo sem extensão recebe a extensão original da URL
 e é usado como o target final.
 
@@ -151,7 +156,9 @@ autenticação ou serviços de rede.
 Quando `F5BrowserTestApp` recebe uma URL cujo segmento final do caminho possui
 uma extensão, ele delega a solicitação a `ui.TransferPanel`. A fábrica da
 aplicação cria `ws.auth.FileTransfer` com a sessão F5 autenticada.
-`FileTransfer` transfere dados em `backgroundPool`; arquivos parciais e partes
+`FileTransfer` foi projetado para executar transferências em `backgroundPool`;
+essa execução e o comportamento de callbacks em `backgroundPool`/`DataQueue`
+permanecem sem validação em runtime até a Fase 10. Arquivos parciais e partes
 específicas da tarefa são armazenados na pasta temporária configurada, e o
 arquivo concluído é publicado na pasta de destino somente depois que a
 transferência é bem-sucedida.
@@ -169,7 +176,7 @@ estado mais recente; tarefas ativas permanecem separadas por ID de tarefa.
 `LogicalFileID` não é a chave dessas linhas: para downloads, é derivado da URL
 exata. Ao inicializar, o gerenciador restaura tentativas interrompidas elegíveis cujo
 arquivo temporário ainda existe. O download restaurado aparece como conflito
-parcial, com **Continuar**, **Reiniciar** e **Cancelar**; nenhum downloader é
+parcial, com **Continuar**, **Reiniciar** e **Cancelar**; nenhum adaptador de transferência é
 iniciado até o usuário escolher uma ação.
 
 ## Execução dos harnesses
@@ -286,6 +293,6 @@ fornece os contextos de autenticação F5.
 
 Este é um harness manual visual/de integração, não uma suíte automatizada de
 asserções. Os contadores de callback e o rótulo de status fornecem feedback
-imediato, enquanto o downloader simulado torna o comportamento do painel
+imediato, enquanto o dublê de transferência torna o comportamento do painel
 repetível. A validação de transferências autenticadas do F5 pertence a
 `tests/auth/F5BrowserTestApp.m` e exige o fluxo interativo real de autenticação.

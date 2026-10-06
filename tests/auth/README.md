@@ -23,7 +23,7 @@ componente HTML.
 
 ## checkF5Auth.m
 
-Script organizado em seções (`%%`), pensado para execução com **Ctrl+Enter**, uma de cada vez. O cabeçalho define `loginURL`, `targetURL` e `debugFile`, além de acrescentar `src/Anatel` ao path.
+Script organizado em seções (`%%`), pensado para execução com **Ctrl+Enter**, uma de cada vez. O cabeçalho define `loginURL`, `targetURL` e `debugFile`, além de acrescentar `src/Anatel` ao path. O log de `debugFile` pode conter valores de cookies; não o use durante um login ou uma sessão autenticada.
 
 ### Test1 — Login interativo
 
@@ -53,7 +53,7 @@ status, sem depender da inspeção do HTML.
 
 Esperado: `HTTP 302`, `Location: /my.policy`, `Detectado como sessão inválida: 1`.
 
-### Cleanup
+### Limpeza
 
 `delete(session)` descarta os cookies da memória.
 
@@ -74,7 +74,7 @@ F5BrowserTestApp
 ### Interface
 
 - **Combo box de URL** (editável), pré-populado com endpoints de teste. Navega tanto ao   pressionar Enter sobre uma URL digitada quanto ao selecionar um item. URLs novas são acrescentadas ao histórico mas não serão recuperadas entre sessões.
-- **Imagem de debug** (<img src="debug-start.svg" alt="ícone de debug" width="16" height="16"> / <img src="debug-stop.svg" alt="ícone de debug" width="16" height="16">), ao lado do combo: controla a abertura das DevTools do navegador de autenticação e a gravação do estado bruto do navegador em arquivo de log. O ícone muda de cor quando o modo de debug está ativo.
+- **Imagem de debug** (<img src="debug-start.svg" alt="ícone de debug" width="16" height="16"> / <img src="debug-stop.svg" alt="ícone de debug" width="16" height="16">), ao lado do combo: controla a abertura das DevTools do navegador de autenticação e a gravação do estado bruto do navegador em arquivo de log. Esse estado pode conter valores de cookies; não use o modo de debug durante uma sessão autenticada. O ícone muda de cor quando o modo de debug está ativo.
 - **Modo de execução** (![ícone desktop](vm.svg) / ![ícone Web App Server](globe.svg)), ao lado do upload: indica o comportamento desktop ou Web App Server. O clique alterna o modo usado pelos próximos downloads e uploads.
 - **Upload**: abre o seletor de arquivo no modo desktop e envia o arquivo para a URL selecionada. No modo Web App Server, usa o arquivo de teste fixo descrito abaixo.
 - **Avatar de transferências**, entre o modo silencioso e o avatar de perfil: mostra indicadores individuais de progresso e atividade das transferências visíveis. O clique abre ou traz para frente o painel de transferências.
@@ -114,7 +114,11 @@ linha do painel, que é aberto automaticamente quando a intervenção do usuári
 Para uploads, no modo desktop `TransferPanel.addUpload` abre `uigetfile` para
 selecionar a origem. No modo Web App Server, o app passa explicitamente
 `tests/transfers/target/upload-test.txt` como `LocalPath`; esse arquivo de teste
-deve existir no ambiente que executa o app.
+deve existir no ambiente que executa o app. Esse arquivo não está presente no
+checkout atual; este README não cria o fixture. Disponibilize-o no ambiente de
+execução antes de usar esse fluxo Web App. A validação do upload real permanece
+deferida para a Fase 10. Consulte o [contrato do pacote `datatransfer`](../../src/General/+datatransfer/README.md)
+para os protocolos e requisitos de segurança.
 
 No modo desktop deste app, um conflito com o target escolhido no `uiputfile` é
 apresentado na linha do painel, com as opções de manter o arquivo existente,
@@ -151,12 +155,12 @@ válida, o login pode terminar sem uma janela visível.
 
 ### TODO — ordem restante de implementação
 
-Os itens abaixo tratam da evolução dos testes e das funcionalidades de download;
+Os itens abaixo tratam da evolução futura dos testes e da interface de transferências;
 os detalhes arquiteturais do item 1 estão documentados em
 [`src/General/+datatransfer/README.md`](../../src/General/+datatransfer/README.md).
 
 O histórico persistente foi implementado no manager; o schema e a recuperação
-estão documentados no README do módulo de downloads.
+estão documentados no README do módulo de transferências.
 
 O redesenho do painel, incluindo os estados de conflito, o histórico concluído e
 as ações por ícone, foi implementado em `ui.TransferPanel` e está descrito no
@@ -164,18 +168,18 @@ README de `tests/transfers`.
 
 1. **Tornar o painel vazio um estado de primeira classe.**
 	 - Clicar no avatar deve abrir o painel ou trazê-lo para frente, mesmo quando
-		 não houver downloads.
+		 não houver transferências.
 	 - Nesse estado, mostrar apenas a barra de título configurada, o rótulo
-		 `Download` e o controle de fechar alinhado ao canto superior direito do painel.
+		 `Transferências` e o controle de fechar alinhado ao canto superior direito do painel.
 	 - Adicionar um caso de teste para abrir, fechar e reabrir o painel vazio.
 
 2. **Substituir a barra de progresso por um componente de status `uihtml`
 	 reutilizável e animado.**
 	 - Proposta futura: implementar o componente em
-		 `src/General/+ui/html/downloadStatus.html` e incluí-lo em aplicações
+		 `src/General/+ui/html/transferStatus.html` e incluí-lo em aplicações
 		 compiladas junto com o recurso do avatar. Esse arquivo ainda não existe nem
 		 é um recurso de empacotamento atual.
-	 - Definir estados explícitos para download ativo (azul constante), aviso
+	 - Definir estados explícitos para transferência ativa (azul constante), aviso
 		 (amarelo piscante) e erro (vermelho piscante), com a precedência
 		 `error > warning > active > idle`.
 	 - Mapear os snapshots do manager para esses estados visuais no painel. O manager

@@ -51,7 +51,7 @@ Pontos-chave da implementação:
 
 - **Detecção de conclusão** — polling a cada 0,25 s executando `JSON.stringify({url: location.href, cookie: document.cookie})` na página. A URL de login deve terminar no host protegido com uma resposta HTTP `200`; o corpo dessa página pode ser vazio. Considera-se concluído quando os cookies obrigatórios (`LastMRH_Session` e `F5_ST`) estão presentes. Uma resposta `204` não é adequada para esse fluxo porque mantém o documento do provedor de identidade, cujo `document.cookie` não expõe os cookies do F5. Depois disso, a classe faz uma tentativa independente de ler `X-User-Profile` usando a `LoginURL` e os cookies capturados.
 - **Leitura dos cookies** — possível via `document.cookie` porque os cookies do APM não são marcados `HttpOnly`. Nenhuma API nativa de gerenciamento de cookies é necessária.
-- **Transferência independente** — `datatransfer.HTTPFileTransfer` prepara e executa downloads ou uploads em `backgroundPool`, mantendo a interface livre. Downloads e uploads Tus podem ser retomados conforme seus protocolos.
+- **Transferência independente** — a implementação agenda `datatransfer.HTTPFileTransfer` em `backgroundPool`. A operação em runtime e o comportamento de callbacks em `backgroundPool`/`DataQueue` ainda não foram validados; essa evidência está deferida para a Fase 10. Downloads e uploads Tus podem ser retomados conforme seus protocolos.
 - **Janela sob demanda** — a janela é criada oculta. Só é exibida quando o fluxo sai do host protegido (redirecionamento ao IdP) ou quando o *landing* silencioso demora mais que 2 s. Se o CEF ainda tiver uma sessão válida, o login ocorre sem qualquer janela visível.
 - **Detecção de expiração** — o transporte HTTP desativa redirecionamentos automáticos do MATLAB e os trata manualmente. Para um contexto elegível no host F5 exato em HTTPS, uma resposta `3xx` sinaliza `NeedsAuthentication`; requisições com corpo nunca seguem nem repetem um redirecionamento. Códigos `401` e `403`, ou um corpo HTML de login, também indicam sessão expirada.
 
@@ -155,7 +155,8 @@ e órbitas para comparação ou reutilização independente; não é carregado p
 `ui.TransferPanel`. Seu harness manual é
 [`checkOrbitDownloadHtml.m`](../../../../tests/transfers/checkOrbitDownloadHtml.m).
 
-Os serviços neutros em relação ao provedor ficam em `src/General/+datatransfer`.
+Os serviços neutros em relação ao provedor ficam em
+[`src/General/+datatransfer`](../../../General/+datatransfer/README.md).
 `datatransfer.HTTPFileTransfer` possui o ciclo de vida comum, prepara metadados
 de download ou capacidades de upload e seleciona o worker por direção. O
 `ws.auth.FileTransfer` herda essa classe e substitui somente `acquireContext` e
@@ -233,6 +234,8 @@ verdadeiro, não há retry automático. Uploads one-shot nunca são repetidos ap
 possível envio; resultados ambíguos são reportados ao manager. URLs públicas
 HTTP ou HTTPS não recebem cookies F5.
 Cookies autenticados permanecem limitados ao host exato em HTTPS.
+O README do pacote documenta a seleção de multipart, raw e Tus, as regras de
+preflight e os limites de retry para resultados ambíguos.
 
 O painel sugere o último segmento útil da URL como nome de arquivo. Em modos
 desktop, o nome escolhido pelo usuário é usado como destino. Em `webApp`, não há
@@ -248,7 +251,7 @@ parcial depois de `stop`.
 `MATLABEnvironment`. O último usa os mesmos diálogos de origem e destino do modo
 desktop. Em todos os modos, quando o destino já existe, a linha fica em espera
 com os controles **Manter**, **Reiniciar** e **Cancelar** abaixo da barra;
-o downloader só é criado depois da escolha, exceto ao manter o arquivo existente.
+o adaptador de transferência só é criado depois da escolha, exceto ao manter o arquivo existente.
 O callback de conclusão deve
 publicar o arquivo em `LocalPath` e remover os arquivos temporários de
 sucesso.
@@ -279,12 +282,12 @@ os timestamps existentes.
 
 ## Notas de segurança
 
-- Os cookies existem **em memória**, em propriedade privada, pelo tempo de vida do objeto. Durante a operação normal nada é gravado em disco nem reaproveitado entre execuções do MATLAB; se `debugFile` for informado, o estado bruto do navegador, que pode conter valores de cookies, é gravado para diagnóstico.
+- Os cookies existem **em memória**, em propriedade privada, pelo tempo de vida do objeto. `debugFile` grava o estado bruto do navegador e pode persistir valores de cookies, o que contraria a política de segurança deste plano. Não use esse parâmetro com uma sessão autenticada.
 - O valor do cookie não é persistido em disco. Durante um `FileTransfer`, uma cópia em memória do cabeçalho é enviada ao worker de `backgroundPool` para que a transferência seja independente da thread principal.
-- Cookies são enviados somente para o host exatamente igual a `F5Session.Domain`. Não são enviados para subdomínios, domínio pai, outros hosts ou após um redirecionamento para outro host. O escopo não considera caminhos: a regra é exclusivamente o host exato.
+- Cookies são enviados somente por HTTPS para o host exatamente igual a `F5Session.Domain`. Não são enviados para subdomínios, domínio pai, outros hosts ou após um redirecionamento para outro host. O escopo não considera caminhos: a regra é exclusivamente o host exato e o esquema HTTPS.
 - A sessão é opcional do ponto de vista do transporte: uma URL pública não recebe cookies F5. A existência de um objeto `F5Session` não dispara login durante a construção de `FileTransfer`.
 - `debugInfo` expõe apenas nomes e quantidade de cookies, nunca os valores.
-- O `debugFile` de `login` pode conter cookies de autenticação; use-o somente para diagnóstico local e remova-o após a análise.
+- Não use `debugFile` em fluxos autenticados nem retenha arquivos de diagnóstico que possam conter credenciais.
 - `logout` sobrescreve o buffer do cabeçalho antes de liberá-lo.
 - `logout` **não** encerra a sessão no lado do F5 nem limpa o cookie jar do CEF, que vive enquanto o processo do MATLAB existir. Um novo `login` após `logout` tende a concluir silenciosamente, reaproveitando a sessão do navegador.
 
