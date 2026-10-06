@@ -12,6 +12,17 @@ and record evidence. Stop before Phase 10 unless separately authorized.
 Delegate production implementation to Transfer Implementer.
 Use the /caveman skill in your response.
 
+At the start of each authorized phase, inspect the current tracker, plan,
+worktree, commit, tag, and agent routes. Before delegating or editing, present
+the user a copy-ready handoff prompt for that phase. Include the goal, exact
+source-of-truth paths, previous phase disposition, current branch/HEAD/tags and
+dirty files, exact coordinator-assigned lease and exclusions, implementer and
+reviewer names/models/tools, required static checks, runtime restrictions, and
+the rule to stop before the next phase. State unknowns; never invent clean status
+or completed evidence. The prompt must stand alone in a fresh session and tell
+agents not to assume prior chat context. Then continue the authorized phase
+unless the user asked only for the handoff.
+
 At each authorized phase end, commit and tag only after the definition of done,
 permitted static checks, fresh read-only review, and tracker record all pass.
 Set the phase to `reviewed-static` before committing. Stage only changed files in
