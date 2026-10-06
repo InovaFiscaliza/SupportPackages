@@ -1,11 +1,12 @@
 classdef TransferPanelFakeTransfer < handle
 
-    % TRANSFERPANELFAKETRANSFER Deterministic downloader test double.
+    % TRANSFERPANELFAKETRANSFER Deterministic transfer test double.
     %
     % This class implements the downloader protocol required by
-    % ui.TransferPanel. It uses a timer to emit progress, writes simulated
-    % partial data, publishes a fake target file, and invokes the configured
-    % completion or error callback. It never performs network I/O.
+    % ui.TransferPanel. It uses a timer to emit progress. Downloads write
+    % simulated partial data and publish a fake target; uploads report
+    % progress without modifying the source file. It invokes the configured
+    % completion or error callback and never performs network I/O.
 
     properties
         Request
@@ -23,6 +24,7 @@ classdef TransferPanelFakeTransfer < handle
     end
 
     properties (Access = private)
+        ResolvedProtocol (1,:) char = ''
         Timer = []
     end
 
@@ -34,12 +36,37 @@ classdef TransferPanelFakeTransfer < handle
             % ui.TransferPanel.TransferFactory.
             obj.Request = request;
             obj.Direction = request.Direction;
-            obj.IsResumable = strcmp(request.Direction, 'download');
+            if strcmp(request.Direction, 'upload')
+                obj.ResolvedProtocol = request.ResolvedProtocol;
+                if isempty(obj.ResolvedProtocol)
+                    obj.ResolvedProtocol = request.Protocol;
+                    if strcmp(obj.ResolvedProtocol, 'auto')
+                        if strcmp(request.Method, 'PUT')
+                            obj.ResolvedProtocol = 'raw';
+                        else
+                            obj.ResolvedProtocol = 'multipart';
+                        end
+                    end
+                end
+                obj.IsResumable = strcmp(obj.ResolvedProtocol, 'tus');
+            else
+                obj.IsResumable = true;
+            end
             [obj.TotalBytes, obj.BytesPerSecond] = sampleProfile(request.FileName);
-            if isfile(request.PartialPath)
+            if strcmp(request.Direction, 'download') && isfile(request.PartialPath)
                 fileInfo = dir(request.PartialPath);
                 obj.TransferredBytes = min(obj.TotalBytes, fileInfo.bytes);
                 obj.WrittenBytes = obj.TransferredBytes;
+            end
+        end
+
+        function sourceInfo = prepare(obj)
+            % PREPARE Publish deterministic transfer metadata to the manager.
+            sourceInfo = struct('IsResumable', obj.IsResumable);
+            if strcmp(obj.Direction, 'upload')
+                sourceInfo.ResolvedProtocol = obj.ResolvedProtocol;
+                sourceInfo.UploadURL = obj.Request.UploadURL;
+                sourceInfo.UploadOffset = obj.Request.UploadOffset;
             end
         end
 
@@ -61,8 +88,8 @@ classdef TransferPanelFakeTransfer < handle
         end
 
         function pause(obj)
-            % PAUSE Stop progress temporarily while retaining task state.
-            if ~obj.IsRunning
+            % PAUSE Stop resumable progress temporarily while retaining task state.
+            if ~obj.IsRunning || ~obj.IsResumable
                 return
             end
             obj.IsRunning = false;
@@ -71,7 +98,7 @@ classdef TransferPanelFakeTransfer < handle
         end
 
         function resume(obj)
-            % RESUME A previously paused simulated download.
+            % RESUME A previously paused simulated transfer.
             if obj.IsPaused
                 start(obj)
             end
@@ -117,6 +144,9 @@ classdef TransferPanelFakeTransfer < handle
 
         function writePartialFile(obj)
             % WRITEPARTIALFILE Write representative partial and chunk files.
+            if strcmp(obj.Direction, 'upload')
+                return
+            end
             if ~isfolder(obj.Request.TempFolder)
                 mkdir(obj.Request.TempFolder)
             end
@@ -155,7 +185,16 @@ classdef TransferPanelFakeTransfer < handle
 
             if isfield(obj.Request, 'SimulateFailure') && obj.Request.SimulateFailure
                 obj.fail('ui:TransferPanelFakeTransfer:simulatedFailure', ...
-                         'Simulated failure for the panel state harness.')
+                         'Falha simulada para o harness do painel.')
+                return
+            end
+
+            if strcmp(obj.Direction, 'upload')
+                if ~isempty(obj.CompletedFcn)
+                    obj.CompletedFcn(struct('LocalPath', obj.Request.LocalPath, ...
+                                            'TransferredBytes', obj.TransferredBytes, ...
+                                            'TotalBytes', obj.TotalBytes));
+                end
                 return
             end
 
@@ -164,7 +203,7 @@ classdef TransferPanelFakeTransfer < handle
                     delete(obj.Request.LocalPath)
                 else
                     obj.fail('ui:TransferPanelFakeTransfer:targetExists', ...
-                             'The target file appeared while the download was running.')
+                             'O arquivo de destino apareceu durante o download.')
                     return
                 end
             end
@@ -177,7 +216,7 @@ classdef TransferPanelFakeTransfer < handle
             fileID = fopen(obj.Request.LocalPath, 'wb');
             if fileID == -1
                 obj.fail('ui:TransferPanelFakeTransfer:targetUnavailable', ...
-                         'Could not create the fake target file.')
+                         'Não foi possível criar o arquivo de destino simulado.')
                 return
             end
             cleanup = onCleanup(@() fclose(fileID));

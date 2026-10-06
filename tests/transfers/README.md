@@ -8,7 +8,7 @@ Ela também contém harnesses visuais isolados para os avatares. O painel usa
 agregada, exercitada apenas pelo harness `checkOrbitDownloadHtml`. Os harnesses
 de avatar e de painel são deliberadamente separados: os primeiros verificam os
 protocolos de apresentação HTML, enquanto o painel verifica a UI MATLAB, a
-fábrica de downloaders, o ciclo de vida das tarefas e o comportamento do sistema
+fábrica de transferências, o ciclo de vida das tarefas e o comportamento do sistema
 de arquivos.
 
 ## Arquivos
@@ -107,9 +107,16 @@ erro. Também verifica `IncludeSilentTasks = true` no manager.
 
 O exemplo de integração com F5 é [`F5BrowserTestApp.m`](../auth/F5BrowserTestApp.m).
 Ele fornece a fábrica `ws.auth.FileTransfer` baseada na sessão, enquanto
-`ui.TransferPanel` continua responsável pela UI de download e pelo ciclo de
+`ui.TransferPanel` continua responsável pela UI de transferência e pelo ciclo de
 vida das tarefas. A mesma fábrica trata fontes HTTP/HTTPS públicas sem iniciar
 o login do F5.
+
+`TransferPanel.addUpload(url, options)` aceita o caminho local, nome remoto,
+protocolo, método, campos multipart, modo de exibição e identidade lógica. Em
+modos desktop, um `LocalPath` vazio usa `uigetfile` ou um `SourceResolver`
+injetado; no modo `webApp`, o chamador deve informar `LocalPath`. O fake respeita
+`Direction` e `IsResumable`, simula o progresso do envio sem alterar o arquivo de
+origem e não realiza chamadas de rede.
 
 Para URLs sem um nome útil, o painel reutiliza o fallback gerado para novas
 tentativas durante a vida da mesma instância, permitindo oferecer um arquivo
@@ -126,9 +133,13 @@ parcial em espera que esteja visível:
 - `id`: ID numérico da tarefa no gerenciador.
 - `rate`: taxa atual em bytes por segundo; taxas ainda não medidas são enviadas como `100000`.
 - `progress`: progresso da tarefa em porcentagem, de `0` a `100`.
+- `direction`: `download` ou `upload`.
 
 Uma taxa pausada ou exatamente zero gera o ponto amarelo de alerta. `NaN` e taxas
-diferentes de zero abaixo de `100000` usam `100000` para a animação mínima.
+diferentes de zero abaixo de `100000` usam `100000` para a animação mínima. Um
+upload ativo não retomável também envia `100000` quando a taxa ainda não foi
+medida. A atualização do HTML e de seu harness para validar e exibir a direção
+pertence à P7.
 
 O recurso emite `transferAvatarReady` e `transferAvatarClick`, com os tipos de
 payload `ready` e `click`. O próprio recurso do avatar não acessa arquivos,
@@ -249,24 +260,26 @@ aplicação no painel conseguem representar o fluxo sem seleção de arquivos na
 área de trabalho ou diálogos modais de conflito. O teste ainda é executado em
 uma `uifigure` local do MATLAB; ele não inicia o MATLAB Web App Server.
 
-## Contrato do downloader simulado
+## Contrato do dublê de transferência
 
 `TransferPanelFakeTransfer` expõe a mesma interface esperada de uma transferência
-real:
+real e inclui `Direction` e `IsResumable`:
 
 - Métodos `start`, `pause`, `resume`, `stop` e `delete`.
 - Propriedades de callback `ProgressFcn`, `CompletedFcn` e `ErrorFcn`.
 - Propriedades de estado `IsRunning` e `IsPaused`.
 
-O timer avança cada exemplo na velocidade configurada, grava bytes
+O timer avança cada download de exemplo na velocidade configurada, grava bytes
 representativos em `Request.PartialPath` e `Request.ChunkPath` e publica um
-arquivo em `Request.LocalPath` com o tamanho configurado. Pausar preserva os
-arquivos de preparação para permitir a continuação; cancelar remove os arquivos
-temporários e a linha correspondente. Uma
-conclusão bem-sucedida remove o arquivo parcial, o arquivo de partes e qualquer
-backup de sobrescrita. Intencionalmente, ele não modela o comportamento HTTP
-real, autenticação, novas tentativas ou publicação entre volumes; essas
-responsabilidades são cobertas por `ws.auth.FileTransfer` e seu worker.
+arquivo em `Request.LocalPath` com o tamanho configurado. Nos envios simulados,
+ele atualiza o progresso e conclui a tarefa sem alterar o arquivo de origem.
+Pausar um download preserva os arquivos de preparação para permitir a
+continuação; cancelar remove os temporários do download e a linha correspondente.
+Uma conclusão bem-sucedida remove o arquivo parcial, o arquivo de partes e
+qualquer backup de sobrescrita. O dublê não modela o transporte HTTP real nem a
+autenticação F5. O ciclo de vida e o transporte neutros pertencem a
+`datatransfer.HTTPFileTransfer` e aos workers de `datatransfer`; `ws.auth.FileTransfer`
+fornece os contextos de autenticação F5.
 
 ## Limitações
 

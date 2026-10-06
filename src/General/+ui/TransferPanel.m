@@ -2,7 +2,7 @@ classdef TransferPanel < handle
 
     % TRANSFERPANEL Reusable asynchronous transfer queue UI.
     %
-    % TransferPanel owns the presentation and lifecycle of multiple download
+    % TransferPanel owns the presentation of multiple transfer
     % rows: the transfer avatar, the popup panel, progress aggregation,
     % pause/resume/cancel controls, conflict decisions, and cleanup of UI and
     % downloader handles. It deliberately does not know how authentication
@@ -22,6 +22,7 @@ classdef TransferPanel < handle
         executionMode (1,:) char = 'MATLABEnvironment'
         TempPath (1,:) char = ''
         TargetPath (1,:) char = ''
+        MaxUploadBytes (1,1) double {mustBePositive} = 200 * 1024^2
         CollisionPolicy (1,:) char = 'askInRow'
         PartialConflictPolicy (1,:) char = 'askInRow'
         CompletedFcn = []
@@ -32,6 +33,7 @@ classdef TransferPanel < handle
         AvatarHTML
         TransferFactory
         DestinationResolver
+        SourceResolver
         Manager
         HistoryFile (1,:) char = ''
     end
@@ -52,7 +54,7 @@ classdef TransferPanel < handle
         PromotedTaskID (1,1) double = NaN
         DownloadFileNames cell = cell(0, 2)
         AvatarHTMLReady (1,1) logical = false
-        AvatarState struct = struct('id', {}, 'rate', {}, 'progress', {})
+        AvatarState struct = struct('id', {}, 'rate', {}, 'progress', {}, 'direction', {})
         OriginalWindowButtonDownFcn = []
         IsDeleting (1,1) logical = false
         IsConstructing (1,1) logical = true
@@ -76,9 +78,11 @@ classdef TransferPanel < handle
                 options.tempPath (1,:) char = tempdir
                 options.targetPath (1,:) char = ''
                 options.historyFile (1,:) char = ''
+                options.MaxUploadBytes (1,1) double {mustBePositive} = 200 * 1024^2
                 options.CollisionPolicy (1,:) char = 'askInRow'
                 options.PartialConflictPolicy (1,:) char = 'askInRow'
                 options.DestinationResolver = []
+                options.SourceResolver = []
                 options.IncludeSilentTasks (1,1) logical = false
             end
 
@@ -86,19 +90,26 @@ classdef TransferPanel < handle
             obj.UIFigure = findFigure(parentContainer);
             if isempty(obj.UIFigure) || ~isvalid(obj.UIFigure)
                 error('ui:TransferPanel:invalidParent', ...
-                      'The parent container must belong to a valid figure.')
+                        'O contêiner pai deve pertencer a uma figura válida.')
             end
 
             obj.TransferFactory = options.TransferFactory;
             if ~isempty(options.DestinationResolver) && ...
                     ~isa(options.DestinationResolver, 'function_handle')
                 error('ui:TransferPanel:invalidDestinationResolver', ...
-                      'DestinationResolver must be a function handle or empty.')
+                        'DestinationResolver deve ser um handle de função ou estar vazio.')
             end
             obj.DestinationResolver = options.DestinationResolver;
+            if ~isempty(options.SourceResolver) && ...
+                    ~isa(options.SourceResolver, 'function_handle')
+                error('ui:TransferPanel:invalidSourceResolver', ...
+                        'SourceResolver deve ser um handle de função ou estar vazio.')
+            end
+            obj.SourceResolver = options.SourceResolver;
             obj.executionMode = options.executionMode;
             obj.TempPath = char(options.tempPath);
             obj.TargetPath = char(options.targetPath);
+            obj.MaxUploadBytes = options.MaxUploadBytes;
             obj.HistoryFile = char(options.historyFile);
             if isempty(obj.HistoryFile)
                 obj.HistoryFile = fullfile(obj.TempPath, 'transfer-history.json');
@@ -112,6 +123,7 @@ classdef TransferPanel < handle
                 'CollisionPolicy', obj.CollisionPolicy, ...
                 'PartialConflictPolicy', obj.PartialConflictPolicy, ...
                 'IncludeSilentTasks', options.IncludeSilentTasks);
+            obj.Manager.MaxUploadBytes = obj.MaxUploadBytes;
             obj.HistoryFile = obj.Manager.HistoryFile;
             obj.Manager.SnapshotFcn = @(snapshot) obj.onManagerSnapshot(snapshot);
             obj.Manager.TaskReorderedFcn = @(snapshot) obj.onManagerTaskReordered(snapshot);
@@ -205,6 +217,55 @@ classdef TransferPanel < handle
         end
 
         %-----------------------------------------------------------------%
+        function taskID = addUpload(obj, url, options)
+            % ADDUPLOAD Queue an upload of a local file to URL.
+            %
+            % LOCALPATH is required in webApp and optional in desktop modes,
+            % where an empty value opens a source picker. Returns [] when the
+            % user cancels selection. Raises
+            % ui:TransferPanel:missingUploadSource when webApp has no path.
+            % Completion and failure are reported through the configured
+            % callbacks.
+            arguments
+                obj
+                url (1,:) char {mustBeNonempty}
+                options.LocalPath (1,:) char = ''
+                options.FileName (1,:) char = ''
+                options.Protocol (1,:) char = 'auto'
+                options.Method (1,:) char = 'POST'
+                options.FormFieldName (1,:) char = 'file'
+                options.FormFields (1,1) struct = struct()
+                options.DisplayMode (1,:) char = 'normal'
+                options.LogicalFileID (1,:) char = ''
+            end
+
+            [localPath, cancelled] = obj.resolveUploadLocalPath(url, options.LocalPath);
+            if cancelled
+                taskID = [];
+                return
+            end
+            [~, localName, extension] = fileparts(localPath);
+            fileName = options.FileName;
+            if isempty(fileName)
+                fileName = [localName, extension];
+            end
+            request = struct('Direction', 'upload', ...
+                             'URL', char(url), ...
+                             'TempFolder', obj.TempPath, ...
+                             'LocalPath', localPath, ...
+                             'FileName', fileName, ...
+                             'Protocol', options.Protocol, ...
+                             'Method', options.Method, ...
+                             'FormFieldName', options.FormFieldName, ...
+                             'FormFields', options.FormFields, ...
+                             'DisplayMode', options.DisplayMode);
+            if ~isempty(options.LogicalFileID)
+                request.LogicalFileID = options.LogicalFileID;
+            end
+            taskID = obj.Manager.addTransfer(request);
+        end
+
+        %-----------------------------------------------------------------%
         function show(obj)
             % SHOW Make the transfer popup visible and bring it to the front.
             obj.ShowWhenAvatarReady = false;
@@ -266,22 +327,26 @@ classdef TransferPanel < handle
                 obj.Manager.CollisionPolicy = obj.CollisionPolicy;
             end
         end
+
+        %-----------------------------------------------------------------%
+        function set.MaxUploadBytes(obj, value)
+            validateattributes(value, {'double'}, ...
+                               {'scalar', 'real', 'positive', 'nonnan'}, ...
+                               'TransferPanel', 'MaxUploadBytes')
+            obj.MaxUploadBytes = value;
+            obj.forwardMaxUploadBytes(value)
+        end
     end
 
 
     % Private implementation: HTML events, task state, row controls, layout,
-    % conflict handling, and per-download avatar updates.
+    % conflict handling, and per-transfer avatar updates.
     methods (Access = private)
         %-----------------------------------------------------------------%
         function onManagerSnapshot(obj, snapshot)
             if isempty(snapshot) || obj.IsDeleting
                 return
             end
-            % Upload rows are presented by Phase 6 (direction-aware rows).
-            if isfield(snapshot, 'Direction') && ~strcmp(snapshot.Direction, 'download')
-                return
-            end
-
             taskID = snapshot.ID;
             if strcmp(snapshot.LifecycleState, 'canceled')
                 obj.removeTask(taskID)
@@ -309,7 +374,7 @@ classdef TransferPanel < handle
                 obj.renderHistoryRow(task, snapshot.HistoryEntry)
             else
                 if isempty(task)
-                    task = obj.createTaskGraphics(taskID, snapshot.FileName);
+                    task = obj.createTaskGraphics(taskID, snapshot.FileName, snapshot.Direction);
                     obj.TransferOrder(end+1) = taskID;
                 end
                 task.Snapshot = snapshot;
@@ -327,9 +392,6 @@ classdef TransferPanel < handle
         %-----------------------------------------------------------------%
         function onManagerTaskReordered(obj, snapshot)
             if isempty(snapshot) || obj.IsDeleting
-                return
-            end
-            if isfield(snapshot, 'Direction') && ~strcmp(snapshot.Direction, 'download')
                 return
             end
             if isempty(obj.getTask(snapshot.ID))
@@ -372,17 +434,22 @@ classdef TransferPanel < handle
             else
                 if strcmp(snapshot.LifecycleState, 'paused')
                     obj.setActionIcon(task.ActionButton, 'transfer-start.svg', ...
-                                      'Start or continue download');
+                                      'Iniciar ou continuar transferência');
                 else
                     obj.setActionIcon(task.ActionButton, 'transfer-pause.svg', ...
-                                      'Pause download');
+                                      'Pausar transferência');
                 end
+                isUpload = strcmp(snapshot.Direction, 'upload');
+                task.ActionButton.Visible = ternary(~isUpload || snapshot.IsResumable, 'on', 'off');
+                task.RestartButton.Visible = 'on';
+                task.CancelButton.Visible = 'on';
                 task.ProgressFraction = snapshot.ProgressFraction;
                 elapsedSeconds = snapshotElapsedSeconds(snapshot);
                 task.BytesLabel.Text = ['  ', progressText(snapshot.TransferredBytes, ...
                                                               snapshot.TotalBytes, ...
                                                               elapsedSeconds, ...
-                                                              snapshot.TransferRate)];
+                                                              snapshot.TransferRate, ...
+                                                              snapshot.Direction)];
                 task.StatusLabel.Text = snapshot.FileName;
             end
             obj.TransferTasks{snapshot.ID} = task;
@@ -391,24 +458,39 @@ classdef TransferPanel < handle
 
         %-----------------------------------------------------------------%
         function renderConflict(obj, task, snapshot)
-            if strcmp(snapshot.ConflictType, 'target')
-                task.StatusLabel.Text = sprintf('%s already exists', snapshot.FileName);
+            isUpload = strcmp(snapshot.Direction, 'upload');
+            sourceChanged = isUpload && isfield(snapshot, 'SourceChangedMessage') && ...
+                            ~isempty(snapshot.SourceChangedMessage);
+            if isUpload
+                task.StatusLabel.Text = sprintf('Envio parcial encontrado para %s', snapshot.FileName);
+                if sourceChanged
+                    task.BytesLabel.Text = ['  ', snapshot.SourceChangedMessage];
+                else
+                    task.BytesLabel.Text = ['  ', sprintf( ...
+                        '%s enviados. Continuar retoma o envio parcial.', ...
+                        formatBytes(snapshot.TransferredBytes))];
+                    obj.setActionIcon(task.ActionButton, 'transfer-continue.svg', ...
+                                      'Continuar envio parcial');
+                end
+            elseif strcmp(snapshot.ConflictType, 'target')
+                task.StatusLabel.Text = sprintf('%s já existe', snapshot.FileName);
                 task.ProgressFraction = 1;
                 task.BytesLabel.Text = ['  ', sprintf( ...
-                    '%s already exists. Start keeps it; Restart downloads it again.', ...
+                    '%s já existe. Manter conserva o arquivo; Reiniciar baixa novamente.', ...
                     formatBytes(snapshot.TransferredBytes))];
                 obj.setActionIcon(task.ActionButton, 'transfer-start.svg', ...
-                                  'Keep existing file');
+                                  'Manter arquivo existente');
             else
-                task.StatusLabel.Text = sprintf('Partial download found for %s', snapshot.FileName);
+                task.StatusLabel.Text = sprintf('Arquivo parcial encontrado para %s', snapshot.FileName);
                 task.BytesLabel.Text = ['  ', sprintf( ...
-                    '%s downloaded. Continue resumes this partial file.', ...
+                    '%s baixados. Continuar retoma o arquivo parcial.', ...
                     formatBytes(snapshot.TransferredBytes))];
                 obj.setActionIcon(task.ActionButton, 'transfer-continue.svg', ...
-                                  'Continue partial download');
+                                  'Continuar transferência parcial');
             end
             task.StatusLabel.FontColor = [0.15, 0.15, 0.15];
-            task.ActionButton.Visible = 'on';
+            task.ActionButton.Visible = ternary(~isUpload || ...
+                (snapshot.IsResumable && ~sourceChanged), 'on', 'off');
             task.RestartButton.Visible = 'on';
             task.CancelButton.Visible = 'on';
             task.ProgressFraction = max(0, min(task.ProgressFraction, 1));
@@ -416,17 +498,56 @@ classdef TransferPanel < handle
 
         %-----------------------------------------------------------------%
         function renderHistoryRow(obj, task, entry)
+            if isInterruptedUpload(entry)
+                response = entry.Response;
+                if ~isstruct(response) || ~isscalar(response)
+                    response = struct();
+                end
+                response.OutcomeUncertain = true;
+                if ~isfield(response, 'Message') || isempty(response.Message)
+                    response.Message = 'Não foi possível confirmar se o servidor recebeu o arquivo.';
+                end
+                entry.Response = response;
+            end
             task.HistoryEntry = entry;
+            isUpload = strcmp(entry.Direction, 'upload');
+            task.BadgeImage.ImageSource = transferIconPath(directionIcon(entry.Direction));
+            task.BadgeImage.Tooltip = directionLabel(entry.Direction);
             task.StatusLabel.Text = task.FileName;
             task.StatusLabel.FontColor = [0.15, 0.15, 0.15];
             if strcmp(entry.LifecycleState, 'failed')
                 task.StatusLabel.FontColor = [0.75, 0.05, 0.05];
             end
             task.BytesLabel.Text = ['  ', historyStatusText(entry)];
+            if isUpload
+                task.RestartButton.Visible = ternary(entry.isAvailable, 'on', 'off');
+                task.RestartButton.Text = 'Reiniciar';
+                task.CancelButton.Text = 'Remover';
+                task.CancelButton.ButtonPushedFcn = @(~, ~) obj.cancelHistoryAction(task.ID);
+                if responseOutcomeUncertain(entry)
+                    task.RestartButton.Tooltip = 'Reiniciar envio requer confirmação';
+                else
+                    task.RestartButton.Tooltip = 'Reiniciar envio';
+                end
+                if task.RestartConfirmationPending
+                    task.RestartButton.Text = 'Confirmar novo envio';
+                    task.CancelButton.Text = 'Cancelar';
+                    task.CancelButton.ButtonPushedFcn = ...
+                        @(~, ~) obj.cancelRestartConfirmation(task.ID);
+                end
+            else
+                task.RestartButton.Visible = 'on';
+                task.RestartButton.Text = 'Reiniciar';
+                task.CancelButton.Text = 'Remover';
+                task.CancelButton.ButtonPushedFcn = @(~, ~) obj.cancel(task.ID);
+            end
             task.Snapshot = struct('ID', task.ID, ...
                                    'HistoryEntryID', entry.EntryID, ...
+                                   'Direction', entry.Direction, ...
                                    'LifecycleState', entry.LifecycleState, ...
                                    'HistoryEntry', entry, ...
+                                   'Response', entry.Response, ...
+                                   'OutcomeUncertain', responseOutcomeUncertain(entry), ...
                                    'AttemptedTimestamps', {entry.AttemptedTimestamps}, ...
                                    'TransferRate', NaN, ...
                                    'ProgressFraction', double(entry.isAvailable));
@@ -449,18 +570,8 @@ classdef TransferPanel < handle
 
         %-----------------------------------------------------------------%
         function onAvatarEvent(obj, event)
-            eventName = eventProperty(event, {'HTMLEventName', 'EventName'});
-            payload = eventProperty(event, {'HTMLEventData', 'Data'});
-            if ischar(payload) || (isstring(payload) && isscalar(payload))
-                try
-                    payload = jsondecode(char(payload));
-                catch
-                    payload = struct();
-                end
-            end
-
-            if strcmp(eventName, 'transferAvatarReady') || ...
-                    (isstruct(payload) && isfield(payload, 'type') && strcmp(string(payload.type), 'ready'))
+            eventName = eventProperty(event, {'HTMLEventName'});
+            if strcmp(eventName, 'transferAvatarReady')
                 obj.AvatarHTMLReady = true;
                 obj.AvatarHTML.Data = obj.AvatarState;
                 if obj.ShowWhenAvatarReady && ~obj.IsConstructing
@@ -470,8 +581,7 @@ classdef TransferPanel < handle
                 return
             end
 
-            if strcmp(eventName, 'transferAvatarClick') || ...
-                    (isstruct(payload) && isfield(payload, 'type') && strcmp(string(payload.type), 'click'))
+            if strcmp(eventName, 'transferAvatarClick')
                 obj.show()
             end
         end
@@ -494,7 +604,7 @@ classdef TransferPanel < handle
         end
 
         %-----------------------------------------------------------------%
-        function task = createTaskGraphics(obj, taskID, fileName)
+        function task = createTaskGraphics(obj, taskID, fileName, direction)
             obj.ensureTransferContainer()
             taskBackgroundColor = max(0, obj.UIFigure.Color - 0.04);
             progressTrackColor = max(0, taskBackgroundColor - 0.03);
@@ -504,10 +614,13 @@ classdef TransferPanel < handle
                           'RowKind', 'active', ...
                           'HistoryEntryID', '', ...
                           'HistoryEntry', struct(), ...
+                          'Direction', direction, ...
+                          'RestartConfirmationPending', false, ...
                           'ProgressFraction', 0, ...
                           'Dialog', [], ...
                           'GridLayout', [], ...
                           'StatusLabel', [], ...
+                          'BadgeImage', [], ...
                           'BytesLabel', [], ...
                           'ProgressTrack', [], ...
                           'ProgressFill', [], ...
@@ -521,12 +634,19 @@ classdef TransferPanel < handle
             task.Dialog = uipanel(obj.TransferStack, ...
                                   'BorderType', 'none', ...
                                   'BackgroundColor', taskBackgroundColor);
-            task.GridLayout = uigridlayout(task.Dialog, [3, 4]);
+            task.GridLayout = uigridlayout(task.Dialog, [3, 5]);
             task.GridLayout.BackgroundColor = taskBackgroundColor;
             task.GridLayout.Padding = [12, 8, 12, 8];
             task.GridLayout.RowSpacing = 4;
             task.GridLayout.RowHeight = {22, 22, 22};
-            task.GridLayout.ColumnWidth = {'1x', 32, 32, 32};
+            task.GridLayout.ColumnWidth = {20, '1x', 32, 102, 72};
+
+            task.BadgeImage = uiimage(task.GridLayout, ...
+                                      'ImageSource', transferIconPath(directionIcon(direction)), ...
+                                      'ScaleMethod', 'fit', ...
+                                      'Tooltip', directionLabel(direction));
+            task.BadgeImage.Layout.Row = 1;
+            task.BadgeImage.Layout.Column = 1;
 
             task.StatusLabel = uilabel(task.GridLayout, ...
                                        'Text', fileName, ...
@@ -535,14 +655,14 @@ classdef TransferPanel < handle
                                        'VerticalAlignment', 'bottom', ...
                                        'WordWrap', 'on');
             task.StatusLabel.Layout.Row = 1;
-            task.StatusLabel.Layout.Column = [1, 4];
+            task.StatusLabel.Layout.Column = [2, 5];
 
             task.ProgressTrack = uipanel(task.GridLayout, ...
                                          'BorderType', 'none', ...
                                          'BackgroundColor', progressTrackColor, ...
-                                         'Tooltip', 'Download progress');
+                                         'Tooltip', 'Progresso da transferência');
             task.ProgressTrack.Layout.Row = 2;
-            task.ProgressTrack.Layout.Column = 1;
+            task.ProgressTrack.Layout.Column = [1, 2];
 
             task.ProgressFill = uipanel(task.ProgressTrack, ...
                                         'BorderType', 'none', ...
@@ -552,31 +672,29 @@ classdef TransferPanel < handle
 
             task.BytesLabel = uilabel(task.GridLayout, 'Text', '', 'WordWrap', 'on');
             task.BytesLabel.Layout.Row = 3;
-            task.BytesLabel.Layout.Column = [1, 4];
+            task.BytesLabel.Layout.Column = [1, 5];
 
             task.ActionButton = uiimage(task.GridLayout, ...
                                          'ImageSource', transferIconPath('transfer-pause.svg'), ...
                                          'ScaleMethod', 'fit', ...
-                                         'Tooltip', 'Pause download', ...
+                                         'Tooltip', 'Pausar transferência', ...
                                          'ImageClickedFcn', @(~, ~) obj.activateTask(taskID));
             task.ActionButton.Layout.Row = 2;
-            task.ActionButton.Layout.Column = 2;
+            task.ActionButton.Layout.Column = 3;
 
-            task.RestartButton = uiimage(task.GridLayout, ...
-                                          'ImageSource', transferIconPath('transfer-restart.svg'), ...
-                                          'ScaleMethod', 'fit', ...
-                                          'Tooltip', 'Restart download', ...
-                                          'ImageClickedFcn', @(~, ~) obj.restartRow(taskID));
+            task.RestartButton = uibutton(task.GridLayout, ...
+                                          'Text', 'Reiniciar', ...
+                                          'Tooltip', 'Reiniciar transferência', ...
+                                          'ButtonPushedFcn', @(~, ~) obj.restartRow(taskID));
             task.RestartButton.Layout.Row = 2;
-            task.RestartButton.Layout.Column = 3;
+            task.RestartButton.Layout.Column = 4;
 
-            task.CancelButton = uiimage(task.GridLayout, ...
-                                         'ImageSource', transferIconPath('transfer-trash.svg'), ...
-                                         'ScaleMethod', 'fit', ...
-                                         'Tooltip', 'Cancel and remove download', ...
-                                         'ImageClickedFcn', @(~, ~) obj.cancel(taskID));
+            task.CancelButton = uibutton(task.GridLayout, ...
+                                         'Text', 'Cancelar', ...
+                                         'Tooltip', 'Cancelar transferência', ...
+                                         'ButtonPushedFcn', @(~, ~) obj.cancel(taskID));
             task.CancelButton.Layout.Row = 2;
-            task.CancelButton.Layout.Column = 4;
+            task.CancelButton.Layout.Column = 5;
             task.StrikeLine = uipanel(task.Dialog, ...
                                       'BorderType', 'none', ...
                                       'BackgroundColor', [0.75, 0.05, 0.05], ...
@@ -591,15 +709,23 @@ classdef TransferPanel < handle
             obj.ensureTransferContainer()
             [~, baseName, extension] = fileparts(entry.LocalPath);
             fileName = [baseName, extension];
+            if strcmp(entry.Direction, 'upload') && isstruct(entry.Response) && ...
+                    isfield(entry.Response, 'FileName') && ...
+                    ischar(entry.Response.FileName) && ~isempty(entry.Response.FileName)
+                fileName = entry.Response.FileName;
+            end
             task = struct('ID', rowID, ...
                           'FileName', fileName, ...
                           'RowKind', 'history', ...
                           'HistoryEntryID', entry.EntryID, ...
                           'HistoryEntry', entry, ...
+                          'Direction', entry.Direction, ...
+                          'RestartConfirmationPending', false, ...
                           'ProgressFraction', double(entry.isAvailable), ...
                           'Dialog', [], ...
                           'GridLayout', [], ...
                           'StatusLabel', [], ...
+                          'BadgeImage', [], ...
                           'BytesLabel', [], ...
                           'ProgressTrack', [], ...
                           'ProgressFill', [], ...
@@ -617,7 +743,13 @@ classdef TransferPanel < handle
             task.GridLayout.Padding = [12, 6, 12, 6];
             task.GridLayout.RowSpacing = 3;
             task.GridLayout.RowHeight = {22, 22};
-            task.GridLayout.ColumnWidth = {'1x', '1x', 32, 32};
+            task.GridLayout.ColumnWidth = {20, '1x', 140, 72};
+            task.BadgeImage = uiimage(task.GridLayout, ...
+                                      'ImageSource', transferIconPath(directionIcon(entry.Direction)), ...
+                                      'ScaleMethod', 'fit', ...
+                                      'Tooltip', directionLabel(entry.Direction));
+            task.BadgeImage.Layout.Row = 1;
+            task.BadgeImage.Layout.Column = 1;
             task.StatusLabel = uilabel(task.GridLayout, ...
                                        'Text', fileName, ...
                                        'FontWeight', 'bold', ...
@@ -625,19 +757,17 @@ classdef TransferPanel < handle
                                        'VerticalAlignment', 'center', ...
                                        'WordWrap', 'on');
             task.StatusLabel.Layout.Row = 1;
-            task.StatusLabel.Layout.Column = [1, 2];
-            task.RestartButton = uiimage(task.GridLayout, ...
-                                          'ImageSource', transferIconPath('transfer-restart.svg'), ...
-                                          'ScaleMethod', 'fit', ...
-                                          'Tooltip', 'Restart download', ...
-                                          'ImageClickedFcn', @(~, ~) obj.restartRow(rowID));
+            task.StatusLabel.Layout.Column = 2;
+            task.RestartButton = uibutton(task.GridLayout, ...
+                                          'Text', 'Reiniciar', ...
+                                          'Tooltip', 'Reiniciar transferência', ...
+                                          'ButtonPushedFcn', @(~, ~) obj.restartRow(rowID));
             task.RestartButton.Layout.Row = 1;
             task.RestartButton.Layout.Column = 3;
-            task.CancelButton = uiimage(task.GridLayout, ...
-                                         'ImageSource', transferIconPath('transfer-trash.svg'), ...
-                                         'ScaleMethod', 'fit', ...
-                                         'Tooltip', 'Remove history entry', ...
-                                         'ImageClickedFcn', @(~, ~) obj.cancel(rowID));
+            task.CancelButton = uibutton(task.GridLayout, ...
+                                         'Text', 'Remover', ...
+                                         'Tooltip', 'Remover registro do histórico', ...
+                                         'ButtonPushedFcn', @(~, ~) obj.cancel(rowID));
             task.CancelButton.Layout.Row = 1;
             task.CancelButton.Layout.Column = 4;
             task.BytesLabel = uilabel(task.GridLayout, ...
@@ -668,6 +798,11 @@ classdef TransferPanel < handle
         function activateTask(obj, taskID)
             task = obj.getTask(taskID);
             if isempty(task) || ~isfield(task, 'Snapshot') || isempty(fieldnames(task.Snapshot))
+                return
+            end
+            if strcmp(task.Snapshot.Direction, 'upload') && ...
+                    isfield(task.Snapshot, 'SourceChangedMessage') && ...
+                    ~isempty(task.Snapshot.SourceChangedMessage)
                 return
             end
 
@@ -705,10 +840,25 @@ classdef TransferPanel < handle
             if isempty(task)
                 return
             end
-            if taskID > 0 && strcmp(task.Snapshot.LifecycleState, 'awaitingConflictDecision')
+            if ismember(task.RowKind, {'history', 'concluded'}) && ...
+                    strcmp(task.Direction, 'upload') && ...
+                    responseOutcomeUncertain(task.HistoryEntry) && ...
+                    ~task.RestartConfirmationPending
+                task.RestartConfirmationPending = true;
+                task.RestartButton.Text = 'Confirmar novo envio';
+                task.RestartButton.Tooltip = 'Confirmar envio manual do arquivo';
+                task.CancelButton.Text = 'Cancelar';
+                task.CancelButton.ButtonPushedFcn = ...
+                    @(~, ~) obj.cancelRestartConfirmation(taskID);
+                obj.storeTask(task)
+                return
+            elseif taskID > 0 && strcmp(task.Snapshot.LifecycleState, 'awaitingConflictDecision')
                 obj.Manager.resolveConflict(taskID, 'restart')
             elseif taskID < 0 || strcmp(task.RowKind, 'concluded') || ...
                     ismember(task.Snapshot.LifecycleState, {'completed', 'failed', 'interrupted'})
+                if strcmp(task.Direction, 'upload') && ~task.HistoryEntry.isAvailable
+                    return
+                end
                 obj.Manager.restartHistoryEntry(task.HistoryEntryID)
             else
                 obj.Manager.restart(taskID)
@@ -721,10 +871,7 @@ classdef TransferPanel < handle
             displayEntries = entries([]);
             for entryIndex = 1:numel(entries)
                 entry = entries(entryIndex);
-                if isfield(entry, 'Direction') && ~strcmp(entry.Direction, 'download')
-                    continue
-                end
-                if ~ismember(entry.LifecycleState, {'completed', 'failed'})
+                if ~ismember(entry.LifecycleState, {'completed', 'failed', 'interrupted'})
                     continue
                 end
                 identityIndex = [];
@@ -873,6 +1020,38 @@ classdef TransferPanel < handle
         end
 
         %-----------------------------------------------------------------%
+        function cancelHistoryAction(obj, taskID)
+            task = obj.getTask(taskID);
+            if isempty(task)
+                return
+            end
+            if task.RestartConfirmationPending
+                obj.cancelRestartConfirmation(taskID)
+            else
+                obj.cancel(taskID)
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function cancelRestartConfirmation(obj, taskID)
+            task = obj.getTask(taskID);
+            if isempty(task) || ~task.RestartConfirmationPending
+                return
+            end
+            task.RestartConfirmationPending = false;
+            obj.renderHistoryRow(task, task.HistoryEntry)
+        end
+
+        %-----------------------------------------------------------------%
+        function storeTask(obj, task)
+            if task.ID < 0
+                obj.HistoryTasks{abs(task.ID)} = task;
+            else
+                obj.TransferTasks{task.ID} = task;
+            end
+        end
+
+        %-----------------------------------------------------------------%
         function deleteTaskGraphics(~, task)
             handles = {task.Dialog};
             for handleIndex = 1:numel(handles)
@@ -903,7 +1082,7 @@ classdef TransferPanel < handle
                                          'BorderType', 'none', ...
                                          'BackgroundColor', obj.UIFigure.Color);
             obj.TransferTitleLabel = uilabel(obj.TransferHeader, ...
-                                             'Text', 'Downloads', ...
+                                             'Text', 'Transferências', ...
                                              'FontWeight', 'bold', ...
                                              'HorizontalAlignment', 'left', ...
                                              'VerticalAlignment', 'center');
@@ -1042,7 +1221,7 @@ classdef TransferPanel < handle
 
         %-----------------------------------------------------------------%
         function updateTransferAvatar(obj)
-            state = struct('id', {}, 'rate', {}, 'progress', {});
+            state = struct('id', {}, 'rate', {}, 'progress', {}, 'direction', {});
 
             for taskID = 1:numel(obj.TransferTasks)
                 task = obj.TransferTasks{taskID};
@@ -1060,9 +1239,14 @@ classdef TransferPanel < handle
                     continue
                 end
                 rate = double(snapshot.TransferRate);
+                isNonResumableActiveUpload = strcmp(snapshot.Direction, 'upload') && ...
+                    strcmp(snapshot.LifecycleState, 'active') && ~snapshot.IsResumable;
                 if isPaused || isWaitingForPartial
                     rate = 0;
                 elseif ~isfinite(rate) || (rate ~= 0 && rate < 100000)
+                    rate = 100000;
+                end
+                if isNonResumableActiveUpload && (~isfinite(rate) || rate == 0)
                     rate = 100000;
                 end
                 progress = double(snapshot.ProgressFraction);
@@ -1072,7 +1256,8 @@ classdef TransferPanel < handle
                 progress = min(1, max(0, progress)) * 100;
                 state(end+1) = struct('id', double(snapshot.ID), ...
                                       'rate', rate, ...
-                                      'progress', progress); %#ok<AGROW>
+                                      'progress', progress, ...
+                                      'direction', snapshot.Direction); %#ok<AGROW>
             end
 
             if isequal(state, obj.AvatarState)
@@ -1095,7 +1280,7 @@ classdef TransferPanel < handle
             if strcmp(obj.executionMode, 'webApp')
                 if isempty(strtrim(obj.TargetPath)) || ~isfolder(obj.TargetPath)
                     error('ui:TransferPanel:missingTargetPath', ...
-                          'TargetPath must be an existing folder in webApp mode.')
+                          'TargetPath deve apontar para uma pasta existente no modo webApp.')
                 end
                 localPath = fullfile(obj.TargetPath, fileName);
                 return
@@ -1150,6 +1335,75 @@ classdef TransferPanel < handle
 
             obj.DownloadFileNames(end+1, :) = {url, fileName};
         end
+
+        %-----------------------------------------------------------------%
+        function [localPath, cancelled] = resolveUploadLocalPath(obj, url, requestedPath)
+            cancelled = false;
+            localPath = requestedPath;
+            if isempty(strtrim(localPath))
+                if strcmp(obj.executionMode, 'webApp')
+                    error('ui:TransferPanel:missingUploadSource', ...
+                          'LocalPath deve ser informado explicitamente no modo webApp.')
+                end
+                [suggestedName, ~] = datatransfer.transferFileName(url, shortTaskID());
+                context = struct('ExecutionMode', obj.executionMode, ...
+                                 'URL', url, ...
+                                 'SuggestedFileName', suggestedName, ...
+                                 'InitialFolder', obj.TargetPath, ...
+                                 'UIFigure', obj.UIFigure);
+                if isempty(obj.SourceResolver)
+                    defaultName = suggestedName;
+                    if ~isempty(strtrim(obj.TargetPath)) && isfolder(obj.TargetPath)
+                        defaultName = fullfile(obj.TargetPath, suggestedName);
+                    end
+                    [selectedName, selectedFolder] = uigetfile('*.*', '', defaultName);
+                    if isequal(selectedName, 0)
+                        localPath = '';
+                        cancelled = true;
+                        return
+                    end
+                    figure(obj.UIFigure)
+                    localPath = fullfile(selectedFolder, selectedName);
+                else
+                    resolution = obj.SourceResolver(context);
+                    if ~isstruct(resolution) || ~isscalar(resolution)
+                        error('ui:TransferPanel:invalidSourceResolution', ...
+                              'SourceResolver deve retornar uma struct escalar.')
+                    end
+                    if ~isfield(resolution, 'Cancelled') || isempty(resolution.Cancelled)
+                        resolution.Cancelled = false;
+                    end
+                    if ~isscalar(resolution.Cancelled) || ...
+                            ~(islogical(resolution.Cancelled) || isnumeric(resolution.Cancelled))
+                        error('ui:TransferPanel:invalidSourceResolution', ...
+                              'Cancelled deve ser um escalar lógico.')
+                    end
+                    if logical(resolution.Cancelled)
+                        localPath = '';
+                        cancelled = true;
+                        return
+                    end
+                    if ~isfield(resolution, 'LocalPath') || ...
+                            ~(ischar(resolution.LocalPath) || isStringScalar(resolution.LocalPath))
+                        error('ui:TransferPanel:invalidSourceResolution', ...
+                              'SourceResolver deve retornar LocalPath.')
+                    end
+                    localPath = char(resolution.LocalPath);
+                end
+            end
+            if ~isfile(localPath)
+                error('ui:TransferPanel:invalidUploadSource', ...
+                      'LocalPath deve apontar para um arquivo existente.')
+            end
+            localPath = absolutePath(localPath);
+        end
+
+        %-----------------------------------------------------------------%
+        function forwardMaxUploadBytes(obj, value)
+            if ~isempty(obj.Manager) && isvalid(obj.Manager)
+                obj.Manager.MaxUploadBytes = value;
+            end
+        end
     end
 
 
@@ -1171,7 +1425,7 @@ classdef TransferPanel < handle
             allowedValues = {'webApp', 'desktopStandaloneApp', 'MATLABEnvironment'};
             if ~ismember(value, allowedValues)
                 error('ui:TransferPanel:invalidExecutionMode', ...
-                      'executionMode must be webApp, desktopStandaloneApp, or MATLABEnvironment.')
+                        'executionMode deve ser webApp, desktopStandaloneApp ou MATLABEnvironment.')
             end
             obj.executionMode = value;
         end
@@ -1183,7 +1437,7 @@ classdef TransferPanel < handle
             allowedValues = {'askInRow', 'reject'};
             if ~ismember(value, allowedValues)
                 error('ui:TransferPanel:invalidCollisionPolicy', ...
-                      'CollisionPolicy is not supported.')
+                        'CollisionPolicy não é compatível.')
             end
             obj.CollisionPolicy = value;
         end
@@ -1195,7 +1449,7 @@ classdef TransferPanel < handle
             allowedValues = {'askInRow', 'resume', 'restart', 'cancel'};
             if ~ismember(value, allowedValues)
                 error('ui:TransferPanel:invalidPartialConflictPolicy', ...
-                      'PartialConflictPolicy is not supported.')
+                        'PartialConflictPolicy não é compatível.')
             end
             obj.PartialConflictPolicy = value;
         end
@@ -1227,17 +1481,35 @@ sourcePath = generalIconPath(iconName);
 end
 
 %-----------------------------------------------------------------%
+function iconName = directionIcon(direction)
+if strcmp(direction, 'upload')
+    iconName = 'transfer-upload.svg';
+else
+    iconName = 'transfer-download.svg';
+end
+end
+
+%-----------------------------------------------------------------%
+function label = directionLabel(direction)
+if strcmp(direction, 'upload')
+    label = 'Envio';
+else
+    label = 'Recebimento';
+end
+end
+
+%-----------------------------------------------------------------%
 function sourcePath = generalIconPath(iconName)
 classPath = which('ui.TransferPanel');
 if isempty(classPath)
     error('ui:TransferPanel:classPathUnavailable', ...
-          'Could not resolve the ui.TransferPanel class path.')
+          'Não foi possível resolver o caminho da classe ui.TransferPanel.')
 end
 generalFolder = fileparts(fileparts(classPath));
 sourcePath = fullfile(generalFolder, 'icons', iconName);
 if ~isfile(sourcePath)
     error('ui:TransferPanel:iconNotFound', ...
-          'Could not find the download icon at "%s".', sourcePath)
+          'Não foi possível localizar o ícone de transferência em "%s".', sourcePath)
 end
 end
 
@@ -1268,7 +1540,7 @@ end
 function resolution = normalizeDestinationResolution(resolution)
 if ~isstruct(resolution) || ~isscalar(resolution)
     error('ui:TransferPanel:invalidDestinationResolution', ...
-          'DestinationResolver must return a scalar struct.')
+            'DestinationResolver deve retornar uma struct escalar.')
 end
 if ~isfield(resolution, 'Cancelled') || isempty(resolution.Cancelled)
     resolution.Cancelled = false;
@@ -1276,7 +1548,7 @@ end
 if ~isscalar(resolution.Cancelled) || ...
         ~(islogical(resolution.Cancelled) || isnumeric(resolution.Cancelled))
     error('ui:TransferPanel:invalidDestinationResolution', ...
-          'DestinationResolver Cancelled must be a logical scalar.')
+            'Cancelled de DestinationResolver deve ser um escalar lógico.')
 end
 resolution.Cancelled = logical(resolution.Cancelled);
 if resolution.Cancelled
@@ -1291,18 +1563,18 @@ for fieldIndex = 1:numel(requiredFields)
             ~(ischar(resolution.(fieldName)) || isStringScalar(resolution.(fieldName))) || ...
             isempty(strtrim(char(resolution.(fieldName))))
         error('ui:TransferPanel:invalidDestinationResolution', ...
-              'DestinationResolver must return a nonempty %s.', fieldName)
+              'DestinationResolver deve retornar %s preenchido.', fieldName)
     end
     resolution.(fieldName) = char(resolution.(fieldName));
 end
 if ~isfolder(resolution.TargetFolder)
     error('ui:TransferPanel:invalidDestinationResolution', ...
-          'DestinationResolver TargetFolder must be an existing folder.')
+            'TargetFolder de DestinationResolver deve ser uma pasta existente.')
 end
 if ~strcmp(resolution.FileName, datatransfer.transferFileName(resolution.FileName, 'download')) || ...
         contains(resolution.FileName, {'/', '\\'})
     error('ui:TransferPanel:invalidDestinationResolution', ...
-          'DestinationResolver FileName must be a valid file name without a folder path.')
+            'FileName de DestinationResolver deve ser um nome válido, sem caminho de pasta.')
 end
 end
 
@@ -1332,7 +1604,7 @@ value = max(0, seconds(snapshot.UpdatedAt - snapshot.StartedAt));
 end
 
 %-----------------------------------------------------------------%
-function text = progressText(transferredBytes, totalBytes, elapsedSeconds, transferRate)
+function text = progressText(transferredBytes, totalBytes, elapsedSeconds, transferRate, direction)
 receivedText = formatBytes(transferredBytes);
 totalText = '-';
 totalSizeText = '-';
@@ -1350,14 +1622,19 @@ else
         remainingText = formatDuration(max(0, double(totalBytes) - double(transferredBytes)) / transferRate);
     end
 end
-text = sprintf('%s / %s (%s) | Elapsed: %s | Remaining: %s', ...
-               receivedText, totalText, totalSizeText, elapsedText, remainingText);
+if strcmp(direction, 'upload')
+    directionText = 'enviados';
+else
+    directionText = 'baixados';
+end
+text = sprintf('%s %s / %s (%s) | Decorrido: %s | Restante: %s', ...
+               receivedText, directionText, totalText, totalSizeText, elapsedText, remainingText);
 end
 
 %-----------------------------------------------------------------%
 function text = formatBytes(value)
 if isempty(value) || ~isscalar(value) || ~isfinite(value)
-    text = 'unknown';
+    text = 'desconhecido';
     return
 end
 value = double(value);
@@ -1396,24 +1673,70 @@ else
     end
 end
 if entry.TransferredBytes > 0
+    if strcmp(entry.Direction, 'upload')
+        directionText = 'enviados';
+    else
+        directionText = 'baixados';
+    end
     sizeText = sprintf('%s bytes (%s)', ...
                        formatBytes(entry.TransferredBytes), ...
                        formatTotalBytes(entry.TransferredBytes));
+    sizeText = [sizeText, ' ', directionText];
 else
     sizeText = '0 bytes';
 end
 text = sprintf('%s | %s', timestampText, sizeText);
 if strcmp(entry.LifecycleState, 'failed')
-    text = ['Failed | ', text];
+    text = ['Falha | ', text];
     if ~isempty(entry.ErrorMessages)
         text = [text, ' | ', entry.ErrorMessages{end}];
     end
 elseif strcmp(entry.LifecycleState, 'interrupted')
-    text = ['Interrupted | ', text];
+    text = ['Interrompida | ', text];
 end
 if strcmp(entry.LifecycleState, 'completed') && ~entry.isAvailable
-    text = ['Unavailable | ', text];
+    text = ['Indisponível | ', text];
 end
+if strcmp(entry.Direction, 'upload') && responseOutcomeUncertain(entry)
+    text = ['Resultado do envio incerto | ', text];
+    if isfield(entry.Response, 'Message') && ~isempty(entry.Response.Message)
+        text = [text, ' | ', char(entry.Response.Message)];
+    end
+elseif strcmp(entry.Direction, 'upload') && ...
+        strcmp(entry.LifecycleState, 'completed') && ...
+        isstruct(entry.Response) && isfield(entry.Response, 'Success') && ...
+        entry.Response.Success && isfield(entry.Response, 'Message')
+    statusText = char(entry.Response.Message);
+    if isfield(entry.Response, 'StatusCode') && ...
+            isnumeric(entry.Response.StatusCode) && ...
+            isscalar(entry.Response.StatusCode) && isfinite(entry.Response.StatusCode)
+        statusText = sprintf('%s (HTTP %g)', statusText, entry.Response.StatusCode);
+    end
+    text = [statusText, ' | ', text];
+end
+end
+
+%-----------------------------------------------------------------%
+function tf = responseOutcomeUncertain(entry)
+tf = false;
+if ~isstruct(entry) || ~isscalar(entry)
+    return
+end
+hasUncertainResponse = isfield(entry, 'Response') && ...
+    isstruct(entry.Response) && isscalar(entry.Response) && ...
+    isfield(entry.Response, 'OutcomeUncertain') && ...
+    islogical(entry.Response.OutcomeUncertain) && ...
+    isscalar(entry.Response.OutcomeUncertain) && entry.Response.OutcomeUncertain;
+tf = hasUncertainResponse || isInterruptedUpload(entry);
+end
+
+%-----------------------------------------------------------------%
+function tf = isInterruptedUpload(entry)
+tf = isstruct(entry) && isscalar(entry) && ...
+    isfield(entry, 'Direction') && ischar(entry.Direction) && ...
+    strcmp(entry.Direction, 'upload') && ...
+    isfield(entry, 'LifecycleState') && ischar(entry.LifecycleState) && ...
+    strcmp(entry.LifecycleState, 'interrupted');
 end
 
 %-----------------------------------------------------------------%

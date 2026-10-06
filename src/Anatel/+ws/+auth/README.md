@@ -8,7 +8,7 @@ Módulo compartilhado de autenticação para aplicações MATLAB desktop que con
 | `FileTransfer.m` | Adaptador de contexto F5 para `datatransfer.HTTPFileTransfer` |
 | `DownloadProgressMonitor.m` | Reporta o progresso de `F5Session.readBytes` quando o chamador fornece um callback |
 | [`TransferManager`](../../../General/+datatransfer/TransferManager.m) | Orquestra tarefas, conflitos, callbacks e snapshots sem conhecer UI ou F5 |
-| [`+datatransfer`](../../../General/+datatransfer) | Serviços HTTP, nomes de arquivos, metadados e worker provider-neutral |
+| [`+datatransfer`](../../../General/+datatransfer) | Serviços HTTP, nomes de arquivos, metadados e worker neutro em relação ao provedor |
 | [`profileAvatar.html`](profileAvatar.html) | Componente `uihtml` reutilizável para indicar o estado e o perfil autenticado |
 | [`TransferPanel`](../../../General/+ui/TransferPanel.m) | Painel reutilizável de transferências; recebe um `TransferFactory` e não conhece a autenticação |
 
@@ -143,7 +143,7 @@ Use `connected = false` para exibir o estado desconectado. O componente emite
 `profileAvatarClick` quando o usuário pressiona o avatar; a aplicação pode usar
 esse evento para iniciar o login ou abrir o menu do perfil.
 
-### Painel de downloads
+### Painel de transferências
 
 `ui.TransferPanel` fica em `src/General/+ui` e é independente de
 `F5Session`. Ele recebe um `TransferFactory`, renderiza snapshots do
@@ -155,7 +155,7 @@ e órbitas para comparação ou reutilização independente; não é carregado p
 `ui.TransferPanel`. Seu harness manual é
 [`checkOrbitDownloadHtml.m`](../../../../tests/transfers/checkOrbitDownloadHtml.m).
 
-Os serviços provider-neutral ficam em `src/General/+datatransfer`.
+Os serviços neutros em relação ao provedor ficam em `src/General/+datatransfer`.
 `datatransfer.HTTPFileTransfer` possui o ciclo de vida comum, prepara metadados
 de download ou capacidades de upload e seleciona o worker por direção. O
 `ws.auth.FileTransfer` herda essa classe e substitui somente `acquireContext` e
@@ -173,7 +173,23 @@ panel = ui.TransferPanel(parentContainer, ...
 panel.AvatarHTML.Layout.Row = 1;
 panel.AvatarHTML.Layout.Column = 3;
 panel.addDownload(url);
+panel.addUpload(uploadURL, ...
+    'LocalPath', sourcePath, ...
+    'Protocol', 'auto', ...
+    'Method', 'POST', ...
+    'FormFieldName', 'file', ...
+    'FormFields', struct());
 ```
+
+`addUpload` também aceita `FileName`, `DisplayMode` e `LogicalFileID`. Em modos
+desktop, um `LocalPath` vazio abre `uigetfile` ou usa um `SourceResolver`
+injetado. Em `webApp`, o chamador deve informar `LocalPath`; sem ele, o painel
+lança `ui:TransferPanel:missingUploadSource`. `MaxUploadBytes` pode ser definido
+no construtor ou alterado em tempo de execução; o padrão é 200 MiB.
+As linhas mostram um indicador de direção e bytes enviados ou baixados.
+Uploads sem retomada exibem **Reiniciar** e **Cancelar**. Resultados incertos
+mostram a mensagem da resposta e exigem **Confirmar novo envio**; **Cancelar**
+abandona a confirmação.
 
 O factory recebe uma struct normalizada com `Direction`, `URL`, `TaskID`,
 `TempFolder`, `LocalPath` e `FileName`; `LocalPath` é destino no download e
@@ -229,19 +245,20 @@ gerado para a mesma URL durante sua vida, permitindo encontrar um arquivo
 parcial depois de `stop`.
 
 `executionMode` aceita `webApp`, `desktopStandaloneApp` e
-`MATLABEnvironment`. O último usa o mesmo comportamento de download do modo
+`MATLABEnvironment`. O último usa os mesmos diálogos de origem e destino do modo
 desktop. Em todos os modos, quando o destino já existe, a linha fica em espera
-com os controles **Keep existing**, **Restart** e **Cancel** abaixo da barra;
+com os controles **Manter**, **Reiniciar** e **Cancelar** abaixo da barra;
 o downloader só é criado depois da escolha, exceto ao manter o arquivo existente.
 O callback de conclusão deve
 publicar o arquivo em `LocalPath` e remover os arquivos temporários de
 sucesso.
 
-Tarefas não terminais são deduplicadas pela URL exata e pelo nome de arquivo
-selecionado, sem distinguir pasta de destino ou `DisplayMode`. Repetir uma
-solicitação normal para uma tarefa silenciosa torna a tarefa visível, promove
-sua linha e abre o painel. A repetição não registra uma nova tentativa; pausar
-e retomar também preserva os timestamps existentes.
+Tarefas não terminais são deduplicadas por direção: downloads usam a URL exata e
+o nome de arquivo, sem distinguir maiúsculas de minúsculas; uploads usam a URL
+exata e o caminho canônico de `LocalPath`. Repetir uma solicitação normal para
+uma tarefa silenciosa torna a tarefa visível, promove sua linha e abre o painel.
+A repetição não registra uma nova tentativa; pausar e retomar também preserva
+os timestamps existentes.
 
 ### API pública
 

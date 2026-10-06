@@ -8,7 +8,7 @@ específicos de provedor como `ws.auth.FileTransfer`. `HTTPFileTransfer` possui 
 ciclo de vida comum e seleciona o worker por direção. O worker `uploadFileWorker`
 executa uploads multipart, raw e Tus; `prepare` chama `uploadCapabilities` uma vez
 para descobrir capacidades antes do envio do corpo. A integração do adapter F5 foi
-incluída no escopo da P5; a interface de upload permanece na P6.
+incluída na P5; a interface do painel para uploads foi adicionada na P6.
 O pacote não depende de `uifigure`,
 `uihtml`, `ui.TransferPanel`, sessões de autenticação, cookies ou outras classes de
 apresentação.
@@ -54,6 +54,10 @@ src/General/
     ├── downloadFileWorker.m
     ├── sendHTTPRequest.m
     ├── uploadCapabilities.m
+    ├── uploadFileWorker.m
+    ├── UploadFileProvider.m
+    ├── UploadProgressMonitor.m
+    ├── UploadResponseBodyConsumer.m
     ├── downloadSourceMetadata.m
     └── moveToTrash.m
 
@@ -85,7 +89,20 @@ o painel usa `uiputfile`. No modo `webApp` o callback e `uiputfile` são
 ignorados: o painel requer um `TargetPath` existente e deriva o
 nome do arquivo a partir da URL.
 
-O avatar de download ativo é
+Para uploads, `addUpload(url, options)` aceita `LocalPath`, `FileName`,
+`Protocol`, `Method`, `FormFieldName`, `FormFields`, `DisplayMode` e
+`LogicalFileID`. Em modos desktop, um `LocalPath` vazio abre `uigetfile` ou
+usa o `SourceResolver` injetado, que recebe `ExecutionMode`, `URL`,
+`SuggestedFileName`, `InitialFolder` e `UIFigure` e retorna `Cancelled` e
+`LocalPath`. No modo `webApp`, `LocalPath` deve ser explícito; caso contrário,
+o painel lança `ui:TransferPanel:missingUploadSource`. `MaxUploadBytes` é uma
+propriedade pública do painel, encaminhada ao gerenciador; o padrão é 200 MiB.
+Linhas exibem a direção, ações em português e bytes enviados ou baixados.
+Uploads sem retomada mostram **Reiniciar** e **Cancelar**, sem ação de pausa.
+Um resultado incerto mostra a mensagem da resposta e exige confirmação em linha
+antes de um novo envio; **Cancelar** abandona essa confirmação.
+
+O avatar das transferências ativas é
 [`pingTransferAvatar.html`](../+ui/html/pingTransferAvatar.html), ao lado da
 implementação da interface do usuário do painel. Ele não faz parte deste pacote neutro em relação ao provedor.
 O opcional [`orbitDownloadAvatar.html`](../+ui/html/orbitDownloadAvatar.html)
@@ -118,7 +135,7 @@ aplica `MaxUploadBytes` (padrão: 200 MiB; excesso gera
 `datatransfer:TransferManager:uploadTooLarge`), valida `FormFieldName` e os nomes
 dos campos adicionais e sanitiza o nome remoto `FileName`. O worker de upload de
 corpo foi concluído na P4. A P5 cobre o ciclo de vida genérico, o adaptador F5 e
-a persistência de offsets; a interface de upload permanece na P6.
+a persistência de offsets; a P6 adiciona a API e as linhas de upload ao painel.
 Raw e multipart publicam o
 progresso exato dos bytes do arquivo lidos; o progresso Tus permanece limitado ao
 offset confirmado pelo servidor.
@@ -198,8 +215,9 @@ o host não fornece uma API de lixeira utilizável.
 `restoreInterruptedTransfers()` restaura a tentativa interrompida elegível mais
 recente para cada combinação de direção, URL exata e caminho local canônico. Para
 downloads, exige que o arquivo temporário ainda exista; a tarefa restaurada aparece
-como conflito parcial com `Continue`, `Restart` e `Cancel`, sem iniciar o download
-até uma escolha. A interface atual continua limitada a downloads.
+como conflito parcial com `Continuar`, `Reiniciar` e `Cancelar`, sem iniciar o download
+até uma escolha. Uploads Tus restaurados verificam a origem antes de oferecer
+retomada ou reinício.
 
 O painel traduz as ações do usuário em comandos do gerenciador e renderiza snapshots.
 O estado da tarefa tem um único proprietário: o gerenciador possui o estado de transferência, enquanto o painel possui
@@ -208,8 +226,8 @@ apenas manipuladores da interface do usuário e estado de apresentação.
 Quando um conflito de arquivo de destino ou parcial é detectado com a
 política correspondente definida como `askInRow`, o gerenciador emite um snapshot pendente. O painel
 renderiza as opções de linha apropriadas sem abrir um diálogo modal:
-`Keep`, `Restart` e `Cancel` para conflitos de destino, ou `Continue`, `Restart`
-e `Cancel` para arquivos parciais. Manter um destino registra uma tentativa concluída disponível
+**Manter**, **Reiniciar** e **Cancelar** para conflitos de destino, ou
+**Continuar**, **Reiniciar** e **Cancelar** para arquivos parciais. Manter um destino registra uma tentativa concluída disponível
 sem iniciar uma transferência. Reiniciar substitui explicitamente o destino.
 Excluir uma linha concluída remove seu histórico e arquivos temporários restantes, mas
 não exclui o arquivo de destino. O gerenciador verifica novamente o destino antes da
@@ -218,7 +236,7 @@ publicação.
 ### Limite do adaptador
 O worker de upload de corpo foi implementado na P4; o ciclo de vida genérico,
 a integração do adaptador F5 e a persistência dos offsets foram implementados na
-P5. A interface de upload permanece na P6.
+P5. A interface do painel para upload foi implementada na P6.
 
 `datatransfer.HTTPFileTransfer` possui a preparação e o ciclo de vida da
 transferência, chama `downloadSourceMetadata` para downloads e chama
@@ -268,8 +286,8 @@ Todos os chamadores do repositório usam `datatransfer.*` para auxiliares genér
 `datatransfer.sendHTTPRequest` e `@datatransfer.downloadFileWorker`.
 
 Erros genéricos usam o namespace `datatransfer:*`. Erros do adaptador F5 usam
-`ws:auth:*`, e erros do painel usam `ui:TransferPanel:*`. Implementações `ui.download*` antigas
-não são mantidas como wrappers duplicados permanentes.
+`ws:auth:*`, e erros do painel usam `ui:TransferPanel:*`. O painel reutilizável
+é `ui.TransferPanel`; não há wrappers de compatibilidade.
 
 ### Caminho, empacotamento e validação
 
