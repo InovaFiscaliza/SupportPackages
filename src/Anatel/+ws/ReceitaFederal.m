@@ -124,6 +124,59 @@ classdef ReceitaFederal < ws.WebServiceBase
             APIResponse = [];
             endPoint    = obj.url.(fileType);
 
+
+            if any(strcmp(fileType, {'EFDI', 'EFDC'}))
+                % consultar_situacao_efdc(CNPJ, file_id) | consultar_situacao_efdi(CNPJ, IE, file_id)
+                % varargin = {CNPJ, IE, file_id}; para EFDC, varargin{2} é ignorado.
+                isEFDI = strcmp(fileType, 'EFDI');
+
+                CNPJ = '';
+                IE = '';
+                file_id = '';
+
+                if numel(varargin) >= 3
+                    CNPJ = char(string(varargin{1}));
+                    if isEFDI
+                        IE = char(string(varargin{2}));
+                    end
+                    file_id = char(string(varargin{3}));
+
+                elseif ~isempty(varargin)
+                    sourceObj = varargin{1};
+
+                    if (isstruct(sourceObj) && isfield(sourceObj, 'CompanyInfo')) || (isobject(sourceObj) && isprop(sourceObj, 'CompanyInfo'))
+                        companyInfo = sourceObj.CompanyInfo;
+                        if ~isempty(companyInfo)
+                            companyInfo = companyInfo(end);
+                            if isfield(companyInfo, 'CNPJ')
+                                CNPJ = char(string(companyInfo.CNPJ));
+                            end
+                            if isEFDI && isfield(companyInfo, 'IE')
+                                IE = char(string(companyInfo.IE));
+                            end
+                        end
+                    end
+
+                    if (isstruct(sourceObj) && isfield(sourceObj, 'Hash')) || (isobject(sourceObj) && isprop(sourceObj, 'Hash'))
+                        file_id = char(string(sourceObj.Hash));
+                    end
+                end
+
+                CNPJ = strtrim(CNPJ);
+                IE = strtrim(IE);
+                file_id = strtrim(file_id);
+
+                if isempty(CNPJ)
+                    error(['ReceitaFederal:' fileType ':MissingCNPJ'], 'Não foi possível obter o CNPJ para consulta %s.', fileType);
+                end
+                if isEFDI && isempty(IE)
+                    error('ReceitaFederal:EFDI:MissingIE', 'Não foi possível obter a IE para consulta EFDI.');
+                end
+                if isempty(file_id)
+                    error(['ReceitaFederal:' fileType ':MissingHash'], 'Não foi possível obter a identificação do arquivo (hash) para consulta %s.', fileType);
+                end
+            end
+
             switch fileType
                 case 'ECD'
                     Hash = varargin{1};
@@ -171,71 +224,40 @@ classdef ReceitaFederal < ws.WebServiceBase
                     % Migrar Python>>MATLAB
                     % consultar_situacao_efdc(CNPJ, file_id)
 
+                    header = { ...
+                        'Content-Type',  'text/xml; charset=utf-8', ...
+                        'Accept',        'application/soap+xml, application/dime, multipart/related, text/*', ...
+                        'User-Agent',    'Axis/1.4', ...
+                        'Host',          'www.sped.fazenda.gov.br', ...
+                        'Cache-Control', 'no-cache', ...
+                        'Pragma',        'no-cache', ...
+                        'SOAPAction',    '"http://br.gov.serpro.spedpiscofinsserver/consulta/consultarSituacaoEscrituracao"' ...
+                    };
+
+                    body = sprintf([...
+                        '<?xml version="1.0" encoding="UTF-8"?>' ...
+                        '<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">' ...
+                            '<soap:Body>' ...
+                                '<consultarSituacaoEscrituracao xmlns="http://br.gov.serpro.spedpiscofinsserver/consulta">' ...
+                                    '<niContribuinte>%s</niContribuinte>' ...
+                                    '<identificacaoArquivo>%s</identificacaoArquivo>' ...
+                                '</consultarSituacaoEscrituracao>' ...
+                            '</soap:Body>' ...
+                        '</soap:Envelope>'], CNPJ, file_id);
+
+                    response = ws.WebServiceBase.request(endPoint, 'POST', header, body);
+
+                    switch response.StatusCode
+                        case 'OK'
+                            APIResponse = parseResponse(obj, response.Body.char, fileType);
+
+                        otherwise
+                            error(response.StatusCode)
+                    end
+
                 case 'EFDI'
                     % Migrar Python>>MATLAB
                     % consultar_situacao_efdi(CNPJ, IE, file_id)
-                    CNPJ = '';
-                    IE = '';
-                    file_id = '';
-
-                    if numel(varargin) >= 3
-                        CNPJ = char(string(varargin{1}));
-                        IE = char(string(varargin{2}));
-                        file_id = char(string(varargin{3}));
-                    elseif ~isempty(varargin)
-                        sourceObj = varargin{1};
-
-                        if isstruct(sourceObj)
-                            if isfield(sourceObj, 'CompanyInfo') && ~isempty(sourceObj.CompanyInfo)
-                                companyInfo = sourceObj.CompanyInfo;
-                                if numel(companyInfo) > 1
-                                    companyInfo = companyInfo(end);
-                                end
-                                if isfield(companyInfo, 'CNPJ')
-                                    CNPJ = char(string(companyInfo.CNPJ));
-                                end
-                                if isfield(companyInfo, 'IE')
-                                    IE = char(string(companyInfo.IE));
-                                end
-                            end
-
-                            if isfield(sourceObj, 'Hash')
-                                file_id = char(string(sourceObj.Hash));
-                            end
-
-                        elseif isobject(sourceObj)
-                            if isprop(sourceObj, 'CompanyInfo') && ~isempty(sourceObj.CompanyInfo)
-                                companyInfo = sourceObj.CompanyInfo;
-                                if numel(companyInfo) > 1
-                                    companyInfo = companyInfo(end);
-                                end
-                                if isfield(companyInfo, 'CNPJ')
-                                    CNPJ = char(string(companyInfo.CNPJ));
-                                end
-                                if isfield(companyInfo, 'IE')
-                                    IE = char(string(companyInfo.IE));
-                                end
-                            end
-
-                            if isprop(sourceObj, 'Hash')
-                                file_id = char(string(sourceObj.Hash));
-                            end
-                        end
-                    end
-
-                    CNPJ = strtrim(CNPJ);
-                    IE = strtrim(IE);
-                    file_id = strtrim(file_id);
-
-                    if isempty(CNPJ)
-                        error('ReceitaFederal:EFDI:MissingCNPJ', 'Não foi possível obter o CNPJ para consulta EFDI.');
-                    end
-                    if isempty(IE)
-                        error('ReceitaFederal:EFDI:MissingIE', 'Não foi possível obter a IE para consulta EFDI.');
-                    end
-                    if isempty(file_id)
-                        error('ReceitaFederal:EFDI:MissingHash', 'Não foi possível obter a identificação do arquivo (hash) para consulta EFDI.');
-                    end
 
                     header = { ...
                         'Content-Type',  'text/xml; charset=utf-8', ...
@@ -263,36 +285,7 @@ classdef ReceitaFederal < ws.WebServiceBase
 
                     switch response.StatusCode
                         case 'OK'
-                            APIResponse = parseResponse(obj, response.Body.char, 'Situacao');
-
-                            if isempty(fieldnames(APIResponse))
-                                responseBody = response.Body.char;
-                                situacaoText = extractBetween(responseBody, '<Situacao>', '</Situacao>');
-                                if isempty(situacaoText)
-                                    situacaoText = extractBetween(responseBody, '<ns:Situacao>', '</ns:Situacao>');
-                                end
-
-                                if isempty(situacaoText)
-                                    APIResponse = struct( ...
-                                        'situacao', 'R', ...
-                                        'message', 'O campo ''situacao'' não foi encontrado.' ...
-                                    );
-                                else
-                                    situacaoText = strtrim(situacaoText(1));
-                                    expectedMessage = 'A escrituração visualizada encontra-se na base de dados do Sped e corresponde à última escrituração fiscal enviada.';
-                                    if strcmp(situacaoText, expectedMessage)
-                                        APIResponse = struct( ...
-                                            'situacao', 'A', ...
-                                            'message', 'A escrituração visualizada se encontra na base de dados do SPED e corresponde à última escrituração fiscal enviada.' ...
-                                        );
-                                    else
-                                        APIResponse = struct( ...
-                                            'situacao', 'R', ...
-                                            'message', ['A escrituração visualizada não se encontra na base de dados do SPED. Mensagem encontrada: ', situacaoText] ...
-                                        );
-                                    end
-                                end
-                            end
+                            APIResponse = parseResponse(obj, response.Body.char, fileType);
 
                         otherwise
                             error(response.StatusCode)
@@ -301,13 +294,23 @@ classdef ReceitaFederal < ws.WebServiceBase
         end
 
         %-----------------------------------------------------------------%
-        function resultStruct = parseResponse(~, xmlString, xmlTag)
+        function resultStruct = parseResponse(~, xmlString, fileType, xmlTag)
             arguments
                 ~
                 xmlString
-                xmlTag (1,:) char = 'SituacaoEscrituracaoResult'
+                fileType (1,:) char {mustBeMember(fileType, {'ECD', 'EFDC', 'EFDI'})} = 'ECD'
+                xmlTag   (1,:) char = 'SituacaoEscrituracaoResult'
             end
 
+            % Resposta da Receita Federal à pergunta "este arquivo (CNPJ + hash) é o que foi transmitido?".
+            % Campos usados: situacao (resultado da consulta), dataEnvio/dtEnvio (transmissão do arquivo),
+            % dataConsulta/dtCons (momento da consulta) e idArquivo/hashEsc (identificação do arquivo).
+            % O WSCorIDSOAPHeader é cabeçalho técnico de rastreio do servidor e é ignorado.
+            % situacao "se encontra na base" -> status 1 (coincide); "não se encontra" -> -1 (diverge); sem situacao -> -2 (erro).
+            % Arquivo não localizado: niContribuinte = 0 e dataEnvio = 0001-01-01, também quando o tipo de hash enviado está errado.
+
+            %%%%%%%%%%%%%%%%%%%%%%%%%%% ECD  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %
             % <?xml version="1.0" encoding="utf-8"?>
             % <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
             %                xmlns:xsd="http://www.w3.org/2001/XMLSchema"
@@ -322,20 +325,109 @@ classdef ReceitaFederal < ws.WebServiceBase
             %       </SituacaoEscrituracaoResponse>
             %    </soap:Body>
             % </soap:Envelope>
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % ECD: SOAP 1.1; o resultado é um XML escapado, com os campos em atributos
+            % (situacao, hashEsc, dtEnvio, dtCons, retVerif). O hash consultado é o SHA-1.
+        
+            %%%%%%%%%%%%%%%%%%%%%%%%%  EFDC  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %
+            %        '<?xml version="1.0" encoding="utf-8"?>
+            % <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+            %                xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            %                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            %    <soap:Header>
+            %       <WSCorIDSOAPHeader xmlns="http://www.wilytech.com/"
+            %                          CorID="16A55663C8C6EF1803E3FDFD7D69FA55,1:1,0,0,,,AgAAAj9IQgAAAAFGAAAAAQAAABFqYXZhLnV0aWwuSGFzaE1hcAAAAAhIQgAAAAJGAAAAAgAAABBqYXZhLmxhbmcuU3RyaW5nABBBcHBNYXBDYWxsZXJIb3N0SEIAAAADRQAAAAIADHNwY2RzcnZ2MTY3NkhCAAAABEUAAAACAA5BcHBNYXBBcHBOYW1lc0hCAAAABUYAAAADAAAAE2phdmEudXRpbC5BcnJheUxpc3QAAAACSEIAAAAGRQAAAAIADi9TcGVkUGlzQ29maW5zSEIAAAAHRQAAAAIADi9TcGVkUGlzQ29maW5zSEIAAAAIRQAAAAIAD0NhbGxlclRpbWVzdGFtcEhCAAAACUUAAAACAA0xNzkxMzgxMjk2NzM5SEIAAAAKRQAAAAIAFkFwcE1hcENhbGxlck1ldGhvZE5hbWVIQgAAAAtFAAAAAgAlU3luY1Nlc3Npb25sZXNzSGFuZGxlcnxQcm9jZXNzUmVxdWVzdEhCAAAADEUAAAACABFBcHBNYXBDYWxsZXJBZ2VudEhDSEIAAAANRQAAAAIAEEFwcE1hcENhbGxlclR5cGVIQgAAAA5FAAAAAgAHU2VydmxldEhCAAAAD0UAAAACABNBcHBNYXBDYWxsZXJQcm9jZXNzSEIAAAAQRQAAAAIADC5ORVQgUHJvY2Vzc0hCAAAAEUUAAAACAApUeG5UcmFjZUlkSEIAAAASRQAAAAIAITE2QTU1NjQ5QzhDNkVGMTgwM0UzRkRGRDYyMDJFNzlCMA=="/>
+            %    </soap:Header>
+            %    <soap:Body>
+            %       <consultarSituacaoEscrituracaoResponse xmlns="http://br.gov.serpro.spedpiscofinsserver/consulta">
+            %          <consultarSituacaoEscrituracaoResult>
+            %             <niContribuinte>63356042</niContribuinte>
+            %             <idArquivo>D79301E0250E399D615DBA10CB25ABEE</idArquivo>
+            %             <dataConsulta>2026-10-07T13:54:56.7295177Z</dataConsulta>
+            %             <dataEnvio>2020-08-20T17:29:31Z</dataEnvio>
+            %             <situacao>A escrituração visualizada se encontra na base de dados do SPED.</situacao>
+            %          </consultarSituacaoEscrituracaoResult>
+            %       </consultarSituacaoEscrituracaoResponse>
+            %    </soap:Body>
+            % </soap:Envelope>'
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % EFDC: SOAP 1.1, namespace "spedpiscofinsserver"; campos em elementos filhos iniciados em minúscula.
+            % idArquivo é o MD5 do arquivo (SHA-1 não é localizado). Arquivo não localizado: niContribuinte = 0,
+            % dataEnvio = 0001-01-01T00:00:00 e situacao = "A escrituração visualizada não se encontra na base de dados do SPED."
 
-            if ~isempty(xmlTag)
-                xmlString = extractBetween(xmlString, ['<' xmlTag '>'], ['</' xmlTag '>'], "Boundaries", "inclusive");
-            end
 
-            expr = '(\w+)="([^"]*)"';
-            tokens = regexp(xmlString, expr, 'tokens');
-            if ~isempty(tokens)
-                tokens = tokens{1};
-            end
-            
-            resultStruct = struct();
-            for ii = 1:numel(tokens)
-                resultStruct.(tokens{ii}{1}) = strtrim(tokens{ii}{2});
+            %%%%%%%%%%%%%%%%%%%%%%%%%  EFDI  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % '<?xml version="1.0" encoding="utf-8"?>
+            % <soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" 
+            %                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ' ...
+            %                xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+            %       <soap:Header>
+            %           <WSCorIDSOAPHeader CorID="17685633C8C6EF1800FD727F7F00900F,1:1,0,0,,,AgAAAkVIQgAAAAFGAAAAAQAAABFqYXZhLnV0aWwuSGFzaE1hcAAAAAhIQgAAAAJGAAAAAgAAABBqYXZhLmxhbmcuU3RyaW5nABBBcHBNYXBDYWxsZXJIb3N0SEIAAAADRQAAAAIADHNwY2RzcnZ2MTY3NEhCAAAABEUAAAACAA5BcHBNYXBBcHBOYW1lc0hCAAAABUYAAAADAAAAE2phdmEudXRpbC5BcnJheUxpc3QAAAACSEIAAAAGRQAAAAIAES9TcGVkRmlzY2FsU2VydmVySEIAAAAHRQAAAAIAES9TcGVkRmlzY2FsU2VydmVySEIAAAAIRQAAAAIAD0NhbGxlclRpbWVzdGFtcEhCAAAACUUAAAACAA0xNzkxMzk0MDc2MjExSEIAAAAKRQAAAAIAFkFwcE1hcENhbGxlck1ldGhvZE5hbWVIQgAAAAtFAAAAAgAlU3luY1Nlc3Npb25sZXNzSGFuZGxlcnxQcm9jZXNzUmVxdWVzdEhCAAAADEUAAAACABFBcHBNYXBDYWxsZXJBZ2VudEhDSEIAAAANRQAAAAIAEEFwcE1hcENhbGxlclR5cGVIQgAAAA5FAAAAAgAHU2VydmxldEhCAAAAD0UAAAACABNBcHBNYXBDYWxsZXJQcm9jZXNzSEIAAAAQRQAAAAIADC5ORVQgUHJvY2Vzc0hCAAAAEUUAAAACAApUeG5UcmFjZUlkSEIAAAASRQAAAAIAITE3Njg1NjE0QzhDNkVGMTgwMEZENzI3RjFCQTJGNTE3MA==" xmlns="http://www.wilytech.com/" />
+            %       </soap:Header>
+            %       <soap:Body>
+            %           <consultarSituacaoEscrituracaoResponse xmlns="http://br.gov.serpro.spedfiscalserver/consulta">
+            %               <consultarSituacaoEscrituracaoResult dataHora="2026-10-07T14:27:56.2114005-03:00" codRetorno="101" codOperacao="4" id="RT134358676762114005-SPCDSRVV1674">
+            %                   <NiContribuinte>125941477</NiContribuinte>
+            %                   <IeContribuinte>206603117119</IeContribuinte>
+            %                   <IdArquivo>730E3FAD1DF83BE7C5FE8BD79ACD4E44</IdArquivo>
+            %                   <DataConsulta>2026-10-07T17:27:56.2114005Z</DataConsulta>
+            %                   <DataEnvio>2023-02-15T21:39:36Z</DataEnvio>
+            %                   <Situacao>A escrituração visualizada encontra-se na base de dados do Sped e corresponde à última escrituração fiscal enviada.</Situacao>
+            %               </consultarSituacaoEscrituracaoResult>
+            %           </consultarSituacaoEscrituracaoResponse>
+            %       </soap:Body>
+            %   </soap:Envelope>'
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % EFDI: SOAP 1.2, namespace "spedfiscalserver"; campos em elementos iniciados em maiúscula e atributos
+            % no Result (dataHora, codRetorno, codOperacao, id). IdArquivo é o MD5 do arquivo.
+
+            switch fileType
+                case 'ECD'
+                    xmlString = extractBetween(xmlString, ['<' xmlTag '>'], ['</' xmlTag '>'], "Boundaries", "inclusive");
+
+                    expr = '(\w+)="([^"]*)"';
+                    tokens = regexp(xmlString, expr, 'tokens');
+                    if ~isempty(tokens)
+                        tokens = tokens{1};
+                    end
+
+                    resultStruct = struct();
+                    for ii = 1:numel(tokens)
+                        resultStruct.(tokens{ii}{1}) = strtrim(tokens{ii}{2});
+                    end
+
+                case {'EFDC', 'EFDI'}
+                    resultStruct = struct();
+
+                    xmlResult = regexp(xmlString, '<consultarSituacaoEscrituracaoResult[^>]*>.*?</consultarSituacaoEscrituracaoResult>', 'match', 'once');
+                    tokens    = regexp(xmlResult, '<(\w+)>([^<]*)</\1>', 'tokens');
+                    for ii = 1:numel(tokens)
+                        fieldName = [lower(tokens{ii}{1}(1)), tokens{ii}{1}(2:end)];
+                        resultStruct.(fieldName) = strtrim(tokens{ii}{2});
+                    end
+
+                    if isfield(resultStruct, 'situacao')
+                        message = resultStruct.situacao;
+
+                        isFound = ~isempty(regexpi(message, '(?<!n[ãa]o )(se encontra|encontra-se) na base de dados', 'once')) && ...
+                                  ~contains(message, 'não corresponde', 'IgnoreCase', true);
+
+                        % Mesmos campos do retorno ECD, p/ compatibilidade com o restante do app.
+                        resultStruct.retVerif = message;
+                        if isfield(resultStruct, 'dataEnvio')
+                            resultStruct.dtEnvio = resultStruct.dataEnvio;
+                        end
+                        if isfield(resultStruct, 'dataConsulta')
+                            resultStruct.dtCons = resultStruct.dataConsulta;
+                        end
+
+                        if isFound
+                            resultStruct.situacao = 'A';
+                        else
+                            resultStruct.situacao = 'S';
+                        end
+                    end
             end
         end
     end
