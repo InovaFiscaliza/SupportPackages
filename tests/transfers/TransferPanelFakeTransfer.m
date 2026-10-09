@@ -53,7 +53,10 @@ classdef TransferPanelFakeTransfer < handle
                 obj.IsResumable = true;
             end
             [obj.TotalBytes, obj.BytesPerSecond] = sampleProfile(request.FileName);
-            if strcmp(request.Direction, 'download') && isfile(request.PartialPath)
+            if strcmp(request.Direction, 'upload')
+                fileInfo = dir(request.LocalPath);
+                obj.TotalBytes = double(fileInfo.bytes);
+            elseif isfile(request.PartialPath)
                 fileInfo = dir(request.PartialPath);
                 obj.TransferredBytes = min(obj.TotalBytes, fileInfo.bytes);
                 obj.WrittenBytes = obj.TransferredBytes;

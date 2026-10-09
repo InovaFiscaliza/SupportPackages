@@ -76,10 +76,9 @@ sem acrescentar um timestamp de tentativa.
 ## Integração com TransferPanel
 
 `checkTransferPanel.m` exercita `ui.TransferPanel` com
-`TransferPanelFakeTransfer`. Ele fornece links para quatro tamanhos e
-velocidades, além de cenários de falha, destino existente, arquivo parcial e
-cancelamento. O harness cobre progresso, pausa/retomada/cancelamento e escolhas
-de conflito. O painel usa internamente o recurso
+`TransferPanelFakeTransfer`. Ele fornece quatro links de download, incluindo
+um download silencioso, além de uploads normal e silencioso com arquivo local
+determinístico. O fake simula progresso e conclusão sem chamadas de rede. O painel usa internamente o recurso
 `pingTransferAvatar.html`, que apresenta cada tarefa visível com ID, taxa de
 transferência e progresso individuais. Isso inclui tarefas ativas, pausadas e
 parciais em espera. Tarefas silenciosas não aparecem no avatar; uma solicitação

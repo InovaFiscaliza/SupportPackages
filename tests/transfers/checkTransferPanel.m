@@ -1,10 +1,10 @@
 function uiFigure = checkTransferPanel
 % CHECKTRANSFERPANEL Open the sample-link UI harness for ui.TransferPanel.
 %
-% The harness presents four clickable sample links in the first column, the
-% ping download avatar in the second column, an execution log in row five, and
-% a trash icon for deleting the local temp and target folders. Each sample
-% uses TransferPanelFakeTransfer with a different size and transfer speed.
+% The harness presents four download links and two upload links in the first
+% column, the ping transfer avatar in the second column, an execution log, and
+% a trash icon for deleting the local temp and target folders. Transfers use
+% TransferPanelFakeTransfer and do not perform network I/O.
 %
 % The returned figure remains open until the user closes it.
 
@@ -18,11 +18,16 @@ tempPath = fullfile(mFilePath, 'temp');
 targetPath = fullfile(mFilePath, 'target');
 ensureFolder(tempPath)
 ensureFolder(targetPath)
+uploadSourcePath = fullfile(targetPath, 'sample-upload-source.bin');
+ensureUploadSource(uploadSourcePath)
 
-sampleNames = {'sample1.bin', 'sample2.bin', 'sample3.bin', 'sample4.bin'};
+sampleNames = {'sample1.bin', 'sample2.bin', 'sample3.bin', 'sample4.bin', ...
+               'sample-upload.bin', 'sample-upload-silent.bin'};
 sampleLabels = sampleNames;
 sampleLabels{4} = 'sample4.bin [silent]';
-executionLog = {'Ready. Click a sample link to start a download.'};
+sampleLabels{5} = 'sample-upload.bin [upload]';
+sampleLabels{6} = 'sample-upload-silent.bin [silent upload]';
+executionLog = {'Ready. Click a sample link to start a transfer.'};
 
 uiFigure = uifigure('Name', 'Teste do ui.TransferPanel', ...
                     'Position', [100, 100, 720, 560]);
@@ -81,31 +86,50 @@ panel.ErrorFcn = @failed;
             ensureFolder(targetPath)
             sampleName = sampleNames{sampleIndex};
             sampleLabel = sampleLabels{sampleIndex};
-            sampleURL = ['https://example.test/download/', sampleName];
-            displayMode = 'normal';
-            if sampleIndex == 4
-                displayMode = 'silent';
+            if sampleIndex >= 5
+                ensureUploadSource(uploadSourcePath)
+                sampleURL = ['https://example.test/upload/', sampleName];
+                displayMode = 'normal';
+                if sampleIndex == numel(sampleNames)
+                    displayMode = 'silent';
+                end
+                panel.addUpload(sampleURL, ...
+                                'LocalPath', uploadSourcePath, ...
+                                'FileName', sampleName, ...
+                                'Protocol', 'raw', ...
+                                'Method', 'PUT', ...
+                                'DisplayMode', displayMode);
+                transferKind = 'upload';
+            else
+                sampleURL = ['https://example.test/download/', sampleName];
+                displayMode = 'normal';
+                if sampleIndex == 4
+                    displayMode = 'silent';
+                end
+                panel.addDownload(sampleURL, 'DisplayMode', displayMode);
+                transferKind = 'download';
             end
-            panel.addDownload(sampleURL, 'DisplayMode', displayMode);
-            appendLog(sprintf('Started %s.', sampleLabel));
+            appendLog(sprintf('Started %s %s.', transferKind, sampleLabel));
         catch exception
             appendLog(sprintf('Failed to start %s: %s', sampleNames{sampleIndex}, exception.message));
         end
     end
 
-    function completed(taskID, info, ~)
-        % COMPLETED Record a completed simulated download.
-        appendLog(sprintf('Download %d completed: %s.', taskID, info.LocalPath));
+    function completed(taskID, info, snapshot)
+        % COMPLETED Record a completed simulated transfer.
+        appendLog(sprintf('%s %d completed: %s.', ...
+                          transferLabel(snapshot.Direction), taskID, info.LocalPath));
     end
 
-    function failed(taskID, exception, ~)
-        % FAILED Record a failed simulated download.
-        appendLog(sprintf('Download %d failed: %s.', taskID, exception.message));
+    function failed(taskID, exception, snapshot)
+        % FAILED Record a failed simulated transfer.
+        appendLog(sprintf('%s %d failed: %s.', ...
+                          transferLabel(snapshot.Direction), taskID, exception.message));
     end
 
     function appendLog(message)
-        % APPENDLOG Add a line to the row-five execution output.
-        executionLog{end+1} = message; %#ok<AGROW>
+        % APPENDLOG Add a line to the execution output.
+        executionLog{end+1} = message;
         if ~isempty(statusLabel) && isvalid(statusLabel)
             statusLabel.Text = strjoin(executionLog, newline);
         end
@@ -149,6 +173,37 @@ if ~isfolder(folderPath)
 end
 end
 
+function ensureUploadSource(filePath)
+% ENSUREUPLOADSOURCE Create the deterministic upload source file when needed.
+sourceBytes = 2 * 1024^2;
+fileInfo = dir(filePath);
+if isfile(filePath) && isscalar(fileInfo) && ...
+        ~fileInfo.isdir && fileInfo.bytes == sourceBytes
+    return
+end
+
+fileID = fopen(filePath, 'wb');
+if fileID == -1
+    error('checkTransferPanel:uploadSourceUnavailable', ...
+          'Could not create the upload source file.')
+end
+cleanup = onCleanup(@() fclose(fileID));
+bytesWritten = fwrite(fileID, zeros(1, sourceBytes, 'uint8'), 'uint8');
+if bytesWritten ~= sourceBytes
+    error('checkTransferPanel:uploadSourceWriteFailed', ...
+          'Could not write the complete upload source file.')
+end
+end
+
+function label = transferLabel(direction)
+% TRANSFERLABEL Return a readable transfer direction for the execution log.
+if strcmp(direction, 'upload')
+    label = 'Upload';
+else
+    label = 'Download';
+end
+end
+
 function html = sampleLinkHTML(sampleName, sampleIndex)
 % SAMPLELINKHTML Build an underlined blue clickable sample link.
 html = sprintf(['<html><head><style>', ...
@@ -166,9 +221,9 @@ html = sprintf(['<html><head><style>', ...
                 'event.preventDefault();', ...
                 'var data={sample:%d};', ...
                 'if(matlabHtmlComponent&&typeof matlabHtmlComponent.sendEventToMATLAB=== "function"){', ...
-                'matlabHtmlComponent.sendEventToMATLAB("sampleDownloadClick",data);', ...
+                'matlabHtmlComponent.sendEventToMATLAB("sampleTransferClick",data);', ...
                 '}else if(typeof sendEventToMATLAB=== "function"){', ...
-                'sendEventToMATLAB("sampleDownloadClick",data);', ...
+                'sendEventToMATLAB("sampleTransferClick",data);', ...
                 '}', ...
                 '}', ...
                 'link.addEventListener("click",notifyClick);', ...
