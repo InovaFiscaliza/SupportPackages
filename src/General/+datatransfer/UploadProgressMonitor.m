@@ -23,6 +23,10 @@ classdef UploadProgressMonitor < matlab.net.http.ProgressMonitor
             obj.PayloadBytes = double(payloadBytes);
         end
 
+        function done(~)
+            % DONE The file provider reports payload progress directly.
+        end
+
         function reportPayloadBytes(obj, transferredBytes)
             % REPORTPAYLOADBYTES Publish the cumulative source-file bytes read.
             arguments
