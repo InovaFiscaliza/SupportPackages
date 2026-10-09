@@ -18,3 +18,5 @@ tests/auth/*.har
 tests/auth/*.log
 tests/auth/*.bin
 tests/auth/*.chunk
+tests/transfers/temp/
+tests/transfers/target/

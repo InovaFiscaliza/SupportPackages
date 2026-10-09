@@ -13,11 +13,11 @@ projectFolder = fileparts(fileparts(mFilePath));
 addpath(fullfile(projectFolder, 'src', 'General'))
 addpath(mFilePath)
 
-% Reset the harness runtime folders so the panel starts without transfer history.
+% Initialize the harness runtime folders.
 tempPath = fullfile(mFilePath, 'temp');
 targetPath = fullfile(mFilePath, 'target');
-resetFolder(tempPath)
-resetFolder(targetPath)
+ensureFolder(tempPath)
+ensureFolder(targetPath)
 
 sampleNames = {'sample1.bin', 'sample2.bin', 'sample3.bin', 'sample4.bin'};
 sampleLabels = sampleNames;
@@ -148,15 +148,6 @@ if ~isfolder(folderPath)
     end
 end
 end
-
-function resetFolder(folderPath)
-% RESETFOLDER Clear and recreate a harness runtime folder.
-if isfolder(folderPath)
-    rmdir(folderPath, 's')
-end
-ensureFolder(folderPath)
-end
-
 
 function html = sampleLinkHTML(sampleName, sampleIndex)
 % SAMPLELINKHTML Build an underlined blue clickable sample link.
