@@ -3,10 +3,11 @@
 Esta pasta contém o harness manual de UI e o dublê de teste de
 `src/General/+ui/TransferPanel` e `src/General/+datatransfer/TransferManager`.
 
-Os harnesses desta pasta não validam o transporte real de uploads, o preflight
-HTTP ou o comportamento do servidor. Os contratos dos protocolos e de segurança
-estão no [README do pacote `datatransfer`](../../src/General/+datatransfer/README.md);
-os harnesses de upload permanecem na validação deferida da Fase 10.
+Os harnesses desta pasta cobrem o transporte de download e o fluxo Tus do
+serviço LAN temporário descrito na Fase 10 do plano. Eles não validam upload
+raw, multipart, autenticação F5 ou resultados ambíguos de uploads one-shot.
+Os contratos dos protocolos e de segurança estão no
+[README do pacote `datatransfer`](../../src/General/+datatransfer/README.md).
 
 Ela também contém harnesses visuais isolados para os avatares. O painel usa
 `pingTransferAvatar.html`; `orbitDownloadAvatar.html` é uma alternativa visual
@@ -27,7 +28,9 @@ de arquivos.
 | [`checkOrbitDownloadHtml.m`](checkOrbitDownloadHtml.m) | Harness visual opcional de `orbitDownloadAvatar.html`, com progresso agregado e órbita. |
 | [`checkPingTransferHtml.m`](checkPingTransferHtml.m) | Testa o recurso `uihtml` `pingTransferAvatar.html` com IDs, taxas, progresso e direção por transferência. |
 | [`checkTransferPanelPausedAvatarRate.m`](checkTransferPanelPausedAvatarRate.m) | Confirma que downloads pausados chegam ao avatar com taxa zero. |
-| [`checkDownloadHttp.m`](checkDownloadHttp.m) | Faz um teste rápido do transporte HTTP público, do fallback de nome de arquivo e do isolamento de cookies por host exato. |
+| [`checkDownloadHttp.m`](checkDownloadHttp.m) | Testa o transporte HTTP sem autenticação usando `test.txt` no serviço LAN, o fallback de nome e o isolamento de cookies. |
+| [`checkUploadPreflight.m`](checkUploadPreflight.m) | Testa seleção Tus com respostas HTTP simuladas, inclusive sem o cabeçalho `Allow`. |
+| [`checkUploadHttp.m`](checkUploadHttp.m) | Faz upload Tus real no serviço LAN e compara os bytes recuperados com a origem. |
 | [`TransferPanelFakeTransfer.m`](TransferPanelFakeTransfer.m) | Simula o objeto de transferência exigido por `ui.TransferPanel`. |
 | [`TransferManagerFakeTransfer.m`](TransferManagerFakeTransfer.m) | Simula uma transferência síncrona para o contrato do manager. |
 
@@ -208,11 +211,30 @@ Para verificar a taxa transmitida quando um download é pausado:
 report = checkTransferPanelPausedAvatarRate;
 ```
 
-Para executar o teste rápido do transporte público:
+Para executar o teste rápido do transporte HTTP sem autenticação:
 
 ```matlab
 report = checkDownloadHttp;
 ```
+
+Para verificar a seleção de protocolo Tus sem rede:
+
+```matlab
+report = checkUploadPreflight;
+```
+
+Para executar o upload Tus real e a verificação byte a byte:
+
+```matlab
+report = checkUploadHttp;
+```
+
+Esses dois harnesses HTTP usam o serviço LAN temporário: Tus em
+`http://containerhost.hv:8080/upload/` e arquivos em
+`http://localhost:8080/files/`. `checkUploadHttp` cria um nome único e deixa
+o arquivo remoto no servidor; remove apenas arquivos locais temporários.
+O arquivo `http://localhost:8080/files/test.txt` confirma que o servidor de
+download está ativo. Esses testes não substituem a validação autenticada do F5.
 
 Para executar o teste isolado do manager:
 

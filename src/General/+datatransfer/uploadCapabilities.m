@@ -80,7 +80,8 @@ if ~isempty(optionsResponse)
     isTusAdvertised = any(strcmp(versions, '1.0.0')) && ...
                       any(strcmpi(extensions, 'creation'));
     hasAllow = ~isempty(result.AllowedMethods);
-    optionsInconclusive = ismember(optionsStatusCode, [405, 501]) || ~hasAllow;
+    optionsInconclusive = ismember(optionsStatusCode, [405, 501]) || ...
+                          (~hasAllow && ~isTusAdvertised);
     if ~optionsInconclusive && (optionsStatusCode < 200 || optionsStatusCode >= 300)
         error('datatransfer:uploadCapabilities:unexpectedOptionsStatus', ...
               'OPTIONS capability request returned HTTP %d.', optionsStatusCode)

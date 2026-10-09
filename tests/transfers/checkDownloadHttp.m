@@ -1,5 +1,5 @@
 function report = checkDownloadHttp
-% CHECKDOWNLOADHTTP Smoke-test public HTTP transport and filename rules.
+% CHECKDOWNLOADHTTP Smoke-test unauthenticated HTTP transport and filename rules.
 
 mFilePath = fileparts(mfilename('fullpath'));
 projectFolder = fileparts(fileparts(mFilePath));
@@ -12,6 +12,7 @@ report = struct('FallbackName', '', ...
                 'TransferredBytes', [], ...
                 'LocalPath', '', ...
                 'UsedAuthentication', false);
+testFileURL = 'http://localhost:8080/files/test.txt';
 
 [report.FallbackName, isUseful] = datatransfer.transferFileName('https://example.com/', 'a1b2c3d4');
 assert(~isUseful)
@@ -23,13 +24,15 @@ assert(strcmp(report.ContentDispositionName, 'report final.bin'))
 
 session = ws.auth.F5Session('https://fiscalizacao.anatel.gov.br/rffusion/api/users/login');
 cleanupSession = onCleanup(@() delete(session)); %#ok<NASGU>
-context = session.getRequestContext('https://httpbin.org/bytes/1024');
+context = session.getRequestContext(testFileURL);
 assert(~context.AuthenticationEligible)
 assert(isempty(context.CookieHeader))
 
-responseResult = datatransfer.sendHTTPRequest('https://httpbin.org/bytes/1024', context, 'HEAD');
+responseResult = datatransfer.sendHTTPRequest(testFileURL, context, 'GET');
 report.StatusCode = double(responseResult.Response.StatusCode);
 assert(report.StatusCode == 200)
+expectedBytes = numel(responseResult.Response.Body.Data);
+assert(expectedBytes > 0)
 
 runtimeFolder = tempname;
 mkdir(runtimeFolder)
@@ -37,7 +40,7 @@ cleanupFolder = onCleanup(@() removeFolder(runtimeFolder)); %#ok<NASGU>
 mkdir(fullfile(runtimeFolder, 'temp'))
 mkdir(fullfile(runtimeFolder, 'target'))
 request = struct('Direction', 'download', ...
-                 'URL', 'https://httpbin.org/bytes/1024', ...
+                 'URL', testFileURL, ...
                  'TaskID', 'probe1234', ...
                  'TempFolder', fullfile(runtimeFolder, 'temp'), ...
                  'LocalPath', fullfile(runtimeFolder, 'target', 'public.bin'), ...
@@ -53,7 +56,7 @@ report.TransferredBytes = result.TransferredBytes;
 report.LocalPath = result.LocalPath;
 report.UsedAuthentication = result.NeedsAuthentication;
 assert(result.Success)
-assert(report.TransferredBytes == 1024)
+assert(report.TransferredBytes == expectedBytes)
 assert(isfile(report.LocalPath))
 assert(~report.UsedAuthentication)
 end

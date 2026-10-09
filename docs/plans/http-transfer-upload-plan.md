@@ -1,6 +1,6 @@
 # Plan: HTTP content transfer management (download + upload)
 
-Status: **revision 3 approved for T0, P0, and P1-P9; Phase 10 runtime validation remains deferred and unauthorized**.
+Status: **revision 3 approved; Phase 10 LAN/Tus validation authorized and in progress; protected F5 validation remains deferred**.
 Audience: coding agents and reviewers.
 
 This plan turns the download subsystem (`download.DownloadManager`,
@@ -803,23 +803,47 @@ DoD: static checks. Manual runs are in Phase 10.
   README if still relevant.
 - Update the repository memory note.
 
-### Phase 10 — Deferred validation (after the backend is configured)
+### Phase 10 — Runtime validation (LAN/Tus subset authorized)
 
-Start only when the nginx/tus endpoints and the protected F5 upload route
-exist.
+The supplied unauthenticated LAN service enables download and Tus checks.
+These checks do not replace protected F5 validation or the unavailable
+one-shot upload backends.
 
-1. Backend and F5 checks:
+Temporary test service:
+
+- Tus creation endpoint: `http://containerhost.hv:8080/upload/`.
+- Download health check: `http://localhost:8080/files/test.txt`.
+- A completed upload is available at `http://localhost:8080/files/<FileName>`.
+- No authentication is configured. Tests use an empty cookie context.
+- `checkUploadHttp` uses a unique file name and leaves the uploaded test file
+  on the service; it cleans only local temporary files.
+
+Observed setup evidence (2026-10-07): `GET /files/test.txt` returned HTTP 200
+with 5 bytes. `OPTIONS /upload/` returned HTTP 200 with `Tus-Version: 1.0.0`,
+`Tus-Extension` including `creation`, and `Tus-Max-Size: 2147483648`; it omitted
+`Allow`. `uploadCapabilities` now accepts advertised Tus creation capability
+without `Allow`. These endpoint probes confirm setup only; MATLAB harness
+reports remain pending.
+
+1. LAN checks:
+   - `checkDownloadHttp` fetches `test.txt` through the download worker.
+   - `checkUploadPreflight` verifies canned Tus capability responses, including
+     a valid Tus response without `Allow`.
+   - `checkUploadHttp` discovers Tus, uploads multiple chunks through
+     `backgroundPool`/`DataQueue`, and verifies downloaded bytes match.
+   - These checks do not validate raw `PUT`, multipart `POST`, ambiguous
+     one-shot outcomes, or an interrupted-upload recovery.
+2. Protected backend and F5 checks remain deferred:
    - F5 responses without a cookie for `OPTIONS`, `POST`, `PUT`, and `PATCH`
      on the protected host (expected: `302 /my.policy`).
    - With a cookie: whether the APM forwards `OPTIONS`, buffers request
      bodies, or imposes size limits.
-   - Whether the backend `client_max_body_size` matches `MaxUploadBytes`.
-2. Write the new harnesses (`checkUploadPreflight`, `checkUploadHttp`) and
-   extend the existing ones with the cases recorded in the Phase 2–8 DoDs.
-   Follow §8.
-3. Run the full matrix in §8, including the manual `F5BrowserTestApp`
-   upload flow.
-4. Fix the defects found, then mark this plan **implemented**.
+   - Whether the protected backend limit matches `MaxUploadBytes`.
+   - Manual `F5BrowserTestApp` upload flow.
+3. Run the LAN checks and the non-network harnesses from §8 that are available.
+   Record skipped protected-backend checks explicitly.
+4. Fix defects found in the authorized checks. Do not mark Phase 10 complete
+   until the protected-backend and remaining protocol checks pass.
 
 ---
 
@@ -832,9 +856,10 @@ exist.
 | Panel UI, controls per resumability | `checkTransferPanel` (manual) | No |
 | Source/destination resolution per mode | `checkTransferPanelDestination` | No |
 | Avatar protocol | `checkPingTransferHtml` (manual) | No |
-| Download transport | `checkDownloadHttp` | Public |
-| Preflight selection | `checkUploadPreflight` | Mostly no |
-| Upload transport, uncertain POST outcomes, confirmed tus offsets, ProgressMonitor/DataQueue in `backgroundPool` | `checkUploadHttp` | Public + backend |
+| Download transport and service health | `checkDownloadHttp` | LAN |
+| Preflight selection | `checkUploadPreflight` | Canned responses |
+| Tus upload, confirmed offsets, `DataQueue` callbacks in `backgroundPool`, and byte-for-byte retrieval | `checkUploadHttp` | LAN |
+| Raw/multipart upload and uncertain one-shot outcomes | Deferred backend harness | Backend required |
 | F5 end-to-end | `F5BrowserTestApp` (manual) | F5 + MFA |
 
 Harnesses that do not require UI return a `report` struct with one logical
