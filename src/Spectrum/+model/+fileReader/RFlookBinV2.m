@@ -52,9 +52,9 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileFormat, fileName)
     end
 
     % Leitura dos principais metadados escritos em arquivo:
-    bitsPerSample = rawData(16);                                            % 8 | 16 | 32 (bits)
-    attModeId     = rawData(17);                                            % 0 (manual) | 1 (auto)
-    gpsModeId     = rawData(18);                                            % 0 (manual) | 1 (Built-in) | 2 (External)
+    bitsPerSample = rawData(16); % 8 | 16 | 32 (bits)
+    attModeId     = rawData(17); % 0 (manual) | 1 (auto)
+    gpsModeId     = rawData(18); % 0 (manual) | 1 (Built-in) | 2 (External)
     metaJsonSize  = typecast(rawData(19:22), 'uint32');
     meta          = jsondecode(native2unicode(rawData(23:22+metaJsonSize)));
 
@@ -88,7 +88,7 @@ function specData = Fcn_MetaDataReader(specData, rawData, fileFormat, fileName)
     % Número de bytes do cabeçalho dos blocos de espectro:
     % (a) blockOffset1: gps e atenuação
     % (b) blockOffset2: RefLevel
-    if     gpsModeId && attModeId
+    if gpsModeId && attModeId
         blockOffset1 = 10;
     elseif gpsModeId
         blockOffset1 =  9;
@@ -160,7 +160,6 @@ end
 
 %-------------------------------------------------------------------------%
 function specData = Fcn_SpecDataReader(specData, rawData, fileFormat)
-
     if isempty(specData)
         return
     end
@@ -258,25 +257,49 @@ end
 
 %-------------------------------------------------------------------------%
 function newArray = newArrayParsing(processedArray, bitsPerSample, offset, dataPoints, fileFormat)
-    newArray(:,1) = newArrayDecompress(processedArray(1:dataPoints), bitsPerSample, offset);
+    % Em relação ao conteúdo, os formatos 'RFlookBin v.2/1' e 'RFlookBin v.2/3'
+    % incluem apenas o nível; os formatos 'RFlookBin v.2/2' e 'RFlookBin v.2/4' 
+    % incluem nível, azimute e nota.
+    % • Nível pode ser representado como uint8 (8 bits, com offset), int16 
+    %   (16 bits, x100) ou single (32 bits); 
+    % • Azimute e a nota de qualidade são representados como uint16 (x100).
+    %
+    % Em relação à compactação, os formatos 'RFlookBin v.2/1' e 'RFlookBin v.2/2' 
+    % utilizam GZIP do ByteStream. Portanto, ao descompactar, o vetor já tem o 
+    % tipo do nível (uint8, int16 ou single). 
+    % 
+    % Por outro lado, os formatos 'RFlookBin v.2/3' e 'RFlookBin v.2/4' utilizam 
+    % GZIP do vetor em bytes (typecast para uint8). Portanto, ao descompactar, é 
+    % preciso aplicar typecast para recuperar o nível.
 
-    if ismember(fileFormat, {'RFlookBin v.2/2', 'RFlookBin v.2/4'})
+    isByteStream = ismember(fileFormat, {'RFlookBin v.2/1', 'RFlookBin v.2/2'});
+    hasAzimuth   = ismember(fileFormat, {'RFlookBin v.2/2', 'RFlookBin v.2/4'});
+
+    if isByteStream
+        levelBlockSize   = dataPoints;
+        azimuthBlockSize = 16*dataPoints / double(bitsPerSample);
+    else
+        levelBlockSize   = dataPoints * double(bitsPerSample) / 8;
+        azimuthBlockSize = 2*dataPoints;
+    end
+
+    level = processedArray(1:levelBlockSize);
+    if ~isByteStream
         switch bitsPerSample
-            case  8
-                kk = 2;
             case 16
-                kk = 1;
+                level = typecast(level, 'int16');
             case 32
-                kk = 1/2;
+                level = typecast(level, 'single');
         end
+    end
+    newArray(:,1) = newArrayDecompress(level, bitsPerSample, offset);
 
-        idx11 = dataPoints+1;
-        idx12 = (kk+1)*dataPoints;
-        idx21 = idx12+1;
-        idx22 = numel(processedArray);
-        
-        newArray(:,2) = newArrayDecompress(typecast(processedArray(idx11:idx12), 'uint16'), 16, -1);
-        newArray(:,3) = newArrayDecompress(typecast(processedArray(idx21:idx22), 'uint16'), 16, -1);
+    if hasAzimuth
+        azimuthIndex = levelBlockSize + (1:azimuthBlockSize);
+        qualityIndex = azimuthIndex(end) + (1:azimuthBlockSize);
+
+        newArray(:,2) = newArrayDecompress(typecast(processedArray(azimuthIndex), 'uint16'), 16, -1);
+        newArray(:,3) = newArrayDecompress(typecast(processedArray(qualityIndex), 'uint16'), 16, -1);
     end
 end
 
@@ -330,7 +353,6 @@ end
 
 %-------------------------------------------------------------------------%
 function specificTime = observationTime(blockArray)
-
     specificTime  = datetime(double(blockArray(1))+2000, ...                % Year
                              double(blockArray(2)),      ...                % Month
                              double(blockArray(3)),      ...                % Date

@@ -213,7 +213,10 @@ classdef (Abstract) gpsLib
                 gpsSummary.stdRange       = stdRange;
                 [cityName, ~, cityInfo]   = gpsLib.findNearestCity(gpsSummary, 'API/IBGE');
                 gpsSummary.Location       = cityName;
-                gpsSummary.LocationSource = cityInfo.source;
+
+                if isstruct(cityInfo) && isfield(cityInfo, 'source')
+                    gpsSummary.LocationSource = cityInfo.source;
+                end
             end
         end
 
