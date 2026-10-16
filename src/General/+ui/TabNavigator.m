@@ -209,8 +209,10 @@ classdef TabNavigator < handle
         %-----------------------------------------------------------------%
         function deletePopUpContainer(obj, appHandle)
             if ~isempty(appHandle) && isprop(appHandle, 'popupContainer') && ~isempty(appHandle.popupContainer) && isvalid(appHandle.popupContainer)
-                auxDockAppName = appHandle.popupContainer.UserData.auxDockAppName;
-                deleteContextMenu(obj, appHandle.UIFigure, auxDockAppName)
+                if isstruct(appHandle.popupContainer.UserData) && isfield(appHandle.popupContainer.UserData, 'auxDockAppName')
+                    auxDockAppName = appHandle.popupContainer.UserData.auxDockAppName;
+                    deleteContextMenu(obj, appHandle.UIFigure, auxDockAppName)
+                end
 
                 delete(appHandle.popupContainer)
                 appHandle.popupContainer = [];
