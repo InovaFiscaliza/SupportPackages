@@ -90,7 +90,7 @@ classdef (Abstract) gpsLib
             cityInfo = '';
         
             try
-                cityName = Get(locationObj, refPoint, falltime, 'bigdatacloud', isRefPointInBrazil);
+                cityName = Get(locationObj, refPoint, false, 'bigdatacloud', isRefPointInBrazil);
                 cityInfo = struct('source', 'API');
         
                 if isRefPointInBrazil
