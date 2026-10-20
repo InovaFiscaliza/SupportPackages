@@ -14,18 +14,9 @@ function specData = CellPlanDBM(specData, fileName, readType)
         readType (1,:) char {mustBeMember(readType, {'MetaData', 'SpecData', 'SingleFile'})}  = 'SingleFile'
     end
 
-    % Garante retorno ao diretório original mesmo em caso de erro.
-    initFolder = pwd;
-    cleanupCD  = onCleanup(@() cd(initFolder));
-
-    % Localiza a subpasta com a DLL e ajusta o PATH do Windows para que
-    % as dependências de runtime da CelZip64 sejam encontradas.
+    % Localiza a subpasta com a DLL. Ela só será usada se o arquivo precisar
+    % ser descomprimido; arquivos .dBm brutos podem ser lidos sem a DLL.
     dllFolder = fullfile(fileparts(mfilename('fullpath')), 'CellPlanDBM');
-    cd(dllFolder)
-
-    prevPath    = getenv('PATH');
-    cleanupPath = onCleanup(@() setenv('PATH', prevPath));
-    setenv('PATH', [dllFolder pathsep prevPath]);
 
     % Descomprime o arquivo caso necessário e retorna o path legível.
     [readableFile, cleanupTemp] = Fcn_DecompressIfNeeded(fileName, dllFolder);
@@ -67,8 +58,34 @@ function [readableFile, cleanupTemp] = Fcn_DecompressIfNeeded(fileName, dllFolde
     end
 
     % Arquivo não legível diretamente: precisa da DLL de descompressão.
+    % CelZip64.dll é uma biblioteca Windows; não tente carregá-la no Linux.
+    if ~ispc
+        error('model:fileReader:CellPlanDBM:UnsupportedCompression', ...
+            ['O arquivo CelPlan está compactado e requer CelZip64.dll para ' ...
+             'descompressão. Arquivos .dBm não compactados podem ser lidos nesta plataforma.'])
+    end
+
+    dllPath = fullfile(dllFolder, 'CelZip64.dll');
+    if ~isfile(dllPath)
+        error('model:fileReader:CellPlanDBM:MissingDecompressionLibrary', ...
+            'Biblioteca de descompressão não encontrada: %s', dllPath)
+    end
+
+    % Disponibiliza o protótipo MATLAB e dependências da DLL somente durante
+    % a descompressão, sem mudar o diretório de trabalho do usuário.
+    pathEntries = strsplit(path, pathsep);
+    addedProtoPath = ~any(strcmpi(pathEntries, dllFolder));
+    if addedProtoPath
+        addpath(dllFolder)
+        cleanupProtoPath = onCleanup(@() rmpath(dllFolder));
+    end
+
+    prevPath = getenv('PATH');
+    cleanupPath = onCleanup(@() setenv('PATH', prevPath));
+    setenv('PATH', [dllFolder pathsep prevPath]);
+
     if ~libisloaded('CelZip64')
-        loadlibrary(fullfile(dllFolder, 'CelZip64.dll'), @CelZip64Proto);
+        loadlibrary(dllPath, @CelZip64Proto);
     end
 
     % Arquivo comprimido: descomprime para arquivo temporário.
