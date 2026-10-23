@@ -13,7 +13,7 @@ classdef TabNavigator < handle
     % - Cada botão de estado deve possuir um único TAG.
     
     % - Os arquivos .MLAPP dos apps auxiliares devem ser exportados em arquivos
-    %   .M, seguindo métrica estabelecida em "preCompile.m".
+    %   .M, seguindo métrica estabelecida em "appEngine.generateExportedApps".
     
     % - A primeira aba do TabGroup deve conter um módulo construído
     %   diretamente no app principal. Dessa forma, essa primeira aba não
