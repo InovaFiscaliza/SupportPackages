@@ -1,7 +1,8 @@
-function generateExportedApps(appName, prjInfo)
+function generateExportedApps(appName, prjInfo, appNames)
     arguments
-        appName char {mustBeMember(appName, {'appAnalise', 'appColeta', 'monitorRNI', 'monitorSPED', 'SCH'})}
-        prjInfo matlab.project.Project = matlab.project.Project.empty
+        appName  char {mustBeMember(appName, {'appAnalise', 'appColeta', 'monitorRNI', 'monitorSPED', 'SCH'})}
+        prjInfo  matlab.project.Project = matlab.project.Project.empty
+        appNames cell {mustBeText} = {}
     end
 
     % O MATLAB não permite renderizar um .MLAPP dentro de um container de
@@ -37,6 +38,9 @@ function generateExportedApps(appName, prjInfo)
     %
     % As propriedades da uifigure (Position, Color, callbacks etc) são 
     % mantidas, mas aplicadas apenas quando o app cria a sua própria figura.
+    %
+    % Sem "appNames", todos os .MLAPP do projeto são convertidos. Caso contrário,
+    % apenas os listados (nomes das classes, como {'winConfig'}).
 
     if isempty(prjInfo)
         prjInfo = currentProject;
@@ -54,6 +58,18 @@ function generateExportedApps(appName, prjInfo)
     isMainApp  = strcmpi({MLAPPFiles.folder}, srcFolder);
     if nnz(isMainApp) ~= 1
         error('generateExportedApps:MainAppNotFound', 'Esperado um único .MLAPP principal em "%s".', srcFolder)
+    end
+
+    if ~isempty(appNames)
+        classNames  = replace({MLAPPFiles.name}, '.mlapp', '');
+        missingApps = setdiff(appNames, classNames);
+        if ~isempty(missingApps)
+            error('generateExportedApps:AppNotFound', 'Não encontrado .MLAPP para: %s.', strjoin(missingApps, ', '))
+        end
+
+        isSelected = ismember(classNames, appNames);
+        MLAPPFiles = MLAPPFiles(isSelected);
+        isMainApp  = isMainApp(isSelected);
     end
     
     for ii = 1:numel(MLAPPFiles)
