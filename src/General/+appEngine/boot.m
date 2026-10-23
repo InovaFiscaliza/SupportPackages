@@ -55,6 +55,11 @@ end
 
 %-------------------------------------------------------------------------%
 function initializeUI(app)
+    % From R2025a onward, figures inherit the MATLAB/OS theme, but the apps' layout was designed for the light theme.
+    if isprop(app, 'UIFigure') && isgraphics(app.UIFigure, 'figure') && isprop(app.UIFigure, 'Theme')
+        app.UIFigure.Theme = 'light';
+    end
+
     if isprop(app, 'AppName')
         app.AppName.Text = sprintf('%s v. %s\n<font style="font-size: 9px;">%s</font>', class.Constants.appName, class.Constants.appVersion, matlabRelease.Release);
     end
