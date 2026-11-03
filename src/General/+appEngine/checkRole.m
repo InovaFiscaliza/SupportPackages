@@ -1,10 +1,24 @@
 function checkRole(app, role)
     arguments
         app  {mustBeA(app, 'matlab.apps.AppBase')}
-        role {mustBeMember(role, {'mainApp', 'secondaryApp', 'secondaryDockApp'})}
+        role {mustBeMember(role, {'launcher', 'mainApp', 'secondaryApp', 'secondaryDockApp', 'mainAppMobile', 'secondaryAppMobile'})}
     end
 
     switch role
+        case 'launcher'
+            requiredProps = {
+                'UIFigure';             % matlab.ui.Figure
+                'jsBackDoor';           % matlab.ui.control.HTML
+                'rootFolder';           % char
+                'renderCount';          % double
+                'executionMode';        % char {mustBeMember(executionMode, {'built-in', 'desktopApp', 'webApp'})}
+                'progressDialog'        % ui.ProgressDialog
+            };
+            requiredMethods = {
+                'ipcLauncherJSEventsHandler'
+            };
+
+        % Versão "DESKTOP" do aplicativo
         case 'mainApp'
             requiredProps = {
                 'UIFigure';             % matlab.ui.Figure
@@ -60,6 +74,33 @@ function checkRole(app, role)
                 'mainApp';              % matlab.apps.AppBase (HANDLE)
                 'callingApp'            % matlab.apps.AppBase (HANDLE)
             };
+            requiredMethods = {};
+
+        % Versão "MOBILE" do aplicativo
+        case 'mainAppMobile'
+            requiredProps = {
+                'UIFigure';             % matlab.ui.Figure
+                'GridLayout';           % matlab.ui.container.GridLayout
+                'tabGroupController';   % []
+                'jsBackDoor';           % matlab.ui.control.HTML
+                'General';              % struct
+                'rootFolder';           % char
+                'renderCount';          % double
+                'executionMode';        % char {mustBeMember(executionMode, {'built-in', 'desktopApp', 'webApp'})}
+                'progressDialog';       % ui.ProgressDialog
+                'popupContainer'        % double.empty → matlab.ui.container.Panel
+            };
+            requiredMethods = {
+                'ipcMainJSEventsHandler';
+                'applyJSCustomizations';
+                'loadConfigurationFile';
+                'initializeAppProperties';
+                'initializeUIComponents';
+                'applyInitialLayout'
+            };
+
+        otherwise % 'secondaryAppMobile'
+            requiredProps   = {};
             requiredMethods = {};
     end
 

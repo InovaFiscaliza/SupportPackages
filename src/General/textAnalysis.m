@@ -25,7 +25,7 @@ classdef (Abstract) textAnalysis
 
             text = lower(rawWords);
             text = replace(text, textAnalysis.accentedChars, textAnalysis.plainChars);
-            text = regexprep(text, '[^a-z0-9 ]', ' ');
+            text = regexprep(text, '[^a-z0-9 -]', ' ');
 
             if ~isempty(stopWordsLanguage)
                 text = regexprep(text, ['\<(' strjoin(textAnalysis.stopWords.(stopWordsLanguage), '|') ')\>'], ' ');

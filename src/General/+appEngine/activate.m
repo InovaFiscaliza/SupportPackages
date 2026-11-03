@@ -1,7 +1,7 @@
 function activate(app, role, varargin)
     arguments
         app  {mustBeA(app, 'matlab.apps.AppBase')}
-        role {mustBeMember(role, {'mainApp', 'secondaryApp'})}
+        role {mustBeMember(role, {'launcher', 'mainApp', 'secondaryApp', 'mainAppMobile', 'secondaryAppMobile'})}
     end
 
     arguments (Repeating)
@@ -11,7 +11,34 @@ function activate(app, role, varargin)
     drawnow
 
     switch role
-        case 'mainApp'
+        case 'launcher'
+            if isempty(app.progressDialog)
+                app.progressDialog = ui.ProgressDialog(app.jsBackDoor);
+            end
+
+            if ~app.renderCount
+                MFilePath   = varargin{1};
+                parpoolFlag = varargin{2};
+
+                % Essa propriedade registra o tipo de execução da aplicação, podendo
+                % ser: 'built-in', 'desktopApp' ou 'webApp'.
+                app.executionMode = appEngine.util.ExecutionMode(app.UIFigure);
+
+                % Identifica o local deste arquivo .MLAPP, caso se trate das versões 
+                % "built-in" ou "webapp", ou do .EXE relacionado, caso se trate da
+                % versão executável (neste caso, o ctfroot indicará o local do .MLAPP).
+                appName = class.Constants.appName;
+                app.rootFolder = appEngine.util.RootFolder(appName, MFilePath);
+
+                % Inicia módulo de operação paralelo...
+                if parpoolFlag
+                    parpoolCheck()
+                end
+            end
+
+            requestVisibilityChange(app.progressDialog, 'hidden', 'locked')
+
+        case {'mainApp', 'mainAppMobile'}
             if isempty(app.progressDialog)
                 app.progressDialog = ui.ProgressDialog(app.jsBackDoor);
             end
@@ -28,7 +55,7 @@ function activate(app, role, varargin)
                 % Customizações...
                 JSCustomizations(app, role)
 
-                if ~strcmp(app.executionMode, 'webApp')
+                if ~strcmp(app.executionMode, 'webApp') && isprop(app, 'FigurePosition')
                     app.FigurePosition.Visible = 1;
                     appEngine.util.setWindowMinSize(app.UIFigure, class.Constants.windowMinSize)
                 end
@@ -53,7 +80,7 @@ function activate(app, role, varargin)
                 JSCustomizations(app, role)
             end
 
-            if app.tabGroupController.inlineSVG
+            if isprop(app, 'tabGroupController') && ~isempty(app.tabGroupController) && app.tabGroupController.inlineSVG
                 convertToInlineSVG(app.tabGroupController, app.jsBackDoor)
             end
 
@@ -76,7 +103,7 @@ end
 %-------------------------------------------------------------------------%
 function JSCustomizations(app, role)
     switch role
-        case 'mainApp'
+        case {'mainApp', 'mainAppMobile'}
             sendEventToHTMLSource(app.jsBackDoor, 'startup', app.executionMode);
 
         case 'secondaryApp'

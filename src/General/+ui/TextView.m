@@ -159,9 +159,9 @@ classdef (Abstract) TextView
             try
                 appRole = struct(evalin('base', appHandleNameInBase)).Role;
                 switch appRole
-                    case 'mainApp'
+                    case {'mainApp', 'mainAppMobile'}
                         ipcJSEventHandlerName = 'ipcMainJSEventsHandler';    
-                    case 'secondaryApp'
+                    case {'secondaryApp', 'secondaryAppMobile'}
                         ipcJSEventHandlerName = 'ipcSecondaryJSEventsHandler';    
                     otherwise
                         error('ui:TextView:UnexpectedAppRole', 'Unexpected app role "%s"', appRole)

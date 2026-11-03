@@ -18,6 +18,7 @@ function setup(htmlComponent) {
     if (!appWindow.app) {
         appWindow.app = {
             staticBaseURL: new URL(".", window.document.baseURI).href,
+            staticResourceURL: "",
             executionMode: null,
             matlabJSBridge: htmlComponent,
             ui: [], 
@@ -46,7 +47,7 @@ function setup(htmlComponent) {
 
     if (!appWindow.document._blockUIInstalled) {
         appWindow.document._blockUIInstalled = true;
-        createUIBlocker(appWindow, 'matlab-js-bridge-ui-blocker', 901);
+        createUIBlocker(appWindow, 'matlab-js-bridge-ui-blocker');
     }
 
     injectBaseStyles();
@@ -92,16 +93,16 @@ function setup(htmlComponent) {
         const executionMode = customEvent.Data;
         appWindow.app.executionMode = executionMode;
 
-        if (!appWindow.document._customWebAppListenersInstalled) {
-            appWindow.document._customWebAppListenersInstalled = true;
+        if (!hostWindow.document._customWebAppListenersInstalled) {
+            hostWindow.document._customWebAppListenersInstalled = true;
 
             if (executionMode === "webApp") {
-                appWindow.addEventListener("beforeunload", (event) => {
+                hostWindow.addEventListener("beforeunload", (event) => {
                     event.preventDefault();
                     event.returnValue = '';
                 });
 
-                appWindow.addEventListener("pagehide", (event) => {
+                hostWindow.addEventListener("pagehide", (event) => {
                     if (!event.persisted) {
                         htmlComponent.sendEventToMATLAB("unload");
                     }
@@ -347,18 +348,7 @@ function setup(htmlComponent) {
 
     /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("getNavigatorBasicInformation", function() {
-        const htmlEventName = "getNavigatorBasicInformation";
-        const htmlEventData = {
-            name: "BROWSER",
-            url: hostWindow.location.href,
-            platform: navigator.userAgentData?.platform || navigator.platform,
-            mobile: navigator.userAgentData?.mobile ?? isMobile(),
-            userAgent: navigator.userAgent,
-            vendor: navigator.vendor,
-            screen: (screen?.width && screen?.height) ? `${screen.width} x ${screen.height} pixels` : 'unknown'
-        };
-
-        htmlComponent.sendEventToMATLAB(htmlEventName, htmlEventData);
+        htmlComponent.sendEventToMATLAB("getNavigatorBasicInformation", getNavigatorBasicInformation());
     });
 
     /*---------------------------------------------------------------------------------*/
@@ -369,6 +359,7 @@ function setup(htmlComponent) {
             resourceUrl = resourceUrl.replace(resourceName, "{resourceName}");
         }
         
+        appWindow.app.staticResourceURL = resourceUrl;
         htmlComponent.sendEventToMATLAB("findResourceStaticURL", resourceUrl);
     });
 
@@ -757,7 +748,7 @@ function setup(htmlComponent) {
             boxShadow: '0 4px 24px rgba(0, 0, 0, 0.4)',
             zIndex: `${zBaseIndex}`,
             cursor: 'zoom-out',
-            borderRadius: '10px',
+            borderRadius: '8px',
             backgroundColor: 'rgb(255, 255, 255)'
         });
 
@@ -772,6 +763,134 @@ function setup(htmlComponent) {
         u.addEventListener('click', closeHighlight);
 
         appWindow.document.body.appendChild(highlight);
+    });
+
+    /*-----------------------------------------------------------------------------------
+        ## TEXT HIGHLIGHT ##
+        Cria um uiBlocker próprio (transparente, apenas bloqueia a interação com a tela ao
+        fundo) e um popup centralizado com imagem (opcional), conteúdo HTML e botão "X".
+        Cada <button> do conteúdo envia ao MATLAB o seu "id" e o "dataTag" do evento.
+    -----------------------------------------------------------------------------------*/
+    htmlComponent.addEventListener("textHighlight", function(customEvent) {
+        const { dataTag, imageUrl = '', title = '', width = 80, height = 60, html = '' } = customEvent.Data;
+
+        const blockerId = 'matlab-js-bridge-ui-blocker-text-highlight';
+        const popupId   = 'matlab-js-bridge-text-highlight';
+        appWindow.document.getElementById(blockerId)?.remove();
+        appWindow.document.getElementById(popupId)?.remove();
+
+        const zBaseIndex = 905;
+        const blocker = createUIBlocker(appWindow, blockerId, zBaseIndex);
+
+        const popup = appWindow.document.createElement('div');
+        popup.id = popupId;
+        popup.tabIndex = -1;
+        Object.assign(popup.style, {
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: `${width}%`,
+            height: `${height}%`,
+            boxSizing: 'border-box',
+            padding: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            borderRadius: '8px',
+            boxShadow: '0 4px 24px rgba(0, 0, 0, 0.4)',
+            backgroundColor: 'rgb(255, 255, 255)',
+            zIndex: `${zBaseIndex + 1}`
+        });
+
+        const closeTextHighlight = () => {
+            blocker.remove();
+            popup.remove();
+        };
+
+        const closeBtn = appWindow.document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.setAttribute('aria-label', 'Fechar');
+        closeBtn.innerHTML = '<svg viewBox="0 0 12 12" width="16" height="16"><path d="M9.09,1.5L6,4.59,2.91,1.5,1.5,2.91,4.59,6,1.5,9.08,2.91,10.5,6,7.41,9.09,10.5,10.5,9.08,7.41,6,10.5,2.91,9.09,1.5h0Z" fill="#616161"></path></svg>';
+        Object.assign(closeBtn.style, {
+            padding: '4px',
+            border: '0',
+            background: 'transparent',
+            cursor: 'pointer',
+            lineHeight: '0'
+        });
+        closeBtn.addEventListener('click', closeTextHighlight);
+
+        // Cabeçalho: imagem à esquerda e botão "X" à direita.
+        const header = appWindow.document.createElement('div');
+        Object.assign(header.style, {
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            flex: '0 0 auto',
+            minHeight: '24px',
+            userSelect: 'none'
+        });
+        popup.appendChild(header);
+
+        if (imageUrl) {
+            const image = appWindow.document.createElement('img');
+            image.src = appWindow.app.staticResourceURL ? appWindow.app.staticResourceURL.replace('{resourceName}', imageUrl) : imageUrl;
+            image.draggable = false;
+            Object.assign(image.style, { display: 'block', height: '48px', userSelect: 'none', pointerEvents: 'none' });
+            header.appendChild(image);
+        } else {
+            header.appendChild(appWindow.document.createElement('span'));
+        }
+        header.appendChild(closeBtn);
+
+        if (title) {
+            const titleElement = appWindow.document.createElement('div');
+            titleElement.textContent = title;
+            Object.assign(titleElement.style, {
+                flex: '0 0 auto',
+                textAlign: 'left',
+                fontWeight: 'bold',
+                fontSize: '16px',
+                overflowWrap: 'anywhere',
+                userSelect: 'none'
+            });
+            popup.appendChild(titleElement);
+        }
+
+        const scrollArea = appWindow.document.createElement('div');
+        Object.assign(scrollArea.style, {
+            flex: '1 1 auto',
+            minHeight: '0',
+            marginTop: '12px',
+            overflowX: 'hidden',
+            overflowY: 'auto',
+            overflowWrap: 'anywhere',
+            userSelect: 'text',
+            border: '1px solid #d9d9d9',
+            borderRadius: '8px 0 0 0',
+            padding: '10px'
+        });
+        popup.appendChild(scrollArea);
+
+        const content = appWindow.document.createElement('div');
+        content.innerHTML = html;
+        scrollArea.appendChild(content);
+
+        content.querySelectorAll('button').forEach(button => {
+            button.addEventListener('click', () => {
+                htmlComponent.sendEventToMATLAB("textHighlight", { id: button.id, dataTag });
+            });
+        });
+
+        appWindow.document.body.appendChild(popup);
+
+        [blocker, popup].forEach(element => {
+            element.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') closeTextHighlight();
+            });
+        });
+        popup.focus();
     });
 
     /*-----------------------------------------------------------------------------------
@@ -1298,6 +1417,19 @@ function setup(htmlComponent) {
     /*-----------------------------------------------------------------------------------
         ## FUNÇÕES ##
     -----------------------------------------------------------------------------------*/
+    function getNavigatorBasicInformation() {
+        return {
+            name: "BROWSER",
+            url: hostWindow.location.href,
+            platform: navigator.userAgentData?.platform || navigator.platform,
+            mobile: navigator.userAgentData?.mobile ?? isMobile(),
+            userAgent: navigator.userAgent,
+            vendor: navigator.vendor,
+            screen: (screen?.width && screen?.height) ? `${screen.width} x ${screen.height} pixels` : 'unknown'
+        };
+    }
+
+    /*---------------------------------------------------------------------------------*/
     function consoleLog(msg) {
         const now      = new Date();
         const hours    = String(now.getHours()).padStart(2, '0');
@@ -1840,10 +1972,8 @@ a, a:hover {
     /*---------------------------------------------------------------------------------*/
     window.requestAnimationFrame(() => {
         appWindow.requestAnimationFrame(() => {
-            const msg = 'DOM render cycle finished';
-            consoleLog(msg);
-
-            htmlComponent.sendEventToMATLAB('renderer');
+            htmlComponent.sendEventToMATLAB("renderer", getNavigatorBasicInformation());
+            consoleLog('DOM render cycle finished');
         });
     });
 }

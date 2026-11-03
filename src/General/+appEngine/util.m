@@ -69,7 +69,7 @@ classdef (Abstract) util
 
         %-----------------------------------------------------------------%
         function killingMATLABRuntime(executionMode)
-            if ismember(executionMode, {'desktopStandaloneApp', 'webapp'})
+            if ismember(executionMode, {'desktopStandaloneApp', 'webApp'})
                 pidMatlab = feature('getpid');
                 appEngine.util.OperationSystem('terminateProcessImmediately', pidMatlab)
             end        

@@ -1,7 +1,7 @@
 function boot(app, role, varargin)
     arguments
         app  {mustBeA(app, 'matlab.apps.AppBase')}
-        role {mustBeMember(role, {'mainApp', 'secondaryApp', 'secondaryDockApp'})}
+        role {mustBeMember(role, {'launcher', 'mainApp', 'secondaryApp', 'secondaryDockApp', 'mainAppMobile', 'secondaryAppMobile'})}
     end
 
     arguments (Repeating)
@@ -17,8 +17,8 @@ function boot(app, role, varargin)
     initializeUI(app)
 
     switch role
-        case 'mainApp'
-            appEngine.util.disableWarnings()            
+        case {'launcher', 'mainApp', 'mainAppMobile'}
+            appEngine.util.disableWarnings()
             appEngine.util.setWindowPosition(app.UIFigure)
             waitForDOMReady(role, app)
 
@@ -35,7 +35,7 @@ function boot(app, role, varargin)
                 waitForDOMReady(role, app)
             end
 
-        case 'secondaryDockApp'
+        case {'secondaryDockApp', 'secondaryAppMobile'}
             app.mainApp = varargin{1};
             app.callingApp = varargin{2};
 
@@ -89,10 +89,16 @@ end
 function initializeJSBridge(role, app)
     if isempty(app.jsBackDoor)
         app.jsBackDoor = uihtml(app.UIFigure, "Visible", "off");
+
+    elseif ~isempty(app.jsBackDoor.HTMLEventReceivedFcn)
+        % jsBackDoor compartilhado, já configurado pelo app que o criou (launcher).
+        return
     end
 
     switch role
-        case 'mainApp'
+        case 'launcher'
+            htmlEventReceivedFcn = @(~, evt)ipcLauncherJSEventsHandler(app, evt);
+        case {'mainApp', 'mainAppMobile'}
             htmlEventReceivedFcn = @(~, evt)ipcMainJSEventsHandler(app, evt);
         otherwise
             htmlEventReceivedFcn = @(~, evt)ipcSecondaryJSEventsHandler(app, evt);
