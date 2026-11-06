@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" role="img" aria-label="Transfer status">
+    <g fill="none" stroke="#909090" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M7 8.5 12 3.8l5 4.7M12 4v9"/>
+        <path d="M17 15.5 12 20.2 7 15.5M12 20v-9"/>
+    </g>
+    <g class="f5-transfer-upload" fill="none" stroke="#70ff70" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+        <circle class="f5-transfer-upload-orbit" cx="12" cy="12" r="9.5" stroke-dasharray="9 50"/>
+        <path d="M7 8.5 12 3.8l5 4.7M12 4v9"/>
+    </g>
+    <g class="f5-transfer-download" fill="none" stroke="#7070ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+        <circle class="f5-transfer-download-orbit" cx="12" cy="12" r="9.5" stroke-dasharray="9 50"/>
+        <path d="M17 15.5 12 20.2 7 15.5M12 20v-9"/>
+    </g>
+    <g class="f5-transfer-attention" style="display:none">
+        <circle cx="19" cy="5" r="4" fill="#ed695f" stroke="#333" stroke-width="1"/>
+        <path d="M19 2.9v2.5M19 6.7v.2" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/>
+    </g>
+</svg>

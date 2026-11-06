@@ -10,6 +10,7 @@ classdef TransferManager < handle
         PartialConflictPolicy (1,:) char = 'askInRow'
         MaxUploadBytes (1,1) double {mustBePositive} = 200 * 1024^2
         IncludeSilentTasks (1,1) logical = false
+        ActivityFcn = []
         SnapshotFcn = []
         TaskReorderedFcn = []
         CompletedFcn = []
@@ -1075,6 +1076,7 @@ classdef TransferManager < handle
             else
                 snapshot = taskOrSnapshot;
             end
+            invokeCallback(obj.ActivityFcn, snapshot)
             if ~obj.shouldNotifyPresentation(snapshot)
                 return
             end

@@ -2,7 +2,7 @@ function uiFigure = checkTransferPanel
 % CHECKTRANSFERPANEL Open the sample-link UI harness for ui.TransferPanel.
 %
 % The harness presents four download links and two upload links in the first
-% column, the ping transfer avatar in the second column, an execution log, and
+% column, a native transfer anchor in the second column, an execution log, and
 % a trash icon for deleting the local temp and target folders. Transfers use
 % TransferPanelFakeTransfer and do not perform network I/O.
 %
@@ -55,14 +55,32 @@ statusLabel = uilabel(mainLayout, ...
 statusLabel.Layout.Row = numel(sampleNames) + 1;
 statusLabel.Layout.Column = 1;
 
+transferButtonLayout = uigridlayout(mainLayout, [3, 1]);
+transferButtonLayout.Layout.Row = 1;
+transferButtonLayout.Layout.Column = 2;
+transferButtonLayout.RowHeight = {'1x', 24, '1x'};
+transferButtonLayout.ColumnWidth = {24};
+transferButtonLayout.RowSpacing = 0;
+transferButtonLayout.ColumnSpacing = 0;
+transferButtonLayout.Padding = [0, 0, 0, 0];
+transferButtonLayout.BackgroundColor = mainLayout.BackgroundColor;
+
+transferButton = uibutton(transferButtonLayout, 'push', ...
+                          'Icon', fullfile(projectFolder, 'src', 'General', 'icons', 'transfer-download.svg'), ...
+                          'Text', '', ...
+                          'Tooltip', 'Transfer status');
+transferButton.Layout.Row = 2;
+transferButton.Layout.Column = 1;
+
 panel = ui.TransferPanel(mainLayout, ...
                          'TransferFactory', @createDownloader, ...
                          'executionMode', 'webApp', ...
                          'tempPath', tempPath, ...
                          'targetPath', targetPath, ...
-                         'CollisionPolicy', 'askInRow');
-panel.AvatarHTML.Layout.Row = 1;
-panel.AvatarHTML.Layout.Column = 2;
+                         'CollisionPolicy', 'askInRow', ...
+                         'Anchor', transferButton, ...
+                         'StatusFcn', @updateTransferStatus);
+transferButton.ButtonPushedFcn = @toggleTransferPanel;
 drawnow
 
 trashImage = uiimage(mainLayout, ...
@@ -119,6 +137,15 @@ panel.ErrorFcn = @failed;
         % COMPLETED Record a completed simulated transfer.
         appendLog(sprintf('%s %d completed: %s.', ...
                           transferLabel(snapshot.Direction), taskID, info.LocalPath));
+    end
+
+    function updateTransferStatus(status)
+        transferButton.Tooltip = sprintf('Uploads: %d | Downloads: %d | Atenção: %d', ...
+            status.activeUpload, status.activeDownload, status.hasAttention);
+    end
+
+    function toggleTransferPanel(~, ~)
+        panel.toggle()
     end
 
     function failed(taskID, exception, snapshot)

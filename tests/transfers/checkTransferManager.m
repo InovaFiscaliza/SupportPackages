@@ -206,15 +206,24 @@ delete(rejectManager)
 
 setappdata(0, 'TransferManagerFakeTransferAutoComplete', false)
 setappdata(0, 'checkTransferManager_reordered', false)
+setappdata(0, 'checkTransferManager_activitySnapshots', {})
+setappdata(0, 'checkTransferManager_presentationSnapshots', {})
 holdManager = datatransfer.TransferManager('TransferFactory', @createDownloader, ...
                                        'HistoryFile', fullfile(tempPath, 'hold-history.json'), ...
                                        'TempFolder', tempPath);
 holdManager.TaskReorderedFcn = @reorderedDownload;
+holdManager.ActivityFcn = @recordActivitySnapshot;
+holdManager.SnapshotFcn = @recordPresentationSnapshot;
 holdRequest = request;
 holdRequest.FileName = 'held.bin';
 holdRequest.DisplayMode = 'silent';
 holdID = holdManager.addTransfer(holdRequest);
 heldSnapshot = holdManager.getSnapshot(holdID);
+activitySnapshots = getappdata(0, 'checkTransferManager_activitySnapshots');
+presentationSnapshots = getappdata(0, 'checkTransferManager_presentationSnapshots');
+assert(~isempty(activitySnapshots))
+assert(all(cellfun(@(snapshot) strcmp(snapshot.DisplayMode, 'silent'), activitySnapshots)))
+assert(isempty(presentationSnapshots))
 duplicateRequest = holdRequest;
 duplicateRequest.DisplayMode = 'normal';
 duplicateRequest.LocalPath = fullfile(targetPath, 'alternate', duplicateRequest.FileName);
@@ -251,6 +260,8 @@ assert(~isfile(pausedSnapshot.PartialPath))
 delete(holdManager)
 rmappdata(0, 'TransferManagerFakeTransferAutoComplete')
 rmappdata(0, 'checkTransferManager_reordered')
+rmappdata(0, 'checkTransferManager_activitySnapshots')
+rmappdata(0, 'checkTransferManager_presentationSnapshots')
 
 recoveryTempPath = tempname;
 recoveryTargetPath = tempname;
@@ -366,6 +377,18 @@ end
 
 function reorderedDownload(~)
 setappdata(0, 'checkTransferManager_reordered', true);
+end
+
+function recordActivitySnapshot(snapshot)
+snapshots = getappdata(0, 'checkTransferManager_activitySnapshots');
+snapshots{end+1} = snapshot;
+setappdata(0, 'checkTransferManager_activitySnapshots', snapshots);
+end
+
+function recordPresentationSnapshot(snapshot)
+snapshots = getappdata(0, 'checkTransferManager_presentationSnapshots');
+snapshots{end+1} = snapshot;
+setappdata(0, 'checkTransferManager_presentationSnapshots', snapshots);
 end
 
 function removeFolders(varargin)

@@ -73,36 +73,30 @@ F5BrowserTestApp
 
 ### Interface
 
-- **Combo box de URL** (editável), pré-populado com endpoints de teste. Navega tanto ao   pressionar Enter sobre uma URL digitada quanto ao selecionar um item. URLs novas são acrescentadas ao histórico mas não serão recuperadas entre sessões.
-- **Imagem de debug** (<img src="debug-start.svg" alt="ícone de debug" width="16" height="16"> / <img src="debug-stop.svg" alt="ícone de debug" width="16" height="16">), ao lado do combo: controla a abertura das DevTools do navegador de autenticação e a gravação intencional do estado bruto do navegador em arquivo de log. O risco de incluir valores de cookies é inerente a esse procedimento de diagnóstico; não altere nem remova a captura bruta para evitar esse risco. Proteja o arquivo como dado sensível e apague-o após o diagnóstico. O ícone muda de cor quando o modo de debug está ativo.
-- **Modo de execução** (![ícone desktop](vm.svg) / ![ícone Web App Server](globe.svg)), ao lado do upload: indica o comportamento desktop ou Web App Server. O clique alterna o modo usado pelos próximos downloads e uploads.
-- **Upload**: abre o seletor de arquivo no modo desktop e envia o arquivo para a URL selecionada. No modo Web App Server, usa o arquivo de teste fixo descrito abaixo.
-- **Avatar de transferências**, entre o modo silencioso e o avatar de perfil: mostra indicadores individuais de progresso e atividade das transferências visíveis. O clique abre ou traz para frente o painel de transferências.
-- **Avatar de perfil**, à direita: desconectado, conectado com inicial ou conectado com foto circular. O clique conecta ou abre o menu de perfil, que contém a opção de desconectar.
-- **Área de conteúdo** (`uihtml`), ocupando o restante da figura.
+- **Barra de ferramentas escura** com botões nativos de ícone de 34px, no padrão visual do appAnalise. Os modos de execução, debug e download silencioso são botões de estado; o campo de URL ocupa o espaço flexível.
+- **Modo de execução** (![ícone desktop](vm.svg) / ![ícone Web App Server](globe.svg)): alterna o modo usado pelos próximos downloads e uploads.
+- **Transferências**: um único SVG animado indica upload, download, ambos ou estado pausado/pendente. O tooltip expõe o estado sem depender da animação; o clique abre o painel.
+- **Perfil**: exibe estado desconectado, inicial ou foto PNG circular. O clique conecta ou abre o painel de perfil com a opção de desconectar.
+- **Área de resposta**: texto, JSON e HTML aparecem abaixo da barra. HTML é aberto em um iframe sandbox criado pela bridge, não em outro controle MATLAB `uihtml`.
+- **Bridge**: a aplicação usa apenas um `uihtml` oculto para `matlabJSBridge`; botões, avatares e área de resposta são controles nativos ou elementos DOM criados pela bridge.
 
 ### Comportamento
 
-`navigate` acrescenta URLs de navegação ao histórico. Downloads são encaminhados
-ao painel e usam a mesma chamada para fontes públicas e protegidas; a sessão F5
-só autentica quando o servidor protegido exigir isso. As opções de upload não
-iniciam uma navegação ao serem selecionadas. O `TransferFactory` cria
-`ws.auth.FileTransfer` com a sessão atual, e o ícone de upload chama
-`TransferPanel.addUpload` para a URL selecionada. `navigate` chama
-`ensureSession` e faz leitura sob um `uiprogressdlg` indeterminado apenas para
-URLs que não são classificadas como downloads nem como destinos exclusivos de
-upload. Erros viram `uialert`, sem derrubar a aplicação.
+`navigate` acrescenta URLs ao histórico, faz GET e encaminha downloads ao painel.
+A sessão F5 só autentica quando o servidor protegido exigir. Quando um GET retorna
+405, o app abre o seletor de arquivo e enfileira um PUT raw com
+`application/octet-stream` em `TransferPanel`. Um POST é enfileirado somente se o
+PUT receber HTTP 405 confirmado e `OutcomeUncertain` for falso; outros erros não
+acionam fallback. As duas tentativas mantêm entradas de histórico correlacionadas.
+O `TransferFactory` cria `ws.auth.FileTransfer` com a sessão atual.
 
 Os itens `https://httpbin.org/bytes/1024` e
-`http://httpbin.org/bytes/1024` exercitam downloads públicos sem login. Os itens
-`https://httpbin.org/post` e `https://httpbin.org/put` são destinos públicos de
-upload; o app usa POST para `/post` e PUT para `/put`. Selecioná-los não envia
-uma requisição, que só começa ao clicar no ícone de upload. O item
-`[F5 protegido: endpoint de upload não configurado]` é apenas
-um placeholder: selecioná-lo ou clicar no ícone não navega nem autentica. Os
-itens do host `fiscalizacao.anatel.gov.br` exercitam o fluxo de leitura com
-autenticação F5 sob demanda. `ensureSession` reutiliza a sessão enquanto o host
-permanece o mesmo e cria uma nova sessão quando a URL aponta para outro host.
+`http://httpbin.org/bytes/1024` exercitam downloads públicos sem login.
+`https://httpbin.org/post` e `https://httpbin.org/put` permitem observar o GET
+405 e o fluxo PUT/POST enfileirado. Os itens do host
+`fiscalizacao.anatel.gov.br` exercitam leitura com autenticação F5 sob demanda.
+`ensureSession` reutiliza a sessão enquanto o host permanece o mesmo e cria
+uma nova sessão quando a URL aponta para outro host.
 
 No modo desktop, o painel abre `uiputfile` antes de criar a tarefa. No modo Web
 App Server, usa diretamente a pasta de destino configurada na aplicação e não
@@ -111,14 +105,12 @@ solicitação normalizada ao `datatransfer.TransferManager`; conflitos são apre
 linha do painel, que é aberto automaticamente quando a intervenção do usuário
 é necessária, e resolvidos pelo manager.
 
-Para uploads, no modo desktop `TransferPanel.addUpload` abre `uigetfile` para
-selecionar a origem. No modo Web App Server, o app passa explicitamente
-`tests/transfers/target/upload-test.txt` como `LocalPath`; esse arquivo de teste
-deve existir no ambiente que executa o app. Esse arquivo não está presente no
-checkout atual; este README não cria o fixture. Disponibilize-o no ambiente de
-execução antes de usar esse fluxo Web App. A validação do upload real permanece
-deferida para a Fase 10. Consulte o [contrato do pacote `datatransfer`](../../src/General/+datatransfer/README.md)
-para os protocolos e requisitos de segurança.
+O GET 405 abre `uigetfile`; depois disso, `TransferPanel.addUpload` executa o
+upload de forma assíncrona usando `ws.auth.FileTransfer`. O modo Web App Server
+usa a pasta de destino configurada para downloads. A seleção de arquivo e o
+upload real ainda precisam de validação manual no runtime R2024a com autenticação
+interativa. Consulte o [contrato do pacote `datatransfer`](../../src/General/+datatransfer/README.md)
+para protocolos e requisitos de segurança.
 
 No modo desktop deste app, um conflito com o target escolhido no `uiputfile` é
 apresentado na linha do painel, com as opções de manter o arquivo existente,
@@ -132,22 +124,20 @@ Repetir uma solicitação normal para uma tarefa silenciosa torna a tarefa visí
 promove sua linha e abre o painel. A repetição não cria uma nova tentativa; pausar
 e retomar também não acrescenta um timestamp de tentativa.
 
-O avatar de perfil usa o componente compartilhado
-[`profileAvatar.html`](../../src/Anatel/+ws/+auth/profileAvatar.html). O harness
-de perfil verifica os estados desconectado, inicial e foto PNG; o app de teste
-verifica também o clique que abre o menu de perfil e a opção de desconectar.
+O harness isolado `checkProfileHtml` continua cobrindo o componente legado
+[`profileAvatar.html`](../../src/Anatel/+ws/+auth/profileAvatar.html). O
+`F5BrowserTestApp` usa um SVG próprio via bridge para os estados desconectado,
+inicial e foto PNG; mantém o popup nativo `ui.ProfilePanel`.
 
-`render` exibe respostas HTML no `uihtml` e respostas JSON formatadas em `<pre>`.
+`render` exibe HTML no iframe sandbox e respostas JSON/textuais em `<pre>`.
 Endpoints sem extensão no último segmento, como `debug/headers` e
 `server/runtime-health`, também são aceitos pelo teste.
 
-O conteúdo HTML recebido é sanitizado antes da exibição: scripts, atributos
-`on*` e URIs `javascript:` são removidos. Isso torna o harness adequado para
-validar respostas sem executar código remoto, mas páginas que dependem de
-JavaScript aparecem apenas como markup estático. Um `<base href>` é injetado
-para permitir que CSS e imagens relativos sejam resolvidos; essas
-subrequisições usam o cookie jar do `uihtml`, não os cookies mantidos pelo
-MATLAB.
+O bridge remove scripts, formulários, atributos `on*` e URIs `javascript:` antes
+de montar a resposta em um iframe com sandbox vazio. CSS e recursos relativos
+são resolvidos em relação à URL capturada, sem alterar o `<base>` nem os estilos
+do app. Scripts não executam; o comportamento de CSS, recursos relativos e
+sandbox precisa ser validado no MATLAB R2024a.
 
 A janela de autenticação é criada oculta e exibida apenas quando a navegação
 sai do host protegido ou demora além do limite de espera. Com uma sessão CEF
@@ -172,23 +162,6 @@ README de `tests/transfers`.
 	 - Nesse estado, mostrar apenas a barra de título configurada, o rótulo
 		 `Transferências` e o controle de fechar alinhado ao canto superior direito do painel.
 	 - Adicionar um caso de teste para abrir, fechar e reabrir o painel vazio.
-
-2. **Substituir a barra de progresso por um componente de status `uihtml`
-	 reutilizável e animado.**
-	 - Proposta futura: implementar o componente em
-		 `src/General/+ui/html/transferStatus.html` e incluí-lo em aplicações
-		 compiladas junto com o recurso do avatar. Esse arquivo ainda não existe nem
-		 é um recurso de empacotamento atual.
-	 - Definir estados explícitos para transferência ativa (azul constante), aviso
-		 (amarelo piscante) e erro (vermelho piscante), com a precedência
-		 `error > warning > active > idle`.
-	 - Mapear os snapshots do manager para esses estados visuais no painel. O manager
-		 deve reter estado de falha ou aviso suficiente para o componente exibi-lo
-		 antes que a linha seja removida ou arquivada.
-	 - Manter o componente independente da autenticação e permitir que seu contrato
-		 de dados do MATLAB para o HTML seja testado em `tests/transfers`.
-	 - Verificar a renderização no MATLAB desktop e no Web App Server antes de
-		 integrá-lo a todas as linhas.
 
 3. **Usar velocidades históricas nos exemplos.**
 	 - Antes que uma nova transferência tenha amostras suficientes, o manager pode

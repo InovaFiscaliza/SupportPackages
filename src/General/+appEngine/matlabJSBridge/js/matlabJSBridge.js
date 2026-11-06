@@ -278,6 +278,8 @@ function setup(htmlComponent) {
     });
 
     /*---------------------------------------------------------------------------------*/
+    htmlComponent.addEventListener('f5BrowserPresentation', handleF5BrowserPresentation);
+
     htmlComponent.addEventListener("getTableColumnWidth", function(customEvent) {
         const { tableId, dataTag, displayedColumnCount } = customEvent.Data;
         const handle  = findComponentHandle(dataTag);
@@ -1459,6 +1461,150 @@ function setup(htmlComponent) {
         return appWindow.document.querySelector(`div[data-tag="${dataTag}"]`);
     }
 
+    function installF5BrowserButton(dataTag, className, svgContent) {
+        const button = findComponentHandle(dataTag);
+        const icon = button?.querySelector('.mwIconNode');
+        if (!icon) return false;
+        if (icon.dataset.f5BrowserSvgInstalled === 'true') return true;
+        icon.innerHTML = svgContent;
+        icon.style.backgroundImage = 'none';
+        icon.classList.add(className);
+        icon.dataset.f5BrowserSvgInstalled = 'true';
+        return true;
+    }
+
+    function updateF5BrowserProfile(dataTag, state) {
+        const svg = findComponentHandle(dataTag)?.querySelector('.f5-browser-profile svg');
+        if (!svg) return false;
+        const disconnected = !state.connected;
+        svg.querySelector('.f5-profile-disconnected').style.display = disconnected ? '' : 'none';
+        svg.querySelector('.f5-profile-initial').style.display = disconnected || state.photoPngBase64 ? 'none' : '';
+        svg.querySelector('.f5-profile-photo').style.display = state.connected && state.photoPngBase64 ? '' : 'none';
+        svg.querySelector('#f5-profile-initial-text').textContent = state.initial || '?';
+        const photo = svg.querySelector('#f5-profile-photo-image');
+        photo.setAttribute('href', state.photoPngBase64 ? `data:image/png;base64,${state.photoPngBase64}` : '');
+        return true;
+    }
+
+    function updateF5BrowserTransfer(dataTag, state) {
+        const svg = findComponentHandle(dataTag)?.querySelector('.f5-browser-transfer svg');
+        if (!svg) return false;
+        svg.querySelector('.f5-transfer-upload').style.display = state.activeUpload ? '' : 'none';
+        svg.querySelector('.f5-transfer-download').style.display = state.activeDownload ? '' : 'none';
+        svg.querySelector('.f5-transfer-attention').style.display = state.hasAttention ? '' : 'none';
+        const direction = state.activeUpload && state.activeDownload ? 'both' :
+            (state.activeUpload ? 'upload' : (state.activeDownload ? 'download' : 'idle'));
+        svg.setAttribute('data-direction', direction);
+        svg.setAttribute('data-attention', state.hasAttention ? 'true' : 'false');
+        return true;
+    }
+
+    function updateF5BrowserResponse(dataTag, content, baseURL) {
+        const host = findComponentHandle(dataTag);
+        if (!host) return false;
+        host.classList.add('f5-browser-response-host');
+        let frame = host.querySelector(':scope > iframe.f5-browser-response');
+        if (!frame) {
+            frame = appWindow.document.createElement('iframe');
+            frame.className = 'f5-browser-response';
+            frame.setAttribute('sandbox', '');
+            frame.setAttribute('title', 'HTTP response');
+            host.appendChild(frame);
+        }
+
+        const parsed = new DOMParser().parseFromString(content || '', 'text/html');
+        parsed.querySelectorAll('script, iframe, object, embed, form, base, meta[http-equiv], portal')
+            .forEach(element => element.remove());
+        parsed.querySelectorAll('*').forEach(element => {
+            [...element.attributes].forEach(attribute => {
+                const name = attribute.name.toLowerCase();
+                const value = attribute.value.trim();
+                if (name.startsWith('on') ||
+                    (['href', 'src', 'xlink:href', 'action', 'formaction'].includes(name) &&
+                     /^\s*(javascript|vbscript):/i.test(value))) {
+                    element.removeAttribute(attribute.name);
+                }
+            });
+        });
+
+        parsed.querySelectorAll('pre').forEach(element => {
+            element.style.whiteSpace = 'pre-wrap';
+            element.style.overflowWrap = 'anywhere';
+            element.style.maxWidth = '100%';
+            element.style.boxSizing = 'border-box';
+        });
+
+        const base = parsed.createElement('base');
+        try {
+            const resolvedBase = new URL(baseURL, appWindow.location.href);
+            if (!['http:', 'https:'].includes(resolvedBase.protocol)) {
+                return false;
+            }
+            resolvedBase.username = '';
+            resolvedBase.password = '';
+            resolvedBase.hash = '';
+            base.href = resolvedBase.href;
+        } catch {
+            return false;
+        }
+        parsed.head.prepend(base);
+        frame.srcdoc = `<!doctype html>${parsed.documentElement.outerHTML}`;
+        return true;
+    }
+
+    function handleF5BrowserPresentation(customEvent) {
+        const data = customEvent.Data;
+        switch (data.operation) {
+            case 'initialize': {
+                const startupBlocker = appWindow.document.getElementById('matlab-js-bridge-ui-blocker');
+                if (startupBlocker) startupBlocker.style.visibility = 'hidden';
+                if (appWindow.f5BrowserPresentationRetry) {
+                    clearInterval(appWindow.f5BrowserPresentationRetry);
+                }
+                let attempts = 0;
+                const retry = setInterval(() => {
+                    attempts++;
+                    const profileReady = installF5BrowserButton(data.profileTag, 'f5-browser-profile', data.profileSVG);
+                    const transferReady = installF5BrowserButton(data.transferTag, 'f5-browser-transfer', data.transferSVG);
+                    const responseReady = profileReady && transferReady && updateF5BrowserResponse(
+                        data.responseTag, data.response.content, data.response.baseURL);
+                    if (profileReady && transferReady && responseReady) {
+                        updateF5BrowserProfile(data.profileTag, data.profileState);
+                        updateF5BrowserTransfer(data.transferTag, data.transferState);
+                        clearInterval(retry);
+                        appWindow.f5BrowserPresentationRetry = null;
+                        htmlComponent.sendEventToMATLAB('f5BrowserPresentationReady');
+                    } else if (attempts >= 100) {
+                        clearInterval(retry);
+                        appWindow.f5BrowserPresentationRetry = null;
+                        consoleLog('Error: F5 browser toolbar controls were not rendered.');
+                    }
+                }, 100);
+                appWindow.f5BrowserPresentationRetry = retry;
+                return;
+            }
+            case 'profile':
+                updateF5BrowserProfile(data.dataTag, data.state);
+                break;
+            case 'transfer':
+                updateF5BrowserTransfer(data.dataTag, data.state);
+                break;
+            case 'response':
+                updateF5BrowserResponse(data.dataTag, data.content, data.baseURL);
+                break;
+            case 'clearResponse': {
+                const frame = findComponentHandle(data.dataTag)?.querySelector(':scope > iframe.f5-browser-response');
+                if (frame) frame.srcdoc = '<!doctype html><html><body></body></html>';
+                break;
+            }
+            case 'dispose': {
+                const host = findComponentHandle(data.responseTag);
+                host?.querySelector(':scope > iframe.f5-browser-response')?.remove();
+                break;
+            }
+        }
+    }
+
     /*---------------------------------------------------------------------------------*/
     function injectBaseStyles() {
         let styleElement = appWindow.document.getElementById('matlab-js-bridge');
@@ -1688,6 +1834,20 @@ a, a:hover {
 .tab-navigator-button { cursor: pointer !important; }
 .tab-navigator-button:hover { border-color: #7d7d7d !important; }
 .tab-navigator-icon:hover svg { transform: scale(1.08); }
+
+.f5-browser-profile svg,
+.f5-browser-transfer svg { display: block; width: 24px; height: 24px; }
+.f5-transfer-upload-orbit,
+.f5-transfer-download-orbit { transform-origin: 12px 12px; }
+.f5-browser-transfer svg[data-direction="upload"] .f5-transfer-upload-orbit,
+.f5-browser-transfer svg[data-direction="both"] .f5-transfer-upload-orbit { animation: f5-transfer-orbit 1.4s linear infinite; }
+.f5-browser-transfer svg[data-direction="download"] .f5-transfer-download-orbit,
+.f5-browser-transfer svg[data-direction="both"] .f5-transfer-download-orbit { animation: f5-transfer-orbit-reverse 1.4s linear infinite; }
+.f5-browser-transfer[data-attention="true"] .f5-transfer-attention { display: inline !important; }
+.f5-browser-response-host { position: relative !important; overflow: hidden !important; }
+.f5-browser-response { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: white; }
+@keyframes f5-transfer-orbit { to { transform: rotate(360deg); } }
+@keyframes f5-transfer-orbit-reverse { to { transform: rotate(-360deg); } }
 
 /*
   ## ProgressDialog ##

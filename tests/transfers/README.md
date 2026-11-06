@@ -9,13 +9,11 @@ raw, multipart, autenticação F5 ou resultados ambíguos de uploads one-shot.
 Os contratos dos protocolos e de segurança estão no
 [README do pacote `datatransfer`](../../src/General/+datatransfer/README.md).
 
-Ela também contém harnesses visuais isolados para os avatares. O painel usa
-`pingTransferAvatar.html`; `orbitDownloadAvatar.html` é uma alternativa visual
-agregada, exercitada apenas pelo harness `checkOrbitDownloadHtml`. Os harnesses
-de avatar e de painel são deliberadamente separados: os primeiros verificam os
-protocolos de apresentação HTML, enquanto o painel verifica a UI MATLAB, a
-fábrica de transferências, o ciclo de vida das tarefas e o comportamento do sistema
-de arquivos.
+Ela também mantém harnesses isolados para os avatares HTML legados. Chamadores
+que não fornecem uma âncora externa ainda usam `pingTransferAvatar.html`; o F5
+usa uma âncora nativa e um callback agregado, sem avatar `uihtml` próprio.
+`orbitDownloadAvatar.html` continua sendo uma alternativa visual legada,
+exercitada apenas por `checkOrbitDownloadHtml`.
 
 ## Arquivos
 
@@ -78,11 +76,10 @@ sem acrescentar um timestamp de tentativa.
 `checkTransferPanel.m` exercita `ui.TransferPanel` com
 `TransferPanelFakeTransfer`. Ele fornece quatro links de download, incluindo
 um download silencioso, além de uploads normal e silencioso com arquivo local
-determinístico. O fake simula progresso e conclusão sem chamadas de rede. O painel usa internamente o recurso
-`pingTransferAvatar.html`, que apresenta cada tarefa visível com ID, taxa de
-transferência e progresso individuais. Isso inclui tarefas ativas, pausadas e
-parciais em espera. Tarefas silenciosas não aparecem no avatar; uma solicitação
-normal correspondente as torna visíveis.
+determinístico. O fake simula progresso e conclusão sem chamadas de rede. O
+harness ancora o painel em um botão nativo e mostra o estado agregado no tooltip.
+O teste isolado `checkTransferPanelPausedAvatarRate` preserva a cobertura do
+avatar legado por tarefa, incluindo tarefas pausadas e parciais em espera.
 
 `checkTransferManager.m` exercita o manager sem criar `uifigure`: confirma
 snapshots, conclusão, remoção de tarefas, deduplicação por URL e nome, timestamps
@@ -91,7 +88,9 @@ retomada e a repetição deduplicada não acrescentam timestamp. O manager mant�
 tarefa e o adaptador de transferência; o painel possui somente handles de apresentação e
 snapshots renderizados.
 
-O teste também verifica a persistência do histórico entre reconstruções,
+O teste também verifica que `ActivityFcn` recebe snapshots de tarefas silenciosas,
+enquanto `SnapshotFcn` mantém o filtro de apresentação existente. Ele cobre a
+persistência do histórico entre reconstruções,
 transições de pausa/retomada/cancelamento, identidade lógica estável,
 reconciliação de arquivos concluídos, recuperação de bytes de parciais
 interrompidas e seu retorno ao estado de conflito parcial, além da limpeza de
@@ -116,11 +115,12 @@ erro. Também verifica `IncludeSilentTasks = true` no manager.
 O exemplo de integração com F5 é [`F5BrowserTestApp.m`](../auth/F5BrowserTestApp.m).
 Ele fornece a fábrica `ws.auth.FileTransfer` baseada na sessão, enquanto
 `ui.TransferPanel` continua responsável pela UI de transferência e pelo ciclo de
-vida das tarefas. A mesma fábrica trata fontes HTTP/HTTPS públicas sem iniciar
-o login do F5.
+vida das tarefas. O app usa um único `matlabJSBridge` para SVGs de estado e uma
+resposta em iframe sandbox; os botões e âncoras são controles MATLAB nativos.
+A mesma fábrica trata fontes HTTP/HTTPS públicas sem iniciar o login do F5.
 
 `TransferPanel.addUpload(url, options)` aceita o caminho local, nome remoto,
-protocolo, método, campos multipart, modo de exibição e identidade lógica. Em
+protocolo, método, campos multipart, `ContentType`, modo de exibição e identidade lógica. Em
 modos desktop, um `LocalPath` vazio usa `uigetfile` ou um `SourceResolver`
 injetado; no modo `webApp`, o chamador deve informar `LocalPath`. O fake respeita
 `Direction` e `IsResumable`, simula o progresso do envio sem alterar o arquivo de
@@ -134,9 +134,9 @@ de destino ou o modo de exibição. Se a fonte ignorar o cabeçalho HTTP `Range`
 continuar byte a byte; o worker detecta a resposta `200` e baixa a fonte
 novamente desde o início.
 
-Depois que o recurso informa que está pronto, o painel envia um array de structs
-para `pingTransferAvatar.html`, com um item para cada tarefa ativa, pausada ou
-parcial em espera que esteja visível:
+No modo de avatar HTML legado, depois que o recurso informa que está pronto, o
+painel envia um array de structs para `pingTransferAvatar.html`, com um item para
+cada tarefa ativa, pausada ou parcial em espera que esteja visível:
 
 - `id`: ID numérico da tarefa no gerenciador.
 - `rate`: taxa atual em bytes por segundo; taxas ainda não medidas são enviadas como `100000`.
@@ -153,7 +153,7 @@ O recurso emite `transferAvatarReady` e `transferAvatarClick`, com os tipos de
 payload `ready` e `click`. O próprio recurso do avatar não acessa arquivos,
 autenticação ou serviços de rede.
 
-## Integração de download com F5
+## Integração F5
 
 Quando `F5BrowserTestApp` recebe uma URL cujo segmento final do caminho possui
 uma extensão, ele delega a solicitação a `ui.TransferPanel`. A fábrica da
@@ -169,8 +169,20 @@ O painel oferece suporte a vários downloads simultâneos, pausar/retomar,
 reiniciar e cancelar, conflitos de destino (**Manter**, **Reiniciar**, **Cancelar**)
 e conflitos de arquivos parciais (**Continuar**, **Reiniciar**, **Cancelar**).
 Arquivos concluídos e com falha permanecem no histórico renderizado pelo painel.
-A aplicação mantém apenas as responsabilidades específicas do F5 relacionadas
-à autenticação, registro e comunicação de erros.
+A aplicação mantém as responsabilidades específicas do F5: autenticação,
+histórico de navegação, resposta HTTP e upload após GET 405. Esse upload enfileira
+PUT raw `application/octet-stream`; somente um HTTP 405 confirmado e não ambíguo
+enfileira um POST após o callback do PUT retornar. Os dois attempts compartilham
+uma identidade lógica e permanecem como registros de histórico separados.
+Falhas ambíguas, de autenticação, redirect, transporte ou servidor não são
+repetidas automaticamente. Corpos de resposta de erro são limitados e mantidos
+somente na memória do callback; não são persistidos no histórico.
+
+O estado da barra de ferramentas agrega uploads e downloads, inclusive tarefas
+silenciosas que não aparecem nas linhas visíveis. O aviso de tarefas pausadas,
+pendentes ou em conflito sobrepõe a animação de atividade. A apresentação bridge
+e o sandbox de respostas precisam de validação manual no MATLAB R2024a; os
+harnesses HTML legados permanecem disponíveis e não são removidos.
 
 O JSON mantém um registro por tentativa. As linhas de histórico terminais do
 painel agrupam tentativas por direção, URL exata e `LocalPath` canônico, usando o

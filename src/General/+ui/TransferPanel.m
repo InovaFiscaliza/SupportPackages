@@ -27,10 +27,12 @@ classdef TransferPanel < handle
         PartialConflictPolicy (1,:) char = 'askInRow'
         CompletedFcn = []
         ErrorFcn = []
+        StatusFcn = []
     end
 
     properties (SetAccess = private)
         AvatarHTML
+        Anchor
         TransferFactory
         DestinationResolver
         SourceResolver
@@ -53,12 +55,15 @@ classdef TransferPanel < handle
         TransferOrder = []
         PromotedTaskID (1,1) double = NaN
         DownloadFileNames cell = cell(0, 2)
+        ActivitySnapshots = struct('ID', {}, 'Direction', {}, 'LifecycleState', {})
+        ActivityStatus = struct('activeUpload', false, 'activeDownload', false, 'hasAttention', false)
         AvatarHTMLReady (1,1) logical = false
         AvatarState struct = struct('id', {}, 'rate', {}, 'progress', {}, 'direction', {})
         OriginalWindowButtonDownFcn = []
         IsDeleting (1,1) logical = false
         IsConstructing (1,1) logical = true
         ShowWhenAvatarReady (1,1) logical = false
+        ShowWhenAnchorReady (1,1) logical = false
     end
 
 
@@ -84,9 +89,21 @@ classdef TransferPanel < handle
                 options.DestinationResolver = []
                 options.SourceResolver = []
                 options.IncludeSilentTasks (1,1) logical = false
+                options.Anchor = []
+                options.StatusFcn = []
             end
 
             obj.ParentContainer = parentContainer;
+            obj.Anchor = options.Anchor;
+            if ~isempty(options.Anchor) && ~isvalid(options.Anchor)
+                error('ui:TransferPanel:invalidAnchor', ...
+                      'Anchor deve ser um controle de UI válido ou estar vazio.')
+            end
+            if ~isempty(options.StatusFcn) && ~isa(options.StatusFcn, 'function_handle')
+                error('ui:TransferPanel:invalidStatusFcn', ...
+                      'StatusFcn deve ser um handle de função ou estar vazio.')
+            end
+            obj.StatusFcn = options.StatusFcn;
             obj.UIFigure = findFigure(parentContainer);
             if isempty(obj.UIFigure) || ~isvalid(obj.UIFigure)
                 error('ui:TransferPanel:invalidParent', ...
@@ -126,20 +143,28 @@ classdef TransferPanel < handle
             obj.Manager.MaxUploadBytes = obj.MaxUploadBytes;
             obj.HistoryFile = obj.Manager.HistoryFile;
             obj.Manager.SnapshotFcn = @(snapshot) obj.onManagerSnapshot(snapshot);
+            obj.Manager.ActivityFcn = @(snapshot) obj.onManagerActivity(snapshot);
             obj.Manager.TaskReorderedFcn = @(snapshot) obj.onManagerTaskReordered(snapshot);
             obj.Manager.CompletedFcn = @(taskID, info, snapshot) ...
                 obj.onManagerCompleted(taskID, info, snapshot);
             obj.Manager.ErrorFcn = @(taskID, exception, snapshot) ...
                 obj.onManagerError(taskID, exception, snapshot);
 
-            obj.AvatarHTML = uihtml(parentContainer);
-            obj.AvatarHTML.HTMLSource = avatarHTMLPath();
-            obj.AvatarHTML.HTMLEventReceivedFcn = @(~, event) obj.onAvatarEvent(event);
+            if isempty(obj.Anchor)
+                obj.AvatarHTML = uihtml(parentContainer);
+                obj.AvatarHTML.HTMLSource = avatarHTMLPath();
+                obj.AvatarHTML.HTMLEventReceivedFcn = @(~, event) obj.onAvatarEvent(event);
+            end
 
             obj.OriginalWindowButtonDownFcn = obj.UIFigure.WindowButtonDownFcn;
             obj.UIFigure.WindowButtonDownFcn = @(source, event) obj.onFigureButtonDown(source, event);
             obj.Manager.restoreInterruptedTransfers();
             obj.IsConstructing = false;
+            if obj.ShowWhenAnchorReady && ~isempty(obj.Anchor)
+                obj.ShowWhenAnchorReady = false;
+                drawnow limitrate
+                obj.show()
+            end
         end
 
         %-----------------------------------------------------------------%
@@ -235,6 +260,7 @@ classdef TransferPanel < handle
                 options.Method (1,:) char = 'POST'
                 options.FormFieldName (1,:) char = 'file'
                 options.FormFields (1,1) struct = struct()
+                options.ContentType (1,:) char = ''
                 options.DisplayMode (1,:) char = 'normal'
                 options.LogicalFileID (1,:) char = ''
             end
@@ -258,6 +284,7 @@ classdef TransferPanel < handle
                              'Method', options.Method, ...
                              'FormFieldName', options.FormFieldName, ...
                              'FormFields', options.FormFields, ...
+                             'ContentType', options.ContentType, ...
                              'DisplayMode', options.DisplayMode);
             if ~isempty(options.LogicalFileID)
                 request.LogicalFileID = options.LogicalFileID;
@@ -289,6 +316,23 @@ classdef TransferPanel < handle
             if ~isempty(obj.TransferDialog) && isvalid(obj.TransferDialog)
                 obj.TransferDialog.Visible = 'off';
             end
+        end
+
+        %-----------------------------------------------------------------%
+        function toggle(obj)
+            % TOGGLE Toggle the transfer panel visibility.
+            if ~isempty(obj.TransferDialog) && isvalid(obj.TransferDialog) && ...
+                    strcmp(obj.TransferDialog.Visible, 'on')
+                obj.hide()
+            else
+                obj.show()
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function status = getActivityStatus(obj)
+            % GETACTIVITYSTATUS Return aggregate status for active and pending tasks.
+            status = obj.ActivityStatus;
         end
 
         %-----------------------------------------------------------------%
@@ -406,10 +450,62 @@ classdef TransferPanel < handle
             % The caller has not placed the avatar yet during construction,
             % so anchoring the popup now would use its auto-flow grid cell.
             if obj.IsConstructing
-                obj.ShowWhenAvatarReady = true;
+                if isempty(obj.Anchor)
+                    obj.ShowWhenAvatarReady = true;
+                else
+                    obj.ShowWhenAnchorReady = true;
+                end
                 return
             end
+            if ~isempty(obj.Anchor)
+                drawnow limitrate
+            end
             obj.show()
+        end
+
+        %-----------------------------------------------------------------%
+        function onManagerActivity(obj, snapshot)
+            if isempty(snapshot) || obj.IsDeleting
+                return
+            end
+
+            taskIndex = find([obj.ActivitySnapshots.ID] == snapshot.ID, 1);
+            isTerminal = ismember(snapshot.LifecycleState, ...
+                {'completed', 'failed', 'canceled', 'cancelled', 'interrupted'});
+            if isTerminal
+                if ~isempty(taskIndex)
+                    obj.ActivitySnapshots(taskIndex) = [];
+                end
+            elseif isempty(taskIndex)
+                obj.ActivitySnapshots(end+1) = struct( ...
+                    'ID', snapshot.ID, ...
+                    'Direction', snapshot.Direction, ...
+                    'LifecycleState', snapshot.LifecycleState);
+            else
+                obj.ActivitySnapshots(taskIndex).Direction = snapshot.Direction;
+                obj.ActivitySnapshots(taskIndex).LifecycleState = snapshot.LifecycleState;
+            end
+
+            status = struct('activeUpload', false, ...
+                            'activeDownload', false, ...
+                            'hasAttention', false);
+            for taskIndex = 1:numel(obj.ActivitySnapshots)
+                task = obj.ActivitySnapshots(taskIndex);
+                if strcmp(task.LifecycleState, 'active')
+                    if strcmp(task.Direction, 'upload')
+                        status.activeUpload = true;
+                    elseif strcmp(task.Direction, 'download')
+                        status.activeDownload = true;
+                    end
+                else
+                    status.hasAttention = true;
+                end
+            end
+
+            if ~isequal(status, obj.ActivityStatus)
+                obj.ActivityStatus = status;
+                invokeCallback(obj.StatusFcn, status)
+            end
         end
 
         %-----------------------------------------------------------------%
@@ -1147,12 +1243,20 @@ classdef TransferPanel < handle
         %-----------------------------------------------------------------%
         function positionTransferContainer(obj)
             if isempty(obj.TransferDialog) || ~isvalid(obj.TransferDialog) || ...
-                    isempty(obj.AvatarHTML) || ~isvalid(obj.AvatarHTML)
+                    obj.IsDeleting
+                return
+            end
+
+            anchor = obj.Anchor;
+            if isempty(anchor)
+                anchor = obj.AvatarHTML;
+            end
+            if isempty(anchor) || ~isvalid(anchor)
                 return
             end
 
             drawnow limitrate
-            avatarPosition = getpixelposition(obj.AvatarHTML, true);
+            avatarPosition = getpixelposition(anchor, true);
             figurePosition = obj.UIFigure.Position;
             figureWidth = figurePosition(3);
             figureHeight = figurePosition(4);
