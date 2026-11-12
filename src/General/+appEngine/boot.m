@@ -1,7 +1,7 @@
 function boot(app, role, varargin)
     arguments
         app  {mustBeA(app, 'matlab.apps.AppBase')}
-        role {mustBeMember(role, {'launcher', 'mainApp', 'secondaryApp', 'secondaryDockApp', 'mainAppMobile', 'secondaryAppMobile'})}
+        role {mustBeMember(role, {'launcher', 'mainApp', 'secondaryApp', 'secondaryDockApp', 'mainAppMobile', 'secondaryAppMobile', 'secondaryDockAppMobile'})}
     end
 
     arguments (Repeating)
@@ -35,7 +35,13 @@ function boot(app, role, varargin)
                 waitForDOMReady(role, app)
             end
 
-        case {'secondaryDockApp', 'secondaryAppMobile'}
+        case 'secondaryAppMobile'
+            app.mainApp = varargin{1};
+
+            app.jsBackDoor = app.mainApp.jsBackDoor;
+            appEngine.activate(app, role)
+
+        case {'secondaryDockApp', 'secondaryDockAppMobile'}
             app.mainApp = varargin{1};
             app.callingApp = varargin{2};
 

@@ -4,12 +4,6 @@ classdef TabNavigator < handle
     % o menu gráfico que o controla. Para que essa classe seja operacional,
     % devem ser seguidas algumas premissas:
 
-    % - O Grid que contém os botões de estado deve possuir, nas suas duas
-    %   últimas colunas, imagem que possibilitam fechar um app auxiliar
-    %   (caso aberto no modo DOCK) ou mudar o modo de visualização do app
-    %   auxiliar em evidência de DOCK para UNDOCK. Opcionalmente, esses
-    %   imagens podem estar em um grid auxiliar com TAG "MenuSubGrid".
-
     % - Cada botão de estado deve possuir um único TAG.
     
     % - Os arquivos .MLAPP dos apps auxiliares devem ser exportados em arquivos
@@ -21,47 +15,44 @@ classdef TabNavigator < handle
 
     properties
         %-----------------------------------------------------------------%
-        Components    table = table('Size',          [0, 9],                                                                                                ...
-                                    'VariableNames', {'Tag', 'Type', 'File', 'appHandle', 'btnHandle', 'btnStatus', 'btnIcon', 'btnRefHandle', 'tabIndex'}, ...
-                                    'VariableTypes', {'string', 'categorical', 'string', 'cell', 'matlab.ui.control.StateButton', 'categorical', 'struct', 'matlab.ui.control.StateButton', 'double'})
-        inlineSVG = false
+        Components = table( ...
+            'Size', [0, 8], ...
+            'VariableNames', {'Tag', 'Type', 'File', 'appHandle', 'btnHandle', 'btnStatus', 'btnRefHandle', 'tabIndex'}, ...
+            'VariableTypes', {'string', 'categorical', 'string', 'cell', 'matlab.ui.control.StateButton', 'categorical', 'matlab.ui.control.StateButton', 'double'} ...
+        )
     end
 
 
     properties (Access = private)
         %-----------------------------------------------------------------%
-        UIFigure      matlab.ui.Figure
-        MenuGrid      matlab.ui.container.GridLayout
-        MenuSubGrid
-        TabGroup      matlab.ui.container.TabGroup
-        progressDialog
+        UIFigure    matlab.ui.Figure
+        NavBar      matlab.ui.container.GridLayout
+        TabGroup    matlab.ui.container.TabGroup
+        jsBackDoor  matlab.ui.control.HTML
+        
         executionMode
-        jsBackDoor
+        progressDialog
     end
 
 
     methods
         %-----------------------------------------------------------------%
-        function obj = TabNavigator(menuGrid, tabGroup, progressDialog, jsBackDoor)
-            obj.UIFigure        = ancestor(menuGrid, 'figure');
-            obj.MenuGrid        = menuGrid;
-            obj.TabGroup        = tabGroup;
-            obj.executionMode   = obj.UIFigure.RunningAppInstance.executionMode;
-            obj.progressDialog  = progressDialog;
-            obj.MenuSubGrid     = findobj(menuGrid.Children, 'Tag', 'MenuSubGrid');
+        function obj = TabNavigator(mainApp)
+            obj.UIFigure = mainApp.UIFigure;
+            obj.NavBar = mainApp.NavBar;
+            obj.TabGroup = mainApp.TabGroup;
 
-            if exist('jsBackDoor', 'var')
-                obj.jsBackDoor  = jsBackDoor;
-            end
+            obj.jsBackDoor = mainApp.jsBackDoor;
+            obj.executionMode = mainApp.executionMode;
+            obj.progressDialog = mainApp.progressDialog;
 
             % Delimitar os valores que são aceitos em algumas das colunas.
             obj.Components.Type = categorical(obj.Components.Type, {'Built-in', 'External'});
             obj.Components.btnStatus = categorical(obj.Components.btnStatus, {'AlwaysOn', 'On/Off'});
-            obj.Components.btnIcon   = struct('On', {}, 'Off', {});
         end
 
         %-----------------------------------------------------------------%
-        function addComponent(obj, auxAppType, auxAppFile, btnHandle, btnStatus, btnIcon, btnRefHandle, tabIndex)
+        function addComponent(obj, auxAppType, auxAppFile, btnHandle, btnStatus, btnRefHandle, tabIndex)
             auxAppTag = btnHandle.Tag;
 
             if ~ismember(auxAppTag, obj.Components.Tag)
@@ -70,7 +61,6 @@ classdef TabNavigator < handle
                                                        auxAppFile,   ...
                                                        btnHandle,    ...
                                                        btnStatus,    ...
-                                                       btnIcon,      ...
                                                        btnRefHandle, ...
                                                        tabIndex};
             end
@@ -78,7 +68,6 @@ classdef TabNavigator < handle
 
         %-----------------------------------------------------------------%
         function convertToInlineSVG(obj, jsBackDoor)
-            obj.inlineSVG = true;
             obj.jsBackDoor = jsBackDoor;
 
             listOfButtons = obj.Components.btnHandle';
@@ -110,11 +99,11 @@ classdef TabNavigator < handle
             [~, idx]  = ismember(clickedButton, obj.Components.btnHandle);
             appHandle = obj.Components.appHandle{idx};
             tabIndex  = obj.Components.tabIndex(idx);
-            nonClickedButtons = findobj(obj.MenuGrid, 'Type', 'uistatebutton', '-not', 'Tag', clickedButton.Tag);
+            nonClickedButtons = findobj(obj.NavBar, 'Type', 'uistatebutton', '-not', 'Tag', clickedButton.Tag);
 
             if ~isempty(appHandle) && isvalid(appHandle) 
                 if appHandle.isDocked
-                    switchingMode(obj, clickedButton, nonClickedButtons, tabIndex, 20)
+                    switchingMode(obj, clickedButton, nonClickedButtons, tabIndex)
                 else
                     clickedButton.Value = false;
                     figure(appHandle.UIFigure)
@@ -124,7 +113,7 @@ classdef TabNavigator < handle
             
             switch obj.Components.Type(idx)
                 case 'Built-in'
-                    switchingMode(obj, clickedButton, nonClickedButtons, tabIndex, 0)                  
+                    switchingMode(obj, clickedButton, nonClickedButtons, tabIndex)                  
 
                 case 'External'
                     obj.progressDialog.Visible = 'visible';
@@ -134,12 +123,9 @@ classdef TabNavigator < handle
 
                     if appGeneral.operationMode.Dock                        
                         obj.Components.appHandle{idx} = FileHandle_MFILE(obj.TabGroup.Children(tabIndex), varargin{:});
-                        switchingMode(obj, clickedButton, nonClickedButtons, tabIndex, 20)
+                        switchingMode(obj, clickedButton, nonClickedButtons, tabIndex)
 
                     else
-                        if ~isempty(obj.MenuSubGrid)
-                            obj.MenuSubGrid.ColumnWidth(end-1:end) = {0, 0};
-                        end
                         clickedButton.Value = false;
                         
                         if appGeneral.operationMode.Debug
@@ -255,49 +241,25 @@ classdef TabNavigator < handle
 
     methods (Access = private)
         %-----------------------------------------------------------------%
-        function switchingMode(obj, clickedButton, nonClickedButtons, tabIndex, dockControlWidth)
+        function switchingMode(obj, clickedButton, nonClickedButtons, tabIndex)
             changingButtonsIcon(obj, clickedButton, nonClickedButtons)
             obj.TabGroup.SelectedTab = obj.TabGroup.Children(tabIndex);
-            
-            if ~isempty(obj.MenuSubGrid)
-                switch obj.executionMode
-                    case 'webApp'
-                        obj.MenuSubGrid.ColumnWidth(end-1:end) = {0, dockControlWidth};
-                    otherwise
-                        obj.MenuSubGrid.ColumnWidth(end-1:end) = {dockControlWidth, dockControlWidth};
-                end
-            end
         end
 
         %-----------------------------------------------------------------%
         function changingButtonsIcon(obj, clickedButton, nonClickedButtons)
-            listOfButtons = [clickedButton; nonClickedButtons]';
+            tabConfig = struct( ...
+                'operation', 'setIconColor', ...
+                'buttons', struct('dataTag', {}, 'value', {}) ...
+            );
 
-            if obj.inlineSVG
-                tabConfig = struct( ...
-                    'operation', 'setIconColor', ...
-                    'buttons', struct('dataTag', {}, 'value', {}) ...
-                );
-    
-                for btn = listOfButtons
-                    if btn ~= clickedButton
-                        btn.Value = false;
-                    end
-                    tabConfig.buttons(end+1) = struct('dataTag', btn.UserData.id, 'value', btn.Value);
-                end    
-                sendEventToHTMLSource(obj.jsBackDoor, 'tabNavigator', tabConfig);
-
-            else
-                for btn = listOfButtons
-                    [~, idx] = ismember(btn, obj.Components.btnHandle);
-                    switch btn
-                        case clickedButton
-                            set(btn, 'Icon', obj.Components.btnIcon(idx).On)
-                        otherwise
-                            set(btn, 'Icon', obj.Components.btnIcon(idx).Off, 'Value', 0)
-                    end
+            for btn = [clickedButton; nonClickedButtons]'
+                if btn ~= clickedButton
+                    btn.Value = false;
                 end
-            end
+                tabConfig.buttons(end+1) = struct('dataTag', btn.UserData.id, 'value', btn.Value);
+            end    
+            sendEventToHTMLSource(obj.jsBackDoor, 'tabNavigator', tabConfig);
         end
     end
 end

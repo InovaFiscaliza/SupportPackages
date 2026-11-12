@@ -391,13 +391,20 @@ function setup(htmlComponent) {
         const handle      = findComponentHandle(objDataTag);
 
         try {
+            // Cancela fade em andamento no mesmo elemento, evitando que dois intervalos disputem a opacidade.
+            if (handle.fadeIntervalId) {
+                clearInterval(handle.fadeIntervalId);
+            }
+
             let opacityValue = 1.0;
-            let intervalId = setInterval(() => {
+            handle.style.opacity = opacityValue;
+            handle.fadeIntervalId = setInterval(() => {
                 opacityValue -= 0.02;
                 handle.style.opacity = opacityValue;
 
                 if (opacityValue <= 0.02) {
-                    clearInterval(intervalId);
+                    clearInterval(handle.fadeIntervalId);
+                    handle.fadeIntervalId = null;
                     htmlComponent.sendEventToMATLAB("backgroundBecameTransparent", objDataName);
                 }
             }, interval_ms);
@@ -490,7 +497,7 @@ function setup(htmlComponent) {
                 })
 
 
-                if (canvasElements.length === numCanvasElements || modifyAttempts >= 10) {
+                if (canvasElements.length >= numCanvasElements || modifyAttempts >= 10) {
                     consoleLog(`Canvas elements modified: ${canvasElements.length}/${numCanvasElements} after ${modifyAttempts} attempt`);
                     clearInterval(canvasInterval);
                 }
@@ -623,8 +630,10 @@ function setup(htmlComponent) {
             case "setIconColor": {
                 tabConfig.buttons.forEach(button => {
                     const svg = findComponentHandle(button.dataTag)?.querySelector(".mwIconNode svg");
-                    if (!svg) return;
-                    svg.setAttribute('fill', button.value ? "#f0f022" : "#ffffff");
+                    if (svg) svg.setAttribute('fill', button.value ? "#f0f022" : "#ffffff");
+
+                    const label = findComponentHandle(button.dataTag)?.querySelector(".mwTextNode");
+                    if (label) label.style.color = button.value ? "#f0f022" : "#ffffff";
                 });
                 break;
             }
@@ -846,7 +855,7 @@ function setup(htmlComponent) {
 
         if (title) {
             const titleElement = appWindow.document.createElement('div');
-            titleElement.textContent = title;
+            titleElement.innerHTML = title;
             Object.assign(titleElement.style, {
                 flex: '0 0 auto',
                 textAlign: 'left',
@@ -866,10 +875,12 @@ function setup(htmlComponent) {
             overflowX: 'hidden',
             overflowY: 'auto',
             overflowWrap: 'anywhere',
+            textAlign: 'justify',
             userSelect: 'text',
             border: '1px solid #d9d9d9',
             borderRadius: '8px 0 0 0',
-            padding: '10px'
+            padding: '10px',
+            fontSize: '12px'
         });
         popup.appendChild(scrollArea);
 
@@ -880,6 +891,13 @@ function setup(htmlComponent) {
         content.querySelectorAll('button').forEach(button => {
             button.addEventListener('click', () => {
                 htmlComponent.sendEventToMATLAB("textHighlight", { id: button.id, dataTag });
+            });
+        });
+
+        content.querySelectorAll('a[href]').forEach(anchor => {
+            anchor.addEventListener('click', (event) => {
+                event.preventDefault();
+                htmlComponent.sendEventToMATLAB("openExternalURL", anchor.href);
             });
         });
 
@@ -1832,15 +1850,18 @@ a, a:hover {
 
 .mwDialog *::selection,
 .textview::selection,
-.textview *::selection { background: #0078d4; color: white; }
+.textview *::selection,
+#matlab-js-bridge-text-highlight::selection,
+#matlab-js-bridge-text-highlight *::selection { background: #0078d4; color: white; }
 
 .textview-from-uiimage { display: flex; flex-direction: column; gap: 10px;}
 
 /*
   ## Tab Navigator ##
 */
-.tab-navigator-button { cursor: pointer !important; }
+.tab-navigator-button { cursor: pointer !important; transition: border-color 0.4s ease, background-color 0.4s ease; }
 .tab-navigator-button:hover { border-color: #7d7d7d !important; }
+.tab-navigator-button--mobile { border-color: transparent !important; background-color: #21333d !important; }
 .tab-navigator-icon:hover svg { transform: scale(1.08); }
 
 /*

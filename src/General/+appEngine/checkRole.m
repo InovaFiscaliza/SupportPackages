@@ -1,7 +1,7 @@
 function checkRole(app, role)
     arguments
         app  {mustBeA(app, 'matlab.apps.AppBase')}
-        role {mustBeMember(role, {'launcher', 'mainApp', 'secondaryApp', 'secondaryDockApp', 'mainAppMobile', 'secondaryAppMobile'})}
+        role {mustBeMember(role, {'launcher', 'mainApp', 'secondaryApp', 'secondaryDockApp', 'mainAppMobile', 'secondaryAppMobile', 'secondaryDockAppMobile'})}
     end
 
     switch role
@@ -24,6 +24,7 @@ function checkRole(app, role)
                 'UIFigure';             % matlab.ui.Figure
                 'GridLayout';           % matlab.ui.container.GridLayout
                 'AppName';              % matlab.ui.control.Label
+                'NavBar';               % matlab.ui.container.GridLayout
                 'TabGroup';             % matlab.ui.container.TabGroup
                 'tabGroupController';   % ui.TabNavigator
                 'Tab1Button';           % matlab.ui.control.StateButton
@@ -81,7 +82,9 @@ function checkRole(app, role)
             requiredProps = {
                 'UIFigure';             % matlab.ui.Figure
                 'GridLayout';           % matlab.ui.container.GridLayout
-                'tabGroupController';   % []
+                'NavBar';               % matlab.ui.container.GridLayout
+                'TabGroup';             % matlab.ui.container.TabGroup
+                'tabGroupController';   % ui.TabNavigator
                 'jsBackDoor';           % matlab.ui.control.HTML
                 'General';              % struct
                 'rootFolder';           % char
@@ -99,7 +102,25 @@ function checkRole(app, role)
                 'applyInitialLayout'
             };
 
-        otherwise % 'secondaryAppMobile'
+        case 'secondaryAppMobile'
+            requiredProps = {
+                'UIFigure';             % matlab.ui.Figure
+                'GridLayout';           % matlab.ui.container.GridLayout
+                'Container';            % matlab.ui.Figure (HANDLE)
+                'isDocked';             % logical
+                'jsBackDoor';           % matlab.ui.control.HTML
+                'progressDialog';       % ui.ProgressDialog
+                'mainApp'               % matlab.apps.AppBase (HANDLE)
+            };
+            requiredMethods = {
+                'ipcSecondaryJSEventsHandler';
+                'applyJSCustomizations';
+                'initializeAppProperties';
+                'initializeUIComponents';
+                'applyInitialLayout'
+            };
+
+        case 'secondaryDockAppMobile'
             requiredProps   = {};
             requiredMethods = {};
     end

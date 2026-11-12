@@ -42,8 +42,7 @@ function activate(app, role, varargin)
             if isempty(app.progressDialog)
                 app.progressDialog = ui.ProgressDialog(app.jsBackDoor);
             end
-            % requestVisibilityChange(app.progressDialog, 'visible', 'locked')
-            
+
             if ~app.renderCount
                 MFilePath   = varargin{1};
                 parpoolFlag = varargin{2};
@@ -80,14 +79,14 @@ function activate(app, role, varargin)
                 JSCustomizations(app, role)
             end
 
-            if isprop(app, 'tabGroupController') && ~isempty(app.tabGroupController) && app.tabGroupController.inlineSVG
+            if isprop(app, 'tabGroupController') && ~isempty(app.tabGroupController)
                 convertToInlineSVG(app.tabGroupController, app.jsBackDoor)
             end
 
             pause(.100)
             requestVisibilityChange(app.progressDialog, 'hidden', 'locked')
 
-        case 'secondaryApp'
+        case {'secondaryApp', 'secondaryAppMobile'}
             JSCustomizations(app, role)
 
             requestVisibilityChange(app.progressDialog, 'visible', 'unlocked')
@@ -103,7 +102,7 @@ end
 %-------------------------------------------------------------------------%
 function JSCustomizations(app, role)
     switch role
-        case {'mainApp', 'mainAppMobile'}
+        case 'mainApp'
             sendEventToHTMLSource(app.jsBackDoor, 'startup', app.executionMode);
 
         case 'secondaryApp'
@@ -119,18 +118,22 @@ function JSCustomizations(app, role)
 
             else
                 sendEventToHTMLSource(app.jsBackDoor, 'startup', app.mainApp.executionMode);
-                app.progressDialog = ui.ProgressDialog(app.jsBackDoor);                        
+                app.progressDialog = ui.ProgressDialog(app.jsBackDoor);
+            end
+
+        case 'mainAppMobile'
+            sendEventToHTMLSource(app.jsBackDoor, 'startup', app.executionMode);
+
+        case 'secondaryAppMobile'
+            if app.isDocked
+                app.progressDialog = app.mainApp.progressDialog;
+
+            else
+                sendEventToHTMLSource(app.jsBackDoor, 'startup', app.mainApp.executionMode);
+                app.progressDialog = ui.ProgressDialog(app.jsBackDoor);
             end
     end
 
-    % O "mainApp" sempre terá um "TabGroup" como propriedade e, eventualmente,
-    % um "SubTabGroup". Por outro lado, um "secondaryApp" pode, ou não, possuir 
-    % um "SubTabGroup", a depender da sua complexidade. A validação abaixo 
-    % garante a customização dos elementos renderizados na primeira aba do 
-    % uitabgroup.
-    if isprop(app, 'SubTabGroup')
-        applyJSCustomizations(app, 1)
-    end
-
+    applyJSCustomizations(app)
     pause(.100)
 end
