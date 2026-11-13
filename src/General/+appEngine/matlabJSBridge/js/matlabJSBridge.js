@@ -778,7 +778,8 @@ function setup(htmlComponent) {
         ## TEXT HIGHLIGHT ##
         Cria um uiBlocker próprio (transparente, apenas bloqueia a interação com a tela ao
         fundo) e um popup centralizado com imagem (opcional), conteúdo HTML e botão "X".
-        Cada <button> do conteúdo envia ao MATLAB o seu "id" e o "dataTag" do evento.
+        Cada <button> do conteúdo envia ao MATLAB o seu "id" e o "dataTag" do evento, e fecha
+        o popup em seguida.
     -----------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("textHighlight", function(customEvent) {
         const { dataTag, imageUrl = '', title = '', width = 80, height = 60, html = '' } = customEvent.Data;
@@ -882,15 +883,21 @@ function setup(htmlComponent) {
             padding: '10px',
             fontSize: '12px'
         });
+        // scrollArea e content formam uma cadeia flex, permitindo que o HTML recebido ocupe
+        // toda a altura disponível (ex.: "flex: 1 1 auto" para fixar botões no rodapé).
+        scrollArea.style.display = 'flex';
+        scrollArea.style.flexDirection = 'column';
         popup.appendChild(scrollArea);
 
         const content = appWindow.document.createElement('div');
+        Object.assign(content.style, { flex: '1 0 auto', display: 'flex', flexDirection: 'column' });
         content.innerHTML = html;
         scrollArea.appendChild(content);
 
         content.querySelectorAll('button').forEach(button => {
             button.addEventListener('click', () => {
                 htmlComponent.sendEventToMATLAB("textHighlight", { id: button.id, dataTag });
+                closeTextHighlight();
             });
         });
 
