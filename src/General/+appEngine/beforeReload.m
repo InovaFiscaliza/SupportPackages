@@ -18,7 +18,7 @@ function beforeReload(app, role)
 
     arguments
         app  {mustBeA(app, 'matlab.apps.AppBase')}
-        role {mustBeMember(role, {'mainApp'})} = 'mainApp'
+        role {mustBeMember(role, {'mainApp', 'mainAppMobile'})} = 'mainApp'
     end
 
     if ~app.Tab1Button.Value

@@ -391,23 +391,26 @@ function setup(htmlComponent) {
         const handle      = findComponentHandle(objDataTag);
 
         try {
-            // Cancela fade em andamento no mesmo elemento, evitando que dois intervalos disputem a opacidade.
-            if (handle.fadeIntervalId) {
-                clearInterval(handle.fadeIntervalId);
-            }
+            // Cancela fade em andamento no mesmo elemento.
+            handle.fadeAnimation?.cancel();
 
-            let opacityValue = 1.0;
-            handle.style.opacity = opacityValue;
-            handle.fadeIntervalId = setInterval(() => {
-                opacityValue -= 0.02;
-                handle.style.opacity = opacityValue;
+            // O fade é executado por animação (compositor do navegador), com duração
+            // baseada em relógio. Alterar "opacity" a cada intervalo via setInterval 
+            // exige repaint a cada passo e, no Safari/iOS, chegava a levar dezenas 
+            // de segundos.
+            handle.style.opacity = 1;
+            const animation = handle.animate(
+                [{ opacity: 1 }, { opacity: 0 }],
+                { duration: 50 * interval_ms, easing: "linear", fill: "forwards" }
+            );
+            handle.fadeAnimation = animation;
 
-                if (opacityValue <= 0.02) {
-                    clearInterval(handle.fadeIntervalId);
-                    handle.fadeIntervalId = null;
-                    htmlComponent.sendEventToMATLAB("backgroundBecameTransparent", objDataName);
-                }
-            }, interval_ms);
+            animation.onfinish = () => {
+                handle.style.opacity = 0;
+                animation.cancel();
+                handle.fadeAnimation = null;
+                htmlComponent.sendEventToMATLAB("backgroundBecameTransparent", objDataName);
+            };
         } catch (ME) {
             // console.log(ME);
         }
@@ -898,13 +901,6 @@ function setup(htmlComponent) {
             button.addEventListener('click', () => {
                 htmlComponent.sendEventToMATLAB("textHighlight", { id: button.id, dataTag });
                 closeTextHighlight();
-            });
-        });
-
-        content.querySelectorAll('a[href]').forEach(anchor => {
-            anchor.addEventListener('click', (event) => {
-                event.preventDefault();
-                htmlComponent.sendEventToMATLAB("openExternalURL", anchor.href);
             });
         });
 
@@ -1766,6 +1762,10 @@ function setup(htmlComponent) {
 .gbtTabGroup,
 .mwRadioButton,
 .mwDatePicker {
+    background-color: transparent !important;
+}
+
+input.mwInputNode {
     background-color: transparent !important;
 }
 

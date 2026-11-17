@@ -34,8 +34,17 @@ function activate(app, role, varargin)
                 if parpoolFlag
                     parpoolCheck()
                 end
+
+                loadConfigurationFile(app, appName, MFilePath)
+                initializeAppProperties(app)
+                initializeUIComponents(app)
             end
 
+            if isempty(app.mainApp) || ~isvalid(app.mainApp)
+                applyInitialLayout(app)
+            end
+            
+            pause(.100)
             requestVisibilityChange(app.progressDialog, 'hidden', 'locked')
 
         case {'mainApp', 'mainAppMobile'}

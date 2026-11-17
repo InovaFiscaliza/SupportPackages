@@ -161,7 +161,7 @@ classdef (Abstract) TextView
                 switch appRole
                     case {'mainApp', 'mainAppMobile'}
                         ipcJSEventHandlerName = 'ipcMainJSEventsHandler';    
-                    case {'secondaryApp', 'secondaryAppMobile', 'secondaryDockAppMobile'}
+                    case {'secondaryApp', 'secondaryAppMobile', 'secondaryDockApp', 'secondaryDockAppMobile'}
                         ipcJSEventHandlerName = 'ipcSecondaryJSEventsHandler';    
                     otherwise
                         error('ui:TextView:UnexpectedAppRole', 'Unexpected app role "%s"', appRole)

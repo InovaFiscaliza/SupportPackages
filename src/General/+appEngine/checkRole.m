@@ -8,6 +8,7 @@ function checkRole(app, role)
         case 'launcher'
             requiredProps = {
                 'UIFigure';             % matlab.ui.Figure
+                'mainApp';              % matlab.apps.AppBase (HANDLE)
                 'jsBackDoor';           % matlab.ui.control.HTML
                 'rootFolder';           % char
                 'renderCount';          % double
@@ -15,7 +16,11 @@ function checkRole(app, role)
                 'progressDialog'        % ui.ProgressDialog
             };
             requiredMethods = {
-                'ipcLauncherJSEventsHandler'
+                'ipcLauncherJSEventsHandler';
+                'loadConfigurationFile';
+                'initializeAppProperties';
+                'initializeUIComponents';
+                'applyInitialLayout'
             };
 
         % Versão "DESKTOP" do aplicativo
