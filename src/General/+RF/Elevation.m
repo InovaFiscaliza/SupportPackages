@@ -141,9 +141,8 @@ classdef Elevation < handle
                             batchLat = path2D(batchStart:lastIdx, 1);
                             batchLon = path2D(batchStart:lastIdx, 2);
 
+                            isBatchValid = false;
                             for endPoint = ["openMeteo", "openElevation", "anatel"]
-                                elevations = [];
-
                                 try
                                     apiResponse = webread(BuildRequestUrl(obj, endPoint, batchLat, batchLon), weboptions('Timeout', 5));
                                     switch endPoint
@@ -153,7 +152,8 @@ classdef Elevation < handle
                                             elevations = apiResponse.elevation;    
                                     end
 
-                                    if isnumeric(elevations) && (numel(elevations) == lastIdx-batchStart+1)
+                                    if isnumeric(elevations) && (numel(elevations) == lastIdx-batchStart+1) && all(isfinite(elevations))
+                                        isBatchValid = true;
                                         break
                                     end
 
@@ -161,7 +161,15 @@ classdef Elevation < handle
                                 end
                             end
 
-                            allElevations = [allElevations; elevations];
+                            % Se nenhum endpoint retornou elevações válidas para o lote,
+                            % o perfil fica incompleto e não deve ser retornado nem salvo
+                            % em cache.
+                            if ~isBatchValid
+                                warningMsg = 'Falha na obtenção das informações de elevação em todos os endpoints.';
+                                return
+                            end
+
+                            allElevations = [allElevations; elevations(:)];
                             batchStart = lastIdx + 1;
                         end
 
@@ -284,48 +292,119 @@ classdef Elevation < handle
                             abs(obj.CacheIndex.Long1 - lng1) <= obj.COORD_TOLERANCE & ...
                             abs(obj.CacheIndex.Long2 - lng2) <= obj.COORD_TOLERANCE;
             cacheIdx = find(isOpenElev & matchesBounds);
+            cacheIdx = SortCacheCandidates(obj, cacheIdx, lat1, lng1, lat2, lng2);
 
-            if isempty(cacheIdx)
-                containsBounds = lat1 >= obj.CacheIndex.Lat1  & ...
-                                 lat1 <= obj.CacheIndex.Lat2  & ...
-                                 lat2 >= obj.CacheIndex.Lat1  & ...
-                                 lat2 <= obj.CacheIndex.Lat2  & ...
-                                 lng1 >= obj.CacheIndex.Long1 & ...
-                                 lng1 <= obj.CacheIndex.Long2 & ...
-                                 lng2 >= obj.CacheIndex.Long1 & ...
-                                 lng2 <= obj.CacheIndex.Long2;
-                cacheIdx = find(~isOpenElev & containsBounds);
+            containsBounds = lat1 >= obj.CacheIndex.Lat1  & ...
+                             lat1 <= obj.CacheIndex.Lat2  & ...
+                             lat2 >= obj.CacheIndex.Lat1  & ...
+                             lat2 <= obj.CacheIndex.Lat2  & ...
+                             lng1 >= obj.CacheIndex.Long1 & ...
+                             lng1 <= obj.CacheIndex.Long2 & ...
+                             lng2 >= obj.CacheIndex.Long1 & ...
+                             lng2 <= obj.CacheIndex.Long2;
+            wmsIdx = find(~isOpenElev & containsBounds);
+            cacheIdx = [cacheIdx; SortCacheCandidates(obj, wmsIdx, lat1, lng1, lat2, lng2)];
+
+            % Os candidatos são percorridos em ordem (ver SortCacheCandidates).
+            % A busca é encerrada no primeiro arquivo que resulta em um perfil
+            % válido (n x 3). Arquivos ausentes, corrompidos ou com perfil
+            % incompleto são removidos do cache ao final da busca.
+            wayPoints3D = [];
+            invalidIdx = [];
+            for ii = reshape(cacheIdx, 1, [])
+                [wayPoints3D, isInvalid] = LoadCachedPath(obj, ii, path2D);
+                if isInvalid
+                    invalidIdx(end+1) = ii;
+                end
+
+                if ~isempty(wayPoints3D)
+                    break
+                end
             end
 
+            if ~isempty(invalidIdx)
+                PurgeCache(obj, invalidIdx);
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function cacheIdx = SortCacheCandidates(obj, cacheIdx, lat1, lng1, lat2, lng2)
+            % Ordena do mais próximo ao menos próximo dos limites do perfil
+            % sob análise e, em caso de empate, do de melhor resolução (menor valor).
+            cacheIdx = cacheIdx(:);
+            boundsDistance = abs(obj.CacheIndex.Lat1(cacheIdx)  - lat1) + ...
+                             abs(obj.CacheIndex.Lat2(cacheIdx)  - lat2) + ...
+                             abs(obj.CacheIndex.Long1(cacheIdx) - lng1) + ...
+                             abs(obj.CacheIndex.Long2(cacheIdx) - lng2);
+            sortKeys = [round(boundsDistance / obj.COORD_TOLERANCE), obj.CacheIndex.Resolution(cacheIdx)];
+            [~, sortIdx] = sortrows(sortKeys);
+            cacheIdx = cacheIdx(sortIdx);
+        end
+
+        %-----------------------------------------------------------------%
+        function [wayPoints3D, isInvalid] = LoadCachedPath(obj, cacheIdx, path2D)
+            % isInvalid = true indica que o registro em cache é inútil (arquivo
+            % ausente, ilegível ou com perfil que não é n x 3).
             wayPoints3D = [];
-            if ~isempty(cacheIdx)
-                if ~isscalar(cacheIdx)
-                    [~, bestIdx] = min(obj.CacheIndex.Resolution(cacheIdx));
-                    cacheIdx = cacheIdx(bestIdx);
+            isInvalid = false;
+            fileName = obj.CacheIndex.File{cacheIdx};
+
+            try
+                switch obj.CacheIndex.Server{cacheIdx}
+                    case 'Open-Elevation'
+                        cachedData = load(fileName, 'wayPoints3D');
+                        cachedPath = cachedData.wayPoints3D;
+
+                        if ~isnumeric(cachedPath) || ~ismatrix(cachedPath) || (width(cachedPath) ~= 3) || (height(cachedPath) < 2)
+                            isInvalid = true;
+                            return
+                        end
+
+                        nRequested = height(path2D);
+                        nCached = height(cachedPath);
+
+                        if nRequested == nCached
+                            wayPoints3D = cachedPath;
+                        else
+                            z = 1:nCached;
+                            zq = linspace(1, nCached, nRequested);
+                            wayPoints3D = [path2D, interp1(z, cachedPath(:,3), zq)'];
+                        end
+
+                    case 'MathWorks WMS Server'
+                        cachedData = load(fileName, 'zMatrix', 'zMatrixReference');
+                        wayPoints3D = InterpolateElevation(obj, path2D, cachedData.zMatrix, cachedData.zMatrixReference);
                 end
 
-                fileName = obj.CacheIndex.File{cacheIdx};
-                
-                try
-                    switch obj.CacheIndex.Server{cacheIdx}
-                        case 'Open-Elevation'
-                            load(fileName, 'wayPoints3D')
-                            
-                            nRequested = height(path2D);
-                            nCached = height(wayPoints3D);
-                            
-                            if nRequested ~= nCached
-                                z = 1:nCached;
-                                zq = linspace(1, nCached, nRequested);
-                                wayPoints3D = [path2D, interp1(z, wayPoints3D(:,3), zq)'];
-                            end
-        
-                        case 'MathWorks WMS Server'
-                            load(fileName, 'zMatrix', 'zMatrixReference')
-                            wayPoints3D = InterpolateElevation(obj, path2D, zMatrix, zMatrixReference);
-                    end
-                catch
+                if ~isnumeric(wayPoints3D) || (width(wayPoints3D) ~= 3) || (height(wayPoints3D) ~= height(path2D))
+                    wayPoints3D = [];
+                    isInvalid = true;
                 end
+            catch
+                wayPoints3D = [];
+                isInvalid = true;
+            end
+        end
+
+        %-----------------------------------------------------------------%
+        function PurgeCache(obj, cacheIdx)
+            % Exclui os arquivos .mat (restritos à pasta de cache) e os respectivos
+            % registros do índice, regravando a planilha cacheMapping.xlsx.
+            for ii = reshape(cacheIdx, 1, [])
+                fileName = obj.CacheIndex.File{ii};
+                if isfile(fileName)
+                    try
+                        delete(fileName)
+                    catch
+                    end
+                end
+            end
+
+            obj.CacheIndex(cacheIdx, :) = [];
+
+            try
+                writetable(obj.CacheIndex, fullfile(obj.CacheFolder, obj.CACHE_INDEX_FILE), 'WriteMode', 'replacefile', 'AutoFitWidth', false);
+            catch
             end
         end
 
