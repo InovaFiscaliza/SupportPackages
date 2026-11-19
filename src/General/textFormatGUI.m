@@ -102,7 +102,7 @@ classdef (Abstract) textFormatGUI
                 dataStruct      struct
                 invalidStatus   char {mustBeMember(invalidStatus, {'print -1', 'delete'})} = 'print -1'
                 freeInitialText char = ''
-                outputFormat    char {mustBeMember(outputFormat, {'popup', 'textview'})} = 'textview'
+                outputFormat    char {mustBeMember(outputFormat, {'popup', 'textview', 'html'})} = 'textview'
                 dataGroupStyle  char {mustBeMember(dataGroupStyle, {'upper', 'normal+gray'})} = 'upper'
                 additionalInlineStyle char = ''
             end
@@ -134,6 +134,8 @@ classdef (Abstract) textFormatGUI
                     inlineStyle = 'padding: 10px;';
                 case 'popup'
                     inlineStyle = 'user-select: text; font-family: &quot;Helvetica Neue&quot;, Helvetica, Arial, sans-serif; font-size: 11px; font-weight: normal; font-style: normal; color: rgb(0, 0, 0); text-align: justify;';
+                case 'html'
+                    inlineStyle = 'padding: 3px;';
             end
             
             htmlCode = sprintf('<p style="%s%s">%s', additionalInlineStyle, inlineStyle, freeInitialText);

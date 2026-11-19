@@ -114,7 +114,7 @@ classdef tableFiltering < handle
         end
 
         %-----------------------------------------------------------------%
-        function filterList = getFilterList(obj, baseName, status)
+        function [filterList, isDeletable] = getFilterList(obj, baseName, status)
             arguments
                 obj
                 baseName
@@ -129,23 +129,27 @@ classdef tableFiltering < handle
                     fRules = obj.filterRules(obj.filterRules.Enable, :);
             end
 
-            for ii = 1:height(fRules)
-                Field     = fRules.Field{ii};
-                Operators = fRules.Operators{ii};
-                Values    = fRules.Values{ii};
-                Connector = lower(fRules.Connector{ii});
+            % Vetor linha, alinhado a "filterList", que indica se a regra
+            % pode ser apagada.
+            isDeletable = fRules.Deletable';
 
-                for jj = 1:numel(Operators)
+            for ii = 1:height(fRules)
+                field     = fRules.Field{ii};
+                operators = fRules.Operators{ii};
+                values    = fRules.Values{ii};
+                connector = lower(fRules.Connector{ii});
+
+                for jj = 1:numel(operators)
                     if jj == 1
-                        filterList{ii} = sprintf('%s.("%s") %s %s', baseName, Field, Operators{jj}, tableFiltering.stringifyFilterValue(Values{jj}));
+                        filterList{ii} = sprintf('%s.("%s") %s %s', baseName, field, operators{jj}, tableFiltering.stringifyFilterValue(values{jj}));
                     else
-                        switch Connector
+                        switch connector
                             case {'and', 'e'}
                                 operatorSymbol = '&&';
                             case {'or', 'ou'}
                                 operatorSymbol = '||';
                         end
-                        filterList{ii} = sprintf('%s %s %s.("%s") %s %s', filterList{ii}, operatorSymbol, baseName, Field, Operators{jj}, tableFiltering.stringifyFilterValue(Values{jj}));
+                        filterList{ii} = sprintf('%s %s %s.("%s") %s %s', filterList{ii}, operatorSymbol, baseName, field, operators{jj}, tableFiltering.stringifyFilterValue(values{jj}));
                     end
                 end
             end
@@ -171,22 +175,22 @@ classdef tableFiltering < handle
                     idx = find(fieldIndexes == ii)';
                     
                     for jj = idx
-                        Field     = fRules.Field{jj};
-                        Operators = fRules.Operators{jj}; % cell
-                        Values    = fRules.Values{jj};    % cell
-                        Connector = lower(fRules.Connector{jj});
+                        field     = fRules.Field{jj};
+                        operators = fRules.Operators{jj}; % cell
+                        values    = fRules.Values{jj};    % cell
+                        connector = lower(fRules.Connector{jj});
 
-                        for kk = 1:numel(Operators)
-                            Fcn = tableFiltering.functionHandle(Operators{kk}, Values{kk});
+                        for kk = 1:numel(operators)
+                            filterFcn = tableFiltering.functionHandle(operators{kk}, values{kk});
 
                             if kk == 1
-                                fTempLogical = Fcn(rawTable{:, Field});
+                                fTempLogical = filterFcn(rawTable{:, field});
                             else
-                                switch Connector
+                                switch connector
                                     case {'and', 'e'}
-                                        fTempLogical = and(fTempLogical, Fcn(rawTable{:, Field}));
+                                        fTempLogical = and(fTempLogical, filterFcn(rawTable{:, field}));
                                     case {'or', 'ou'}
-                                        fTempLogical =  or(fTempLogical, Fcn(rawTable{:, Field}));
+                                        fTempLogical =  or(fTempLogical, filterFcn(rawTable{:, field}));
                                 end
                             end
                         end
