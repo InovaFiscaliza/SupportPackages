@@ -220,9 +220,14 @@ classdef (Abstract) util
                         if isfolder(fullfile(executionFolder, [appName '.app']))
                             status = true;
                         end
-                    else
-                        % !! PENDENTE !!
-                        error('Pendente análise de como as distribuições Linux descompactam o arquivo compilado no MATLAB. :(')
+                    else % isunix
+                        % O executável roda no próprio processo do MATLAB Runtime,
+                        % logo "/proc/<pid>/exe" aponta para o binário do app.
+                        [shellStatus, executablePath] = system(sprintf('readlink -f /proc/%d/exe', feature('getpid')));
+                        executionFolder = fileparts(strtrim(executablePath));
+                        if ~shellStatus && isfile(fullfile(executionFolder, appName))
+                            status = true;
+                        end
                     end
                     varargout = {status, executionFolder};
         
