@@ -172,10 +172,10 @@ classdef ProjectCommon < handle
                     obj.(fieldName) = fieldValue;
 
                 case 'issueDetails'
-                    [~, issueIndex] = ismember(fieldValue.issue, [obj.issueDetails.issue]);
-                    if ~issueIndex
+                    issueIndex = find(strcmp({obj.issueDetails.system}, fieldValue.system) & [obj.issueDetails.issue] == fieldValue.issue, 1);
+                    if isempty(issueIndex)
                         issueIndex = numel(obj.issueDetails) + 1;
-                    end                    
+                    end
                     obj.issueDetails(issueIndex) = fieldValue;
 
                 case 'entityDetails'
@@ -243,7 +243,21 @@ classdef ProjectCommon < handle
             details  = getIssueDetailsFromCache(obj, system, issue);
             msgError = '';
 
-            if isempty(details) && (issue > 0) && (issue < inf)
+            % Ao abrir um .MAT salvo por outro usuário, divergências entre os 
+            % atributos do usuário atual (MFA) e os registrados em issueDetails 
+            % demandam uma nova consulta ao eFiscaliza. Em caso de falha na 
+            % nova consulta, mantém-se a informação em cache (melhor esforço).
+            hasCache    = ~isempty(details);
+            fetchNeeded = ~hasCache;
+
+            try
+                if hasCache
+                    fetchNeeded = ~strcmpi(strtrim(details.usuario.email), eFiscalizaObj.userAttributes.auditorEmail);
+                end
+            catch
+            end
+
+            if fetchNeeded && (issue > 0) && (issue < inf)
                 try
                     env = strsplit(system);
                     if isscalar(env)
@@ -257,21 +271,24 @@ classdef ProjectCommon < handle
                         'id', issue ...
                     );
                     
-                    details = run(eFiscalizaObj, env, 'queryIssue', issueInfo);
-                    if isstruct(details)
+                    fetchedDetails = run(eFiscalizaObj, env, 'queryIssue', issueInfo);
+                    if isstruct(fetchedDetails)
                         newIssueDetails = struct( ...
                             'system', system, ...
                             'issue', issue, ...
-                            'details', details, ...
+                            'details', fetchedDetails, ...
                             'timestamp', datestr(now) ...
                         );
                         updateUiInfo(obj, 'self', 'issueDetails', newIssueDetails)
+                        details = fetchedDetails;
     
                     else
-                        error(details)
+                        error(fetchedDetails)
                     end    
                 catch ME
-                    msgError = ME.message;
+                    if ~hasCache
+                        msgError = ME.message;
+                    end
                 end              
             end
         end

@@ -1428,7 +1428,7 @@ function setup(htmlComponent) {
                 return response.json();
             })
             .then(data => {
-                htmlComponent.sendEventToMATLAB("customForm", {uuid: eventName, context, mfaLogin: true, login: data.NA_USER_EMAIL, password: '123456'});
+                htmlComponent.sendEventToMATLAB("customForm", {uuid: eventName, context, mfaLogin: true, login: data.NA_USER_EMAIL, password: '123456', userAttributes: data});
             })
             .catch(ME => {
                 htmlComponent.sendEventToMATLAB("customForm", {uuid: eventName, context, error: ME.message});

@@ -5,6 +5,7 @@ classdef eFiscaliza < ws.WebServiceBase
         mfaLogin (1, 1) logical = false
         login = ''
         password = ''
+        userAttributes = []
     end
 
 
@@ -23,11 +24,12 @@ classdef eFiscaliza < ws.WebServiceBase
 
     methods
         %-----------------------------------------------------------------%
-        function obj = eFiscaliza(loginMode, login, password)
+        function obj = eFiscaliza(loginMode, login, password, credentials)
             arguments
                 loginMode char {mustBeMember(loginMode, {'mfa', 'manual'})}
                 login char
                 password char
+                credentials = []
             end
 
             obj.mfaLogin = strcmp(loginMode, 'mfa');
@@ -38,6 +40,10 @@ classdef eFiscaliza < ws.WebServiceBase
             obj.login = login;
 
             obj.password = ws.WebServiceBase.base64encode(password);
+
+            if ~isempty(credentials) && isstruct(credentials) && isfield(credentials, 'userAttributes')
+                updateUserAttributes(obj, credentials(1).userAttributes)
+            end
         end
 
         %-----------------------------------------------------------------%
@@ -50,6 +56,7 @@ classdef eFiscaliza < ws.WebServiceBase
 
             obj.login = '';
             obj.password = '';
+            obj.userAttributes = [];
         end
 
         %-----------------------------------------------------------------%
@@ -102,6 +109,7 @@ classdef eFiscaliza < ws.WebServiceBase
                             ), ...
                             'usuario', response.Body.Data.usuario ...
                         );
+                        updateUserAttributes(obj, msg.usuario)
 
                     case {'uploadDocument', 'uploadExternalDocument', 'uploadDocument-DS', 'uploadExternalDocument-DS'}
                         unit     = varargin{1};
@@ -172,6 +180,37 @@ classdef eFiscaliza < ws.WebServiceBase
                 msg  = ME.message;
             end
         end
+
+        %-----------------------------------------------------------------%
+        function updateUserAttributes(obj, userAttributes)
+            if obj.mfaLogin && ~isempty(obj.userAttributes)
+                return
+            end
+
+            FIELD_NAMES_MAP = struct( ...
+                'fiscaliza', struct('name', 'nome',         'email', 'email',         'department', 'unidade',       'jobTitle', 'funcao'), ....
+                'mfa',       struct('name', 'NA_USER_NAME', 'email', 'NA_USER_EMAIL', 'department', 'NA_DEPARTMENT', 'jobTitle', 'NA_JOB_TITLE') ...
+            );
+
+            fieldNames = fieldnames(userAttributes);
+            if all(ismember(struct2cell(FIELD_NAMES_MAP.fiscaliza), fieldNames))
+                fieldSource = 'fiscaliza';
+            elseif all(ismember(struct2cell(FIELD_NAMES_MAP.mfa), fieldNames))
+                fieldSource = 'mfa';
+            else
+                return
+            end
+
+            auditorEmail = strtrim(userAttributes.(FIELD_NAMES_MAP.(fieldSource).email));
+            if isempty(obj.userAttributes) || ~strcmpi(obj.userAttributes.auditorEmail, auditorEmail)
+                obj.userAttributes = struct( ...
+                    'auditorName', userAttributes.(FIELD_NAMES_MAP.(fieldSource).name), ...
+                    'auditorEmail', auditorEmail, ...
+                    'auditorDepartment', userAttributes.(FIELD_NAMES_MAP.(fieldSource).department), ...
+                    'auditorJobTitle', userAttributes.(FIELD_NAMES_MAP.(fieldSource).jobTitle) ...
+                );
+            end
+        end
     end
 
 
@@ -197,7 +236,7 @@ classdef eFiscaliza < ws.WebServiceBase
                                 login(session)
                                 [~, response] = readRaw(session, url);
                                 credentials = jsondecode(response.Body.Data);
-                                varargout = {struct('mfaLogin', true, 'login', credentials.NA_USER_EMAIL, 'password', '123456')};
+                                varargout = {struct('mfaLogin', true, 'login', credentials.NA_USER_EMAIL, 'password', '123456', 'userAttributes', credentials)};
                         end
 
                     catch
