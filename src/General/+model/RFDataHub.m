@@ -40,6 +40,13 @@ classdef (Abstract) RFDataHub
                         RFDataHubLog   = parquetread(filename_parquet2, 'VariableNamingRule', 'preserve');
                         RFDataHubLog   = RFDataHubLog.Log;
 
+                        % Cada valor único da coluna "Log" (já 1-based, vide parquet2mat) 
+                        % deve apontar para um elemento de RFDataHubLog, e vice-versa.
+                        logIndexes = unique(RFDataHub.Log);
+                        if (numel(logIndexes) ~= numel(RFDataHubLog)) || ~isempty(setdiff(logIndexes, 1:numel(RFDataHubLog)))
+                            error('model:RFDataHub:InconsistentLog', 'The "Log" column of the stations table is inconsistent with the log table.')
+                        end
+
                         FileVersion    = jsondecode(fileread(filename_parquet3));
                         RFDataHub_info = FileVersion.rfdatahub;
                                         
