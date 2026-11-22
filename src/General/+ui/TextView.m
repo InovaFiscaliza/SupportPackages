@@ -139,6 +139,23 @@ classdef (Abstract) TextView
         end
 
         %-----------------------------------------------------------------%
+        % O interpretador HTML do uilabel não aceita <img>, <svg> nem "class".
+        % Para exibir um ícone em um link, o link é criado vazio (ver "customIcon" 
+        % em "createHTMLLink") e o ícone é desenhado por CSS no navegador, a partir
+        % do SVG informado aqui, em todos os links cujo "href" contenha "eventName".
+        %-----------------------------------------------------------------%
+        function registerLinkIcon(jsBackDoor, eventName, svgContent, size)
+            arguments
+                jsBackDoor matlab.ui.control.HTML
+                eventName  char
+                svgContent char
+                size       double = 16 % pixels
+            end
+
+            sendEventToHTMLSource(jsBackDoor, 'registerLinkIcon', struct('eventName', eventName, 'svgContent', svgContent, 'size', size));
+        end
+
+        %-----------------------------------------------------------------%
         % Cria um link HTML que, quando clicado, dispara um evento no MATLAB. O 
         % evento é tratado por meio de método público "ipcMainJSEventHandler", caso 
         % se trate do "mainApp", ou "ipcSecondaryJSEventsHandler", caso se trate de
@@ -146,7 +163,7 @@ classdef (Abstract) TextView
         %------------------------------------------------------------------%
         function htmlLink = createHTMLLink(linkType, appHandleNameInBase, eventName, eventData, varargin)
             arguments
-                linkType {mustBeMember(linkType, {'link', 'question', 'edit', 'screenshot', 'customText', 'customImage'})}
+                linkType {mustBeMember(linkType, {'link', 'question', 'edit', 'screenshot', 'customText', 'customImage', 'customIcon'})}
                 appHandleNameInBase
                 eventName
                 eventData
@@ -185,6 +202,11 @@ classdef (Abstract) TextView
 
                 case 'customText'
                     linkInnerHTML = varargin{1};
+
+                case 'customIcon'
+                    % Conteúdo mínimo (zero-width space): o ícone é desenhado por 
+                    % CSS ("ui.TextView.registerLinkIcon").
+                    linkInnerHTML = '&#8203;';
 
                 case 'customImage'
                     imageFileName = varargin{1};

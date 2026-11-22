@@ -1,4 +1,4 @@
-classdef tableFiltering < handle
+classdef TableFilter < handle
 
     properties
         %-----------------------------------------------------------------%
@@ -67,7 +67,7 @@ classdef tableFiltering < handle
         function fIndex = run(obj, filterType, varargin)
             switch filterType
                 case 'wordsToSearch'
-                    fIndex = tableFiltering.stringMatchFiltering(varargin{:});
+                    fIndex = model.TableFilter.stringMatchFiltering(varargin{:});
                 case 'filterRules'
                     fIndex = rulesOrientedFiltering(obj, varargin{:});
             end
@@ -141,7 +141,7 @@ classdef tableFiltering < handle
 
                 for jj = 1:numel(operators)
                     if jj == 1
-                        filterList{ii} = sprintf('%s.("%s") %s %s', baseName, field, operators{jj}, tableFiltering.stringifyFilterValue(values{jj}));
+                        filterList{ii} = sprintf('%s.("%s") %s %s', baseName, field, operators{jj}, model.TableFilter.stringifyFilterValue(values{jj}));
                     else
                         switch connector
                             case {'and', 'e'}
@@ -149,7 +149,7 @@ classdef tableFiltering < handle
                             case {'or', 'ou'}
                                 operatorSymbol = '||';
                         end
-                        filterList{ii} = sprintf('%s %s %s.("%s") %s %s', filterList{ii}, operatorSymbol, baseName, field, operators{jj}, tableFiltering.stringifyFilterValue(values{jj}));
+                        filterList{ii} = sprintf('%s %s %s.("%s") %s %s', filterList{ii}, operatorSymbol, baseName, field, operators{jj}, model.TableFilter.stringifyFilterValue(values{jj}));
                     end
                 end
             end
@@ -181,7 +181,7 @@ classdef tableFiltering < handle
                         connector = lower(fRules.Connector{jj});
 
                         for kk = 1:numel(operators)
-                            filterFcn = tableFiltering.functionHandle(operators{kk}, values{kk});
+                            filterFcn = model.TableFilter.functionHandle(operators{kk}, values{kk});
 
                             if kk == 1
                                 fTempLogical = filterFcn(rawTable{:, field});
@@ -216,18 +216,18 @@ classdef tableFiltering < handle
                 columnTypes = cellstr(columnTypes);
             end
 
-            symbols = cellstr(cellfun(@(x) tableFiltering.FILTER_SYMBOLS(x), columnTypes));
+            symbols = cellstr(cellfun(@(x) model.TableFilter.FILTER_SYMBOLS(x), columnTypes));
             symbolicNames = strcat(symbols, {' '}, columnNames);
         end
 
         %-----------------------------------------------------------------%
         function pseudoClasses = getPseudoClasses(columnTypes)
-            pseudoClasses = cellstr(cellfun(@(x) tableFiltering.FILTER_TYPE_MAPPING(x), columnTypes));
+            pseudoClasses = cellstr(cellfun(@(x) model.TableFilter.FILTER_TYPE_MAPPING(x), columnTypes));
         end
 
         %-----------------------------------------------------------------%
         function [operations, symbol] = getFilterCapabilities(pseudoClass)
-            caps = tableFiltering.FILTER_CAPABILITIES;
+            caps = model.TableFilter.FILTER_CAPABILITIES;
     
             if isKey(caps, pseudoClass)
                 entry      = caps(pseudoClass);
@@ -295,7 +295,7 @@ classdef tableFiltering < handle
         %-----------------------------------------------------------------%
         function fcn = functionHandle(operator, value)
             if isnumeric(value) || isdatetime(value)
-                floatTolerance = tableFiltering.FLOAT_COMPARISON_TOLERANCE;
+                floatTolerance = model.TableFilter.FLOAT_COMPARISON_TOLERANCE;
 
                 switch operator
                     case '='

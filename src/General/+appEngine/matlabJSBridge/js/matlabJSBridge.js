@@ -338,6 +338,34 @@ function setup(htmlComponent) {
     });
 
     /*---------------------------------------------------------------------------------*/
+    // O uilabel (interpretador HTML) não aceita <img>, <svg>, <span> nem "class".
+    // O ícone é desenhado por CSS (::before + mask) em links "matlab:" cujo "href"
+    // contém o nome do evento, mantendo o link no "Text" (e o seu listener).
+    htmlComponent.addEventListener("registerLinkIcon", function(customEvent) {
+        const { eventName, svgContent, size = 16 } = customEvent.Data;
+        const styleId = `link-icon-${eventName}`;
+
+        let styleElement = appWindow.document.getElementById(styleId);
+        if (!styleElement) {
+            styleElement = appWindow.document.createElement("style");
+            styleElement.id = styleId;
+            appWindow.document.head.appendChild(styleElement);
+        }
+
+        const maskURL = `url("data:image/svg+xml;utf8,${encodeURIComponent(svgContent)}")`;
+        styleElement.innerHTML = `a[href*="${eventName}"]::before {
+    content: "";
+    display: inline-block;
+    width: ${size}px;
+    height: ${size}px;
+    vertical-align: middle;
+    background-color: currentColor;
+    -webkit-mask: ${maskURL} center / contain no-repeat;
+    mask: ${maskURL} center / contain no-repeat;
+}`;
+    });
+
+    /*---------------------------------------------------------------------------------*/
     htmlComponent.addEventListener("delProgressDialog", function() {
         try {
             hostWindow.document.getElementsByClassName("mw-busyIndicator")[0].remove();
