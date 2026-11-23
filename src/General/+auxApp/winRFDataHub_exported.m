@@ -1488,7 +1488,7 @@ classdef winRFDataHub_exported < matlab.apps.AppBase
             app.AxesToolbar.ColumnWidth = {10, 25, 25, 5, 110, 10};
             app.AxesToolbar.RowHeight = {22};
             app.AxesToolbar.ColumnSpacing = 0;
-            app.AxesToolbar.Padding = [2 2 2 0];
+            app.AxesToolbar.Padding = [0 2 0 1];
             app.AxesToolbar.Layout.Row = 1;
             app.AxesToolbar.Layout.Column = 4;
             app.AxesToolbar.BackgroundColor = [1 1 1];
