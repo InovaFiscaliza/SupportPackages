@@ -76,7 +76,7 @@ classdef dockRFDataHubChannelReport_exported < matlab.apps.AppBase
             end
 
             [cacheIdx, errorMsg] = Get(app.channelReportObj, url, operationType);
-            if ~isempty(cacheIdx)    
+            if ~isempty(cacheIdx)
                 app.PdfViewer.HTMLSource = app.channelReportObj.cacheMapping.File{cacheIdx};
 
                 downloadAt = [];
@@ -95,7 +95,7 @@ classdef dockRFDataHubChannelReport_exported < matlab.apps.AppBase
                     app.DownloadButton.Visible = hours(datetime('now') - downloadAt) > 24;
                 end
 
-                app.UndockButton.Visible = 'on';
+                app.UndockButton.Enable = 'on';
 
             else
                 resetPanel(app)
@@ -114,7 +114,8 @@ classdef dockRFDataHubChannelReport_exported < matlab.apps.AppBase
         function resetPanel(app)
             app.PdfViewer.HTMLSource = '';
             app.CacheUpdatedAt.Text = '';
-            set([app.DownloadButton, app.UndockButton], 'Visible', 'off')
+            app.DownloadButton.Visible = 'off';
+            app.UndockButton.Enable = 'off';
         end
 
         %-----------------------------------------------------------------%
@@ -245,7 +246,7 @@ classdef dockRFDataHubChannelReport_exported < matlab.apps.AppBase
             app.UndockButton = uiimage(app.GridLayout);
             app.UndockButton.ScaleMethod = 'none';
             app.UndockButton.ImageClickedFcn = createCallbackFcn(app, @onUndockButtonClicked, true);
-            app.UndockButton.Visible = 'off';
+            app.UndockButton.Enable = 'off';
             app.UndockButton.Layout.Row = 1;
             app.UndockButton.Layout.Column = 4;
             app.UndockButton.ImageSource = fullfile(pathToMLAPP, '+RFDataHub', 'icons', 'open-in-window.svg');

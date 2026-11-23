@@ -65,10 +65,13 @@ classdef ChannelReport < handle
                 % Escolhe o mais recente...
                 idxCache = idxCache(end);
 
-                if isfile(obj.cacheMapping.File{idxCache})
+                % Entradas antigas podem apontar para arquivos que não são PDF
+                % (p.ex., mensagem de erro do servidor); são ignoradas.
+                if isfile(obj.cacheMapping.File{idxCache}) && isPDF(obj.cacheMapping.File{idxCache})
                     return
                 end
             end
+            idxCache = [];
         end
 
         %-----------------------------------------------------------------%
@@ -84,6 +87,12 @@ classdef ChannelReport < handle
     
                 fileName = fullfile(fileFolder, [char(matlab.lang.internal.uuid()) '.pdf']);
                 websave(fileName, URL, weboptions(Timeout=30));
+
+                [isValid, msgInvalid] = isPDF(fileName);
+                if ~isValid
+                    delete(fileName)
+                    error('%s', msgInvalid)
+                end
 
                 idxCache = height(obj.cacheMapping)+1;
                 obj.cacheMapping(idxCache, :) = {URL, fileName, datestr(now)};
