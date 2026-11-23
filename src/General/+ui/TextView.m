@@ -144,15 +144,16 @@ classdef (Abstract) TextView
         % em "createHTMLLink") e o ícone é desenhado por CSS no navegador, a partir
         % do SVG informado aqui, em todos os links cujo "href" contenha "eventName".
         %-----------------------------------------------------------------%
-        function registerLinkIcon(jsBackDoor, eventName, svgContent, size)
+        function registerLinkIcon(jsBackDoor, eventName, svgContent, size, color)
             arguments
                 jsBackDoor matlab.ui.control.HTML
                 eventName  char
                 svgContent char
                 size       double = 16 % pixels
+                color      char = 'currentColor' % cor CSS do ícone (o SVG serve apenas como máscara)
             end
 
-            sendEventToHTMLSource(jsBackDoor, 'registerLinkIcon', struct('eventName', eventName, 'svgContent', svgContent, 'size', size));
+            sendEventToHTMLSource(jsBackDoor, 'registerLinkIcon', struct('eventName', eventName, 'svgContent', svgContent, 'size', size, 'color', color));
         end
 
         %-----------------------------------------------------------------%

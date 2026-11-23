@@ -185,6 +185,40 @@ classdef dockTableFilter_exported < matlab.apps.AppBase
                     end
             end
         end
+
+        %-----------------------------------------------------------------%
+        function [values, errorMessage] = resolveCategoricalValues(app, columnName, operators, values)
+            % Como o filtro ignora maiúsculas e minúsculas, "ba" filtra "BA". 
+            % Para que o valor seja apresentado como na coluna (por exemplo, 
+            % pelos apps que refletem as regras em campos de lista), o valor 
+            % digitado é substituído pela categoria correspondente. Apenas "=" 
+            % e "≠" comparam o valor integral com uma categoria; nas demais 
+            % operações (contains, begins with etc.) o valor é um trecho.
+            % Se a coluna é apresentada como lista (até MAX_CATEGORIES_AS_DROPDOWN
+            % categorias) e o valor não corresponde a nenhuma categoria, o filtro
+            % não selecionaria registros e é rejeitado.
+            errorMessage = '';
+
+            cats = getCategories(app, columnName);
+            if isempty(cats)
+                return
+            end
+
+            for ii = 1:numel(values)
+                if ~ismember(operators{ii}, {'=', '≠'}) || ismember(values{ii}, cats)
+                    continue
+                end
+
+                catIdx = find(strcmpi(cats, strtrim(values{ii})), 1);
+                if ~isempty(catIdx)
+                    values{ii} = cats{catIdx};
+
+                elseif numel(cats) <= app.MAX_CATEGORIES_AS_DROPDOWN
+                    errorMessage = sprintf('O valor "%s" não consta entre as categorias da coluna "%s".', values{ii}, columnName);
+                    return
+                end
+            end
+        end
     end
     
 
@@ -324,6 +358,24 @@ classdef dockTableFilter_exported < matlab.apps.AppBase
                 if ~isempty(errorMessage)
                     ui.Dialog(app.UIFigure, 'warning', errorMessage);
                     return
+                end
+            end
+
+            % Colunas categóricas: o valor digitado é substituído pela categoria
+            % correspondente (ignorando maiúsculas e minúsculas) e refletido no 
+            % campo de entrada.
+            if strcmp(pseudoClass, 'categorical')
+                [values, errorMessage] = resolveCategoricalValues(app, columnName, operators, values);
+                if ~isempty(errorMessage)
+                    ui.Dialog(app.UIFigure, 'warning', errorMessage);
+                    return
+                end
+
+                inputHandles = {app.Operation1_List.UserData.inputHandle, app.Operation2_List.UserData.inputHandle};
+                for ii = 1:numel(values)
+                    if ~isempty(inputHandles{ii}) && ~strcmp(inputHandles{ii}.Value, values{ii})
+                        inputHandles{ii}.Value = values{ii};
+                    end
                 end
             end
 

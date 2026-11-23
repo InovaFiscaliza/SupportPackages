@@ -342,7 +342,7 @@ function setup(htmlComponent) {
     // O ícone é desenhado por CSS (::before + mask) em links "matlab:" cujo "href"
     // contém o nome do evento, mantendo o link no "Text" (e o seu listener).
     htmlComponent.addEventListener("registerLinkIcon", function(customEvent) {
-        const { eventName, svgContent, size = 16 } = customEvent.Data;
+        const { eventName, svgContent, size = 16, color = "currentColor" } = customEvent.Data;
         const styleId = `link-icon-${eventName}`;
 
         let styleElement = appWindow.document.getElementById(styleId);
@@ -359,7 +359,7 @@ function setup(htmlComponent) {
     width: ${size}px;
     height: ${size}px;
     vertical-align: middle;
-    background-color: currentColor;
+    background-color: ${color};
     -webkit-mask: ${maskURL} center / contain no-repeat;
     mask: ${maskURL} center / contain no-repeat;
 }`;

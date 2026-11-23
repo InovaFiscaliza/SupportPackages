@@ -73,7 +73,16 @@ classdef (Abstract) RFDataHub
                 RFDataHub.("Longitude") = round(double(RFDataHub.("Longitude")), 6);
             end
 
-            if any(~ismember({'ID', 'Description', '_Name', '_Location'}, RFDataHub.Properties.VariableNames))
+            % As colunas "_Name" e "_Location" (texto pré-processado) não são mais
+            % utilizadas. Bases salvas anteriormente as contêm (e o MATLAB pode ter
+            % renomeado para "x_Name" e "x_Location" por não serem identificadores
+            % válidos), então são descartadas.
+            legacyColumns = intersect(RFDataHub.Properties.VariableNames, {'_Name', '_Location'});
+            if ~isempty(legacyColumns)
+                RFDataHub = removevars(RFDataHub, legacyColumns);
+            end
+
+            if any(~ismember({'ID', 'Description'}, RFDataHub.Properties.VariableNames))
                 RFDataHub = model.RFDataHub.createColumnsToGUI(RFDataHub);
             end
         end
@@ -181,10 +190,8 @@ classdef (Abstract) RFDataHub
 
         %-----------------------------------------------------------------%
         function obj = createColumnsToGUI(obj)
-            obj.("ID")          = "#" + string((1:height(obj))');
+            obj.("ID") = "#" + string((1:height(obj))');
             obj.("Description") = "[" + string(obj.Source) + "] " + string(obj.Status) + ", " + string(obj.StationClass) + ", " + string(obj.Name) + ", " + string(obj.Location) + "/" + string(obj.State) + " (M=" + string(obj.MergeCount) + ")";
-            obj.("_Name")       = textAnalysis.preProcessedData(obj.("Name"),     true, false);
-            obj.("_Location")   = textAnalysis.preProcessedData(obj.("Location"), true, false);
         end
 
         %-----------------------------------------------------------------%
@@ -233,7 +240,6 @@ classdef (Abstract) RFDataHub
                     obj = renamevars(obj, editedColumnNames, rawColumnNames);
             end
         end
-
 
         %-----------------------------------------------------------------%
         function description = Description(obj, idx, addAuxiliarInfo)
