@@ -59,14 +59,14 @@ function setup(htmlComponent) {
     if (!appWindow.document._customFocusInListenerInstalled) {
         appWindow.document._customFocusInListenerInstalled = true;
 
-        let lastInteractionWasKeyboard = false;
-        appWindow.document.addEventListener('keydown',     () => { lastInteractionWasKeyboard = true;  }, true);
-        appWindow.document.addEventListener('mousedown',   () => { lastInteractionWasKeyboard = false; }, true);
-        appWindow.document.addEventListener('pointerdown', () => { lastInteractionWasKeyboard = false; }, true);
+        let pointerInteractionInProgress = false;
+        appWindow.document.addEventListener('pointerdown',   () => { pointerInteractionInProgress = true;  }, true);
+        appWindow.document.addEventListener('pointerup',     () => { pointerInteractionInProgress = false; }, true);
+        appWindow.document.addEventListener('pointercancel', () => { pointerInteractionInProgress = false; }, true);
 
         appWindow.document.addEventListener('focusin', (event) => {
             const target = event.target;
-            if (!lastInteractionWasKeyboard && target.matches('.mwButton, .mwCloseNode') && target.closest('.mwDialog')?.classList.contains('focused')) {
+            if (pointerInteractionInProgress && target.matches('.mwButton, .mwCloseNode') && target.closest('.mwDialog')?.classList.contains('focused')) {
                 target.blur();
             }
         }, true);
