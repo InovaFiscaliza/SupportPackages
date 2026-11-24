@@ -18,6 +18,7 @@ classdef winRFDataHub_exported < matlab.apps.AppBase
         UITable                    matlab.ui.control.Table
         AxesToolbar                matlab.ui.container.GridLayout
         AxesBasemap                matlab.ui.control.DropDown
+        AxesExportGraphicsButton   matlab.ui.control.Image
         AxesRegionZoomButton       matlab.ui.control.Image
         AxesRestoreViewButton      matlab.ui.control.Image
         AxesContainer              matlab.ui.container.Panel
@@ -214,6 +215,7 @@ classdef winRFDataHub_exported < matlab.apps.AppBase
                 app.TableResultsExportButton;
                 app.AxesRestoreViewButton;
                 app.AxesRegionZoomButton;
+                app.AxesExportGraphicsButton;
                 app.DockUndockButton;
                 app.DockCloseButton
             };
@@ -232,6 +234,7 @@ classdef winRFDataHub_exported < matlab.apps.AppBase
                     ...
                     struct('appName', appName, 'dataTag', app.AxesRestoreViewButton.UserData.id, 'tooltip', struct('defaultPosition', 'top', 'textContent', 'Restaura limites iniciais dos eixos')), ...
                     struct('appName', appName, 'dataTag', app.AxesRegionZoomButton.UserData.id, 'tooltip', struct('defaultPosition', 'top', 'textContent', 'Habilita zoom de região')), ...
+                    struct('appName', appName, 'dataTag', app.AxesExportGraphicsButton.UserData.id, 'tooltip', struct('defaultPosition', 'top', 'textContent', 'Exporta plot')), ...
                     ...
                     struct('appName', appName, 'dataTag', app.DockUndockButton.UserData.id, 'tooltip', struct('defaultPosition', 'top', 'textContent', 'Reabre módulo em outra janela')), ...
                     struct('appName', appName, 'dataTag', app.DockCloseButton.UserData.id, 'tooltip', struct('defaultPosition', 'top', 'textContent', 'Fecha módulo')) ...
@@ -1172,7 +1175,7 @@ classdef winRFDataHub_exported < matlab.apps.AppBase
 
         % Image clicked function: AxesRegionZoomButton, 
         % ...and 1 other component
-        function onAxesToolbarButtonClicked(app, event)
+        function onAxesToolbarZoomControlButtonClicked(app, event)
             
             switch event.Source
                 case app.AxesRestoreViewButton
@@ -1181,6 +1184,27 @@ classdef winRFDataHub_exported < matlab.apps.AppBase
                 case app.AxesRegionZoomButton
                     auxApp.RFDataHub.Axes.regionZoom(app.UIAxes1, app.AxesRegionZoomButton)
             end
+
+        end
+
+        % Image clicked function: AxesExportGraphicsButton
+        function onAxesToolbarExportGraphicsClicked(app, event)
+            
+            fileFormats = {'*.jpeg', '(*.jpeg)'};
+            fileFullPath = ui.Dialog(app.UIFigure, 'uiputfile', '', fileFormats, app.mainApp.General.fileFolder.userPath);
+            if isempty(fileFullPath)
+                return
+            end
+
+            app.progressDialog.Visible = 'visible';
+
+            try
+                exportgraphics(app.AxesContainer, fileFullPath, 'ContentType', 'image', 'Resolution', app.mainApp.General.reportLib.image.resolutionDpi, 'BackgroundColor', [0,0,0])
+            catch ME
+                ui.Dialog(app.UIFigure, 'error', ME.message);
+            end
+
+            app.progressDialog.Visible = 'hidden';
 
         end
 
@@ -1315,7 +1339,7 @@ classdef winRFDataHub_exported < matlab.apps.AppBase
 
             % Create Document
             app.Document = uigridlayout(app.GridLayout);
-            app.Document.ColumnWidth = {232, 10, 5, 190, '1x', 10, 232};
+            app.Document.ColumnWidth = {232, 10, 5, 215, '1x', 10, 232};
             app.Document.RowHeight = {24, '1x', 10, 158};
             app.Document.ColumnSpacing = 0;
             app.Document.RowSpacing = 0;
@@ -1485,7 +1509,7 @@ classdef winRFDataHub_exported < matlab.apps.AppBase
 
             % Create AxesToolbar
             app.AxesToolbar = uigridlayout(app.Document);
-            app.AxesToolbar.ColumnWidth = {10, 25, 25, 5, 110, 10};
+            app.AxesToolbar.ColumnWidth = {10, 25, 25, 25, 5, 110, 10};
             app.AxesToolbar.RowHeight = {22};
             app.AxesToolbar.ColumnSpacing = 0;
             app.AxesToolbar.Padding = [0 2 0 1];
@@ -1496,7 +1520,7 @@ classdef winRFDataHub_exported < matlab.apps.AppBase
             % Create AxesRestoreViewButton
             app.AxesRestoreViewButton = uiimage(app.AxesToolbar);
             app.AxesRestoreViewButton.ScaleMethod = 'none';
-            app.AxesRestoreViewButton.ImageClickedFcn = createCallbackFcn(app, @onAxesToolbarButtonClicked, true);
+            app.AxesRestoreViewButton.ImageClickedFcn = createCallbackFcn(app, @onAxesToolbarZoomControlButtonClicked, true);
             app.AxesRestoreViewButton.Layout.Row = 1;
             app.AxesRestoreViewButton.Layout.Column = 2;
             app.AxesRestoreViewButton.ImageSource = fullfile(pathToMLAPP, '+RFDataHub', 'icons', 'home-18px.png');
@@ -1504,10 +1528,18 @@ classdef winRFDataHub_exported < matlab.apps.AppBase
             % Create AxesRegionZoomButton
             app.AxesRegionZoomButton = uiimage(app.AxesToolbar);
             app.AxesRegionZoomButton.ScaleMethod = 'none';
-            app.AxesRegionZoomButton.ImageClickedFcn = createCallbackFcn(app, @onAxesToolbarButtonClicked, true);
+            app.AxesRegionZoomButton.ImageClickedFcn = createCallbackFcn(app, @onAxesToolbarZoomControlButtonClicked, true);
             app.AxesRegionZoomButton.Layout.Row = 1;
             app.AxesRegionZoomButton.Layout.Column = 3;
             app.AxesRegionZoomButton.ImageSource = fullfile(pathToMLAPP, '+RFDataHub', 'icons', 'zoom-region-20px.png');
+
+            % Create AxesExportGraphicsButton
+            app.AxesExportGraphicsButton = uiimage(app.AxesToolbar);
+            app.AxesExportGraphicsButton.ScaleMethod = 'none';
+            app.AxesExportGraphicsButton.ImageClickedFcn = createCallbackFcn(app, @onAxesToolbarExportGraphicsClicked, true);
+            app.AxesExportGraphicsButton.Layout.Row = 1;
+            app.AxesExportGraphicsButton.Layout.Column = 4;
+            app.AxesExportGraphicsButton.ImageSource = fullfile(pathToMLAPP, '+RFDataHub', 'icons', 'screen-cut.svg');
 
             % Create AxesBasemap
             app.AxesBasemap = uidropdown(app.AxesToolbar);
@@ -1517,7 +1549,7 @@ classdef winRFDataHub_exported < matlab.apps.AppBase
             app.AxesBasemap.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
             app.AxesBasemap.BackgroundColor = [1 1 1];
             app.AxesBasemap.Layout.Row = 1;
-            app.AxesBasemap.Layout.Column = 5;
+            app.AxesBasemap.Layout.Column = 6;
             app.AxesBasemap.Value = 'satellite';
 
             % Create UITable
