@@ -1340,7 +1340,7 @@ classdef winRFDataHub_exported < matlab.apps.AppBase
             % Create Document
             app.Document = uigridlayout(app.GridLayout);
             app.Document.ColumnWidth = {232, 10, 5, 215, '1x', 10, 232};
-            app.Document.RowHeight = {24, '1x', 10, 158};
+            app.Document.RowHeight = {24, '1x', 10, '0.4x'};
             app.Document.ColumnSpacing = 0;
             app.Document.RowSpacing = 0;
             app.Document.Padding = [0 0 0 0];
