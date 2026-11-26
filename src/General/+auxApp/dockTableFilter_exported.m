@@ -25,7 +25,6 @@ classdef dockTableFilter_exported < matlab.apps.AppBase
         SymbolicNameList        matlab.ui.control.DropDown
         ColumnFilterLabel       matlab.ui.control.Label
         Title                   matlab.ui.control.Label
-        TitleIcon               matlab.ui.control.Image
     end
 
     
@@ -488,20 +487,12 @@ classdef dockTableFilter_exported < matlab.apps.AppBase
 
             % Create GridLayout
             app.GridLayout = uigridlayout(app.Container);
-            app.GridLayout.ColumnWidth = {22, 451};
+            app.GridLayout.ColumnWidth = {478};
             app.GridLayout.RowHeight = {40, 22, 264};
             app.GridLayout.ColumnSpacing = 5;
             app.GridLayout.RowSpacing = 5;
             app.GridLayout.Padding = [20 20 20 20];
             app.GridLayout.BackgroundColor = [1 1 1];
-
-            % Create TitleIcon
-            app.TitleIcon = uiimage(app.GridLayout);
-            app.TitleIcon.ScaleMethod = 'none';
-            app.TitleIcon.Layout.Row = 1;
-            app.TitleIcon.Layout.Column = 1;
-            app.TitleIcon.VerticalAlignment = 'top';
-            app.TitleIcon.ImageSource = fullfile(pathToMLAPP, '+TableFilter', 'icons', 'settings-20px.svg');
 
             % Create Title
             app.Title = uilabel(app.GridLayout);
@@ -509,7 +500,7 @@ classdef dockTableFilter_exported < matlab.apps.AppBase
             app.Title.FontSize = 15;
             app.Title.FontColor = [0 0.1294 0.2392];
             app.Title.Layout.Row = 1;
-            app.Title.Layout.Column = 2;
+            app.Title.Layout.Column = 1;
             app.Title.Interpreter = 'html';
             app.Title.Text = {'<b>Configurações de filtragem e exibição</b>'; '<font style="font-size: 11px;">Defina como os filtros serão aplicados para refinar os resultados exibidos</font>'};
 
@@ -519,14 +510,14 @@ classdef dockTableFilter_exported < matlab.apps.AppBase
             app.ColumnFilterLabel.FontSize = 11;
             app.ColumnFilterLabel.FontColor = [0 0.1294 0.2392];
             app.ColumnFilterLabel.Layout.Row = 2;
-            app.ColumnFilterLabel.Layout.Column = 2;
+            app.ColumnFilterLabel.Layout.Column = 1;
             app.ColumnFilterLabel.Text = 'Filtro por coluna';
 
             % Create ColumnFilterPanel
             app.ColumnFilterPanel = uipanel(app.GridLayout);
             app.ColumnFilterPanel.AutoResizeChildren = 'off';
             app.ColumnFilterPanel.Layout.Row = 3;
-            app.ColumnFilterPanel.Layout.Column = 2;
+            app.ColumnFilterPanel.Layout.Column = 1;
 
             % Create ColumnFilterGrid
             app.ColumnFilterGrid = uigridlayout(app.ColumnFilterPanel);
